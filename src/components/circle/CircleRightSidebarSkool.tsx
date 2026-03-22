@@ -65,11 +65,11 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         {/* Cover image */}
         {community.cover_image_url ? (
-          <div className="h-28">
+          <div className="h-40">
             <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="h-28 bg-gradient-to-br from-primary/15 via-primary/5 to-muted" />
+          <div className="h-40 bg-gradient-to-b from-foreground/80 to-foreground/40" />
         )}
 
         <div className="px-4 pt-4 pb-4 space-y-4">
