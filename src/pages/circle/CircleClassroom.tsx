@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
-import { BookOpen, Play, CheckCircle2, Lock, ChevronRight } from "lucide-react";
+import { BookOpen, Play, CheckCircle2, Lock, ChevronRight, Crown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,21 @@ export default function CircleClassroom() {
         };
       }
       return counts;
+    },
+    enabled: courses.length > 0,
+  });
+
+  // Check which courses are premium (have a price > 0)
+  const { data: premiumCourseIds = [] } = useQuery({
+    queryKey: ["classroom-premium", courses.map(c => c.id).join(",")],
+    queryFn: async () => {
+      if (courses.length === 0) return [];
+      const { data } = await supabase
+        .from("prices")
+        .select("product_id, amount")
+        .in("product_id", courses.map(c => c.id))
+        .gt("amount", 0);
+      return [...new Set((data || []).map(p => p.product_id))];
     },
     enabled: courses.length > 0,
   });
@@ -136,6 +151,7 @@ export default function CircleClassroom() {
             const prog = progressMap[course.id] || { completed: 0, total: 0 };
             const percent = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0;
             const isCompleted = prog.total > 0 && prog.completed === prog.total;
+            const isPremium = premiumCourseIds.includes(course.id);
 
             return (
               <div
@@ -162,18 +178,26 @@ export default function CircleClassroom() {
                       <Play className="h-5 w-5 text-foreground ml-0.5" />
                     </div>
                   </div>
-                  {/* Completed badge */}
+                  {/* Completed badge — top left */}
                   {isCompleted && (
                     <div className="absolute top-2.5 left-2.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" /> COMPLETED
                     </div>
                   )}
+                  {/* Premium badge — top right corner ribbon */}
+                  {isPremium && !isCompleted && (
+                    <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 pointer-events-none">
+                      <div className="absolute top-[10px] right-[-28px] rotate-45 bg-accent text-accent-foreground text-[9px] font-extrabold tracking-wider py-1 px-7 shadow-sm flex items-center justify-center gap-0.5">
+                        <Crown className="h-2.5 w-2.5" /> PRO
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 p-4 flex flex-col justify-between">
+                <div className="pt-3 px-4 pb-0">
                   <div>
-                    <h3 className="text-[15px] font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                       {course.name}
                     </h3>
                     {course.description && (
@@ -183,7 +207,7 @@ export default function CircleClassroom() {
                     )}
                   </div>
 
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 px-4 pb-4 space-y-2">
                     {/* Stats */}
                     <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
                       {counts.modules > 0 && (
