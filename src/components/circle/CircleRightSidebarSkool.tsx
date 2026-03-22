@@ -65,11 +65,11 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         {/* Cover image */}
         {community.cover_image_url ? (
-          <div className="h-28">
+          <div className="h-40">
             <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="h-28 bg-gradient-to-br from-primary/15 via-primary/5 to-muted" />
+          <div className="h-40 bg-gradient-to-b from-foreground/80 to-foreground/40" />
         )}
 
         <div className="px-4 pt-4 pb-4 space-y-4">
@@ -135,17 +135,16 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
             </div>
           )}
 
-          {/* Yellow/gold invite button — Skool signature */}
+          {/* Yellow CTA button — Skool signature */}
           <Link
-            to="/circle/members"
-            className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-bold text-sm transition-colors"
+            to="/circle/feed"
+            className="flex items-center justify-center gap-2 w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90"
             style={{
-              backgroundColor: "hsl(45, 93%, 58%)",
-              color: "hsl(30, 30%, 15%)",
+              backgroundColor: "#f5c518",
+              color: "#1a1a1a",
             }}
           >
-            <Users className="h-4 w-4" />
-            Invite Members
+            Enter Group
           </Link>
         </div>
       </div>
