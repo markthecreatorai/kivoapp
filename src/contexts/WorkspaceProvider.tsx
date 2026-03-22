@@ -180,15 +180,26 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   useEffect(() => {
     if (session) {
+      setLoading(true);
       fetchUserWorkspaces();
-    } else {
+    } else if (!session && !loading) {
+      // Only clear when we're sure auth has finished loading (session is definitively null)
+      // Don't clear during initial mount when auth is still resolving
+    }
+  }, [session]);
+
+  // Separate effect: only clear workspace state when user is definitively logged out
+  // (auth finished loading AND no user)
+  const { loading: authLoading } = useAuth();
+  useEffect(() => {
+    if (!authLoading && !user) {
       setUserWorkspaces([]);
       workspacesRef.current = [];
       setCurrentWorkspace(null);
       setWorkspaceMembership(null);
       setLoading(false);
     }
-  }, [session, user]);
+  }, [authLoading, user]);
 
   return (
     <WorkspaceContext.Provider value={{
