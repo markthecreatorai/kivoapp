@@ -204,14 +204,11 @@ export default function CircleClassroom() {
                         <div className="flex items-center gap-3">
                           <Progress
                             value={percent}
-                            className={cn(
-                              "h-1.5 flex-1",
-                              isCompleted ? "[&>div]:bg-green-500" : "[&>div]:bg-primary"
-                            )}
+                            className="h-1.5 flex-1 [&>div]:bg-primary"
                           />
                           <span className={cn(
                             "text-[11px] font-semibold shrink-0",
-                            isCompleted ? "text-green-600" : "text-muted-foreground"
+                            isCompleted ? "text-primary" : "text-muted-foreground"
                           )}>
                             {percent}%
                           </span>
