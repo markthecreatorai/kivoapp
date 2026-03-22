@@ -165,7 +165,7 @@ export default function CircleClassroom() {
                     </div>
                     {/* Completed badge */}
                     {isCompleted && (
-                      <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" /> COMPLETED
                       </div>
                     )}
