@@ -98,6 +98,25 @@ export default function CircleFeed() {
     enabled: !!community,
   });
 
+  // Next upcoming event for announcement banner
+  const { data: nextEvent } = useQuery({
+    queryKey: ["circle-next-event-banner", community?.id],
+    queryFn: async () => {
+      if (!community) return null;
+      const { data } = await supabase
+        .from("community_events")
+        .select("*")
+        .eq("community_id", community.id)
+        .eq("status", "UPCOMING")
+        .gte("starts_at", new Date().toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!community,
+  });
+
   const { data: userReactions } = useQuery({
     queryKey: ["circle-reactions", member?.id],
     queryFn: async () => {
