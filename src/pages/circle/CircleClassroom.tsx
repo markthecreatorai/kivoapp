@@ -112,7 +112,7 @@ export default function CircleClassroom() {
   }
 
   return (
-    <div className="p-4 md:py-6 md:px-5 max-w-3xl mx-auto">
+    <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-foreground">Classroom</h1>
