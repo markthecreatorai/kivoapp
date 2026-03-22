@@ -195,9 +195,9 @@ export default function CircleClassroom() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 p-4 flex flex-col justify-between">
+                <div className="pt-3 px-4 pb-0">
                   <div>
-                    <h3 className="text-[15px] font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                       {course.name}
                     </h3>
                     {course.description && (
