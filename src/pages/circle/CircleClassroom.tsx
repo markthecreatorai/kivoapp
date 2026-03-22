@@ -226,20 +226,6 @@ export default function CircleClassroom() {
     const percent = 0; // Progress TBD
     const isMockCourse = selectedCourseId.startsWith("mock-");
 
-    // Build ordered tree: root pages + modules (with children)
-    const orderedItems = useMemo(() => {
-      const items: Array<{ type: "page" | "module"; item: CircleLesson; children?: CircleLesson[] }> = [];
-      const rootLevel = allItems.filter(i => !i.parent_id).sort((a, b) => a.position - b.position);
-      for (const item of rootLevel) {
-        if (item.type === "module") {
-          items.push({ type: "module", item, children: getChildPages(item.id) });
-        } else {
-          items.push({ type: "page", item });
-        }
-      }
-      return items;
-    }, [allItems]);
-
     return (
       <div className="flex flex-col h-[calc(100vh-120px)]">
         <div className="flex-1 flex overflow-hidden">
