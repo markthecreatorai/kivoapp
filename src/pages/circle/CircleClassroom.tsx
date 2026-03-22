@@ -151,6 +151,7 @@ export default function CircleClassroom() {
             const prog = progressMap[course.id] || { completed: 0, total: 0 };
             const percent = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0;
             const isCompleted = prog.total > 0 && prog.completed === prog.total;
+            const isPremium = premiumCourseIds.includes(course.id);
 
             return (
               <div
