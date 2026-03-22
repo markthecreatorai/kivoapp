@@ -1,19 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import {
   BookOpen, Play, Crown, ArrowLeft, Plus,
-  FileText, Circle, CheckCircle2, Trash2, GripVertical, Loader2,
+  FileText, Circle, Trash2, Loader2,
+  MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import CourseFormModal from "@/components/circle/CourseFormModal";
@@ -40,6 +40,8 @@ interface CircleLesson {
   position: number;
   is_published: boolean;
   created_at: string;
+  type: string;
+  parent_id: string | null;
 }
 
 // ─── Mock data ───────────────────────────────────────────────
@@ -61,6 +63,7 @@ export default function CircleClassroom() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CircleCourse | null>(null);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
   // ─── Community & member queries ───────────────────────
   const { data: community } = useQuery({
@@ -103,8 +106,8 @@ export default function CircleClassroom() {
   const isMock = circleCourses.length === 0 && !isLoading;
   const courses = isMock ? MOCK_COURSES : circleCourses;
 
-  // ─── Lessons for selected course ─────────────────────
-  const { data: lessons = [] } = useQuery({
+  // ─── All items (pages + modules) for selected course ──
+  const { data: allItems = [] } = useQuery({
     queryKey: ["circle-lessons", selectedCourseId],
     queryFn: async () => {
       if (!selectedCourseId || selectedCourseId.startsWith("mock-")) return [];
@@ -118,87 +121,155 @@ export default function CircleClassroom() {
     enabled: !!selectedCourseId && !selectedCourseId.startsWith("mock-"),
   });
 
-  // ─── Add lesson mutation ─────────────────────────────
-  const addLessonMutation = useMutation({
-    mutationFn: async () => {
+  // Separate modules and pages
+  const modules = useMemo(() => allItems.filter(i => i.type === "module" && !i.parent_id), [allItems]);
+  const rootPages = useMemo(() => allItems.filter(i => i.type === "page" && !i.parent_id), [allItems]);
+  const getChildPages = (moduleId: string) => allItems.filter(i => i.type === "page" && i.parent_id === moduleId);
+  const allPages = useMemo(() => allItems.filter(i => i.type === "page"), [allItems]);
+
+  // ─── Mutations ───────────────────────────────────────
+  const addPageMutation = useMutation({
+    mutationFn: async (parentId?: string | null) => {
       if (!selectedCourseId) throw new Error("No course selected");
       const { error } = await supabase.from("circle_lessons").insert({
         course_id: selectedCourseId,
-        title: "Untitled Lesson",
-        position: lessons.length,
+        title: "New page",
+        position: allItems.length,
         is_published: false,
+        type: "page",
+        parent_id: parentId || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-lessons", selectedCourseId] });
-      toast.success("Lição adicionada!");
+      toast.success("Página adicionada!");
     },
     onError: (err: any) => toast.error(err.message),
   });
 
-  const deleteLessonMutation = useMutation({
-    mutationFn: async (lessonId: string) => {
-      const { error } = await supabase.from("circle_lessons").delete().eq("id", lessonId);
+  const addModuleMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCourseId) throw new Error("No course selected");
+      const { error } = await supabase.from("circle_lessons").insert({
+        course_id: selectedCourseId,
+        title: "New folder",
+        position: allItems.length,
+        is_published: true,
+        type: "module",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-lessons", selectedCourseId] });
+      toast.success("Módulo adicionado!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase.from("circle_lessons").delete().eq("id", itemId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-lessons", selectedCourseId] });
       setSelectedLessonId(null);
-      toast.success("Lição excluída!");
+      toast.success("Item excluído!");
     },
   });
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
-  const activeLesson = lessons.find(l => l.id === selectedLessonId);
+  const activeLesson = allPages.find(l => l.id === selectedLessonId);
 
-  // Auto-select first lesson
+  // Auto-select first page
   useEffect(() => {
-    if (lessons.length > 0 && !selectedLessonId) {
-      setSelectedLessonId(lessons[0].id);
+    if (allPages.length > 0 && !selectedLessonId) {
+      setSelectedLessonId(allPages[0].id);
     }
-  }, [lessons, selectedLessonId]);
+  }, [allPages, selectedLessonId]);
+
+  // Auto-expand modules
+  useEffect(() => {
+    if (modules.length > 0) {
+      setExpandedModules(new Set(modules.map(m => m.id)));
+    }
+  }, [modules]);
+
+  const toggleModule = (moduleId: string) => {
+    setExpandedModules(prev => {
+      const next = new Set(prev);
+      next.has(moduleId) ? next.delete(moduleId) : next.add(moduleId);
+      return next;
+    });
+  };
 
   // ═══════════════════════════════════════════════════════════
-  //  DETAIL VIEW — Lesson Sidebar + Editor
+  //  DETAIL VIEW — Sidebar + Editor (Skool-style)
   // ═══════════════════════════════════════════════════════════
   if (selectedCourseId && selectedCourse) {
-    const completedCount = 0;
-    const totalCount = lessons.length;
-    const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    const totalPages = allPages.length;
+    const percent = 0; // Progress TBD
     const isMockCourse = selectedCourseId.startsWith("mock-");
+
+    // Build ordered tree: root pages + modules (with children)
+    const orderedItems = useMemo(() => {
+      const items: Array<{ type: "page" | "module"; item: CircleLesson; children?: CircleLesson[] }> = [];
+      const rootLevel = allItems.filter(i => !i.parent_id).sort((a, b) => a.position - b.position);
+      for (const item of rootLevel) {
+        if (item.type === "module") {
+          items.push({ type: "module", item, children: getChildPages(item.id) });
+        } else {
+          items.push({ type: "page", item });
+        }
+      }
+      return items;
+    }, [allItems]);
 
     return (
       <div className="flex flex-col h-[calc(100vh-120px)]">
-        {/* Top bar */}
-        <div className="shrink-0 px-4 md:px-6 py-3 border-b border-border bg-card flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={() => { setSelectedCourseId(null); setSelectedLessonId(null); }}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-foreground truncate">{selectedCourse.name}</h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <Progress value={percent} className="h-1 w-24 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
-              <span className="text-[11px] text-muted-foreground">{percent}% complete</span>
-            </div>
-          </div>
-        </div>
-
         <div className="flex-1 flex overflow-hidden">
-          {/* ── Left Sidebar: Lessons ── */}
+          {/* ── Left Sidebar ── */}
           <ScrollArea className="w-72 lg:w-80 shrink-0 border-r border-border bg-card">
             <div className="p-4">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                Lições ({totalCount})
-              </h3>
+              {/* Course title + progress + ⋯ menu */}
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <button
+                    onClick={() => { setSelectedCourseId(null); setSelectedLessonId(null); }}
+                    className="text-sm font-bold text-foreground hover:text-primary transition-colors text-left truncate block w-full"
+                  >
+                    {selectedCourse.name}
+                  </button>
+                </div>
+                {isAdmin && !isMockCourse && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => addPageMutation.mutate(null)}>
+                        <FileText className="h-4 w-4 mr-2" /> Add page
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => addModuleMutation.mutate()}>
+                        <FolderOpen className="h-4 w-4 mr-2" /> Add folder
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
 
+              {/* Progress bar */}
+              <div className="flex items-center gap-2 mb-4">
+                <Progress value={percent} className="h-1.5 flex-1 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+                <span className="text-[11px] text-muted-foreground font-medium">{percent}%</span>
+              </div>
+
+              {/* Items tree */}
               {isMockCourse ? (
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {["Welcome & Overview", "Setting Up", "Mindset for Success", "Finding Your Niche", "Building Your Audience"].map((t, i) => (
                     <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground">
                       <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
@@ -208,39 +279,117 @@ export default function CircleClassroom() {
                 </div>
               ) : (
                 <div className="space-y-0.5">
-                  {lessons.map((lesson) => {
-                    const isActive = lesson.id === selectedLessonId;
+                  {orderedItems.map(({ type, item, children }) => {
+                    if (type === "module") {
+                      const isExpanded = expandedModules.has(item.id);
+                      const childPages = children || [];
+                      return (
+                        <div key={item.id}>
+                          {/* Module header */}
+                          <div className="flex items-center group/mod">
+                            <button
+                              onClick={() => toggleModule(item.id)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 min-w-0 hover:bg-muted/50 transition-colors"
+                            >
+                              {isExpanded
+                                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              }
+                              {isExpanded
+                                ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                              }
+                              <span className="text-[13px] font-semibold text-foreground truncate">
+                                {item.title}
+                              </span>
+                            </button>
+                            {isAdmin && (
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover/mod:opacity-100 transition-opacity pr-1">
+                                <button
+                                  onClick={() => addPageMutation.mutate(item.id)}
+                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
+                                  title="Add page to folder"
+                                >
+                                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm("Excluir este módulo e suas páginas?")) deleteItemMutation.mutate(item.id);
+                                  }}
+                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Child pages */}
+                          {isExpanded && childPages.map((page) => {
+                            const isActive = page.id === selectedLessonId;
+                            return (
+                              <div
+                                key={page.id}
+                                onClick={() => setSelectedLessonId(page.id)}
+                                className={cn(
+                                  "flex items-center gap-2 pl-11 pr-3 py-2 rounded-lg cursor-pointer transition-colors group/page ml-1",
+                                  isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
+                                )}
+                              >
+                                <span className={cn(
+                                  "text-[13px] flex-1 truncate",
+                                  isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                                )}>
+                                  {page.title}
+                                </span>
+                                {!page.is_published && (
+                                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">DRAFT</span>
+                                )}
+                                {isAdmin && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(page.id); }}
+                                    className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {isExpanded && childPages.length === 0 && (
+                            <div className="pl-11 pr-3 py-2 text-[12px] text-muted-foreground/60 italic">
+                              Empty folder
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Root page
+                    const isActive = item.id === selectedLessonId;
                     return (
                       <div
-                        key={lesson.id}
-                        onClick={() => setSelectedLessonId(lesson.id)}
+                        key={item.id}
+                        onClick={() => setSelectedLessonId(item.id)}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group/lesson",
-                          isActive ? "bg-accent border border-border" : "hover:bg-muted/50"
+                          "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group/page",
+                          isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
                         )}
                       >
-                        <Circle className={cn(
-                          "h-4 w-4 shrink-0",
-                          isActive ? "text-primary" : "text-muted-foreground/40"
-                        )} />
                         <span className={cn(
                           "text-[13px] flex-1 truncate",
                           isActive ? "font-medium text-foreground" : "text-muted-foreground"
                         )}>
-                          {lesson.title}
+                          {item.title}
                         </span>
-                        {!lesson.is_published && (
-                          <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                            DRAFT
-                          </span>
+                        {!item.is_published && (
+                          <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">DRAFT</span>
                         )}
                         {isAdmin && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm("Excluir esta lição?")) deleteLessonMutation.mutate(lesson.id);
-                            }}
-                            className="opacity-0 group-hover/lesson:opacity-100 transition-opacity shrink-0"
+                            onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(item.id); }}
+                            className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
                           >
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </button>
@@ -251,39 +400,19 @@ export default function CircleClassroom() {
                 </div>
               )}
 
-              {isAdmin && !isMockCourse && (
-                <>
-                  <Separator className="my-3" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => addLessonMutation.mutate()}
-                    disabled={addLessonMutation.isPending}
-                  >
-                    {addLessonMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-1.5" />
-                    )}
-                    Add Lesson
-                  </Button>
-                </>
-              )}
-
-              {lessons.length === 0 && !isMockCourse && (
+              {allItems.length === 0 && !isMockCourse && (
                 <div className="text-center py-8">
                   <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                  <p className="text-sm text-muted-foreground">Nenhuma lição ainda</p>
+                  <p className="text-sm text-muted-foreground mb-3">Nenhum conteúdo ainda</p>
                   {isAdmin && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => addLessonMutation.mutate()}
-                    >
-                      <Plus className="h-4 w-4 mr-1.5" /> Criar primeira lição
-                    </Button>
+                    <div className="space-y-2">
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => addPageMutation.mutate(null)}>
+                        <Plus className="h-4 w-4 mr-1.5" /> Add page
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => addModuleMutation.mutate()}>
+                        <FolderOpen className="h-4 w-4 mr-1.5" /> Add folder
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -311,7 +440,7 @@ export default function CircleClassroom() {
                 <div className="flex items-center justify-center h-64 text-muted-foreground">
                   <div className="text-center">
                     <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                    <p className="text-sm">Selecione uma lição para começar</p>
+                    <p className="text-sm">Selecione uma página para começar</p>
                   </div>
                 </div>
               )}
@@ -320,14 +449,6 @@ export default function CircleClassroom() {
         </div>
       </div>
     );
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  EMPTY STATE — No courses at all (admin sees centered + Add Course)
-  // ═══════════════════════════════════════════════════════════
-  if (!isLoading && circleCourses.length === 0 && !isMock) {
-    // This case won't hit because isMock is true when circleCourses is empty
-    // but we keep it for when mock data is removed later
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -352,7 +473,7 @@ export default function CircleClassroom() {
     );
   }
 
-  // True empty state — no real courses, show centered button for admins
+  // Empty state
   if (circleCourses.length === 0) {
     return (
       <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
@@ -370,7 +491,6 @@ export default function CircleClassroom() {
             </Button>
           )}
         </div>
-
         {community && (
           <CourseFormModal
             open={showFormModal}
@@ -403,14 +523,10 @@ export default function CircleClassroom() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {courses.map((course, index) => {
           const isPremium = course.access_type === "premium";
-
           return (
             <div
               key={course.id}
-              onClick={() => {
-                setSelectedCourseId(course.id);
-                setSelectedLessonId(null);
-              }}
+              onClick={() => { setSelectedCourseId(course.id); setSelectedLessonId(null); }}
               className="bg-card rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col relative"
             >
               {isAdmin && !course.id.startsWith("mock-") && (
@@ -423,7 +539,6 @@ export default function CircleClassroom() {
                   />
                 </div>
               )}
-
               <div className="relative overflow-hidden" style={{ height: 180 }}>
                 {course.cover_url ? (
                   <img src={course.cover_url} alt={course.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -450,7 +565,6 @@ export default function CircleClassroom() {
                   </div>
                 )}
               </div>
-
               <div className="pt-3 px-4">
                 <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                   {course.name}
@@ -461,7 +575,6 @@ export default function CircleClassroom() {
                   </p>
                 )}
               </div>
-
               <div className="mt-auto px-4 mb-4 pt-3">
                 <Progress value={0} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
               </div>
