@@ -178,10 +178,18 @@ export default function CircleClassroom() {
                       <Play className="h-5 w-5 text-foreground ml-0.5" />
                     </div>
                   </div>
-                  {/* Completed badge */}
+                  {/* Completed badge — top left */}
                   {isCompleted && (
                     <div className="absolute top-2.5 left-2.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" /> COMPLETED
+                    </div>
+                  )}
+                  {/* Premium badge — top right corner ribbon */}
+                  {isPremium && !isCompleted && (
+                    <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 pointer-events-none">
+                      <div className="absolute top-[10px] right-[-28px] rotate-45 bg-accent text-accent-foreground text-[9px] font-extrabold tracking-wider py-1 px-7 shadow-sm flex items-center justify-center gap-0.5">
+                        <Crown className="h-2.5 w-2.5" /> PRO
+                      </div>
                     </div>
                   )}
                 </div>
