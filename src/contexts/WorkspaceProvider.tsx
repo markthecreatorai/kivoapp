@@ -189,8 +189,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   }, [session]);
 
   // Separate effect: only clear workspace state when user is definitively logged out
-  // (auth finished loading AND no user)
-  const { loading: authLoading } = useAuth();
   useEffect(() => {
     if (!authLoading && !user) {
       setUserWorkspaces([]);
