@@ -170,17 +170,19 @@ export default function CircleFeed() {
         <>
           {!showCompose ? (
             <div
-              className="bg-card rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
+              className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:shadow-sm transition-shadow"
               onClick={() => setShowCompose(true)}
             >
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 shrink-0">
+                <Avatar className="h-9 w-9 shrink-0">
                   <AvatarImage src={member?.avatar_url || ""} />
-                  <AvatarFallback className="bg-muted text-muted-foreground text-xs font-medium">
+                  <AvatarFallback className="bg-muted text-muted-foreground text-[11px] font-medium">
                     {(member?.display_name || user?.email || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-muted-foreground text-[14px] flex-1">Write something...</span>
+                <div className="flex-1 rounded-full border border-border px-4 py-2">
+                  <span className="text-muted-foreground text-[14px]">Write something...</span>
+                </div>
               </div>
             </div>
           ) : community && member && (
