@@ -195,49 +195,34 @@ export default function CircleClassroom() {
                 </div>
 
                 {/* Content */}
-                <div className="pt-3 px-4 pb-0">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                      {course.name}
-                    </h3>
-                    {course.description && (
-                      <p className="text-[13px] text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
-                        {course.description}
-                      </p>
-                    )}
-                  </div>
+                <div className="pt-3 px-4">
+                  <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                    {course.name}
+                  </h3>
+                  {course.description && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                      {course.description}
+                    </p>
+                  )}
+                </div>
 
-                  <div className="mt-3 px-4 pb-4 space-y-2">
-                    {/* Stats */}
-                    <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-                      {counts.modules > 0 && (
-                        <span className="flex items-center gap-1">
-                          <BookOpen className="h-3.5 w-3.5" />
-                          {counts.modules} {counts.modules === 1 ? "module" : "modules"}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Play className="h-3.5 w-3.5" />
-                        {counts.total} {counts.total === 1 ? "lesson" : "lessons"}
-                      </span>
-                    </div>
-
-                    {/* Progress bar */}
-                    {prog.total > 0 && (
-                      <div className="flex items-center gap-3">
-                        <Progress
-                          value={percent}
-                          className="h-1.5 flex-1 [&>div]:bg-primary"
-                        />
-                        <span className={cn(
-                          "text-[11px] font-semibold shrink-0",
-                          isCompleted ? "text-primary" : "text-muted-foreground"
-                        )}>
-                          {percent}%
-                        </span>
-                      </div>
-                    )}
+                {/* Progress bar — always visible */}
+                <div className="mt-auto px-4 mb-4 pt-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-muted-foreground">
+                      {counts.total} {counts.total === 1 ? "lesson" : "lessons"}
+                    </span>
+                    <span className={cn(
+                      "text-[11px] font-semibold",
+                      isCompleted ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {percent}%
+                    </span>
                   </div>
+                  <Progress
+                    value={percent}
+                    className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full"
+                  />
                 </div>
               </div>
             );
