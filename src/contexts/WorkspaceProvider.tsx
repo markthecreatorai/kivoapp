@@ -43,7 +43,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [userWorkspaces, setUserWorkspaces] = useState<Workspace[]>([]);
   const [workspaceMembership, setWorkspaceMembership] = useState<WorkspaceMember | null>(null);
   const [loading, setLoading] = useState(true);
-  const { user, session } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   // Keep a ref to workspaces so switchWorkspace always sees the latest value
   const workspacesRef = useRef<Workspace[]>([]);
 
