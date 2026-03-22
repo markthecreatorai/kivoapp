@@ -473,12 +473,14 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
           <div className="flex-1 min-w-0">
             {children}
           </div>
-          {/* Right sidebar ~35% — desktop only */}
-          <div className="hidden lg:block w-[340px] shrink-0">
-            <div className="sticky top-[108px]">
-              <CircleRightSidebarSkool community={community} member={member} />
+          {/* Right sidebar ~35% — desktop only, hidden on classroom */}
+          {!location.pathname.startsWith("/circle/classroom") && (
+            <div className="hidden lg:block w-[340px] shrink-0">
+              <div className="sticky top-[108px]">
+                <CircleRightSidebarSkool community={community} member={member} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 
