@@ -127,6 +127,20 @@ export default function CircleClassroom() {
   const getChildPages = (moduleId: string) => allItems.filter(i => i.type === "page" && i.parent_id === moduleId);
   const allPages = useMemo(() => allItems.filter(i => i.type === "page"), [allItems]);
 
+  // Build ordered tree (must be top-level hook)
+  const orderedItems = useMemo(() => {
+    const items: Array<{ type: "page" | "module"; item: CircleLesson; children?: CircleLesson[] }> = [];
+    const rootLevel = allItems.filter(i => !i.parent_id).sort((a, b) => a.position - b.position);
+    for (const item of rootLevel) {
+      if (item.type === "module") {
+        items.push({ type: "module", item, children: getChildPages(item.id) });
+      } else {
+        items.push({ type: "page", item });
+      }
+    }
+    return items;
+  }, [allItems]);
+
   // ─── Mutations ───────────────────────────────────────
   const addPageMutation = useMutation({
     mutationFn: async (parentId?: string | null) => {
