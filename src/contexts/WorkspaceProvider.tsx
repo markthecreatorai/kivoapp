@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthProvider";
 
@@ -43,7 +43,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [userWorkspaces, setUserWorkspaces] = useState<Workspace[]>([]);
   const [workspaceMembership, setWorkspaceMembership] = useState<WorkspaceMember | null>(null);
   const [loading, setLoading] = useState(true);
-  const { user, session } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   // Keep a ref to workspaces so switchWorkspace always sees the latest value
   const workspacesRef = useRef<Workspace[]>([]);
 
@@ -180,15 +180,24 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   useEffect(() => {
     if (session) {
+      setLoading(true);
       fetchUserWorkspaces();
-    } else {
+    } else if (!session && !loading) {
+      // Only clear when we're sure auth has finished loading (session is definitively null)
+      // Don't clear during initial mount when auth is still resolving
+    }
+  }, [session]);
+
+  // Separate effect: only clear workspace state when user is definitively logged out
+  useEffect(() => {
+    if (!authLoading && !user) {
       setUserWorkspaces([]);
       workspacesRef.current = [];
       setCurrentWorkspace(null);
       setWorkspaceMembership(null);
       setLoading(false);
     }
-  }, [session, user]);
+  }, [authLoading, user]);
 
   return (
     <WorkspaceContext.Provider value={{
