@@ -195,6 +195,30 @@ export default function CircleClassroom() {
     },
   });
 
+  const renameModuleMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { error } = await supabase.from("circle_lessons").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-lessons", selectedCourseId] });
+      setRenamingModuleId(null);
+      toast.success("Nome atualizado!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const startRenaming = (item: CircleLesson) => {
+    setRenamingModuleId(item.id);
+    setRenameValue(item.title);
+  };
+
+  const commitRename = (id: string) => {
+    const trimmed = renameValue.trim();
+    if (!trimmed) { setRenamingModuleId(null); return; }
+    renameModuleMutation.mutate({ id, title: trimmed });
+  };
+
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const activeLesson = allPages.find(l => l.id === selectedLessonId);
 
