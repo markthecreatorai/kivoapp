@@ -1,11 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users, MessageSquare, ShieldCheck } from "lucide-react";
+import { Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getLevelInfo } from "@/components/circle/CircleLayout";
 
 interface Props {
   community: any;
@@ -13,7 +10,6 @@ interface Props {
 }
 
 export default function CircleRightSidebarSkool({ community, member }: Props) {
-  // Top 3 members for mini leaderboard
   const { data: topMembers } = useQuery({
     queryKey: ["circle-top3", community?.id],
     queryFn: async () => {
@@ -30,7 +26,6 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
     enabled: !!community,
   });
 
-  // Count admins
   const { data: adminCount } = useQuery({
     queryKey: ["circle-admin-count", community?.id],
     queryFn: async () => {
@@ -46,138 +41,165 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
     enabled: !!community,
   });
 
+  const { data: recentMembers } = useQuery({
+    queryKey: ["circle-recent-members", community?.id],
+    queryFn: async () => {
+      if (!community) return [];
+      const { data } = await supabase
+        .from("community_members")
+        .select("id, display_name, avatar_url")
+        .eq("community_id", community.id)
+        .eq("status", "ACTIVE")
+        .order("joined_at", { ascending: false })
+        .limit(8);
+      return data || [];
+    },
+    enabled: !!community,
+  });
+
   if (!community) return null;
 
   return (
     <div className="p-4 space-y-4">
-      {/* Community About Card */}
-      <Card className="overflow-hidden">
-        {/* Cover */}
+      {/* ── About Card ── */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        {/* Cover image */}
         {community.cover_image_url ? (
-          <div className="h-24 bg-muted">
-            <img
-              src={community.cover_image_url}
-              alt=""
-              className="w-full h-full object-cover"
-            />
+          <div className="h-28">
+            <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="h-24 bg-gradient-to-br from-primary/20 via-primary/10 to-muted" />
+          <div className="h-28 bg-gradient-to-br from-primary/15 via-primary/5 to-muted" />
         )}
 
-        <div className="p-4 space-y-3">
+        <div className="px-4 pt-4 pb-4 space-y-4">
           {/* Community name */}
-          <h3 className="font-bold text-foreground text-base">{community.name}</h3>
+          <h3 className="font-bold text-foreground text-[15px] leading-tight">
+            {community.name}
+          </h3>
 
           {/* Description */}
           {(community.description || community.long_description) && (
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+            <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-3">
               {community.long_description || community.description}
             </p>
           )}
 
           {/* Quick links */}
-          <div className="space-y-1">
-            <Link
-              to="/circle/feed"
-              className="text-sm text-primary hover:underline block"
-            >
+          <div className="space-y-0.5">
+            <Link to="/circle/feed" className="text-[13px] text-primary hover:underline block font-medium">
               ➪ Start Here
             </Link>
           </div>
 
-          {/* Stats row */}
-          <div className="flex items-center justify-between pt-2 border-t border-border">
+          {/* Stats row — 3 columns with dividers */}
+          <div className="flex items-center border-t border-b border-border py-3 -mx-4 px-4">
             <div className="flex-1 text-center">
-              <p className="text-sm font-bold text-foreground">{community.member_count}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Members</p>
+              <p className="text-[15px] font-bold text-foreground">{community.member_count}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Members</p>
             </div>
-            <div className="w-px h-8 bg-border" />
+            <div className="w-px h-9 bg-border" />
             <div className="flex-1 text-center">
-              <p className="text-sm font-bold text-foreground">{community.post_count}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Posts</p>
+              <p className="text-[15px] font-bold text-foreground">{community.post_count}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Posts</p>
             </div>
-            <div className="w-px h-8 bg-border" />
+            <div className="w-px h-9 bg-border" />
             <div className="flex-1 text-center">
-              <p className="text-sm font-bold text-foreground">{adminCount ?? 0}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Admins</p>
+              <p className="text-[15px] font-bold text-foreground">{adminCount ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Admins</p>
             </div>
           </div>
 
-          {/* Member avatars row */}
-          {topMembers && topMembers.length > 0 && (
-            <div className="flex items-center gap-0 pt-1">
-              {topMembers.map((m: any, i: number) => (
-                <Avatar
-                  key={m.id}
-                  className="h-8 w-8 border-2 border-card"
-                  style={{ marginLeft: i > 0 ? "-8px" : "0", zIndex: 10 - i }}
-                >
-                  <AvatarImage src={m.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
-                    {(m.display_name || "U").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
-              {community.member_count > 3 && (
-                <span className="text-xs text-muted-foreground ml-2">
-                  +{community.member_count - 3} more
+          {/* Overlapping member avatars */}
+          {recentMembers && recentMembers.length > 0 && (
+            <div className="flex items-center">
+              <div className="flex items-center">
+                {recentMembers.slice(0, 8).map((m: any, i: number) => (
+                  <Avatar
+                    key={m.id}
+                    className="h-8 w-8 border-2 border-card"
+                    style={{ marginLeft: i > 0 ? "-6px" : "0", zIndex: 20 - i }}
+                  >
+                    <AvatarImage src={m.avatar_url || ""} />
+                    <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
+                      {(m.display_name || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+              {community.member_count > 8 && (
+                <span className="text-[11px] text-muted-foreground ml-2 shrink-0">
+                  +{community.member_count - 8}
                 </span>
               )}
             </div>
           )}
 
-          {/* Contribute / Invite button */}
-          <Button
-            className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
-            size="sm"
-            asChild
+          {/* Yellow/gold invite button — Skool signature */}
+          <Link
+            to="/circle/members"
+            className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-bold text-sm transition-colors"
+            style={{
+              backgroundColor: "hsl(45, 93%, 58%)",
+              color: "hsl(30, 30%, 15%)",
+            }}
           >
-            <Link to="/circle/members">
-              <Users className="h-4 w-4 mr-2" />
-              View Members
-            </Link>
-          </Button>
+            <Users className="h-4 w-4" />
+            Invite Members
+          </Link>
         </div>
-      </Card>
+      </div>
 
-      {/* Mini Leaderboard */}
+      {/* ── Leaderboard Card ── */}
       {topMembers && topMembers.length > 0 && (
-        <Card className="p-4 space-y-3">
+        <div className="bg-card rounded-xl border border-border px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
               Leaderboard
-            </h3>
-            <Link
-              to="/circle/leaderboard"
-              className="text-xs text-primary hover:underline font-medium"
-            >
+            </h4>
+            <Link to="/circle/leaderboard" className="text-[12px] text-primary hover:underline font-medium">
               See all
             </Link>
           </div>
-          <div className="space-y-2.5">
-            {topMembers.map((m: any, i: number) => {
-              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
-              return (
-                <div key={m.id} className="flex items-center gap-2.5">
-                  <span className="w-5 text-center text-sm">{medal}</span>
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src={m.avatar_url || ""} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-[9px]">
-                      {(m.display_name || "U").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium flex-1 truncate text-foreground">
-                    {m.display_name || "Member"}
-                  </span>
-                  <span className="text-xs font-semibold text-primary">
-                    +{m.total_points}
-                  </span>
+          <div className="space-y-3">
+            {topMembers.map((m: any, i: number) => (
+              <div key={m.id} className="flex items-center gap-3">
+                {/* Rank badge */}
+                <div
+                  className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                  style={{
+                    backgroundColor:
+                      i === 0
+                        ? "hsl(45, 93%, 58%)"
+                        : i === 1
+                        ? "hsl(0, 0%, 80%)"
+                        : "hsl(28, 60%, 60%)",
+                    color:
+                      i === 0
+                        ? "hsl(30, 30%, 15%)"
+                        : i === 1
+                        ? "hsl(0, 0%, 25%)"
+                        : "hsl(0, 0%, 100%)",
+                  }}
+                >
+                  {i + 1}
                 </div>
-              );
-            })}
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarImage src={m.avatar_url || ""} />
+                  <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
+                    {(m.display_name || "U").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-[13px] font-medium text-foreground flex-1 truncate">
+                  {m.display_name || "Member"}
+                </span>
+                <span className="text-[12px] font-semibold text-primary shrink-0">
+                  +{m.total_points}
+                </span>
+              </div>
+            ))}
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );
