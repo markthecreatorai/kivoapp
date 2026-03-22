@@ -87,12 +87,6 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
             </p>
           )}
 
-          {/* Quick links */}
-          <div className="space-y-0.5">
-            <Link to="/circle/feed" className="text-[13px] text-primary hover:underline block font-medium">
-              ➪ Start Here
-            </Link>
-          </div>
 
           {/* Stats row — Members | Online | Admins */}
           <div className="flex items-center border-t border-b border-border py-3 -mx-4 px-4">
