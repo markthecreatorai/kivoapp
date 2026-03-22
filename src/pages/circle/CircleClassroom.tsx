@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import {
   BookOpen, Play, Crown, ArrowLeft, Plus,
   FileText, Circle, Trash2, Loader2,
-  MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
+  MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder, Pencil,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,8 @@ export default function CircleClassroom() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CircleCourse | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [renamingModuleId, setRenamingModuleId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   // ─── Community & member queries ───────────────────────
   const { data: community } = useQuery({
@@ -193,6 +195,30 @@ export default function CircleClassroom() {
     },
   });
 
+  const renameModuleMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { error } = await supabase.from("circle_lessons").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-lessons", selectedCourseId] });
+      setRenamingModuleId(null);
+      toast.success("Nome atualizado!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const startRenaming = (item: CircleLesson) => {
+    setRenamingModuleId(item.id);
+    setRenameValue(item.title);
+  };
+
+  const commitRename = (id: string) => {
+    const trimmed = renameValue.trim();
+    if (!trimmed) { setRenamingModuleId(null); return; }
+    renameModuleMutation.mutate({ id, title: trimmed });
+  };
+
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const activeLesson = allPages.find(l => l.id === selectedLessonId);
 
@@ -287,24 +313,49 @@ export default function CircleClassroom() {
                         <div key={item.id}>
                           {/* Module header */}
                           <div className="flex items-center group/mod">
-                            <button
-                              onClick={() => toggleModule(item.id)}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 min-w-0 hover:bg-muted/50 transition-colors"
-                            >
-                              {isExpanded
-                                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              }
-                              {isExpanded
-                                ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
-                              }
-                              <span className="text-[13px] font-semibold text-foreground truncate">
-                                {item.title}
-                              </span>
-                            </button>
-                            {isAdmin && (
+                            {renamingModuleId === item.id ? (
+                              <div className="flex items-center gap-2 px-3 py-1.5 flex-1 min-w-0">
+                                <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <input
+                                  autoFocus
+                                  value={renameValue}
+                                  onChange={(e) => setRenameValue(e.target.value)}
+                                  onBlur={() => commitRename(item.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") commitRename(item.id);
+                                    if (e.key === "Escape") setRenamingModuleId(null);
+                                  }}
+                                  className="text-[13px] font-semibold bg-transparent border-b border-primary outline-none flex-1 min-w-0 text-foreground"
+                                />
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => toggleModule(item.id)}
+                                onDoubleClick={() => isAdmin && startRenaming(item)}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 min-w-0 hover:bg-muted/50 transition-colors"
+                              >
+                                {isExpanded
+                                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                }
+                                {isExpanded
+                                  ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                                }
+                                <span className="text-[13px] font-semibold text-foreground truncate">
+                                  {item.title}
+                                </span>
+                              </button>
+                            )}
+                            {isAdmin && renamingModuleId !== item.id && (
                               <div className="flex items-center gap-0.5 opacity-0 group-hover/mod:opacity-100 transition-opacity pr-1">
+                                <button
+                                  onClick={() => startRenaming(item)}
+                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
+                                  title="Renomear"
+                                >
+                                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
                                 <button
                                   onClick={() => addPageMutation.mutate(item.id)}
                                   className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
