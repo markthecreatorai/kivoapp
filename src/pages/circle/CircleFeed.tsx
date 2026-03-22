@@ -6,9 +6,11 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Calendar, Lock, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { format, formatDistanceToNow, differenceInHours, isFuture } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import PostCard from "@/components/circle/PostCard";
 import PostComposer from "@/components/circle/PostComposer";
 import SpaceFormModal from "@/components/circle/SpaceFormModal";
@@ -92,6 +94,25 @@ export default function CircleFeed() {
 
       const { data } = await query.limit(50);
       return data || [];
+    },
+    enabled: !!community,
+  });
+
+  // Next upcoming event for announcement banner
+  const { data: nextEvent } = useQuery({
+    queryKey: ["circle-next-event-banner", community?.id],
+    queryFn: async () => {
+      if (!community) return null;
+      const { data } = await supabase
+        .from("community_events")
+        .select("*")
+        .eq("community_id", community.id)
+        .eq("status", "UPCOMING")
+        .gte("starts_at", new Date().toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return data;
     },
     enabled: !!community,
   });
@@ -207,6 +228,28 @@ export default function CircleFeed() {
           </button>
         ))}
       </div>
+
+      {/* Announcement banner — upcoming event */}
+      {nextEvent && isFuture(new Date(nextEvent.starts_at)) && (
+        <div className="flex items-center gap-3 rounded-lg bg-muted/60 border border-border px-4 py-3">
+          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium text-foreground">
+              📅 {nextEvent.title}
+            </span>
+            <span className="text-xs text-muted-foreground ml-2">
+              {differenceInHours(new Date(nextEvent.starts_at), new Date()) <= 24
+                ? `happening in ${formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}`
+                : format(new Date(nextEvent.starts_at), "dd MMM · HH:mm", { locale: ptBR })}
+            </span>
+          </div>
+          {nextEvent.rsvp_count > 0 && (
+            <span className="text-xs text-muted-foreground shrink-0">
+              👥 {nextEvent.rsvp_count}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Sort filter */}
       <div className="flex gap-1">
