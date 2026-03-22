@@ -207,7 +207,7 @@ export default function CircleClassroom() {
                     )}
                   </div>
 
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 px-4 pb-4 space-y-2">
                     {/* Stats */}
                     <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
                       {counts.modules > 0 && (
