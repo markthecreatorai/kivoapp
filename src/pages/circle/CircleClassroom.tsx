@@ -95,11 +95,11 @@ export default function CircleClassroom() {
   if (isLoading) {
     return (
       <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-card rounded-xl shadow-sm p-4 animate-pulse flex gap-4">
-              <div className="w-[200px] h-[120px] bg-muted rounded-lg shrink-0" />
-              <div className="flex-1 space-y-3 py-2">
+            <div key={i} className="bg-card rounded-xl shadow-sm animate-pulse overflow-hidden">
+              <div className="h-[180px] bg-muted" />
+              <div className="p-4 space-y-3">
                 <div className="h-5 bg-muted rounded w-2/3" />
                 <div className="h-3 bg-muted rounded w-full" />
                 <div className="h-2 bg-muted rounded w-1/2 mt-4" />
@@ -130,7 +130,7 @@ export default function CircleClassroom() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {courses.map((course) => {
             const counts = lessonCounts[course.id] || { total: 0, modules: 0 };
             const prog = progressMap[course.id] || { completed: 0, total: 0 };
@@ -141,85 +141,78 @@ export default function CircleClassroom() {
               <div
                 key={course.id}
                 onClick={() => navigate(`/member/course/${course.id}`)}
-                className="bg-card rounded-xl shadow-sm border border-border hover:shadow-md transition-all cursor-pointer group overflow-hidden"
+                className="bg-card rounded-xl shadow-sm border border-border hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col"
               >
-                <div className="flex flex-col sm:flex-row">
-                  {/* Thumbnail */}
-                  <div className="sm:w-[200px] h-[140px] sm:h-auto bg-muted shrink-0 relative overflow-hidden">
-                    {course.thumbnail_url ? (
-                      <img
-                        src={course.thumbnail_url}
-                        alt={course.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-                        <BookOpen className="h-10 w-10 text-primary/40" />
-                      </div>
-                    )}
-                    {/* Play overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                      <div className="h-10 w-10 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                        <Play className="h-4 w-4 text-foreground ml-0.5" />
-                      </div>
+                {/* Thumbnail — top of card, 16:9 aspect or fixed ~220px */}
+                <div className="relative overflow-hidden" style={{ height: 180 }}>
+                  {course.thumbnail_url ? (
+                    <img
+                      src={course.thumbnail_url}
+                      alt={course.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-foreground/80 to-foreground/60 flex items-center justify-center">
+                      <BookOpen className="h-12 w-12 text-background/30" />
                     </div>
-                    {/* Completed badge */}
-                    {isCompleted && (
-                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> COMPLETED
-                      </div>
+                  )}
+                  {/* Play overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 group-hover:bg-foreground/20 transition-colors">
+                    <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                      <Play className="h-5 w-5 text-foreground ml-0.5" />
+                    </div>
+                  </div>
+                  {/* Completed badge */}
+                  {isCompleted && (
+                    <div className="absolute top-2.5 left-2.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> COMPLETED
+                    </div>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 p-4 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-[15px] font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                      {course.name}
+                    </h3>
+                    {course.description && (
+                      <p className="text-[13px] text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
+                        {course.description}
+                      </p>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 p-4 sm:p-5 flex flex-col justify-between min-w-0">
-                    <div>
-                      <h3 className="text-[16px] font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                        {course.name}
-                      </h3>
-                      {course.description && (
-                        <p className="text-[13px] text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
-                          {course.description}
-                        </p>
+                  <div className="mt-3 space-y-2">
+                    {/* Stats */}
+                    <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
+                      {counts.modules > 0 && (
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="h-3.5 w-3.5" />
+                          {counts.modules} {counts.modules === 1 ? "module" : "modules"}
+                        </span>
                       )}
+                      <span className="flex items-center gap-1">
+                        <Play className="h-3.5 w-3.5" />
+                        {counts.total} {counts.total === 1 ? "lesson" : "lessons"}
+                      </span>
                     </div>
 
-                    <div className="mt-3 space-y-2">
-                      {/* Stats */}
-                      <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-                        {counts.modules > 0 && (
-                          <span className="flex items-center gap-1">
-                            <BookOpen className="h-3.5 w-3.5" />
-                            {counts.modules} {counts.modules === 1 ? "module" : "modules"}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Play className="h-3.5 w-3.5" />
-                          {counts.total} {counts.total === 1 ? "lesson" : "lessons"}
+                    {/* Progress bar */}
+                    {prog.total > 0 && (
+                      <div className="flex items-center gap-3">
+                        <Progress
+                          value={percent}
+                          className="h-1.5 flex-1 [&>div]:bg-primary"
+                        />
+                        <span className={cn(
+                          "text-[11px] font-semibold shrink-0",
+                          isCompleted ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          {percent}%
                         </span>
                       </div>
-
-                      {/* Progress bar */}
-                      {prog.total > 0 && (
-                        <div className="flex items-center gap-3">
-                          <Progress
-                            value={percent}
-                            className="h-1.5 flex-1 [&>div]:bg-primary"
-                          />
-                          <span className={cn(
-                            "text-[11px] font-semibold shrink-0",
-                            isCompleted ? "text-primary" : "text-muted-foreground"
-                          )}>
-                            {percent}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Arrow */}
-                  <div className="hidden sm:flex items-center pr-4">
-                    <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-foreground transition-colors" />
+                    )}
                   </div>
                 </div>
               </div>
