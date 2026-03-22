@@ -465,10 +465,19 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         </nav>
       </header>
 
-      {/* Central content — single column */}
+      {/* Central content — two columns on desktop */}
       <main className="flex-1 pb-20 md:pb-6">
-        <div className="max-w-[700px] mx-auto">
-          {children}
+        <div className="max-w-5xl mx-auto flex gap-0">
+          {/* Main feed column ~65% */}
+          <div className="flex-1 min-w-0">
+            {children}
+          </div>
+          {/* Right sidebar ~35% — desktop only */}
+          <div className="hidden lg:block w-[340px] shrink-0">
+            <div className="sticky top-[108px]">
+              <CircleRightSidebarSkool community={community} member={member} />
+            </div>
+          </div>
         </div>
       </main>
 
