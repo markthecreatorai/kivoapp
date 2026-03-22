@@ -94,7 +94,7 @@ export default function CircleClassroom() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
+      <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-card rounded-xl shadow-sm p-4 animate-pulse flex gap-4">
