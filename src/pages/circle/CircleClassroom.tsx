@@ -64,6 +64,8 @@ export default function CircleClassroom() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CircleCourse | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [renamingModuleId, setRenamingModuleId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   // ─── Community & member queries ───────────────────────
   const { data: community } = useQuery({
