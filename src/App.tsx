@@ -48,6 +48,7 @@ import NotFound from "./pages/NotFound";
 // Circle pages
 import CircleLayout from "./components/circle/CircleLayout";
 import CircleDashboard from "./pages/circle/CircleDashboard";
+import CircleClassroom from "./pages/circle/CircleClassroom";
 import CircleFeed from "./pages/circle/CircleFeed";
 // CircleSpaces removed — spaces are now inline pills in CircleFeed
 import CircleMembers from "./pages/circle/CircleMembers";
