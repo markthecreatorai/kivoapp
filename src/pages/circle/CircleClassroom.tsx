@@ -59,9 +59,9 @@ export default function CircleClassroom() {
       if (courses.length === 0) return [];
       const { data } = await supabase
         .from("prices")
-        .select("product_id, unit_amount")
+        .select("product_id, amount")
         .in("product_id", courses.map(c => c.id))
-        .gt("unit_amount", 0);
+        .gt("amount", 0);
       return [...new Set((data || []).map(p => p.product_id))];
     },
     enabled: courses.length > 0,
