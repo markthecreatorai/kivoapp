@@ -35,11 +35,15 @@ import LevelBadge from "@/components/circle/LevelBadge";
 
 // Level thresholds
 export const LEVEL_THRESHOLDS = [
-  { level: 1, min: 0, label: "Iniciante" },
-  { level: 2, min: 50, label: "Engajado" },
-  { level: 3, min: 150, label: "Contribuidor" },
-  { level: 4, min: 350, label: "Expert" },
-  { level: 5, min: 750, label: "Lenda" },
+  { level: 1, min: 0, label: "Level 1" },
+  { level: 2, min: 50, label: "Level 2" },
+  { level: 3, min: 150, label: "Level 3" },
+  { level: 4, min: 350, label: "Level 4" },
+  { level: 5, min: 750, label: "Level 5" },
+  { level: 6, min: 1200, label: "Level 6" },
+  { level: 7, min: 2000, label: "Level 7" },
+  { level: 8, min: 3500, label: "Level 8" },
+  { level: 9, min: 5000, label: "Level 9" },
 ];
 
 export function getLevelInfo(points: number) {
