@@ -136,10 +136,9 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
           {/* Yellow CTA button — Skool signature */}
           <Link
             to="/circle/feed"
-            className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "#f5c518", color: "#1a1a1a" }}
+            className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
           >
-            Enter Group
+            Entrar no Grupo
           </Link>
         </div>
       </div>
