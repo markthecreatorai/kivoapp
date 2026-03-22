@@ -741,8 +741,10 @@ export type Database = {
           created_at: string
           id: string
           is_published: boolean
+          parent_id: string | null
           position: number
           title: string
+          type: string
           updated_at: string
         }
         Insert: {
@@ -751,8 +753,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_published?: boolean
+          parent_id?: string | null
           position?: number
           title?: string
+          type?: string
           updated_at?: string
         }
         Update: {
@@ -761,8 +765,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_published?: boolean
+          parent_id?: string | null
           position?: number
           title?: string
+          type?: string
           updated_at?: string
         }
         Relationships: [
@@ -771,6 +777,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "circle_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_lessons_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "circle_lessons"
             referencedColumns: ["id"]
           },
         ]
