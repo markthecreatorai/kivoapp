@@ -146,9 +146,9 @@ export default function CircleClassroom() {
                 <div className="flex flex-col sm:flex-row">
                   {/* Thumbnail */}
                   <div className="sm:w-[200px] h-[140px] sm:h-auto bg-muted shrink-0 relative overflow-hidden">
-                    {course.image_url ? (
+                    {course.thumbnail_url ? (
                       <img
-                        src={course.image_url}
+                        src={course.thumbnail_url}
                         alt={course.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
