@@ -19,7 +19,7 @@ export default function CircleClassroom() {
       if (!currentWorkspace) return [];
       const { data } = await supabase
         .from("products")
-        .select("id, name, description, image_url, type, status")
+        .select("id, name, description, thumbnail_url, type, status")
         .eq("workspace_id", currentWorkspace.id)
         .eq("type", "COURSE")
         .eq("status", "PUBLISHED")
