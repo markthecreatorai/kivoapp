@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
