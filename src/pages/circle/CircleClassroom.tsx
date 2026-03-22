@@ -52,6 +52,21 @@ export default function CircleClassroom() {
     enabled: courses.length > 0,
   });
 
+  // Check which courses are premium (have a price > 0)
+  const { data: premiumCourseIds = [] } = useQuery({
+    queryKey: ["classroom-premium", courses.map(c => c.id).join(",")],
+    queryFn: async () => {
+      if (courses.length === 0) return [];
+      const { data } = await supabase
+        .from("prices")
+        .select("product_id, unit_amount")
+        .in("product_id", courses.map(c => c.id))
+        .gt("unit_amount", 0);
+      return [...new Set((data || []).map(p => p.product_id))];
+    },
+    enabled: courses.length > 0,
+  });
+
   // Get user progress per course
   const { data: progressMap = {} } = useQuery({
     queryKey: ["classroom-progress", user?.email, courses.map(c => c.id).join(",")],
