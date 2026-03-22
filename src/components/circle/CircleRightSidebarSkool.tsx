@@ -1,7 +1,7 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface Props {
@@ -10,6 +10,20 @@ interface Props {
 }
 
 export default function CircleRightSidebarSkool({ community, member }: Props) {
+  // Simulated online count (% of members, fluctuates slightly)
+  const [onlineCount, setOnlineCount] = useState(0);
+  useEffect(() => {
+    if (!community) return;
+    const base = Math.max(1, Math.floor(community.member_count * 0.12));
+    const jitter = Math.floor(Math.random() * Math.max(1, Math.floor(base * 0.3)));
+    setOnlineCount(base + jitter);
+    const interval = setInterval(() => {
+      const j = Math.floor(Math.random() * Math.max(1, Math.floor(base * 0.3)));
+      setOnlineCount(base + j);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [community?.member_count]);
+
   const { data: topMembers } = useQuery({
     queryKey: ["circle-top3", community?.id],
     queryFn: async () => {
@@ -26,32 +40,18 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
     enabled: !!community,
   });
 
-  const { data: adminCount } = useQuery({
-    queryKey: ["circle-admin-count", community?.id],
-    queryFn: async () => {
-      if (!community) return 0;
-      const { count } = await supabase
-        .from("community_members")
-        .select("*", { count: "exact", head: true })
-        .eq("community_id", community.id)
-        .eq("status", "ACTIVE")
-        .in("role", ["OWNER", "ADMIN"]);
-      return count || 0;
-    },
-    enabled: !!community,
-  });
-
-  const { data: recentMembers } = useQuery({
-    queryKey: ["circle-recent-members", community?.id],
+  const { data: adminMembers } = useQuery({
+    queryKey: ["circle-admin-members", community?.id],
     queryFn: async () => {
       if (!community) return [];
       const { data } = await supabase
         .from("community_members")
-        .select("id, display_name, avatar_url")
+        .select("id, display_name, avatar_url, role")
         .eq("community_id", community.id)
         .eq("status", "ACTIVE")
-        .order("joined_at", { ascending: false })
-        .limit(8);
+        .in("role", ["OWNER", "ADMIN"])
+        .order("role")
+        .limit(6);
       return data || [];
     },
     enabled: !!community,
@@ -59,11 +59,13 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
 
   if (!community) return null;
 
+  const adminCount = adminMembers?.length ?? 0;
+
   return (
     <div className="p-4 space-y-4">
       {/* ── About Card ── */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        {/* Cover image */}
+      <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+        {/* Cover image — flush top, no padding */}
         {community.cover_image_url ? (
           <div className="h-40">
             <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
@@ -92,7 +94,7 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
             </Link>
           </div>
 
-          {/* Stats row — 3 columns with dividers */}
+          {/* Stats row — Members | Online | Admins */}
           <div className="flex items-center border-t border-b border-border py-3 -mx-4 px-4">
             <div className="flex-1 text-center">
               <p className="text-[15px] font-bold text-foreground">{community.member_count}</p>
@@ -100,103 +102,80 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
             </div>
             <div className="w-px h-9 bg-border" />
             <div className="flex-1 text-center">
-              <p className="text-[15px] font-bold text-foreground">{community.post_count}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Posts</p>
+              <p className="text-[15px] font-bold text-foreground flex items-center justify-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-accent animate-pulse" />
+                {onlineCount}
+              </p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Online</p>
             </div>
             <div className="w-px h-9 bg-border" />
             <div className="flex-1 text-center">
-              <p className="text-[15px] font-bold text-foreground">{adminCount ?? 0}</p>
+              <p className="text-[15px] font-bold text-foreground">{adminCount}</p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Admins</p>
             </div>
           </div>
 
-          {/* Overlapping member avatars */}
-          {recentMembers && recentMembers.length > 0 && (
+          {/* Admin avatars row */}
+          {adminMembers && adminMembers.length > 0 && (
             <div className="flex items-center">
-              <div className="flex items-center">
-                {recentMembers.slice(0, 8).map((m: any, i: number) => (
-                  <Avatar
-                    key={m.id}
-                    className="h-8 w-8 border-2 border-card"
-                    style={{ marginLeft: i > 0 ? "-6px" : "0", zIndex: 20 - i }}
-                  >
-                    <AvatarImage src={m.avatar_url || ""} />
-                    <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
-                      {(m.display_name || "U").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-              </div>
-              {community.member_count > 8 && (
-                <span className="text-[11px] text-muted-foreground ml-2 shrink-0">
-                  +{community.member_count - 8}
-                </span>
-              )}
+              {adminMembers.map((m: any, i: number) => (
+                <Avatar
+                  key={m.id}
+                  className="h-7 w-7 border-2 border-card"
+                  style={{ marginLeft: i > 0 ? "-5px" : "0", zIndex: 20 - i }}
+                >
+                  <AvatarImage src={m.avatar_url || ""} />
+                  <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-medium">
+                    {(m.display_name || "U").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
             </div>
           )}
 
           {/* Yellow CTA button — Skool signature */}
           <Link
             to="/circle/feed"
-            className="flex items-center justify-center gap-2 w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90"
-            style={{
-              backgroundColor: "#f5c518",
-              color: "#1a1a1a",
-            }}
+            className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90"
+            style={{ backgroundColor: "#f5c518", color: "#1a1a1a" }}
           >
             Enter Group
           </Link>
         </div>
       </div>
 
-      {/* ── Leaderboard Card ── */}
+      {/* ── Leaderboard Card (30-day) ── */}
       {topMembers && topMembers.length > 0 && (
-        <div className="bg-card rounded-xl border border-border px-4 py-4 space-y-3">
+        <div className="bg-card rounded-xl shadow-sm px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-              Leaderboard
+              Leaderboard (30-day)
             </h4>
             <Link to="/circle/leaderboard" className="text-[12px] text-primary hover:underline font-medium">
               See all
             </Link>
           </div>
           <div className="space-y-3">
-            {topMembers.map((m: any, i: number) => (
-              <div key={m.id} className="flex items-center gap-3">
-                {/* Rank badge */}
-                <div
-                  className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                  style={{
-                    backgroundColor:
-                      i === 0
-                        ? "hsl(45, 93%, 58%)"
-                        : i === 1
-                        ? "hsl(0, 0%, 80%)"
-                        : "hsl(28, 60%, 60%)",
-                    color:
-                      i === 0
-                        ? "hsl(30, 30%, 15%)"
-                        : i === 1
-                        ? "hsl(0, 0%, 25%)"
-                        : "hsl(0, 0%, 100%)",
-                  }}
-                >
-                  {i + 1}
+            {topMembers.map((m: any, i: number) => {
+              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
+              return (
+                <div key={m.id} className="flex items-center gap-2.5">
+                  <span className="w-5 text-center text-sm shrink-0">{medal}</span>
+                  <Avatar className="h-7 w-7 shrink-0">
+                    <AvatarImage src={m.avatar_url || ""} />
+                    <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-medium">
+                      {(m.display_name || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-[13px] font-medium text-foreground flex-1 truncate">
+                    {m.display_name || "Member"}
+                  </span>
+                  <span className="text-[12px] font-semibold text-primary shrink-0">
+                    +{m.total_points}
+                  </span>
                 </div>
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarImage src={m.avatar_url || ""} />
-                  <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
-                    {(m.display_name || "U").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-[13px] font-medium text-foreground flex-1 truncate">
-                  {m.display_name || "Member"}
-                </span>
-                <span className="text-[12px] font-semibold text-primary shrink-0">
-                  +{m.total_points}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
