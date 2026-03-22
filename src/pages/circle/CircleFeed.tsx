@@ -164,25 +164,25 @@ export default function CircleFeed() {
   const canPost = currentSpace?.only_admins_can_post ? isAdminMember : true;
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      {/* Composer trigger — Skool style: avatar + "Write something..." */}
+    <div className="p-4 md:py-6 md:px-5 space-y-3">
+      {/* Composer trigger — Skool style */}
       {!isMuted && canPost && (
         <>
           {!showCompose ? (
-            <Card
-              className="p-3 cursor-pointer hover:bg-muted/30 transition-colors border"
+            <div
+              className="bg-card rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => setShowCompose(true)}
             >
               <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9 shrink-0">
+                <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={member?.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                  <AvatarFallback className="bg-muted text-muted-foreground text-xs font-medium">
                     {(member?.display_name || user?.email || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-muted-foreground text-sm flex-1">Write something...</span>
+                <span className="text-muted-foreground text-[14px] flex-1">Write something...</span>
               </div>
-            </Card>
+            </div>
           ) : community && member && (
             <PostComposer
               communityId={community.id}
@@ -200,15 +200,15 @@ export default function CircleFeed() {
         </>
       )}
 
-      {/* Category filter chips — Skool style */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide items-center">
+      {/* Category pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide items-center">
         <button
           onClick={() => setActiveSpaceId("all")}
           className={cn(
-            "shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+            "shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors",
             !effectiveSpaceId
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:text-foreground"
+              ? "bg-foreground text-background"
+              : "bg-card text-muted-foreground hover:text-foreground shadow-sm"
           )}
         >
           All
@@ -218,10 +218,10 @@ export default function CircleFeed() {
             key={space.id}
             onClick={() => setActiveSpaceId(space.id)}
             className={cn(
-              "shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+              "shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors whitespace-nowrap",
               effectiveSpaceId === space.id
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
+                ? "bg-foreground text-background"
+                : "bg-card text-muted-foreground hover:text-foreground shadow-sm"
             )}
           >
             {space.name} {space.emoji}
@@ -229,54 +229,31 @@ export default function CircleFeed() {
         ))}
       </div>
 
-      {/* Announcement banner — upcoming event */}
+      {/* Event banner */}
       {nextEvent && isFuture(new Date(nextEvent.starts_at)) && (
-        <div className="flex items-center gap-3 rounded-lg bg-muted/60 border border-border px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl bg-card shadow-sm px-4 py-3">
           <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium text-foreground">
+            <span className="text-[13px] font-medium text-foreground">
               📅 {nextEvent.title}
             </span>
-            <span className="text-xs text-muted-foreground ml-2">
+            <span className="text-[12px] text-muted-foreground ml-2">
               {differenceInHours(new Date(nextEvent.starts_at), new Date()) <= 24
-                ? `happening in ${formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}`
+                ? `in ${formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}`
                 : format(new Date(nextEvent.starts_at), "dd MMM · HH:mm", { locale: ptBR })}
             </span>
           </div>
           {nextEvent.rsvp_count > 0 && (
-            <span className="text-xs text-muted-foreground shrink-0">
-              👥 {nextEvent.rsvp_count}
-            </span>
+            <span className="text-[11px] text-muted-foreground shrink-0">👥 {nextEvent.rsvp_count}</span>
           )}
         </div>
       )}
 
-      {/* Sort filter */}
-      <div className="flex gap-1">
-        {([
-          { key: "recent" as const, label: "Recent" },
-          { key: "popular" as const, label: "Top" },
-        ]).map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={cn(
-              "px-3 py-1 rounded-md text-xs font-medium transition-colors",
-              filter === f.key
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
       {/* Posts */}
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="p-4 animate-pulse">
+            <div key={i} className="bg-card rounded-xl shadow-sm p-5 animate-pulse">
               <div className="flex gap-3">
                 <div className="h-10 w-10 rounded-full bg-muted" />
                 <div className="flex-1 space-y-2">
@@ -285,15 +262,15 @@ export default function CircleFeed() {
                   <div className="h-3 bg-muted rounded w-2/3" />
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       ) : posts?.length === 0 ? (
-        <Card className="p-12 text-center">
+        <div className="bg-card rounded-xl shadow-sm p-12 text-center">
           <MessageCircle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
           <h3 className="font-semibold text-foreground">No posts yet</h3>
           <p className="text-sm text-muted-foreground mt-1">Be the first to share something! 🎉</p>
-        </Card>
+        </div>
       ) : (
         <div className="space-y-3">
           {posts?.map((post: any) => (
