@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import {
   BookOpen, Play, Crown, ArrowLeft, Plus,
   FileText, Circle, Trash2, Loader2,
-  MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
+  MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder, Pencil,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
