@@ -687,6 +687,53 @@ export type Database = {
           },
         ]
       }
+      circle_courses: {
+        Row: {
+          access_type: string
+          community_id: string
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_published: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          access_type?: string
+          community_id: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          access_type?: string
+          community_id?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_courses_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_rules: {
         Row: {
           created_at: string
