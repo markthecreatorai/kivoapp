@@ -372,7 +372,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   const isMuted = member?.status === "MUTED";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-muted/40 flex flex-col">
       {/* Fixed Header */}
       <header className="sticky top-0 z-30 bg-card border-b border-border">
         <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
