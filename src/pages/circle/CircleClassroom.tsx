@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
-import { BookOpen, Play, CheckCircle2, Lock, ChevronRight } from "lucide-react";
+import { BookOpen, Play, CheckCircle2, Lock, ChevronRight, Crown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
