@@ -48,6 +48,7 @@ import NotFound from "./pages/NotFound";
 // Circle pages
 import CircleLayout from "./components/circle/CircleLayout";
 import CircleDashboard from "./pages/circle/CircleDashboard";
+import CircleClassroom from "./pages/circle/CircleClassroom";
 import CircleFeed from "./pages/circle/CircleFeed";
 // CircleSpaces removed — spaces are now inline pills in CircleFeed
 import CircleMembers from "./pages/circle/CircleMembers";
@@ -280,7 +281,7 @@ const App = () => (
               <Route path="/circle/members" element={<ProtectedRoute><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
               <Route path="/circle/leaderboard" element={<ProtectedRoute><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
               <Route path="/circle/events" element={<ProtectedRoute><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
-              <Route path="/circle/classroom" element={<ProtectedRoute><CircleLayout><CircleDashboard /></CircleLayout></ProtectedRoute>} />
+              <Route path="/circle/classroom" element={<ProtectedRoute><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
               <Route path="/circle/admin" element={<ProtectedRoute><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
               <Route path="/circle/post/:id" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
 
