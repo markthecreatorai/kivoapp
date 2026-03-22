@@ -144,51 +144,22 @@ export default function CircleFeed() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      {/* Space pills — horizontal scrollable */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        <button
-          onClick={() => setActiveSpaceId("all")}
-          className={cn(
-            "shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border",
-            !effectiveSpaceId
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/20"
-          )}
-        >
-          All
-        </button>
-        {spaces?.map((space: any) => (
-          <button
-            key={space.id}
-            onClick={() => setActiveSpaceId(space.id)}
-            className={cn(
-              "shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border",
-              effectiveSpaceId === space.id
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/20"
-            )}
-          >
-            {space.emoji} {space.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Composer trigger */}
+      {/* Composer trigger — Skool style: avatar + "Write something..." */}
       {!isMuted && canPost && (
         <>
           {!showCompose ? (
             <Card
-              className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              className="p-3 cursor-pointer hover:bg-muted/30 transition-colors border"
               onClick={() => setShowCompose(true)}
             >
               <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-9 w-9 shrink-0">
                   <AvatarImage src={member?.avatar_url || ""} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
                     {(member?.display_name || user?.email || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-muted-foreground text-sm flex-1">Write a post...</span>
+                <span className="text-muted-foreground text-sm flex-1">Write something...</span>
               </div>
             </Card>
           ) : community && member && (
@@ -208,7 +179,36 @@ export default function CircleFeed() {
         </>
       )}
 
-      {/* Sort filter — minimal */}
+      {/* Category filter chips — Skool style */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide items-center">
+        <button
+          onClick={() => setActiveSpaceId("all")}
+          className={cn(
+            "shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+            !effectiveSpaceId
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:text-foreground"
+          )}
+        >
+          All
+        </button>
+        {spaces?.map((space: any) => (
+          <button
+            key={space.id}
+            onClick={() => setActiveSpaceId(space.id)}
+            className={cn(
+              "shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+              effectiveSpaceId === space.id
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {space.name} {space.emoji}
+          </button>
+        ))}
+      </div>
+
+      {/* Sort filter */}
       <div className="flex gap-1">
         {([
           { key: "recent" as const, label: "Recent" },
