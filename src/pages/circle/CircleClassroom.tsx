@@ -6,13 +6,15 @@ import { useAuth } from "@/contexts/AuthProvider";
 import {
   BookOpen, Play, CheckCircle2, Crown, ArrowLeft,
   ChevronDown, ChevronRight, FileText, Headphones, Circle,
-  Heart, MessageCircle,
+  Heart, MessageCircle, Plus,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import CourseFormModal from "@/components/circle/CourseFormModal";
+import CourseCardMenu from "@/components/circle/CourseCardMenu";
 
 // ─── Types ───────────────────────────────────────────────────
 interface CourseModule {
@@ -35,14 +37,25 @@ interface CourseLesson {
   parent_id: string | null;
 }
 
-// ─── Mock data (used when no real courses exist) ─────────────
-const MOCK_COURSES = [
-  { id: "mock-1", name: "Foundations of Growth", description: "Learn the core principles of scaling your online business from zero to six figures.", thumbnail_url: null, type: "COURSE" as const, status: "PUBLISHED" as const },
-  { id: "mock-2", name: "Content Marketing Mastery", description: "Create content that converts — strategy, copywriting, and distribution.", thumbnail_url: null, type: "COURSE" as const, status: "PUBLISHED" as const },
-  { id: "mock-3", name: "Community Building Blueprint", description: "Build and engage a thriving community around your brand.", thumbnail_url: null, type: "COURSE" as const, status: "PUBLISHED" as const },
-  { id: "mock-4", name: "Sales Funnel Secrets", description: "Design high-converting funnels that sell on autopilot.", thumbnail_url: null, type: "COURSE" as const, status: "PUBLISHED" as const },
-  { id: "mock-5", name: "Email Marketing Pro", description: "Master email sequences, automations, and deliverability.", thumbnail_url: null, type: "COURSE" as const, status: "PUBLISHED" as const },
-  { id: "mock-6", name: "Launch Like a Pro", description: "Step-by-step launch playbook for digital products.", thumbnail_url: null, type: "COURSE" as const, status: "PUBLISHED" as const },
+interface CircleCourse {
+  id: string;
+  community_id: string;
+  name: string;
+  description: string | null;
+  access_type: string;
+  cover_url: string | null;
+  is_published: boolean;
+  position: number;
+}
+
+// ─── Mock data ───────────────────────────────────────────────
+const MOCK_COURSES: CircleCourse[] = [
+  { id: "mock-1", community_id: "", name: "Foundations of Growth", description: "Learn the core principles of scaling your online business from zero to six figures.", cover_url: null, access_type: "free", is_published: true, position: 0 },
+  { id: "mock-2", community_id: "", name: "Content Marketing Mastery", description: "Create content that converts — strategy, copywriting, and distribution.", cover_url: null, access_type: "free", is_published: true, position: 1 },
+  { id: "mock-3", community_id: "", name: "Community Building Blueprint", description: "Build and engage a thriving community around your brand.", cover_url: null, access_type: "free", is_published: true, position: 2 },
+  { id: "mock-4", community_id: "", name: "Sales Funnel Secrets", description: "Design high-converting funnels that sell on autopilot.", cover_url: null, access_type: "premium", is_published: true, position: 3 },
+  { id: "mock-5", community_id: "", name: "Email Marketing Pro", description: "Master email sequences, automations, and deliverability.", cover_url: null, access_type: "free", is_published: true, position: 4 },
+  { id: "mock-6", community_id: "", name: "Launch Like a Pro", description: "Step-by-step launch playbook for digital products.", cover_url: null, access_type: "premium", is_published: true, position: 5 },
 ];
 
 const MOCK_MODULES: CourseModule[] = [
@@ -78,117 +91,59 @@ export default function CircleClassroom() {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<CircleCourse | null>(null);
 
-  // ─── Queries ─────────────────────────────────────────
-  const { data: realCourses = [], isLoading } = useQuery({
-    queryKey: ["classroom-courses", currentWorkspace?.id],
+  // ─── Community & member queries ───────────────────────
+  const { data: community } = useQuery({
+    queryKey: ["community", currentWorkspace?.id],
     queryFn: async () => {
-      if (!currentWorkspace) return [];
-      const { data } = await supabase
-        .from("products")
-        .select("id, name, description, thumbnail_url, type, status")
-        .eq("workspace_id", currentWorkspace.id)
-        .eq("type", "COURSE")
-        .eq("status", "PUBLISHED")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
-      return data || [];
+      if (!currentWorkspace) return null;
+      const { data } = await supabase.from("communities").select("*").eq("workspace_id", currentWorkspace.id).single();
+      return data;
     },
     enabled: !!currentWorkspace,
   });
 
-  const isMock = realCourses.length === 0 && !isLoading;
-  const courses = isMock ? MOCK_COURSES : realCourses;
-
-  const { data: lessonCounts = {} } = useQuery({
-    queryKey: ["classroom-lesson-counts", courses.map(c => c.id).join(",")],
+  const { data: member } = useQuery({
+    queryKey: ["circle-member", community?.id, user?.id],
     queryFn: async () => {
-      if (courses.length === 0 || isMock) return {};
-      const counts: Record<string, { total: number; modules: number }> = {};
-      for (const course of courses) {
-        const { data } = await supabase.from("member_content").select("id, type").eq("product_id", course.id);
-        const items = data || [];
-        counts[course.id] = {
-          total: items.filter(i => i.type === "LESSON" || i.type === "lesson").length,
-          modules: items.filter(i => i.type === "MODULE" || i.type === "module").length,
-        };
-      }
-      return counts;
+      if (!community || !user) return null;
+      const { data } = await supabase.from("community_members").select("*").eq("community_id", community.id).eq("user_id", user.id).single();
+      return data;
     },
-    enabled: courses.length > 0 && !isMock,
+    enabled: !!community && !!user,
   });
 
-  const { data: premiumCourseIds = [] } = useQuery({
-    queryKey: ["classroom-premium", courses.map(c => c.id).join(",")],
+  const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
+
+  // ─── Circle courses query ────────────────────────────
+  const { data: circleCourses = [], isLoading } = useQuery({
+    queryKey: ["circle-courses", community?.id],
     queryFn: async () => {
-      if (courses.length === 0 || isMock) return [];
-      const { data } = await supabase.from("prices").select("product_id, amount").in("product_id", courses.map(c => c.id)).gt("amount", 0);
-      return [...new Set((data || []).map(p => p.product_id))];
+      if (!community) return [];
+      const { data } = await supabase
+        .from("circle_courses")
+        .select("*")
+        .eq("community_id", community.id)
+        .order("position");
+      return (data || []) as CircleCourse[];
     },
-    enabled: courses.length > 0 && !isMock,
+    enabled: !!community,
   });
 
-  const { data: customerId } = useQuery({
-    queryKey: ["classroom-customer", user?.email],
-    queryFn: async () => {
-      if (!user?.email) return null;
-      const { data } = await supabase.from("customers").select("id").eq("email", user.email).maybeSingle();
-      return data?.id || null;
-    },
-    enabled: !!user?.email,
-  });
+  const isMock = circleCourses.length === 0 && !isLoading;
+  const courses = isMock ? MOCK_COURSES : circleCourses;
 
-  const { data: progressMap = {} } = useQuery({
-    queryKey: ["classroom-progress", customerId, courses.map(c => c.id).join(",")],
-    queryFn: async () => {
-      if (!customerId || courses.length === 0 || isMock) return {};
-      const progress: Record<string, { completed: number; total: number }> = {};
-      for (const course of courses) {
-        const { data: lessons } = await supabase.from("member_content").select("id").eq("product_id", course.id).in("type", ["LESSON", "lesson"]);
-        const ids = (lessons || []).map(l => l.id);
-        if (ids.length === 0) { progress[course.id] = { completed: 0, total: 0 }; continue; }
-        const { data: completed } = await supabase.from("lesson_progress").select("id").eq("customer_id", customerId).eq("completed", true).in("member_content_id", ids);
-        progress[course.id] = { completed: (completed || []).length, total: ids.length };
-      }
-      return progress;
-    },
-    enabled: !!customerId && courses.length > 0 && !isMock,
-  });
-
-  // Fetch real course content
+  // ─── Lesson content for detail view (uses member_content linked to products) ──
   const { data: realCourseContent } = useQuery({
     queryKey: ["classroom-content", selectedCourseId],
     queryFn: async () => {
       if (!selectedCourseId) return null;
-      const { data } = await supabase
-        .from("member_content")
-        .select("id, title, type, media_type, media_url, text_content, description, duration, position, parent_id")
-        .eq("product_id", selectedCourseId)
-        .order("position");
-      if (!data) return null;
-      const modules = data.filter(c => c.type === "MODULE" || c.type === "module").sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      const lessons = data.filter(c => c.type === "LESSON" || c.type === "lesson").sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      const structured: CourseModule[] = modules.map(mod => ({ ...mod, lessons: lessons.filter(l => l.parent_id === mod.id) }));
-      const orphans = lessons.filter(l => !l.parent_id);
-      if (orphans.length > 0) structured.unshift({ id: "orphan", title: "Lessons", position: -1, lessons: orphans });
-      return structured;
+      // For circle_courses, we don't have linked product_id yet, so use mock
+      return null;
     },
     enabled: !!selectedCourseId && !isMock,
-  });
-
-  const { data: lessonProgress = {} } = useQuery({
-    queryKey: ["classroom-lesson-progress", customerId, selectedCourseId],
-    queryFn: async () => {
-      if (!customerId || !selectedCourseId || isMock) return {};
-      const { data: lessons } = await supabase.from("member_content").select("id").eq("product_id", selectedCourseId).in("type", ["LESSON", "lesson"]);
-      const ids = (lessons || []).map(l => l.id);
-      if (ids.length === 0) return {};
-      const { data: prog } = await supabase.from("lesson_progress").select("member_content_id, completed").eq("customer_id", customerId).in("member_content_id", ids);
-      const map: Record<string, boolean> = {};
-      (prog || []).forEach((p: any) => { map[p.member_content_id] = p.completed; });
-      return map;
-    },
-    enabled: !!customerId && !!selectedCourseId && !isMock,
   });
 
   const courseContent = isMock && selectedCourseId?.startsWith("mock-") ? MOCK_MODULES : realCourseContent;
@@ -226,10 +181,7 @@ export default function CircleClassroom() {
   //  DETAIL VIEW — Sidebar + Main Content
   // ═══════════════════════════════════════════════════════════
   if (selectedCourseId && selectedCourse) {
-    const prog = isMock
-      ? { completed: 2, total: 8 }
-      : (progressMap[selectedCourseId] || { completed: 0, total: 0 });
-    const percent = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0;
+    const percent = 0; // Progress TBD when linked to real lessons
 
     return (
       <div className="flex flex-col h-[calc(100vh-120px)]">
@@ -258,11 +210,9 @@ export default function CircleClassroom() {
             <div className="py-2">
               {courseContent?.map((mod) => {
                 const isExpanded = expandedModules.has(mod.id);
-                const modCompleted = mod.lessons.filter(l => (isMock ? false : lessonProgress[l.id])).length;
 
                 return (
                   <div key={mod.id}>
-                    {/* Module header */}
                     <button
                       onClick={() => toggleModule(mod.id)}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors"
@@ -273,14 +223,12 @@ export default function CircleClassroom() {
                       }
                       <span className="text-[13px] font-semibold text-foreground flex-1 truncate">{mod.title}</span>
                       <span className="text-[10px] text-muted-foreground shrink-0">
-                        {modCompleted}/{mod.lessons.length}
+                        0/{mod.lessons.length}
                       </span>
                     </button>
 
-                    {/* Lessons */}
                     {isExpanded && mod.lessons.map((lesson) => {
                       const isActive = lesson.id === selectedLessonId;
-                      const isComplete = isMock ? false : (lessonProgress[lesson.id] || false);
 
                       return (
                         <button
@@ -288,21 +236,15 @@ export default function CircleClassroom() {
                           onClick={() => setSelectedLessonId(lesson.id)}
                           className={cn(
                             "w-full flex items-center gap-2.5 pl-9 pr-4 py-2 text-left transition-colors",
-                            isActive
-                              ? "bg-accent/50 border-r-2 border-primary"
-                              : "hover:bg-muted/30"
+                            isActive ? "bg-accent/50 border-r-2 border-primary" : "hover:bg-muted/30"
                           )}
                         >
                           <div className="shrink-0">
-                            {isComplete
-                              ? <CheckCircle2 className="h-4 w-4 text-primary" />
-                              : <Circle className="h-4 w-4 text-muted-foreground/40" />
-                            }
+                            <Circle className="h-4 w-4 text-muted-foreground/40" />
                           </div>
                           <span className={cn(
                             "text-[13px] flex-1 truncate",
-                            isActive ? "font-medium text-foreground" : "text-muted-foreground",
-                            isComplete && !isActive && "line-through"
+                            isActive ? "font-medium text-foreground" : "text-muted-foreground"
                           )}>
                             {lesson.title}
                           </span>
@@ -315,6 +257,12 @@ export default function CircleClassroom() {
                   </div>
                 );
               })}
+
+              {(!courseContent || courseContent.length === 0) && (
+                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  Nenhum módulo encontrado.
+                </div>
+              )}
             </div>
           </ScrollArea>
 
@@ -340,7 +288,6 @@ export default function CircleClassroom() {
                           )}
                         </div>
                       ) : (
-                        // Placeholder video area
                         <div className="aspect-video bg-gradient-to-br from-foreground/90 to-foreground/70 flex flex-col items-center justify-center gap-3">
                           <div className="h-16 w-16 rounded-full bg-background/20 flex items-center justify-center">
                             <Play className="h-7 w-7 text-background/70 ml-1" />
@@ -373,7 +320,6 @@ export default function CircleClassroom() {
                         )}
                       </div>
                     ) : (
-                      // Text / default — placeholder
                       <div className="aspect-video bg-gradient-to-br from-foreground/90 to-foreground/70 flex flex-col items-center justify-center gap-3">
                         <div className="h-16 w-16 rounded-full bg-background/20 flex items-center justify-center">
                           <FileText className="h-7 w-7 text-background/70" />
@@ -382,7 +328,6 @@ export default function CircleClassroom() {
                       </div>
                     )}
 
-                    {/* Lesson title & description below player */}
                     <div className="p-5">
                       <h2 className="text-lg font-bold text-foreground">{activeLesson.title}</h2>
                       {activeLesson.description && (
@@ -401,7 +346,7 @@ export default function CircleClassroom() {
                     </div>
                   </div>
 
-                  {/* Community Post Card — Skool-style related discussion */}
+                  {/* Community Post Card */}
                   <div className="bg-card rounded-xl shadow-sm border border-border p-5">
                     <div className="flex items-center gap-2 mb-3">
                       <MessageCircle className="h-4 w-4 text-muted-foreground" />
@@ -410,9 +355,7 @@ export default function CircleClassroom() {
                     <div className="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors cursor-pointer">
                       <div className="flex items-center gap-2.5">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-primary/10 text-primary text-[11px] font-medium">
-                            K
-                          </AvatarFallback>
+                          <AvatarFallback className="bg-primary/10 text-primary text-[11px] font-medium">K</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
@@ -478,20 +421,23 @@ export default function CircleClassroom() {
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">Classroom</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {courses.length} {courses.length === 1 ? "course" : "courses"} available
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Classroom</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {courses.length} {courses.length === 1 ? "course" : "courses"} available
+          </p>
+        </div>
+        {isAdmin && (
+          <Button onClick={() => { setEditingCourse(null); setShowFormModal(true); }}>
+            <Plus className="h-4 w-4 mr-1.5" /> Add Course
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {courses.map((course) => {
-          const counts = isMock ? { total: 8, modules: 3 } : (lessonCounts[course.id] || { total: 0, modules: 0 });
-          const prog = isMock ? { completed: 0, total: 8 } : (progressMap[course.id] || { completed: 0, total: 0 });
-          const percent = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0;
-          const isCompleted = prog.total > 0 && prog.completed === prog.total;
-          const isPremium = isMock ? course.id === "mock-4" || course.id === "mock-6" : premiumCourseIds.includes(course.id);
+        {courses.map((course, index) => {
+          const isPremium = course.access_type === "premium";
 
           return (
             <div
@@ -501,12 +447,24 @@ export default function CircleClassroom() {
                 setSelectedLessonId(null);
                 setExpandedModules(new Set());
               }}
-              className="bg-card rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col"
+              className="bg-card rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col relative"
             >
+              {/* Admin menu */}
+              {isAdmin && !isMock && (
+                <div className="absolute top-2.5 right-2.5 z-10">
+                  <CourseCardMenu
+                    course={course}
+                    isFirst={index === 0}
+                    isLast={index === courses.length - 1}
+                    onEdit={() => { setEditingCourse(course); setShowFormModal(true); }}
+                  />
+                </div>
+              )}
+
               {/* Thumbnail */}
               <div className="relative overflow-hidden" style={{ height: 180 }}>
-                {course.thumbnail_url ? (
-                  <img src={course.thumbnail_url} alt={course.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                {course.cover_url ? (
+                  <img src={course.cover_url} alt={course.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-foreground/80 to-foreground/60 flex items-center justify-center">
                     <BookOpen className="h-12 w-12 text-background/30" />
@@ -517,16 +475,16 @@ export default function CircleClassroom() {
                     <Play className="h-5 w-5 text-foreground ml-0.5" />
                   </div>
                 </div>
-                {isCompleted && (
-                  <div className="absolute top-2.5 left-2.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> COMPLETED
-                  </div>
-                )}
-                {isPremium && !isCompleted && (
+                {isPremium && (
                   <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 pointer-events-none">
                     <div className="absolute top-[10px] right-[-28px] rotate-45 bg-accent text-accent-foreground text-[9px] font-extrabold tracking-wider py-1 px-7 shadow-sm flex items-center justify-center gap-0.5">
                       <Crown className="h-2.5 w-2.5" /> PRO
                     </div>
+                  </div>
+                )}
+                {!course.is_published && isAdmin && (
+                  <div className="absolute top-2.5 left-2.5 bg-muted text-muted-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    RASCUNHO
                   </div>
                 )}
               </div>
@@ -543,25 +501,25 @@ export default function CircleClassroom() {
                 )}
               </div>
 
-              {/* Progress */}
+              {/* Progress placeholder */}
               <div className="mt-auto px-4 mb-4 pt-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] text-muted-foreground">
-                    {counts.total} {counts.total === 1 ? "lesson" : "lessons"}
-                  </span>
-                  <span className={cn(
-                    "text-[11px] font-semibold",
-                    isCompleted ? "text-primary" : "text-muted-foreground"
-                  )}>
-                    {percent}%
-                  </span>
-                </div>
-                <Progress value={percent} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+                <Progress value={0} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Course Form Modal */}
+      {community && (
+        <CourseFormModal
+          open={showFormModal}
+          onOpenChange={(open) => { setShowFormModal(open); if (!open) setEditingCourse(null); }}
+          communityId={community.id}
+          course={editingCourse}
+          nextPosition={courses.length}
+        />
+      )}
     </div>
   );
 }
