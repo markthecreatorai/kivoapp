@@ -97,7 +97,7 @@ export default function CircleLeaderboard() {
 
   const renderLeaderboardList = (data: any[] | undefined, useField: string) => {
     if (!data || data.length === 0) {
-      return <p className="text-sm text-muted-foreground py-4">No activity yet</p>;
+      return <p className="text-sm text-muted-foreground py-4">Nenhuma atividade ainda</p>;
     }
     return (
       <div className="space-y-3 mt-3">
