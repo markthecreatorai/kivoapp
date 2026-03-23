@@ -47,12 +47,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="w-60">
-      <SidebarHeader className="border-b border-border/40">
-        <div className="flex items-center justify-center p-4">
+      <SidebarHeader className="border-b border-border/40 bg-sidebar">
+        <div className="flex items-center justify-center p-4 group-data-[collapsible=icon]:group-data-[state=collapsed]:p-2">
           <img 
             src="/src/assets/kivo-logo.svg" 
             alt="Kora"
-            className="w-full h-auto max-h-12 object-contain" 
+            className="w-full h-auto max-h-12 object-contain group-data-[collapsible=icon]:group-data-[state=collapsed]:max-h-8" 
           />
         </div>
       </SidebarHeader>
@@ -68,11 +68,11 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-muted/50 rounded-lg px-3 py-2.5"
+                      className="hover:bg-muted/50 rounded px-3 py-2.5"
                       activeClassName="bg-primary/10 text-primary font-medium hover:bg-primary/15"
                     >
-                      <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!collapsed && <span className="ml-3">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -84,7 +84,7 @@ export function AppSidebar() {
         {/* Profile + Sign Out */}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
-            <div className="flex items-center gap-3 px-3 py-2.5">
+            <div className="flex items-center gap-3 px-3 py-2.5 border-t border-border/40 pt-3">
               <Avatar className="h-8 w-8 flex-shrink-0">
                 <AvatarImage src="" />
                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
