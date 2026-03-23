@@ -123,11 +123,11 @@ All colors MUST be HSL.
   }
 
   /* Twemoji inline sizing */
-  img.twemoji {
+  img.emoji {
     display: inline-block;
     height: 1.2em;
     width: 1.2em;
-    vertical-align: -0.2em;
+    vertical-align: -0.15em;
     margin: 0 0.05em;
   }
 }
