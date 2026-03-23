@@ -351,7 +351,7 @@ export default function PublicStorefront() {
   // ─── Loading ───
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#fafafa" }}>
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <Loader2 className="h-6 w-6 animate-spin" style={{ color: "#F9423A" }} />
       </div>
     );
