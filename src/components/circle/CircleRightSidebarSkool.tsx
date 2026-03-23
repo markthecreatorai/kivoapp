@@ -92,7 +92,7 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
           <div className="flex items-center border-t border-b border-border py-3 -mx-4 px-4">
             <div className="flex-1 text-center">
               <p className="text-[15px] font-bold text-foreground">{community.member_count}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Members</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Membros</p>
             </div>
             <div className="w-px h-9 bg-border" />
             <div className="flex-1 text-center">
