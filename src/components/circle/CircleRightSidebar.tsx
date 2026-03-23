@@ -79,7 +79,7 @@ export default function CircleRightSidebar({ community, member }: CircleRightSid
       {topMembers && topMembers.length > 0 && (
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Leaderboard</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranking</h3>
             <Link to="/circle/leaderboard" className="text-xs text-primary hover:underline">Ver todos</Link>
           </div>
           <div className="space-y-2">
