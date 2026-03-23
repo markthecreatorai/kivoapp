@@ -48,22 +48,12 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="w-60">
       <SidebarHeader className="border-b border-border/40">
-        <div className="flex items-center gap-3 p-4">
-          <div className="flex-shrink-0">
-            <img 
-              src="/src/assets/kivo-logo.svg" 
-              alt="Kora"
-              className="h-8 w-8" 
-            />
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-primary truncate">Kora</h2>
-              <p className="text-sm text-muted-foreground truncate">
-                {currentWorkspace?.name || "Meu Workspace"}
-              </p>
-            </div>
-          )}
+        <div className="flex items-center justify-center p-4">
+          <img 
+            src="/src/assets/kivo-logo.svg" 
+            alt="Kora"
+            className="w-full h-auto max-h-12 object-contain" 
+          />
         </div>
       </SidebarHeader>
 
