@@ -28,9 +28,9 @@ All colors MUST be HSL.
     --muted: 0 100% 98%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    /* Kora Accent: tom da cor principal para hovers */
-    --accent: 261 75% 96%;
-    --accent-foreground: 261 75% 56%;
+    /* Accent: tom suave da cor principal #FA4B38 */
+    --accent: 5 95% 96%;
+    --accent-foreground: 5 95% 50%;
 
     /* Kivo Destructive: #EF4444 (vermelho erro) */
     --destructive: 0 84% 60%;
@@ -72,8 +72,8 @@ All colors MUST be HSL.
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 261 75% 20%;
-    --accent-foreground: 261 75% 80%;
+    --accent: 5 95% 15%;
+    --accent-foreground: 5 95% 70%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;

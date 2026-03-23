@@ -161,12 +161,12 @@ export default function MemberCourse() {
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="842" height="595" viewBox="0 0 842 595">
         <rect width="842" height="595" fill="#FFFFFF"/>
-        <rect x="20" y="20" width="802" height="555" fill="none" stroke="#6C3CE1" stroke-width="3" rx="12"/>
-        <rect x="30" y="30" width="782" height="535" fill="none" stroke="#6C3CE1" stroke-width="1" stroke-opacity="0.3" rx="8"/>
+        <rect x="20" y="20" width="802" height="555" fill="none" stroke="#FA4B38" stroke-width="3" rx="12"/>
+        <rect x="30" y="30" width="782" height="535" fill="none" stroke="#FA4B38" stroke-width="1" stroke-opacity="0.3" rx="8"/>
         
         <!-- Header decoration -->
-        <line x1="271" y1="120" x2="571" y2="120" stroke="#6C3CE1" stroke-width="2"/>
-        <text x="421" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="#6C3CE1" font-weight="bold">CERTIFICADO</text>
+        <line x1="271" y1="120" x2="571" y2="120" stroke="#FA4B38" stroke-width="2"/>
+        <text x="421" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="#FA4B38" font-weight="bold">CERTIFICADO</text>
         <text x="421" y="145" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#888888" letter-spacing="4">DE CONCLUSÃO</text>
         
         <!-- Body -->
@@ -175,7 +175,7 @@ export default function MemberCourse() {
         <line x1="221" y1="275" x2="621" y2="275" stroke="#dddddd" stroke-width="1"/>
         
         <text x="421" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#666666">concluiu com sucesso o curso</text>
-        <text x="421" y="365" text-anchor="middle" font-family="Georgia, serif" font-size="24" fill="#6C3CE1" font-weight="bold">${escapeXml(cert.course_name)}</text>
+        <text x="421" y="365" text-anchor="middle" font-family="Georgia, serif" font-size="24" fill="#FA4B38" font-weight="bold">${escapeXml(cert.course_name)}</text>
         
         <text x="421" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#888888">Emitido em ${issuedDate}</text>
         
@@ -369,7 +369,7 @@ export default function MemberCourse() {
         </Link>
         <h2 className="font-semibold text-foreground text-sm leading-tight">{courseName}</h2>
         <div className="flex items-center gap-2 mt-2">
-          <Progress value={overallPercent} className="h-1.5 flex-1 [&>div]:bg-[#6C3CE1]" />
+          <Progress value={overallPercent} className="h-1.5 flex-1 [&>div]:bg-primary" />
           <span className="text-xs text-muted-foreground">{overallPercent}%</span>
         </div>
       </div>
@@ -469,7 +469,7 @@ export default function MemberCourse() {
                 <h3 className="text-lg font-bold text-green-800">Parabéns! 🎉</h3>
                 <p className="text-sm text-green-700 mt-1">Você completou todas as aulas deste curso!</p>
                 <Button
-                  className="mt-3 bg-[#6C3CE1] hover:bg-[#5a32bd] gap-2"
+                  className="mt-3 bg-primary hover:bg-primary/90 gap-2"
                   disabled={generatingCert}
                   onClick={handleGenerateCertificate}
                 >
@@ -509,7 +509,7 @@ export default function MemberCourse() {
                   className={`w-full h-12 font-semibold ${
                     isLessonComplete 
                       ? "bg-green-100 text-green-800 hover:bg-green-100 cursor-default" 
-                      : "bg-[#6C3CE1] hover:bg-[#5a32bd]"
+                      : "bg-primary hover:bg-primary/90"
                   }`}
                 >
                   {completing ? (

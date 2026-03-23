@@ -207,7 +207,7 @@ export default function MemberDashboard() {
                           <span>{progress?.completed ?? 0} de {progress?.total ?? 0} aulas</span>
                           <span>{percent}%</span>
                         </div>
-                        <Progress value={percent} className="h-2 [&>div]:bg-[#6C3CE1]" />
+                        <Progress value={percent} className="h-2 [&>div]:bg-primary" />
                       </div>
                     </div>
                   </Link>

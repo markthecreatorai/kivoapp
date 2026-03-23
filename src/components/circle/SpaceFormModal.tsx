@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 const EMOJI_OPTIONS = ["💬", "📢", "❓", "🏆", "🎯", "💡", "🔥", "📚", "🎨", "🛠️", "🎮", "📸", "🎵", "🌍", "💰", "🤝", "📊", "🧠", "⚡", "🌟"];
 
 const COLOR_OPTIONS = [
-  "#6C3CE1", "#3B82F6", "#10B981", "#F59E0B",
+  "#FA4B38", "#3B82F6", "#10B981", "#F59E0B",
   "#EF4444", "#EC4899", "#8B5CF6", "#06B6D4",
 ];
 
@@ -37,7 +37,7 @@ export default function SpaceFormModal({ communityId, spacesCount, onClose, spac
   const [name, setName] = useState(space?.name || "");
   const [slug, setSlug] = useState(space?.slug || "");
   const [description, setDescription] = useState(space?.description || "");
-  const [color, setColor] = useState(space?.color || "#6C3CE1");
+  const [color, setColor] = useState(space?.color || "#FA4B38");
   const [onlyAdmins, setOnlyAdmins] = useState(space?.only_admins_can_post || false);
   const [isVisible, setIsVisible] = useState(space?.is_visible ?? true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
