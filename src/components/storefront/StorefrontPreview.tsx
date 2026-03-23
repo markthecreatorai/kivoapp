@@ -275,7 +275,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-10" />
           
           {/* Content */}
-          <div className="h-full overflow-y-auto pt-10 pb-8 px-6">
+          <div className="h-full overflow-y-auto pt-10 pb-8 px-4">
             {/* Profile */}
             <div className="flex flex-col items-center text-center mb-6">
               <Avatar className="h-24 w-24 mb-4 ring-4 ring-white shadow-lg">
@@ -364,7 +364,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
                 </p>
               ) : (
                 visibleBlocks.map((block) => (
-                  <div key={block.id}>
+                  <div key={block.id} className="w-full">
                     {renderBlock(block)}
                   </div>
                 ))
