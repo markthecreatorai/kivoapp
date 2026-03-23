@@ -269,8 +269,25 @@ export default function StorefrontEditor() {
             <ExternalLink className="h-4 w-4 mr-2" />
             Abrir
           </Button>
-          <Button size="sm">
-            Publicar
+          <Button 
+            size="sm"
+            disabled={saveStorefrontMutation.isPending}
+            onClick={async () => {
+              if (!storefront?.id) return;
+              try {
+                const { error } = await supabase
+                  .from('storefronts')
+                  .update({ is_published: true })
+                  .eq('id', storefront.id);
+                if (error) throw error;
+                queryClient.invalidateQueries({ queryKey: ['storefront'] });
+                toast.success('Storefront publicada com sucesso!');
+              } catch {
+                toast.error('Erro ao publicar storefront');
+              }
+            }}
+          >
+            {storefront?.is_published ? 'Publicada' : 'Publicar'}
           </Button>
         </div>
       </header>
