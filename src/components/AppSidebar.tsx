@@ -68,10 +68,10 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-muted/50 rounded px-3 py-2.5"
+                      className="hover:bg-muted/50 rounded px-3 py-2.5 text-[15px]"
                       activeClassName="bg-primary/10 text-primary font-medium hover:bg-primary/15"
                     >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      <item.icon className="h-[22px] w-[22px] flex-shrink-0" />
                       {!collapsed && <span className="ml-3">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
