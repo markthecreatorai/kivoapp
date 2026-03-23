@@ -150,14 +150,14 @@ export default function CircleLeaderboard() {
               )}
             </div>
             <h2 className="text-xl font-bold text-foreground mt-4">{member?.display_name || "Membro"}</h2>
-            {myLevel && <p className="text-sm text-primary font-medium">Level {myLevel.level}</p>}
+            {myLevel && <p className="text-sm text-primary font-medium">Nível {myLevel.level}</p>}
             {nextLevel && (
               <p className="text-sm text-primary mt-1">
-                <span className="font-semibold">{pointsToNext}</span> points to level up
+                <span className="font-semibold">{pointsToNext}</span> pontos para subir de nível
               </p>
             )}
             {!nextLevel && myLevel && (
-              <p className="text-sm text-primary mt-1 font-medium">Max level reached! 👑</p>
+              <p className="text-sm text-primary mt-1 font-medium">Nível máximo atingido! 👑</p>
             )}
           </div>
 
