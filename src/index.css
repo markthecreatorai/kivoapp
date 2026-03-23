@@ -40,7 +40,7 @@ All colors MUST be HSL.
     --input: 214.3 31.8% 91.4%;
     --ring: 6 95% 60%;
 
-    --radius: 0.75rem; /* 12px for cards, 8px for inputs */
+    --radius: 0.375rem; /* 6px */
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222.2 84% 4.9%;
