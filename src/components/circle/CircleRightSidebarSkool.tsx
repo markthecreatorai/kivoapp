@@ -92,7 +92,7 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
           <div className="flex items-center border-t border-b border-border py-3 -mx-4 px-4">
             <div className="flex-1 text-center">
               <p className="text-[15px] font-bold text-foreground">{community.member_count}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Members</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Membros</p>
             </div>
             <div className="w-px h-9 bg-border" />
             <div className="flex-1 text-center">
@@ -142,10 +142,10 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
         <div className="bg-card rounded-xl shadow-sm px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-              Leaderboard (30-day)
+              Ranking (30 dias)
             </h4>
             <Link to="/circle/leaderboard" className="text-[12px] text-primary hover:underline font-medium">
-              See all
+              Ver todos
             </Link>
           </div>
           <div className="space-y-3">
@@ -161,7 +161,7 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-[13px] font-medium text-foreground flex-1 truncate">
-                    {m.display_name || "Member"}
+                    {m.display_name || "Membro"}
                   </span>
                   <span className="text-[12px] font-semibold text-primary shrink-0">
                     +{m.total_points}

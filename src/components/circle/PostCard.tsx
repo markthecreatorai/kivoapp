@@ -65,7 +65,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         </Link>
         <div className="flex items-center gap-1.5 flex-wrap min-w-0 leading-none">
           <span className="text-[13px] font-bold text-foreground whitespace-nowrap">
-            {post.author?.display_name || "Member"}
+            {post.author?.display_name || "Membro"}
           </span>
           {roleLabel && (
             <span className="text-[10px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded whitespace-nowrap">

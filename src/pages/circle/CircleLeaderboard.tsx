@@ -97,7 +97,7 @@ export default function CircleLeaderboard() {
 
   const renderLeaderboardList = (data: any[] | undefined, useField: string) => {
     if (!data || data.length === 0) {
-      return <p className="text-sm text-muted-foreground py-4">No activity yet</p>;
+      return <p className="text-sm text-muted-foreground py-4">Nenhuma atividade ainda</p>;
     }
     return (
       <div className="space-y-3 mt-3">
@@ -150,14 +150,14 @@ export default function CircleLeaderboard() {
               )}
             </div>
             <h2 className="text-xl font-bold text-foreground mt-4">{member?.display_name || "Membro"}</h2>
-            {myLevel && <p className="text-sm text-primary font-medium">Level {myLevel.level}</p>}
+            {myLevel && <p className="text-sm text-primary font-medium">Nível {myLevel.level}</p>}
             {nextLevel && (
               <p className="text-sm text-primary mt-1">
-                <span className="font-semibold">{pointsToNext}</span> points to level up
+                <span className="font-semibold">{pointsToNext}</span> pontos para subir de nível
               </p>
             )}
             {!nextLevel && myLevel && (
-              <p className="text-sm text-primary mt-1 font-medium">Max level reached! 👑</p>
+              <p className="text-sm text-primary mt-1 font-medium">Nível máximo atingido! 👑</p>
             )}
           </div>
 
@@ -180,9 +180,9 @@ export default function CircleLeaderboard() {
                       "text-sm font-semibold",
                       isCurrent ? "text-foreground" : isUnlocked ? "text-foreground" : "text-muted-foreground"
                     )}>
-                      Level {l.level}
+                      Nível {l.level}
                     </p>
-                    <p className="text-xs text-muted-foreground">{l.percent}% of members</p>
+                    <p className="text-xs text-muted-foreground">{l.percent}% dos membros</p>
                   </div>
                 </div>
               );
@@ -193,26 +193,26 @@ export default function CircleLeaderboard() {
 
       {/* Info text */}
       <p className="text-sm text-muted-foreground italic text-center">
-        Leaderboards will be updated when there is more activity
+        O ranking será atualizado conforme houver mais atividade
       </p>
 
       {/* 3 Leaderboard columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5">
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Leaderboard (7-day)
+            Ranking (7 dias)
           </h3>
           {renderLeaderboardList(weekly, "period_points")}
         </Card>
         <Card className="p-5">
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Leaderboard (30-day)
+            Ranking (30 dias)
           </h3>
           {renderLeaderboardList(monthly, "period_points")}
         </Card>
         <Card className="p-5">
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Leaderboard (all-time)
+            Ranking (geral)
           </h3>
           {renderLeaderboardList(allMembers?.slice(0, 10), "total_points")}
         </Card>
