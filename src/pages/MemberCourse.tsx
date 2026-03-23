@@ -469,7 +469,7 @@ export default function MemberCourse() {
                 <h3 className="text-lg font-bold text-green-800">Parabéns! 🎉</h3>
                 <p className="text-sm text-green-700 mt-1">Você completou todas as aulas deste curso!</p>
                 <Button
-                  className="mt-3 bg-[#6C3CE1] hover:bg-[#5a32bd] gap-2"
+                  className="mt-3 bg-primary hover:bg-primary/90 gap-2"
                   disabled={generatingCert}
                   onClick={handleGenerateCertificate}
                 >
