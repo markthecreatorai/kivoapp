@@ -142,10 +142,10 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
         <div className="bg-card rounded-xl shadow-sm px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-              Leaderboard (30-day)
+              Ranking (30 dias)
             </h4>
             <Link to="/circle/leaderboard" className="text-[12px] text-primary hover:underline font-medium">
-              See all
+              Ver todos
             </Link>
           </div>
           <div className="space-y-3">
