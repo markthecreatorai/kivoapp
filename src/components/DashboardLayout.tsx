@@ -29,7 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </header>
 
           {/* Main content */}
-          <main className={`flex-1 bg-[#FAFAFA] ${isMobile ? 'pb-20' : ''}`}>
+          <main className={`flex-1 bg-white ${isMobile ? 'pb-20' : ''}`}>
             {children}
           </main>
         </div>

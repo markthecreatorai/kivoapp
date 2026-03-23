@@ -360,7 +360,7 @@ export default function PublicStorefront() {
   // ─── 404 ───
   if (notFound || !storefront) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ backgroundColor: "#fafafa" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-white">
         <div className="text-6xl mb-4">🔍</div>
         <h1 className="text-2xl font-bold mb-2" style={{ color: "#1a1a1a" }}>
           Página não encontrada
