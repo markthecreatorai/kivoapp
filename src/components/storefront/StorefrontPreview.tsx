@@ -354,7 +354,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
             </div>
 
             {/* Blocks */}
-            <div className="space-y-3">
+            <div className="flex flex-col items-center w-full space-y-3">
               {visibleBlocks.length === 0 ? (
                 <p 
                   className="text-center text-sm py-8 opacity-50"
