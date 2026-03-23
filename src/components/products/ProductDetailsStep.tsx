@@ -16,19 +16,21 @@ interface Props {
 }
 
 export function ProductDetailsStep({ form, updateForm }: Props) {
+  const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [aiField, setAiField] = useState<"name" | "shortDescription" | "description" | null>(null);
 
   const uploadFile = useCallback(
     async (file: File, bucket: string) => {
+      if (!user) throw new Error("Usuário não autenticado");
       const ext = file.name.split(".").pop();
-      const path = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
       const { error } = await supabase.storage.from(bucket).upload(path, file);
       if (error) throw error;
       const { data } = supabase.storage.from(bucket).getPublicUrl(path);
       return data.publicUrl;
     },
-    []
+    [user]
   );
 
   const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
