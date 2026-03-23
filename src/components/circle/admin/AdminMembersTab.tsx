@@ -250,7 +250,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                   <LevelBadge points={m.total_points || 0} size="sm" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {m.total_points || 0} pts · Desde {format(new Date(m.joined_at), "dd/MM/yy")}
+                  {m.total_points || 0} pts · Desde {m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yy") : "—"}
                 </p>
               </div>
               <Badge variant={m.role === "OWNER" || m.role === "ADMIN" ? "default" : "secondary"} className="text-[10px]">
