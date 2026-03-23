@@ -369,7 +369,7 @@ export default function MemberCourse() {
         </Link>
         <h2 className="font-semibold text-foreground text-sm leading-tight">{courseName}</h2>
         <div className="flex items-center gap-2 mt-2">
-          <Progress value={overallPercent} className="h-1.5 flex-1 [&>div]:bg-[#6C3CE1]" />
+          <Progress value={overallPercent} className="h-1.5 flex-1 [&>div]:bg-primary" />
           <span className="text-xs text-muted-foreground">{overallPercent}%</span>
         </div>
       </div>
