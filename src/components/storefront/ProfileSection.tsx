@@ -54,8 +54,10 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
 
     setUploading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
       const fileExt = file.name.split('.').pop();
-      const fileName = `${storefront.id}-avatar.${fileExt}`;
+      const fileName = `${user.id}/${storefront.id}-avatar.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('assets')
