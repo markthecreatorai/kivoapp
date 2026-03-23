@@ -52,7 +52,7 @@ export function AppSidebar() {
           <img
             src="/src/assets/kivo-logo.svg"
             alt="Kora"
-            className="w-full h-auto max-h-12 object-contain group-data-[collapsible=icon]:group-data-[state=collapsed]:max-h-8" />
+            className="w-full h-auto max-h-12 object-contain group-data-[collapsible=icon]:group-data-[state=collapsed]:max-h-8 mx-0" />
           
         </div>
       </SidebarHeader>
