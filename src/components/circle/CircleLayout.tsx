@@ -59,11 +59,11 @@ interface CircleLayoutProps {
 }
 
 const tabItems = [
-  { label: "Community", icon: MessageSquare, path: "/circle/feed" },
+  { label: "Comunidade", icon: MessageSquare, path: "/circle/feed" },
   { label: "Classroom", icon: BookOpen, path: "/circle/classroom" },
-  { label: "Calendar", icon: Calendar, path: "/circle/events" },
-  { label: "Members", icon: Users, path: "/circle/members" },
-  { label: "Leaderboard", icon: Trophy, path: "/circle/leaderboard" },
+  { label: "Calendário", icon: Calendar, path: "/circle/events" },
+  { label: "Membros", icon: Users, path: "/circle/members" },
+  { label: "Ranking", icon: Trophy, path: "/circle/leaderboard" },
 ];
 
 export default function CircleLayout({ children }: CircleLayoutProps) {

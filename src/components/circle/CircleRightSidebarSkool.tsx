@@ -161,7 +161,7 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-[13px] font-medium text-foreground flex-1 truncate">
-                    {m.display_name || "Member"}
+                    {m.display_name || "Membro"}
                   </span>
                   <span className="text-[12px] font-semibold text-primary shrink-0">
                     +{m.total_points}
