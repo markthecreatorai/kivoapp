@@ -48,11 +48,11 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="w-60">
       <SidebarHeader className="border-b border-border/40 bg-sidebar">
-        <div className="flex items-center justify-center p-4 group-data-[collapsible=icon]:group-data-[state=collapsed]:p-2">
+        <div className="flex items-center justify-center p-4 group-data-[collapsible=icon]:group-data-[state=collapsed]:p-2 px-[20px] py-[20px]">
           <img
             src="/src/assets/kivo-logo.svg"
             alt="Kora"
-            className="w-full h-auto max-h-12 group-data-[collapsible=icon]:group-data-[state=collapsed]:max-h-8 mx-0 my-0 object-fill text-center" />
+            className="w-full h-auto max-h-12 group-data-[collapsible=icon]:group-data-[state=collapsed]:max-h-8 my-0 text-center object-contain mx-0 px-0" />
           
         </div>
       </SidebarHeader>
