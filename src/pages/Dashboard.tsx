@@ -48,7 +48,8 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   const currentDate = new Date();
-  const greeting = `Olá, ${user?.email?.split('@')[0] || 'Creator'}! 👋`;
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Creator';
+  const greeting = `Olá, ${displayName}! 👋`;
   const dateString = currentDate.toLocaleDateString('pt-BR', {
     weekday: 'long',
     year: 'numeric',
