@@ -174,7 +174,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{m.display_name || "Sem nome"}</p>
-                  <p className="text-xs text-muted-foreground">{format(new Date(m.joined_at), "dd/MM/yyyy")}</p>
+                  <p className="text-xs text-muted-foreground">{m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yyyy") : "—"}</p>
                 </div>
                 <div className="flex gap-1">
                   <Button size="sm" onClick={() => updateMember.mutate({ memberId: m.id, updates: { status: "ACTIVE" } })}>
