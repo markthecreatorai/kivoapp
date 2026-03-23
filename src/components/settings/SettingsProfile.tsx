@@ -110,7 +110,7 @@ export function SettingsProfile() {
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
-      const path = `avatars/${user.id}/${Date.now()}.${ext}`;
+      const path = `${user.id}/avatars/${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("assets").upload(path, file);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(path);
