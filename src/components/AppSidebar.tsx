@@ -57,7 +57,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-2 bg-sidebar">
         {/* Navigation */}
         <SidebarGroup>
           <SidebarGroupContent>
