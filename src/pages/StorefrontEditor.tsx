@@ -197,16 +197,21 @@ export default function StorefrontEditor() {
     return () => clearTimeout(timeout);
   }, [saveStorefrontMutation, saveThemeMutation]);
 
+  const getStorefrontUrl = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/${storefront?.slug}`;
+  };
+
   const copyLink = () => {
     if (storefront?.slug) {
-      navigator.clipboard.writeText(`https://kora.link/${storefront.slug}`);
+      navigator.clipboard.writeText(getStorefrontUrl());
       toast.success('Link copiado!');
     }
   };
 
   const openPreview = () => {
     if (storefront?.slug) {
-      window.open(`https://kora.link/${storefront.slug}`, '_blank');
+      window.open(getStorefrontUrl(), '_blank');
     }
   };
 
