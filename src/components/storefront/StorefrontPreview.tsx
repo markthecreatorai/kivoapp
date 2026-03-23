@@ -364,7 +364,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
                 </p>
               ) : (
                 visibleBlocks.map((block) => (
-                  <div key={block.id}>
+                  <div key={block.id} className="w-full">
                     {renderBlock(block)}
                   </div>
                 ))
