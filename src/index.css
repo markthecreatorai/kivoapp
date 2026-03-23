@@ -121,4 +121,13 @@ All colors MUST be HSL.
   .kivo-gradient {
     background: hsl(var(--primary));
   }
+
+  /* Twemoji inline sizing */
+  img.emoji {
+    display: inline-block;
+    height: 1.2em;
+    width: 1.2em;
+    vertical-align: -0.15em;
+    margin: 0 0.05em;
+  }
 }
