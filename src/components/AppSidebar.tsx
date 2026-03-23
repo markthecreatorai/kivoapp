@@ -64,14 +64,6 @@ export function AppSidebar() {
               </p>
             </div>
           )}
-          {!collapsed && (
-            <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage src="" />
-              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                {user?.email?.charAt(0).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-          )}
         </div>
       </SidebarHeader>
 
@@ -99,9 +91,23 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Sign Out */}
+        {/* Profile + Sign Out */}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              <Avatar className="h-8 w-8 flex-shrink-0">
+                <AvatarImage src="" />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {user?.email?.charAt(0).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{user?.email?.split("@")[0] || "Usuário"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email || ""}</p>
+                </div>
+              )}
+            </div>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
