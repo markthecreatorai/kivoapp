@@ -138,7 +138,7 @@ export function RecentSales() {
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto mb-4 text-6xl">🛒</div>
+            
             <h3 className="text-lg font-medium mb-2">Nenhuma venda ainda</h3>
             <p className="text-muted-foreground mb-4">
               Compartilhe sua loja para fazer sua primeira venda
