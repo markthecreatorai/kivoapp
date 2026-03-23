@@ -161,12 +161,12 @@ export default function MemberCourse() {
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="842" height="595" viewBox="0 0 842 595">
         <rect width="842" height="595" fill="#FFFFFF"/>
-        <rect x="20" y="20" width="802" height="555" fill="none" stroke="#6C3CE1" stroke-width="3" rx="12"/>
-        <rect x="30" y="30" width="782" height="535" fill="none" stroke="#6C3CE1" stroke-width="1" stroke-opacity="0.3" rx="8"/>
+        <rect x="20" y="20" width="802" height="555" fill="none" stroke="#FA4B38" stroke-width="3" rx="12"/>
+        <rect x="30" y="30" width="782" height="535" fill="none" stroke="#FA4B38" stroke-width="1" stroke-opacity="0.3" rx="8"/>
         
         <!-- Header decoration -->
-        <line x1="271" y1="120" x2="571" y2="120" stroke="#6C3CE1" stroke-width="2"/>
-        <text x="421" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="#6C3CE1" font-weight="bold">CERTIFICADO</text>
+        <line x1="271" y1="120" x2="571" y2="120" stroke="#FA4B38" stroke-width="2"/>
+        <text x="421" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="#FA4B38" font-weight="bold">CERTIFICADO</text>
         <text x="421" y="145" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#888888" letter-spacing="4">DE CONCLUSÃO</text>
         
         <!-- Body -->
@@ -175,7 +175,7 @@ export default function MemberCourse() {
         <line x1="221" y1="275" x2="621" y2="275" stroke="#dddddd" stroke-width="1"/>
         
         <text x="421" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#666666">concluiu com sucesso o curso</text>
-        <text x="421" y="365" text-anchor="middle" font-family="Georgia, serif" font-size="24" fill="#6C3CE1" font-weight="bold">${escapeXml(cert.course_name)}</text>
+        <text x="421" y="365" text-anchor="middle" font-family="Georgia, serif" font-size="24" fill="#FA4B38" font-weight="bold">${escapeXml(cert.course_name)}</text>
         
         <text x="421" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#888888">Emitido em ${issuedDate}</text>
         
