@@ -39,11 +39,11 @@ export default function Dashboard() {
     revenueChange: 0,
     salesChange: 0,
     visitsChange: 0,
-    leadsChange: 0,
+    leadsChange: 0
   });
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
 
@@ -65,70 +65,70 @@ export default function Dashboard() {
         const periodDays = selectedPeriod === "custom" ? 30 : selectedPeriod;
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - periodDays);
-        
+
         const prevStartDate = new Date();
-        prevStartDate.setDate(prevStartDate.getDate() - (periodDays * 2));
+        prevStartDate.setDate(prevStartDate.getDate() - periodDays * 2);
         const prevEndDate = new Date();
         prevEndDate.setDate(prevEndDate.getDate() - periodDays);
 
         // Buscar receita total
-        const { data: revenueData, error: revenueError } = await supabase
-          .from('orders')
-          .select('total_amount, created_at')
-          .eq('workspace_id', currentWorkspace.id)
-          .eq('status', 'PAID')
-          .gte('created_at', startDate.toISOString());
+        const { data: revenueData, error: revenueError } = await supabase.
+        from('orders').
+        select('total_amount, created_at').
+        eq('workspace_id', currentWorkspace.id).
+        eq('status', 'PAID').
+        gte('created_at', startDate.toISOString());
 
         if (revenueError) throw revenueError;
 
         const totalRevenue = revenueData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
 
         // Buscar vendas
-        const { data: salesData, error: salesError } = await supabase
-          .from('orders')
-          .select('id, created_at')
-          .eq('workspace_id', currentWorkspace.id)
-          .eq('status', 'PAID')
-          .gte('created_at', startDate.toISOString());
+        const { data: salesData, error: salesError } = await supabase.
+        from('orders').
+        select('id, created_at').
+        eq('workspace_id', currentWorkspace.id).
+        eq('status', 'PAID').
+        gte('created_at', startDate.toISOString());
 
         if (salesError) throw salesError;
 
         const totalSales = salesData?.length || 0;
 
         // Buscar visitas
-        const { data: visitsData, error: visitsError } = await supabase
-          .from('analytics_events')
-          .select('id, created_at')
-          .eq('workspace_id', currentWorkspace.id)
-          .eq('event_type', 'PAGE_VIEW')
-          .gte('created_at', startDate.toISOString());
+        const { data: visitsData, error: visitsError } = await supabase.
+        from('analytics_events').
+        select('id, created_at').
+        eq('workspace_id', currentWorkspace.id).
+        eq('event_type', 'PAGE_VIEW').
+        gte('created_at', startDate.toISOString());
 
         if (visitsError) throw visitsError;
 
         const totalVisits = visitsData?.length || 0;
 
         // Buscar leads
-        const { data: leadsData, error: leadsError } = await supabase
-          .from('leads')
-          .select('id, created_at')
-          .eq('workspace_id', currentWorkspace.id)
-          .gte('created_at', startDate.toISOString());
+        const { data: leadsData, error: leadsError } = await supabase.
+        from('leads').
+        select('id, created_at').
+        eq('workspace_id', currentWorkspace.id).
+        gte('created_at', startDate.toISOString());
 
         if (leadsError) throw leadsError;
 
         const totalLeads = leadsData?.length || 0;
 
         // Buscar dados do período anterior para comparação
-        const { data: prevRevenueData } = await supabase
-          .from('orders')
-          .select('total_amount')
-          .eq('workspace_id', currentWorkspace.id)
-          .eq('status', 'PAID')
-          .gte('created_at', prevStartDate.toISOString())
-          .lt('created_at', prevEndDate.toISOString());
+        const { data: prevRevenueData } = await supabase.
+        from('orders').
+        select('total_amount').
+        eq('workspace_id', currentWorkspace.id).
+        eq('status', 'PAID').
+        gte('created_at', prevStartDate.toISOString()).
+        lt('created_at', prevEndDate.toISOString());
 
         const prevRevenue = prevRevenueData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
-        const revenueChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+        const revenueChange = prevRevenue > 0 ? (totalRevenue - prevRevenue) / prevRevenue * 100 : 0;
 
         // Preparar dados para o gráfico
         const chartData: RevenueData[] = [];
@@ -136,11 +136,11 @@ export default function Dashboard() {
           const date = new Date();
           date.setDate(date.getDate() - i);
           const dateStr = date.toISOString().split('T')[0];
-          
-          const dayRevenue = revenueData?.filter(order => 
-            order.created_at.startsWith(dateStr)
+
+          const dayRevenue = revenueData?.filter((order) =>
+          order.created_at.startsWith(dateStr)
           ).reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
-          
+
           chartData.push({
             date: dateStr,
             revenue: dayRevenue
@@ -155,7 +155,7 @@ export default function Dashboard() {
           revenueChange,
           salesChange: 0, // Simplificado para este exemplo
           visitsChange: 0,
-          leadsChange: 0,
+          leadsChange: 0
         });
 
         setRevenueData(chartData);
@@ -172,12 +172,12 @@ export default function Dashboard() {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: 'BRL',
+      currency: 'BRL'
     }).format(value);
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto px-0">
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-foreground">{greeting}</h1>
@@ -196,10 +196,10 @@ export default function Dashboard() {
       {/* Period Filter */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">Visão Geral</h2>
-        <PeriodFilter 
+        <PeriodFilter
           selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod}
-        />
+          onPeriodChange={setSelectedPeriod} />
+        
       </div>
 
       {/* Metrics Grid */}
@@ -208,26 +208,26 @@ export default function Dashboard() {
           title="Receita Total"
           value={formatCurrency(metrics.totalRevenue)}
           icon={DollarSign}
-          change={metrics.revenueChange}
-        />
+          change={metrics.revenueChange} />
+        
         <MetricCard
           title="Vendas"
           value={metrics.totalSales}
           icon={TrendingUp}
-          change={metrics.salesChange}
-        />
+          change={metrics.salesChange} />
+        
         <MetricCard
           title="Visitas"
           value={metrics.totalVisits}
           icon={Eye}
-          change={metrics.visitsChange}
-        />
+          change={metrics.visitsChange} />
+        
         <MetricCard
           title="Leads"
           value={metrics.totalLeads}
           icon={Users}
-          change={metrics.leadsChange}
-        />
+          change={metrics.leadsChange} />
+        
       </div>
 
       {/* Charts and Recent Sales */}
@@ -239,6 +239,6 @@ export default function Dashboard() {
           <RecentSales />
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
