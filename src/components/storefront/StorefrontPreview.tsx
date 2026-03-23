@@ -77,7 +77,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              "w-full py-3 px-4 border text-center font-medium transition-all hover:scale-[1.02]",
+              "block w-full py-3 px-4 border text-center font-medium transition-all hover:scale-[1.02]",
               getButtonClass()
             )}
             style={{ 
