@@ -84,7 +84,7 @@ export function AppSidebar() {
         {/* Profile + Sign Out */}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
-            <div className="flex items-center gap-3 px-3 py-2.5">
+            <div className="flex items-center gap-3 px-3 py-2.5 border-t border-border/40 pt-3">
               <Avatar className="h-8 w-8 flex-shrink-0">
                 <AvatarImage src="" />
                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
