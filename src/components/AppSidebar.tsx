@@ -64,14 +64,6 @@ export function AppSidebar() {
               </p>
             </div>
           )}
-          {!collapsed && (
-            <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage src="" />
-              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                {user?.email?.charAt(0).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-          )}
         </div>
       </SidebarHeader>
 
