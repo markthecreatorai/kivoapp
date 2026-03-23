@@ -193,26 +193,26 @@ export default function CircleLeaderboard() {
 
       {/* Info text */}
       <p className="text-sm text-muted-foreground italic text-center">
-        Leaderboards will be updated when there is more activity
+        O ranking será atualizado conforme houver mais atividade
       </p>
 
       {/* 3 Leaderboard columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5">
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Leaderboard (7-day)
+            Ranking (7 dias)
           </h3>
           {renderLeaderboardList(weekly, "period_points")}
         </Card>
         <Card className="p-5">
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Leaderboard (30-day)
+            Ranking (30 dias)
           </h3>
           {renderLeaderboardList(monthly, "period_points")}
         </Card>
         <Card className="p-5">
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Leaderboard (all-time)
+            Ranking (geral)
           </h3>
           {renderLeaderboardList(allMembers?.slice(0, 10), "total_points")}
         </Card>
