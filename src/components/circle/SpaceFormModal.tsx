@@ -37,7 +37,7 @@ export default function SpaceFormModal({ communityId, spacesCount, onClose, spac
   const [name, setName] = useState(space?.name || "");
   const [slug, setSlug] = useState(space?.slug || "");
   const [description, setDescription] = useState(space?.description || "");
-  const [color, setColor] = useState(space?.color || "#6C3CE1");
+  const [color, setColor] = useState(space?.color || "#FA4B38");
   const [onlyAdmins, setOnlyAdmins] = useState(space?.only_admins_can_post || false);
   const [isVisible, setIsVisible] = useState(space?.is_visible ?? true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);

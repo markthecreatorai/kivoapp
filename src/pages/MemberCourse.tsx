@@ -509,7 +509,7 @@ export default function MemberCourse() {
                   className={`w-full h-12 font-semibold ${
                     isLessonComplete 
                       ? "bg-green-100 text-green-800 hover:bg-green-100 cursor-default" 
-                      : "bg-[#6C3CE1] hover:bg-[#5a32bd]"
+                      : "bg-primary hover:bg-primary/90"
                   }`}
                 >
                   {completing ? (
