@@ -662,25 +662,23 @@ async function handleSubscriptionEvent(supabase: any, eventType: string, payload
   const asaasSubId = subData?.id;
   if (!asaasSubId) return "NO_SUBSCRIPTION_ID";
 
-  // Find our subscription record
   const { data: sub } = await supabase
     .from("workspace_subscriptions")
-    .select("id, workspace_id, status, plan_code, last_event_at")
+    .select("id, workspace_id, status, plan_code, next_plan_code, change_effective_at, last_event_at")
     .eq("provider_subscription_id", asaasSubId)
     .maybeSingle();
 
   if (!sub) {
-    // Try circle subscriptions fallback
     return await handleCircleSubscriptionEvent(supabase, eventType, asaasSubId, subData);
   }
 
-  // Determine new status from event type
   let newStatus: string;
   switch (eventType) {
     case "SUBSCRIPTION_CREATED": newStatus = "pending"; break;
-    case "SUBSCRIPTION_UPDATED": newStatus = sub.status; break; // keep current
+    case "SUBSCRIPTION_UPDATED": newStatus = sub.status; break;
     case "SUBSCRIPTION_DELETED":
     case "SUBSCRIPTION_INACTIVATED": newStatus = "canceled"; break;
+    case "SUBSCRIPTION_REACTIVATED": newStatus = "active"; break;
     default: newStatus = sub.status; break;
   }
 
@@ -702,9 +700,13 @@ async function handleSubscriptionEvent(supabase: any, eventType: string, payload
     updatePayload.canceled_at = new Date().toISOString();
   }
 
+  // On reactivation, clear canceled_at
+  if (eventType === "SUBSCRIPTION_REACTIVATED") {
+    updatePayload.canceled_at = null;
+  }
+
   await supabase.from("workspace_subscriptions").update(updatePayload).eq("id", sub.id);
 
-  // Audit log
   await supabase.from("audit_logs").insert({
     workspace_id: sub.workspace_id,
     entity_type: "subscription",
