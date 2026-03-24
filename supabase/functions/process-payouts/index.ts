@@ -385,3 +385,17 @@ async function sendAlert(supabase: any, workspaceId: string, message: string) {
     console.error("sendAlert error:", e);
   }
 }
+
+async function notifyCreator(supabase: any, workspaceId: string, eventType: string, data: any) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: eventType, workspace_id: workspaceId, data }),
+    });
+  } catch (e) {
+    console.error("notifyCreator error (non-fatal):", e);
+  }
+}
