@@ -51,6 +51,7 @@ const creatorGroups: NavGroup[] = [
   },
   {
     label: "Marketing",
+    icon: Megaphone,
     items: [
       { title: "Leads", url: "/leads", icon: UserCheck },
       { title: "Email Flows", url: "/email-flows", icon: Mail },
