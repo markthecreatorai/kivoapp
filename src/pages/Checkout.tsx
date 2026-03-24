@@ -348,7 +348,7 @@ export default function Checkout() {
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Lock className="w-3.5 h-3.5" />
           <span>Compra segura</span>
-          <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+          <ShieldCheck className="w-3.5 h-3.5 text-accent" />
         </div>
 
         {/* Product Summary */}
@@ -403,6 +403,23 @@ export default function Checkout() {
           paymentSuccess={paymentSuccess}
         />
 
+        {/* Payment error with retry */}
+        {paymentError && !paymentSuccess && (
+          <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-2">
+            <p className="text-sm text-destructive font-medium">{paymentError}</p>
+            <p className="text-xs text-muted-foreground">Verifique os dados e tente novamente. Seus dados estão salvos.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPaymentError(null)}
+              className="gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+
         {/* Order Total */}
         <OrderTotal
           subtotal={subtotal}
@@ -412,6 +429,22 @@ export default function Checkout() {
           total={currentTotal}
           showPix={activeTab === "pix"}
         />
+
+        {/* Trust signals */}
+        <div className="grid grid-cols-3 gap-3 text-center pt-2">
+          <div className="space-y-1">
+            <ShieldCheck className="w-5 h-5 mx-auto text-accent" />
+            <p className="text-[10px] text-muted-foreground leading-tight">Pagamento 100% seguro</p>
+          </div>
+          <div className="space-y-1">
+            <Lock className="w-5 h-5 mx-auto text-accent" />
+            <p className="text-[10px] text-muted-foreground leading-tight">Dados criptografados</p>
+          </div>
+          <div className="space-y-1">
+            <RefreshCw className="w-5 h-5 mx-auto text-accent" />
+            <p className="text-[10px] text-muted-foreground leading-tight">Suporte disponível</p>
+          </div>
+        </div>
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground pt-4">
@@ -428,7 +461,7 @@ export default function Checkout() {
               <p className="text-xs text-muted-foreground">Total</p>
               <p className="text-lg font-bold text-foreground">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(currentTotal)}</p>
             </div>
-            <div className="flex items-center gap-1 text-xs text-green-600">
+            <div className="flex items-center gap-1 text-xs text-accent">
               <ShieldCheck className="w-4 h-4" />
               Pagamento seguro
             </div>

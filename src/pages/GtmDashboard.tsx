@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
-import { ArrowRight, TrendingUp, Users, Package, CreditCard, Eye, FlaskConical, BarChart3 } from "lucide-react";
+import { ArrowRight, TrendingUp, Users, Package, CreditCard, Eye, FlaskConical, BarChart3, Beaker } from "lucide-react";
 import { subDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
@@ -57,7 +57,7 @@ export default function GtmDashboard() {
     },
   });
 
-  // A/B data
+  // A/B data for landing headline
   const { data: abData } = useQuery({
     queryKey: ["gtm-ab", since],
     queryFn: async () => {
@@ -71,6 +71,39 @@ export default function GtmDashboard() {
         if (e.event_type === "cta_click") variants[variant].clicks++;
       });
       return variants;
+    },
+  });
+
+  // Experiment data (pricing + upgrade CTA)
+  const { data: experimentData } = useQuery({
+    queryKey: ["gtm-experiments", since],
+    queryFn: async () => {
+      const { data: events } = await supabase
+        .from("analytics_events")
+        .select("metadata, event_type")
+        .in("event_type", ["upgrade_started", "upgrade_completed", "checkout_started", "payment_succeeded"])
+        .gte("created_at", since);
+
+      const experiments: Record<string, { A: { started: number; completed: number }; B: { started: number; completed: number } }> = {
+        pricing_creator: { A: { started: 0, completed: 0 }, B: { started: 0, completed: 0 } },
+        upgrade_cta: { A: { started: 0, completed: 0 }, B: { started: 0, completed: 0 } },
+      };
+
+      (events || []).forEach((e: any) => {
+        const meta = e.metadata || {};
+        if (meta.experiment_key && experiments[meta.experiment_key]) {
+          const v = meta.variant as "A" | "B";
+          if (!v || !experiments[meta.experiment_key][v]) return;
+          if (e.event_type === "upgrade_started" || e.event_type === "checkout_started") {
+            experiments[meta.experiment_key][v].started++;
+          }
+          if (e.event_type === "upgrade_completed" || e.event_type === "payment_succeeded") {
+            experiments[meta.experiment_key][v].completed++;
+          }
+        }
+      });
+
+      return experiments;
     },
   });
 
@@ -110,6 +143,16 @@ export default function GtmDashboard() {
   ];
 
   const MIN_SAMPLE = 30;
+
+  function getRecommendation(a: { started: number; completed: number }, b: { started: number; completed: number }): string {
+    const totalSample = a.started + b.started;
+    if (totalSample < MIN_SAMPLE * 2) return "⏳ Continuar teste (dados insuficientes)";
+    const convA = a.started > 0 ? a.completed / a.started : 0;
+    const convB = b.started > 0 ? b.completed / b.started : 0;
+    const lift = convA > 0 ? ((convB - convA) / convA * 100) : 0;
+    if (Math.abs(lift) < 5) return "↔ Sem diferença significativa — continuar teste";
+    return lift > 0 ? `🏆 Manter B (+${lift.toFixed(1)}% uplift)` : `🏆 Manter A (B é ${Math.abs(lift).toFixed(1)}% pior)`;
+  }
 
   return (
     <div className="space-y-6">
@@ -166,7 +209,7 @@ export default function GtmDashboard() {
         </CardContent>
       </Card>
 
-      {/* A/B Test Block */}
+      {/* A/B Test Block - Landing Headline */}
       <Card className="card-radius">
         <CardHeader><CardTitle className="text-lg flex items-center gap-2"><FlaskConical className="w-4 h-4" /> Teste A/B — Headline</CardTitle></CardHeader>
         <CardContent>
@@ -221,6 +264,58 @@ export default function GtmDashboard() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Carregando dados do teste...</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Experiment Panel - Pricing & Upgrade CTA */}
+      <Card className="card-radius">
+        <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Beaker className="w-4 h-4" /> Experimentos Ativos</CardTitle></CardHeader>
+        <CardContent className="space-y-6">
+          {experimentData ? (
+            <>
+              {[
+                { key: "pricing_creator", name: "Pricing Creator", descA: "R$67/mês", descB: "R$79/mês" },
+                { key: "upgrade_cta", name: "Upgrade CTA", descA: "Upgrade para Creator", descB: "Economize em taxas — Upgrade" },
+              ].map((exp) => {
+                const data = experimentData[exp.key];
+                if (!data) return null;
+                const convA = data.A.started > 0 ? ((data.A.completed / data.A.started) * 100).toFixed(1) : "0";
+                const convB = data.B.started > 0 ? ((data.B.completed / data.B.started) * 100).toFixed(1) : "0";
+                return (
+                  <div key={exp.key} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-foreground">{exp.name}</h3>
+                      <Badge variant="outline" className="text-xs">Ativo</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["A", "B"] as const).map(v => (
+                        <div key={v} className="p-3 rounded-lg border bg-muted/30">
+                          <p className="text-xs text-muted-foreground mb-1">Variante {v}: {v === "A" ? exp.descA : exp.descB}</p>
+                          <div className="flex gap-4">
+                            <div>
+                              <p className="text-lg font-bold text-foreground">{data[v].started}</p>
+                              <p className="text-[10px] text-muted-foreground">Iniciaram</p>
+                            </div>
+                            <div>
+                              <p className="text-lg font-bold text-foreground">{data[v].completed}</p>
+                              <p className="text-[10px] text-muted-foreground">Concluíram</p>
+                            </div>
+                            <div>
+                              <p className="text-lg font-bold text-primary">{v === "A" ? convA : convB}%</p>
+                              <p className="text-[10px] text-muted-foreground">Conv.</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">{getRecommendation(data.A, data.B)}</p>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Carregando dados dos experimentos...</p>
           )}
         </CardContent>
       </Card>

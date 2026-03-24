@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Zap, ArrowRight, Check } from "lucide-react";
 import { PLAN_LABELS, PLAN_UPGRADE_MAP, type PlanType } from "@/hooks/usePlanLimits";
+import { useExperiment } from "@/hooks/useExperiment";
+import { trackEvent } from "@/lib/tracking";
 
 interface UpgradeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentPlan: PlanType;
-  feature: string; // "criar mais produtos", "usar afiliados", etc.
+  feature: string;
 }
 
 const PLAN_FEATURES: Record<PlanType, string[]> = {
@@ -32,15 +34,35 @@ const PLAN_FEATURES: Record<PlanType, string[]> = {
   ],
 };
 
-const PLAN_PRICES: Record<PlanType, string> = {
-  FREE: "R$0",
-  CREATOR: "R$49/mês",
-  CREATOR_PRO: "R$149/mês",
-};
-
 export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: UpgradeModalProps) {
   const upgradeTo = PLAN_UPGRADE_MAP[currentPlan];
+  const { variant: pricingVariant } = useExperiment("pricing_creator");
+  const { variant: ctaVariant } = useExperiment("upgrade_cta");
+
   if (!upgradeTo) return null;
+
+  const getPlanPrice = (plan: PlanType): string => {
+    if (plan === "CREATOR") return pricingVariant === "B" ? "R$79/mês" : "R$67/mês";
+    if (plan === "CREATOR_PRO") return "R$149/mês";
+    return "R$0";
+  };
+
+  const getCtaText = (): string => {
+    if (ctaVariant === "B") return "Economize em taxas — Upgrade";
+    return "Fazer Upgrade";
+  };
+
+  const handleUpgrade = () => {
+    trackEvent("upgrade_started", {
+      from_plan: currentPlan,
+      to_plan: upgradeTo,
+      feature,
+      experiment_key: "upgrade_cta",
+      variant: ctaVariant,
+      pricing_variant: pricingVariant,
+    });
+    window.location.href = "/pricing";
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,14 +86,13 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Target plan features */}
           <div className="bg-muted/50 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
                 Plano {PLAN_LABELS[upgradeTo]}
               </h3>
-              <span className="text-sm font-bold text-primary">{PLAN_PRICES[upgradeTo]}</span>
+              <span className="text-sm font-bold text-primary">{getPlanPrice(upgradeTo)}</span>
             </div>
             <ul className="space-y-2">
               {PLAN_FEATURES[upgradeTo].map((feat, i) => (
@@ -88,13 +109,8 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             Agora não
           </Button>
-          <Button 
-            className="flex-1 gap-2" 
-            onClick={() => {
-              window.location.href = "/pricing";
-            }}
-          >
-            Fazer Upgrade
+          <Button className="flex-1 gap-2" onClick={handleUpgrade}>
+            {getCtaText()}
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
