@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.reconcile-payments]
 verify_jwt = false
+
+[functions.emit-nfse]
+verify_jwt = false
