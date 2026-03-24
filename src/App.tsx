@@ -1,14 +1,15 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { WorkspaceProvider } from "@/contexts/WorkspaceProvider";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { PageSkeleton } from "@/components/PageSkeleton";
 
 // Lazy-loaded pages
 const Login = lazy(() => import("./pages/Login"));
@@ -73,19 +74,55 @@ const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // 2 minutes
-      gcTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60, // 60s default (was 2min — faster perceived freshness)
+      gcTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
       retry: 1,
+      placeholderData: keepPreviousData, // keep previous data while refetching
     },
   },
 });
 
-function PageLoader() {
+// Prefetch hot routes after initial paint
+function usePrefetchRoutes() {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Prefetch the 4 most-visited dashboard pages
+      import("./pages/Dashboard");
+      import("./pages/Products");
+      import("./pages/Settings");
+      import("./pages/Analytics");
+    }, 2000); // 2s after mount — after initial paint settles
+    return () => clearTimeout(timer);
+  }, []);
+}
+
+/** Persistent dashboard shell — sidebar/topbar mount once, pages swap via Outlet */
+function DashboardShell() {
+  usePrefetchRoutes();
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-    </div>
+    <ProtectedRoute>
+      <DashboardLayout>
+        <Suspense fallback={<PageSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+/** Admin-guarded shell */
+function AdminShell() {
+  return (
+    <ProtectedRoute>
+      <AdminRoute>
+        <DashboardLayout>
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </DashboardLayout>
+      </AdminRoute>
+    </ProtectedRoute>
   );
 }
 
@@ -97,7 +134,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <WorkspaceProvider>
-            <Suspense fallback={<PageLoader />}>
+            <Suspense fallback={<PageSkeleton />}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
@@ -107,39 +144,54 @@ const App = () => (
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/resend-verification" element={<Navigate to="/verify-email" replace />} />
-                
+
                 {/* Onboarding */}
-                <Route 
-                  path="/onboarding" 
+                <Route
+                  path="/onboarding"
                   element={
                     <ProtectedRoute requireWorkspace={false} requireEmailVerification={false}>
                       <Onboarding />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                
-                {/* Dashboard routes */}
-                <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/earnings" element={<ProtectedRoute><DashboardLayout><Income /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/coupons" element={<ProtectedRoute><DashboardLayout><Coupons /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/products" element={<ProtectedRoute><DashboardLayout><Products /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/products/new" element={<ProtectedRoute><DashboardLayout><CreateProduct /></DashboardLayout></ProtectedRoute>} />
+
+                {/* ===== PERSISTENT DASHBOARD LAYOUT ===== */}
+                <Route element={<DashboardShell />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/earnings" element={<Income />} />
+                  <Route path="/coupons" element={<Coupons />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/products/new" element={<CreateProduct />} />
+                  <Route path="/store" element={<Store />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/clients" element={<Customers />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/affiliates" element={<Affiliates />} />
+                  <Route path="/email-flows" element={<EmailFlows />} />
+                  <Route path="/leads" element={<Leads />} />
+                  <Route path="/leads/segments" element={<LeadSegments />} />
+                  <Route path="/leads/email" element={<LeadEmail />} />
+                  <Route path="/appointments" element={<Appointments />} />
+                  <Route path="/payment-logs" element={<PaymentLogs />} />
+                  <Route path="/fiscal" element={<FiscalClosing />} />
+                  <Route path="/email-campaigns" element={<EmailCampaigns />} />
+                </Route>
+
+                {/* ===== ADMIN PERSISTENT LAYOUT ===== */}
+                <Route element={<AdminShell />}>
+                  <Route path="/analytics/executive" element={<AnalyticsExecutive />} />
+                  <Route path="/gtm" element={<GtmDashboard />} />
+                  <Route path="/gtm/playbook" element={<GtmPlaybook />} />
+                  <Route path="/acquisition" element={<AcquisitionPipeline />} />
+                  <Route path="/ops" element={<OpsDashboard />} />
+                  <Route path="/ops/launch" element={<LaunchReadiness />} />
+                  <Route path="/ops/feedback" element={<OpsFeedback />} />
+                  <Route path="/ops/week-plan" element={<OpsWeekPlan />} />
+                </Route>
+
+                {/* Full-screen protected routes (no persistent layout) */}
                 <Route path="/products/:id/course-builder" element={<ProtectedRoute><CourseBuilder /></ProtectedRoute>} />
-                <Route path="/store" element={<ProtectedRoute><DashboardLayout><Store /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/store/editor" element={<ProtectedRoute><StorefrontEditor /></ProtectedRoute>} />
-                <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><Analytics /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/analytics/executive" element={<ProtectedRoute><AdminRoute><DashboardLayout><AnalyticsExecutive /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                <Route path="/clients" element={<ProtectedRoute><DashboardLayout><Customers /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/affiliates" element={<ProtectedRoute><DashboardLayout><Affiliates /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/email-flows" element={<ProtectedRoute><DashboardLayout><EmailFlows /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/leads" element={<ProtectedRoute><DashboardLayout><Leads /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/leads/segments" element={<ProtectedRoute><DashboardLayout><LeadSegments /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/leads/email" element={<ProtectedRoute><DashboardLayout><LeadEmail /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/appointments" element={<ProtectedRoute><DashboardLayout><Appointments /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/payment-logs" element={<ProtectedRoute><DashboardLayout><PaymentLogs /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/fiscal" element={<ProtectedRoute><DashboardLayout><FiscalClosing /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/email-campaigns" element={<ProtectedRoute><DashboardLayout><EmailCampaigns /></DashboardLayout></ProtectedRoute>} />
 
                 {/* Circle routes */}
                 <Route path="/circle" element={<ProtectedRoute><CircleLayout><Navigate to="/circle/feed" replace /></CircleLayout></ProtectedRoute>} />
@@ -154,16 +206,7 @@ const App = () => (
 
                 {/* Landing page */}
                 <Route path="/" element={<LandingPage />} />
-                
-                {/* GTM Dashboard */}
-                <Route path="/gtm" element={<ProtectedRoute><AdminRoute><DashboardLayout><GtmDashboard /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                <Route path="/gtm/playbook" element={<ProtectedRoute><AdminRoute><DashboardLayout><GtmPlaybook /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                <Route path="/acquisition" element={<ProtectedRoute><AdminRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                <Route path="/ops" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsDashboard /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                <Route path="/ops/launch" element={<ProtectedRoute><AdminRoute><DashboardLayout><LaunchReadiness /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                <Route path="/ops/feedback" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsFeedback /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                <Route path="/ops/week-plan" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsWeekPlan /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-                
+
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<Checkout />} />
                 <Route path="/order/success/:orderId" element={<OrderSuccess />} />
