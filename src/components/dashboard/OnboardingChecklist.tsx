@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import { Check, X, ArrowRight, Rocket, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,180 +16,247 @@ interface ChecklistItem {
   href?: string;
 }
 
+const STEP_KEYS = ["profile_complete", "payment_connected", "product_created", "product_published", "first_sale"] as const;
+
 export function OnboardingChecklist() {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [isVisible, setIsVisible] = useState(true);
+  const [dismissed, setDismissed] = useState(false);
   const { currentWorkspace } = useWorkspace();
+
+  const persistStep = useCallback(async (stepKey: string) => {
+    if (!currentWorkspace) return;
+    try {
+      await supabase.from("onboarding_progress" as any).upsert({
+        workspace_id: currentWorkspace.id,
+        step_key: stepKey,
+        completed_at: new Date().toISOString(),
+      }, { onConflict: "workspace_id,step_key" });
+    } catch {}
+  }, [currentWorkspace]);
 
   useEffect(() => {
     if (!currentWorkspace) return;
 
     const checkOnboardingStatus = async () => {
       try {
-        // Verificar se tem produtos
-        const { data: products } = await supabase
-          .from('products')
-          .select('id')
-          .eq('workspace_id', currentWorkspace.id)
-          .limit(1);
-
-        // Verificar se tem storefront personalizado
-        const { data: theme } = await supabase
-          .from('storefront_themes')
-          .select('id')
-          .limit(1);
-
-        // Verificar se tem vendas
-        const { data: sales } = await supabase
-          .from('orders')
-          .select('id')
-          .eq('workspace_id', currentWorkspace.id)
-          .eq('status', 'PAID')
-          .limit(1);
-
-        // Verificar se storefront está publicado
+        // Check storefront (profile)
         const { data: storefront } = await supabase
-          .from('storefronts')
-          .select('is_published')
-          .eq('workspace_id', currentWorkspace.id)
+          .from("storefronts")
+          .select("is_published, title")
+          .eq("workspace_id", currentWorkspace.id)
           .single();
+
+        const profileComplete = !!(storefront?.title && storefront.title !== currentWorkspace.name);
+
+        // Check payment settings
+        const { data: bankAccounts } = await supabase
+          .from("bank_accounts")
+          .select("id")
+          .eq("workspace_id", currentWorkspace.id)
+          .limit(1);
+
+        const paymentConnected = (bankAccounts?.length || 0) > 0;
+
+        // Check products
+        let productCreated = false;
+        let productPublished = false;
+        try {
+          const { data: products } = await supabase
+            .from("products")
+            .select("id, is_published")
+            .eq("workspace_id", currentWorkspace.id)
+            .is("deleted_at", null)
+            .limit(10);
+          productCreated = (products?.length || 0) > 0;
+          productPublished = products?.some((p: any) => p.is_published) || false;
+        } catch {
+          // RLS error fallback - check onboarding_progress
+          const { data: progress } = await supabase
+            .from("onboarding_progress" as any)
+            .select("step_key, completed_at")
+            .eq("workspace_id", currentWorkspace.id);
+          const steps = (progress || []) as any[];
+          productCreated = steps.some(s => s.step_key === "product_created" && s.completed_at);
+          productPublished = steps.some(s => s.step_key === "product_published" && s.completed_at);
+        }
+
+        // Check first sale
+        const { data: sales } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("workspace_id", currentWorkspace.id)
+          .eq("status", "PAID")
+          .limit(1);
+
+        const firstSale = (sales?.length || 0) > 0;
+
+        // Persist completed steps
+        if (profileComplete) persistStep("profile_complete");
+        if (paymentConnected) persistStep("payment_connected");
+        if (productCreated) persistStep("product_created");
+        if (productPublished) persistStep("product_published");
+        if (firstSale) {
+          persistStep("first_sale");
+          // Mark workspace as activated
+          await supabase
+            .from("workspaces")
+            .update({ activated_at: new Date().toISOString() })
+            .eq("id", currentWorkspace.id)
+            .is("activated_at", null);
+        }
 
         const items: ChecklistItem[] = [
           {
-            id: 'account',
-            title: 'Criar conta',
-            description: 'Conta criada com sucesso',
-            completed: true,
+            id: "profile",
+            title: "Completar perfil da loja",
+            description: "Configure nome, bio e aparência da sua storefront",
+            completed: profileComplete,
+            action: "Personalizar",
+            href: "/store/editor",
           },
           {
-            id: 'product',
-            title: 'Criar primeiro produto',
-            description: 'Adicione um produto digital, lead magnet ou link',
-            completed: (products?.length || 0) > 0,
-            action: 'Criar produto',
-            href: '/store?tab=products',
+            id: "payment",
+            title: "Conectar pagamento",
+            description: "Adicione sua conta bancária para receber",
+            completed: paymentConnected,
+            action: "Configurar",
+            href: "/settings?tab=payments",
           },
           {
-            id: 'customize',
-            title: 'Personalizar loja',
-            description: 'Escolha cores e template para sua storefront',
-            completed: (theme?.length || 0) > 0,
-            action: 'Personalizar',
-            href: '/store?tab=design',
+            id: "product",
+            title: "Criar primeiro produto",
+            description: "Adicione um produto digital, curso ou serviço",
+            completed: productCreated,
+            action: "Criar produto",
+            href: "/products/new",
           },
           {
-            id: 'publish',
-            title: 'Publicar loja',
-            description: 'Torne sua loja visível para clientes',
-            completed: storefront?.is_published || false,
-            action: 'Publicar',
-            href: '/store?tab=settings',
+            id: "publish",
+            title: "Publicar produto",
+            description: "Torne seu produto visível para compradores",
+            completed: productPublished,
+            action: "Ver produtos",
+            href: "/products",
           },
           {
-            id: 'sale',
-            title: 'Fazer primeira venda',
-            description: 'Compartilhe sua loja e faça sua primeira venda',
-            completed: (sales?.length || 0) > 0,
-            action: 'Compartilhar loja',
-            href: '/store?tab=share',
+            id: "sale",
+            title: "Fazer primeira venda 🎉",
+            description: "Compartilhe sua loja e conquiste seu primeiro cliente",
+            completed: firstSale,
+            action: "Compartilhar",
+            href: "/store",
           },
         ];
 
         setChecklist(items);
-
-        // Ocultar checklist se tudo estiver completo
-        const allCompleted = items.every(item => item.completed);
-        setIsVisible(!allCompleted);
+        setIsVisible(!items.every(item => item.completed));
       } catch (error) {
-        console.error('Erro ao verificar status do onboarding:', error);
+        console.error("Erro ao verificar onboarding:", error);
       }
     };
 
     checkOnboardingStatus();
-  }, [currentWorkspace]);
+  }, [currentWorkspace, persistStep]);
 
-  if (!isVisible || checklist.every(item => item.completed)) {
-    return null;
-  }
+  if (dismissed || !isVisible || checklist.length === 0) return null;
 
-  const completedCount = checklist.filter(item => item.completed).length;
+  const completedCount = checklist.filter(i => i.completed).length;
   const totalCount = checklist.length;
   const progress = (completedCount / totalCount) * 100;
+  const nextStep = checklist.find(i => !i.completed);
 
   return (
-    <Card className="bg-white border border-border/50 shadow-sm rounded-xl">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg font-semibold">Complete sua configuração</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {completedCount} de {totalCount} etapas concluídas
-            </p>
+    <div className="space-y-4">
+      {/* Next best step banner */}
+      {nextStep && (
+        <Card className="bg-primary/5 border border-primary/20 shadow-sm rounded-xl">
+          <CardContent className="flex items-center gap-4 py-4">
+            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Próximo passo: {nextStep.title}</p>
+              <p className="text-xs text-muted-foreground">{nextStep.description}</p>
+            </div>
+            {nextStep.href && (
+              <Button asChild size="sm" className="flex-shrink-0">
+                <Link to={nextStep.href}>
+                  {nextStep.action} <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Full checklist */}
+      <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Rocket className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle className="text-lg font-semibold">Configuração inicial</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {completedCount} de {totalCount} etapas • {progress.toFixed(0)}% completo
+                </p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setDismissed(true)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsVisible(false)}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        
-        {/* Progress bar */}
-        <div className="w-full bg-muted rounded-full h-2 mt-3">
-          <div 
-            className="bg-primary h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="space-y-3">
-          {checklist.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 p-3 rounded-lg border border-border/30 hover:border-border/60 transition-colors"
-            >
-              <div className={cn(
-                "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center",
-                item.completed 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted text-muted-foreground"
-              )}>
-                {item.completed ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  <span className="text-xs font-semibold">
-                    {checklist.indexOf(item) + 1}
-                  </span>
+
+          {/* Progress bar */}
+          <div className="w-full bg-muted rounded-full h-2 mt-3">
+            <div className="bg-primary h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <div className="space-y-2">
+            {checklist.map((item, index) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                  item.completed
+                    ? "border-border/20 bg-muted/20"
+                    : nextStep?.id === item.id
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-border/30 hover:border-border/60"
+                )}
+              >
+                <div className={cn(
+                  "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
+                  item.completed
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  {item.completed ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className={cn("font-medium text-sm", item.completed && "text-muted-foreground line-through")}>
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                </div>
+
+                {!item.completed && item.action && item.href && (
+                  <Button asChild size="sm" variant={nextStep?.id === item.id ? "default" : "outline"}>
+                    <Link to={item.href}>{item.action}</Link>
+                  </Button>
+                )}
+                {item.completed && (
+                  <Badge variant="secondary" className="text-xs">Concluído</Badge>
                 )}
               </div>
-              
-              <div className="flex-1 min-w-0">
-                <p className={cn(
-                  "font-medium",
-                  item.completed ? "text-muted-foreground line-through" : "text-foreground"
-                )}>
-                  {item.title}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {item.description}
-                </p>
-              </div>
-
-              {!item.completed && item.action && item.href && (
-                <Button asChild size="sm" variant="outline">
-                  <Link to={item.href}>
-                    {item.action}
-                  </Link>
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
