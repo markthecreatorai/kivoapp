@@ -87,7 +87,7 @@ export default function AnalyticsExecutive() {
     queryFn: async () => {
       const { data } = await supabase
         .from("orders")
-        .select("id, total_amount, net_amount, status, payment_method, created_at, product_id, refunded_at")
+        .select("id, total_amount, status, payment_method, created_at, product_id")
         .eq("workspace_id", workspaceId!)
         .gte("created_at", prevFromISO)
         .lte("created_at", toISO);
