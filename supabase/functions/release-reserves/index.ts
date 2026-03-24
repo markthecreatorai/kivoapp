@@ -57,6 +57,20 @@ Deno.serve(async (req) => {
         status: "released",
         released_at: new Date().toISOString(),
       }).eq("id", reserve.id);
+
+      // Notify creator about released reserve
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_type: "reserve_released",
+            workspace_id: reserve.workspace_id,
+            data: { amount: reserve.amount },
+          }),
+        });
+      } catch (e) { console.error("Notify error (non-fatal):", e); }
+
       released++;
     }
 

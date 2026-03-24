@@ -202,6 +202,9 @@ Deno.serve(async (req) => {
           await sendAlert(supabase, payout.workspace_id,
             `⚠️ Payout #${payout.id.slice(0, 8)} enviado para revisão manual. Score: ${risk.risk_score}`);
 
+          // Notify creator
+          await notifyCreator(supabase, payout.workspace_id, "payout_review", { amount: payout.net_amount });
+
           summary.manual_review++;
           summary.processed++;
           continue;
@@ -277,6 +280,9 @@ Deno.serve(async (req) => {
           await sendAlert(supabase, payout.workspace_id,
             `❌ Payout #${payout.id.slice(0, 8)} falhou: ${errorMsg}`);
 
+          // Notify creator
+          await notifyCreator(supabase, payout.workspace_id, "payout_failed", { amount: payout.net_amount, failure_reason: errorMsg });
+
           summary.failed++;
         } else {
           await supabase.from("payout_requests").update({
@@ -297,6 +303,9 @@ Deno.serve(async (req) => {
               method: bankAcc?.pix_key ? "PIX" : "TED",
             },
           });
+
+          // Notify creator
+          await notifyCreator(supabase, payout.workspace_id, "payout_paid", { amount: payout.net_amount, external_transfer_id: transferData.id });
 
           summary.paid++;
         }
@@ -374,5 +383,19 @@ async function sendAlert(supabase: any, workspaceId: string, message: string) {
     }
   } catch (e) {
     console.error("sendAlert error:", e);
+  }
+}
+
+async function notifyCreator(supabase: any, workspaceId: string, eventType: string, data: any) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: eventType, workspace_id: workspaceId, data }),
+    });
+  } catch (e) {
+    console.error("notifyCreator error (non-fatal):", e);
   }
 }

@@ -616,6 +616,21 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     console.error("Telegram alert error (non-fatal):", e);
   }
 
+  // 10. Notify creator
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event_type: "chargeback_opened",
+        workspace_id: paymentRecord.workspace_id,
+        data: { order_number: paymentRecord.order_id.slice(0, 8), amount: chargebackAmount, reason: paymentData?.chargebackReason },
+      }),
+    });
+  } catch (e) { console.error("Notify creator error (non-fatal):", e); }
+
   console.log(`Asaas: Chargeback case created for order ${paymentRecord.order_id}`);
   return "DISPUTED";
 }
