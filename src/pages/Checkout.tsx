@@ -237,10 +237,11 @@ export default function Checkout() {
       const data = res.data;
       if (data?.error) throw new Error(data.error);
       if (data?.status === "paid" || data?.status === "authorized") {
-        // Call post-purchase processing
+        trackEvent("payment_succeeded", { method: "credit_card", order_id: data.order_id }, product.workspace_id);
         await supabase.functions.invoke("post-purchase", { body: { order_id: data.order_id } });
         navigate(`/order/success/${data.order_id}`);
       } else {
+        trackEvent("payment_failed", { method: "credit_card", reason: data?.message }, product.workspace_id);
         setPaymentError(data?.message || "Pagamento recusado. Tente outro cartão.");
       }
     } catch (e: any) {
