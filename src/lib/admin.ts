@@ -16,4 +16,10 @@ export const ADMIN_ROUTES = [
   "/ops/launch",
   "/ops/feedback",
   "/ops/week-plan",
+  "/ops/financial-health",
+  "/admin/payouts",
+  "/admin/risk-review",
+  "/admin/chargebacks",
+  "/admin/financial-health",
+  "/admin/go-live",
 ];
