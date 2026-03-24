@@ -61,6 +61,7 @@ const creatorGroups: NavGroup[] = [
   },
   {
     label: "Entrega",
+    icon: Truck,
     items: [
       { title: "Circles", url: "/circle", icon: MessagesSquare },
       { title: "Agendamentos", url: "/appointments", icon: CalendarCheck },
