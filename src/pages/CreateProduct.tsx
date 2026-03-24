@@ -12,6 +12,7 @@ import { ProductDeliveryStep } from "@/components/products/ProductDeliveryStep";
 import { ProductExtrasStep } from "@/components/products/ProductExtrasStep";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { trackEvent } from "@/lib/tracking";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProductType = Database["public"]["Enums"]["product_type"];
