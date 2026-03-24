@@ -45,6 +45,7 @@ const EmailFlows = lazy(() => import("./pages/EmailFlows"));
 const Appointments = lazy(() => import("./pages/Appointments"));
 const BookAppointment = lazy(() => import("./pages/BookAppointment"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Pricing = lazy(() => import("./pages/Pricing"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
