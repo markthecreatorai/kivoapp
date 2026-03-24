@@ -187,7 +187,7 @@ export default function CircleMessages() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [member?.id, community?.id, queryClient]);
+  }, [member?.id, community?.id, queryClient, conversations]);
 
   // Mark as read when selecting conversation
   useEffect(() => {
