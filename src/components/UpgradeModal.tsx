@@ -1,10 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Zap, ArrowRight, Check } from "lucide-react";
+import { Crown, Zap, ArrowRight, Check, Loader2 } from "lucide-react";
 import { PLAN_LABELS, PLAN_UPGRADE_MAP, type PlanType } from "@/hooks/usePlanLimits";
 import { useExperiment } from "@/hooks/useExperiment";
-import { trackEvent } from "@/lib/tracking";
+import { usePlanCheckout } from "@/hooks/usePlanCheckout";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -34,10 +34,17 @@ const PLAN_FEATURES: Record<PlanType, string[]> = {
   ],
 };
 
+const PLAN_TO_CODE: Record<PlanType, string> = {
+  FREE: "free",
+  CREATOR: "creator",
+  CREATOR_PRO: "creator-pro",
+};
+
 export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: UpgradeModalProps) {
   const upgradeTo = PLAN_UPGRADE_MAP[currentPlan];
   const { variant: pricingVariant } = useExperiment("pricing_creator");
   const { variant: ctaVariant } = useExperiment("upgrade_cta");
+  const { startPlanCheckout, loading } = usePlanCheckout();
 
   if (!upgradeTo) return null;
 
@@ -53,15 +60,10 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
   };
 
   const handleUpgrade = () => {
-    trackEvent("upgrade_started", {
-      from_plan: currentPlan,
-      to_plan: upgradeTo,
-      feature,
-      experiment_key: "upgrade_cta",
-      variant: ctaVariant,
-      pricing_variant: pricingVariant,
+    startPlanCheckout({
+      planCode: PLAN_TO_CODE[upgradeTo],
+      sourceUI: "locked_features_modal",
     });
-    window.location.href = "/pricing";
   };
 
   return (
@@ -106,12 +108,13 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={loading}>
             Agora não
           </Button>
-          <Button className="flex-1 gap-2" onClick={handleUpgrade}>
-            {getCtaText()}
-            <ArrowRight className="w-4 h-4" />
+          <Button className="flex-1 gap-2" onClick={handleUpgrade} disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {loading ? "Processando..." : getCtaText()}
+            {!loading && <ArrowRight className="w-4 h-4" />}
           </Button>
         </div>
       </DialogContent>
