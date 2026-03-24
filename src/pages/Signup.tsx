@@ -67,12 +67,17 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
+      const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
+            creator_type: creatorType,
+            utm_source: utmData.utm_source || searchParams.get("utm_source") || "",
+            utm_medium: utmData.utm_medium || searchParams.get("utm_medium") || "",
+            utm_campaign: utmData.utm_campaign || searchParams.get("utm_campaign") || "",
           },
           emailRedirectTo: `${window.location.origin}/onboarding`,
         },
