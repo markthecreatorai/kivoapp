@@ -118,7 +118,7 @@ export default function Income() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Disponível para saque</span>
-              <span className="font-medium text-green-600">{fmt(availableBalance)}</span>
+              <span className="font-medium text-foreground">{fmt(availableBalance)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Em hold ({HOLD_DAYS} dias)</span>

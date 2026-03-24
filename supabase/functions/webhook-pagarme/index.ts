@@ -358,6 +358,20 @@ async function handleRefunded(supabase: any, paymentRecord: any, chargeData: any
     revoked_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
+  // Ledger: refund entry (cancel previous sale entries + add refund debit)
+  const refundAmountCents = chargeData?.amount || 0;
+  await supabase.from("wallet_ledger").update({ status: "canceled" })
+    .eq("order_id", paymentRecord.order_id).eq("type", "sale");
+
+  await supabase.from("wallet_ledger").insert({
+    workspace_id: paymentRecord.workspace_id,
+    order_id: paymentRecord.order_id,
+    type: "refund",
+    amount: -refundAmountCents,
+    status: "settled",
+    description: `Reembolso #${paymentRecord.order_id.slice(0, 8)}`,
+  });
+
   console.log(`Order ${paymentRecord.order_id} REFUNDED`);
   return "REFUNDED";
 }
