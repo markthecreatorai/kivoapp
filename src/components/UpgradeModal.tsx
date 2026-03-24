@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Crown, Zap, ArrowRight, Check, Loader2 } from "lucide-react";
 import { PLAN_LABELS, PLAN_UPGRADE_MAP, type PlanType } from "@/hooks/usePlanLimits";
 import { useExperiment } from "@/hooks/useExperiment";
 import { usePlanCheckout } from "@/hooks/usePlanCheckout";
+import { toast } from "@/hooks/use-toast";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -40,11 +44,27 @@ const PLAN_TO_CODE: Record<PlanType, string> = {
   CREATOR_PRO: "creator-pro",
 };
 
+function formatCpf(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 14);
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
 export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: UpgradeModalProps) {
   const upgradeTo = PLAN_UPGRADE_MAP[currentPlan];
   const { variant: pricingVariant } = useExperiment("pricing_creator");
   const { variant: ctaVariant } = useExperiment("upgrade_cta");
   const { startPlanCheckout, upgradeMidCycle, loading } = usePlanCheckout();
+  const [cpf, setCpf] = useState("");
 
   if (!upgradeTo) return null;
 
@@ -61,6 +81,13 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
 
   const handleUpgrade = async () => {
     const targetCode = PLAN_TO_CODE[upgradeTo];
+    const cleanCpf = cpf.replace(/\D/g, "");
+
+    // CPF required for first subscription (FREE -> paid)
+    if (currentPlan === "FREE" && cleanCpf.length < 11) {
+      toast({ title: "CPF/CNPJ obrigatório", description: "Informe seu CPF ou CNPJ para prosseguir.", variant: "destructive" });
+      return;
+    }
 
     // If upgrading from a paid plan (mid-cycle), use the immediate upgrade
     if (currentPlan !== "FREE") {
@@ -70,7 +97,6 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
       });
       if (success) {
         onOpenChange(false);
-        // Force reload to refresh plan limits
         window.location.reload();
       }
       return;
@@ -80,6 +106,7 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
     startPlanCheckout({
       planCode: targetCode,
       sourceUI: "locked_features_modal",
+      cpf: cleanCpf,
     });
   };
 
@@ -122,6 +149,23 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
               ))}
             </ul>
           </div>
+
+          {currentPlan === "FREE" && (
+            <div className="space-y-2">
+              <Label htmlFor="cpf" className="text-sm font-medium text-foreground">
+                CPF ou CNPJ
+              </Label>
+              <Input
+                id="cpf"
+                placeholder="000.000.000-00"
+                value={cpf}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
+                disabled={loading}
+                maxLength={18}
+              />
+              <p className="text-xs text-muted-foreground">Necessário para processar a assinatura.</p>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3">

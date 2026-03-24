@@ -10,6 +10,8 @@ interface StartCheckoutParams {
   planCode: string;
   billingCycle?: "monthly" | "annual";
   sourceUI: SourceUI;
+  cpf?: string;
+  customerName?: string;
 }
 
 export function usePlanCheckout() {
@@ -35,7 +37,7 @@ export function usePlanCheckout() {
   };
 
   // New subscription checkout (no existing active sub)
-  const startPlanCheckout = async ({ planCode, billingCycle = "monthly", sourceUI }: StartCheckoutParams) => {
+  const startPlanCheckout = async ({ planCode, billingCycle = "monthly", sourceUI, cpf, customerName }: StartCheckoutParams) => {
     if (!currentWorkspace) {
       toast({ title: "Erro", description: "Workspace não encontrado.", variant: "destructive" });
       return;
@@ -56,6 +58,8 @@ export function usePlanCheckout() {
         plan_code: planCode,
         billing_cycle: billingCycle,
         origin_path: window.location.pathname,
+        cpf: cpf || undefined,
+        customer_name: customerName || undefined,
       }, token);
 
       const result = await res.json();

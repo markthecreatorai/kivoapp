@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const userEmail = claimsData.claims.email as string;
 
     const body = await req.json();
-    const { workspace_id, plan_code, billing_cycle = "monthly", origin_path = "/" } = body;
+    const { workspace_id, plan_code, billing_cycle = "monthly", origin_path = "/", cpf, customer_name } = body;
 
     if (!workspace_id || !plan_code) {
       return new Response(JSON.stringify({ error: "workspace_id e plan_code são obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -77,6 +77,25 @@ Deno.serve(async (req) => {
     const asaasBase = "https://api.asaas.com/v3";
 
     // 1. Find or create Asaas customer
+    // Try to find CPF from body, or from bank_accounts, or from workspace profile
+    let customerCpf = cpf?.replace(/\D/g, "") || "";
+    if (!customerCpf) {
+      const { data: bankAcc } = await adminClient.from("bank_accounts")
+        .select("holder_document")
+        .eq("workspace_id", workspace_id)
+        .eq("is_default", true)
+        .maybeSingle();
+      if (bankAcc?.holder_document) {
+        customerCpf = bankAcc.holder_document.replace(/\D/g, "");
+      }
+    }
+
+    if (!customerCpf) {
+      return new Response(JSON.stringify({ error: "CPF/CNPJ é obrigatório para criar a assinatura. Cadastre na área de Recebimentos ou informe no checkout." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const displayName = customer_name || userEmail.split("@")[0];
+
     const customerSearchRes = await fetch(`${asaasBase}/customers?email=${encodeURIComponent(userEmail)}`, {
       headers: { access_token: asaasApiKey },
     });
@@ -85,11 +104,19 @@ Deno.serve(async (req) => {
     let asaasCustomerId: string;
     if (customerSearchData.data?.length > 0) {
       asaasCustomerId = customerSearchData.data[0].id;
+      // Update CPF if missing on existing customer
+      if (!customerSearchData.data[0].cpfCnpj && customerCpf) {
+        await fetch(`${asaasBase}/customers/${asaasCustomerId}`, {
+          method: "PUT",
+          headers: { access_token: asaasApiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ cpfCnpj: customerCpf }),
+        });
+      }
     } else {
       const createCustomerRes = await fetch(`${asaasBase}/customers`, {
         method: "POST",
         headers: { access_token: asaasApiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ name: userEmail.split("@")[0], email: userEmail }),
+        body: JSON.stringify({ name: displayName, email: userEmail, cpfCnpj: customerCpf }),
       });
       const newCustomer = await createCustomerRes.json();
       if (!newCustomer.id) {
