@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Crown, ArrowRight } from "lucide-react";
@@ -19,19 +18,11 @@ const PLAN_TO_CODE: Record<PlanType, string> = {
 };
 
 export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: UpgradeModalProps) {
-  const navigate = useNavigate();
   const upgradeTo = PLAN_UPGRADE_MAP[currentPlan];
 
   if (!upgradeTo) return null;
 
-  const handleUpgrade = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const targetCode = PLAN_TO_CODE[upgradeTo];
-    const url = `/billing/upgrade-flow?plan=${targetCode}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`;
-    // Use window.location to bypass Radix Dialog Portal context issues with React Router
-    window.location.href = url;
-  };
+  const upgradeUrl = `/billing/upgrade-flow?plan=${PLAN_TO_CODE[upgradeTo]}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,9 +49,12 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             Agora não
           </Button>
-          <Button className="flex-1 gap-2" onClick={handleUpgrade}>
-            Fazer Upgrade <ArrowRight className="w-4 h-4" />
-          </Button>
+          <a
+            href={upgradeUrl}
+            className="flex-1 gap-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          >
+            Fazer Upgrade <ArrowRight className="w-4 h-4 ml-1" />
+          </a>
         </div>
       </DialogContent>
     </Dialog>
