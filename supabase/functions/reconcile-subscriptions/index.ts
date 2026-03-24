@@ -21,9 +21,8 @@ Deno.serve(async (req) => {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader || "" } },
     });
-    const token = (authHeader || "").replace("Bearer ", "");
-    const { data: claimsData } = await userClient.auth.getClaims(token);
-    const userEmail = claimsData?.claims?.email;
+    const { data: { user } } = await userClient.auth.getUser();
+    const userEmail = user?.email;
     if (userEmail !== "lucaslopescarrijo@gmail.com") {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
