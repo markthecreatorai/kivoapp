@@ -17,8 +17,9 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { isAdminUser } from "@/lib/admin";
 
-const navigationItems = [
+const baseNavigationItems = [
 { title: "Home", url: "/dashboard", icon: Home },
 { title: "Produtos", url: "/products", icon: Package },
 { title: "Cupons", url: "/coupons", icon: Tag },
@@ -31,16 +32,18 @@ const navigationItems = [
 { title: "Renda", url: "/earnings", icon: DollarSign },
 { title: "Afiliados", url: "/affiliates", icon: Users },
 { title: "Analytics", url: "/analytics", icon: BarChart3 },
-{ title: "Executivo", url: "/analytics/executive", icon: Activity },
 { title: "Clientes", url: "/clients", icon: Heart },
 { title: "Logs Pagamento", url: "/payment-logs", icon: FileText },
 { title: "Fiscal", url: "/fiscal", icon: Receipt },
+{ title: "Configurações", url: "/settings", icon: Settings }];
+
+const adminNavigationItems = [
+{ title: "Executivo", url: "/analytics/executive", icon: Activity },
 { title: "GTM", url: "/gtm", icon: Rocket },
 { title: "Ops", url: "/ops", icon: Shield },
 { title: "Launch", url: "/ops/launch", icon: Zap },
 { title: "Feedback", url: "/ops/feedback", icon: MessageSquare },
-{ title: "Semana 1", url: "/ops/week-plan", icon: CalendarDays },
-{ title: "Configurações", url: "/settings", icon: Settings }];
+{ title: "Semana 1", url: "/ops/week-plan", icon: CalendarDays }];
 
 
 export function AppSidebar() {
