@@ -58,6 +58,8 @@ export function usePlanCheckout() {
         plan_code: planCode,
         billing_cycle: billingCycle,
         origin_path: window.location.pathname,
+        cpf: cpf || undefined,
+        customer_name: customerName || undefined,
       }, token);
 
       const result = await res.json();
