@@ -277,6 +277,9 @@ Deno.serve(async (req) => {
           await sendAlert(supabase, payout.workspace_id,
             `❌ Payout #${payout.id.slice(0, 8)} falhou: ${errorMsg}`);
 
+          // Notify creator
+          await notifyCreator(supabase, payout.workspace_id, "payout_failed", { amount: payout.net_amount, failure_reason: errorMsg });
+
           summary.failed++;
         } else {
           await supabase.from("payout_requests").update({
@@ -297,6 +300,9 @@ Deno.serve(async (req) => {
               method: bankAcc?.pix_key ? "PIX" : "TED",
             },
           });
+
+          // Notify creator
+          await notifyCreator(supabase, payout.workspace_id, "payout_paid", { amount: payout.net_amount, external_transfer_id: transferData.id });
 
           summary.paid++;
         }
