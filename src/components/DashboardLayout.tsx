@@ -38,6 +38,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       <BottomNavigation />
+      <FeedbackButton />
     </SidebarProvider>
   );
 }
