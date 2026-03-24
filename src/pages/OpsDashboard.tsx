@@ -259,8 +259,7 @@ export default function OpsDashboard() {
   const { data: recentAlerts } = useQuery({
     queryKey: ["ops-alerts"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("ops_alert_log")
+      const { data } = await (supabase.from as any)("ops_alert_log")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(10);
