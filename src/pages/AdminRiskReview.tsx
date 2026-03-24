@@ -49,7 +49,7 @@ export default function AdminRiskReview() {
   const { data: recentFailed = [] } = useQuery({
     queryKey: ["admin-failed-payouts"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("payout_requests")
         .select("*")
         .eq("status", "failed")
