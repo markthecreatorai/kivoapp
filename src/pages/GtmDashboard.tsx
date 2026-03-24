@@ -25,8 +25,9 @@ export default function GtmDashboard() {
   const { data: published } = useQuery({
     queryKey: ["gtm-published", since],
     queryFn: async () => {
-      const res = await supabase.from("products").select("id", { count: "exact", head: true }).eq("is_published" as any, true).gte("created_at" as any, since);
-      return (res.count as number) || 0;
+      // @ts-ignore - deep type chain
+      const { count } = await supabase.from("products").select("id", { count: "exact", head: true }).eq("is_published", true).gte("created_at", since);
+      return count || 0;
     },
   });
 
