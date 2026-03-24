@@ -158,6 +158,9 @@ export default function CircleMessages() {
   useEffect(() => {
     if (!member || !community) return;
 
+    // Get conversation IDs to filter realtime events
+    const convIds = conversations?.map((c: any) => c.id) || [];
+
     const channel = supabase
       .channel(`dm-inbox:${member.id}`)
       .on(
@@ -168,6 +171,9 @@ export default function CircleMessages() {
           table: "community_messages",
         },
         (payload) => {
+          const msg = payload.new as any;
+          // Only process if it's in one of our conversations
+          if (convIds.length > 0 && !convIds.includes(msg.conversation_id)) return;
           const msg = payload.new as any;
           // Only refresh if it's not from me
           if (msg.sender_id !== member.id) {
