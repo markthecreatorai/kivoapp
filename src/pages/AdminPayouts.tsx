@@ -53,7 +53,7 @@ export default function AdminPayouts() {
   const { data: recentPayouts = [] } = useQuery({
     queryKey: ["admin-recent-payouts"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("payout_requests")
         .select("*")
         .order("created_at", { ascending: false })
