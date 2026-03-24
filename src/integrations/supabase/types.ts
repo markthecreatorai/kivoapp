@@ -497,6 +497,65 @@ export type Database = {
           },
         ]
       }
+      bank_accounts: {
+        Row: {
+          account_number: string
+          account_type: string
+          agency: string
+          bank_code: string
+          bank_name: string | null
+          created_at: string
+          holder_document: string
+          holder_name: string
+          id: string
+          is_default: boolean
+          pix_key: string | null
+          pix_key_type: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          account_number: string
+          account_type?: string
+          agency: string
+          bank_code: string
+          bank_name?: string | null
+          created_at?: string
+          holder_document: string
+          holder_name: string
+          id?: string
+          is_default?: boolean
+          pix_key?: string | null
+          pix_key_type?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          account_number?: string
+          account_type?: string
+          agency?: string
+          bank_code?: string
+          bank_name?: string | null
+          created_at?: string
+          holder_document?: string
+          holder_name?: string
+          id?: string
+          is_default?: boolean
+          pix_key?: string | null
+          pix_key_type?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           course_name: string
@@ -3695,6 +3754,70 @@ export type Database = {
           },
         ]
       }
+      wallet_ledger: {
+        Row: {
+          amount: number
+          available_at: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          order_id: string | null
+          status: string
+          type: string
+          withdrawal_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          available_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          status?: string
+          type: string
+          withdrawal_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          available_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          status?: string
+          type?: string
+          withdrawal_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_ledger_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_ledger_withdrawal_fk"
+            columns: ["withdrawal_id"]
+            isOneToOne: false
+            referencedRelation: "withdrawals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_ledger_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_events: {
         Row: {
           attempts: number
@@ -3855,6 +3978,84 @@ export type Database = {
           },
         ]
       }
+      withdrawals: {
+        Row: {
+          amount: number
+          bank_account_id: string
+          created_at: string
+          currency: string
+          failed_at: string | null
+          failure_reason: string | null
+          fee: number
+          gateway_transfer_id: string | null
+          id: string
+          idempotency_key: string | null
+          net_amount: number
+          paid_at: string | null
+          processed_at: string | null
+          requested_at: string
+          requested_by: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id: string
+          created_at?: string
+          currency?: string
+          failed_at?: string | null
+          failure_reason?: string | null
+          fee?: number
+          gateway_transfer_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          net_amount: number
+          paid_at?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string
+          created_at?: string
+          currency?: string
+          failed_at?: string | null
+          failure_reason?: string | null
+          fee?: number
+          gateway_transfer_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          net_amount?: number
+          paid_at?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawals_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           created_at: string
@@ -3943,6 +4144,14 @@ export type Database = {
       get_community_member_ids_for_user: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      get_wallet_balance: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          available_balance: number
+          pending_balance: number
+          total_balance: number
+        }[]
       }
       is_community_member: {
         Args: { _community_id: string; _user_id: string }
