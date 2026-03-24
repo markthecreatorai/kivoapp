@@ -53,7 +53,7 @@ export default function Checkout() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_url: string; expires_at: string } | null>(null);
-  const [boletoData, setBoletoData] = useState<{ barcode: string; pdf_url: string } | null>(null);
+  const [boletoData, setBoletoData] = useState<{ barcode: string; pdf_url: string; due_at?: string } | null>(null);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
 
