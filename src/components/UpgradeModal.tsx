@@ -44,7 +44,7 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
   const upgradeTo = PLAN_UPGRADE_MAP[currentPlan];
   const { variant: pricingVariant } = useExperiment("pricing_creator");
   const { variant: ctaVariant } = useExperiment("upgrade_cta");
-  const { startPlanCheckout, loading } = usePlanCheckout();
+  const { startPlanCheckout, upgradeMidCycle, loading } = usePlanCheckout();
 
   if (!upgradeTo) return null;
 
@@ -59,9 +59,26 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
     return "Fazer Upgrade";
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
+    const targetCode = PLAN_TO_CODE[upgradeTo];
+
+    // If upgrading from a paid plan (mid-cycle), use the immediate upgrade
+    if (currentPlan !== "FREE") {
+      const success = await upgradeMidCycle({
+        planCode: targetCode,
+        sourceUI: "locked_features_modal",
+      });
+      if (success) {
+        onOpenChange(false);
+        // Force reload to refresh plan limits
+        window.location.reload();
+      }
+      return;
+    }
+
+    // First subscription (from FREE) -> checkout flow
     startPlanCheckout({
-      planCode: PLAN_TO_CODE[upgradeTo],
+      planCode: targetCode,
       sourceUI: "locked_features_modal",
     });
   };
