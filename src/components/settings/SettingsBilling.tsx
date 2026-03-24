@@ -23,10 +23,10 @@ const INVOICES = [
 
 export function SettingsBilling() {
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [isAnnual, setIsAnnual] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("free");
-  const { startPlanCheckout, loading: checkoutLoading } = usePlanCheckout();
 
   const currentPlan = ((currentWorkspace as any)?.metadata as any)?.plan || "free";
 
