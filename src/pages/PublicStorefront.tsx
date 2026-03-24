@@ -310,7 +310,7 @@ export default function PublicStorefront() {
       const ref = searchParams.get("ref");
 
       if (ref) {
-        sessionStorage.setItem("kora_ref", ref);
+        sessionStorage.setItem("kivo_ref", ref);
       }
 
       supabase.from("analytics_events").insert({
