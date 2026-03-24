@@ -34,7 +34,7 @@ export default function GtmDashboard() {
   const { data: sales } = useQuery({
     queryKey: ["gtm-sales", since],
     queryFn: async () => {
-      const { count } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "PAID").gte("created_at", since);
+      const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "PAID").gte("created_at", since);
       return count || 0;
     },
   });
