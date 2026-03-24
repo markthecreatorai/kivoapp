@@ -340,8 +340,7 @@ export default function CommentSection({
                         </button>
                       )}
                       {/* More menu - show for admin OR author */}
-                      {(isAdmin || comment.author_id === member?.id) && (
-                        <DropdownMenu>
+                      <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto">
                               <MoreHorizontal className="h-3.5 w-3.5" />
@@ -363,15 +362,35 @@ export default function CommentSection({
                                 ✏️ Editar
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => deleteComment.mutate(comment.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir
-                            </DropdownMenuItem>
+                            {(isAdmin || comment.author_id === member?.id) && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => deleteComment.mutate(comment.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir
+                              </DropdownMenuItem>
+                            )}
+                            {comment.author_id !== member?.id && community && member && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  supabase.from("community_reports" as any).insert({
+                                    community_id: community.id,
+                                    reporter_id: member.id,
+                                    comment_id: comment.id,
+                                    target_member_id: comment.author_id,
+                                    reason: "spam",
+                                    status: "PENDING",
+                                  } as any).then(({ error }) => {
+                                    if (!error) toast.success("Denúncia enviada");
+                                    else toast.error("Erro ao denunciar");
+                                  });
+                                }}
+                              >
+                                <Flag className="h-3.5 w-3.5 mr-2" />Denunciar
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
                     </div>
                   </div>
                 </div>
