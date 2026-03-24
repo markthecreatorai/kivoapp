@@ -569,8 +569,8 @@ function ActivationMetrics({ workspaceId, periodDays }: { workspaceId?: string; 
     queryKey: ["activation-progress", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("onboarding_progress" as any)
+      const { data } = await (supabase as any)
+        .from("onboarding_progress")
         .select("step_key, completed_at, created_at")
         .eq("workspace_id", workspaceId!);
       return (data ?? []) as Array<{ step_key: string; completed_at: string | null; created_at: string }>;
