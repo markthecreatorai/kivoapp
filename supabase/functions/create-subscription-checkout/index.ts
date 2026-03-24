@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
       value: valueCents / 100,
       nextDueDate: dueDateStr,
       description: `Assinatura ${planConfig.name} - Kivo`,
-      externalReference: JSON.stringify({ workspace_id, plan_code, user_id: userId }),
+      externalReference: workspace_id,
     };
 
     const subRes = await fetch(`${asaasBase}/subscriptions`, {
