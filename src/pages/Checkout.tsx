@@ -265,6 +265,7 @@ export default function Checkout() {
       setBoletoData({
         barcode: data.boleto_barcode || "23793.38128 60000.000003 00000.000400 1 84340000012500",
         pdf_url: data.boleto_pdf_url || "",
+        due_at: data.boleto_due_at || undefined,
       });
     } catch (e: any) {
       setPaymentError(e.message || "Erro ao gerar boleto.");
