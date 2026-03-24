@@ -50,6 +50,7 @@ const creatorGroups: NavGroup[] = [
     label: "Sua Loja",
     icon: Store,
     items: [
+      { title: "Minha Loja", url: "/store", icon: Store },
       { title: "Produtos", url: "/products", icon: Package },
       { title: "Cupons", url: "/coupons", icon: Tag },
       { title: "Clientes", url: "/clients", icon: Heart },
@@ -86,7 +87,6 @@ const creatorGroups: NavGroup[] = [
     label: "Configurações",
     icon: Wrench,
     items: [
-      { title: "Minha Loja", url: "/store", icon: Store },
       { title: "Analytics", url: "/analytics", icon: BarChart3 },
       { title: "Configurações", url: "/settings", icon: Settings },
     ],
