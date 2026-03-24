@@ -29,8 +29,7 @@ export default function OpsFeedback() {
   const { data: feedback, refetch } = useQuery({
     queryKey: ["beta-feedback", filterStatus],
     queryFn: async () => {
-      let query = supabase
-        .from("beta_feedback")
+      let query = (supabase.from as any)("beta_feedback")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
