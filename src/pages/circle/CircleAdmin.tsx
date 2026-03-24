@@ -12,6 +12,7 @@ import AdminSettingsTab from "@/components/circle/admin/AdminSettingsTab";
 import AdminMembersTab from "@/components/circle/admin/AdminMembersTab";
 import AdminSpacesTab from "@/components/circle/admin/AdminSpacesTab";
 import AdminSubscriptionsTab from "@/components/circle/admin/AdminSubscriptionsTab";
+import AdminModerationTab from "@/components/circle/admin/AdminModerationTab";
 
 export default function CircleAdmin() {
   const { currentWorkspace } = useWorkspace();
