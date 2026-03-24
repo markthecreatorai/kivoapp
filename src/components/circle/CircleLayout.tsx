@@ -425,7 +425,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   }
 
   // === MAIN LAYOUT — Skool-style ===
-  const isMuted = member?.status === "MUTED";
+  const isMuted = !!(member?.muted_until && new Date(member.muted_until) > new Date());
 
   return (
     <div className="min-h-screen bg-muted/40 flex flex-col">
