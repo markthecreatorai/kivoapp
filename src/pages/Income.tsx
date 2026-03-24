@@ -85,7 +85,7 @@ export default function Income() {
           <p className="text-sm text-muted-foreground">Acompanhe seus ganhos e faça saques</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate("/settings?tab=payments")} className="text-muted-foreground">
-          <Settings className="h-4 w-4 mr-1" /> Configurações
+          <Settings className="h-4 w-4 mr-1" /> Conta bancária
         </Button>
       </div>
 

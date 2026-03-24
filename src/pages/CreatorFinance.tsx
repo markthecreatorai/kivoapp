@@ -20,9 +20,23 @@ const fmt = (cents: number) =>
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   requested: { label: "Solicitado", variant: "secondary" },
-  processing: { label: "Processando", variant: "default" },
+  processing: { label: "Em processamento", variant: "default" },
   paid: { label: "Pago", variant: "default" },
-  failed: { label: "Falhou", variant: "destructive" },
+  failed: { label: "Não processado", variant: "destructive" },
+};
+
+const entryStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  pending: { label: "Em análise", variant: "secondary" },
+  available: { label: "Disponível", variant: "default" },
+  refunded: { label: "Estornado", variant: "destructive" },
+};
+
+const chargebackStatusMap: Record<string, string> = {
+  new: "Em análise",
+  evidence_pending: "Aguardando documentos",
+  submitted: "Em revisão",
+  won: "Resolvido a seu favor",
+  lost: "Contestação perdida",
 };
 
 export default function CreatorFinance() {
@@ -33,7 +47,6 @@ export default function CreatorFinance() {
   const [showPayout, setShowPayout] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState("");
 
-  // Balance from split_entries
   const { data: balance, isLoading: loadingBalance } = useQuery({
     queryKey: ["creator-balance", workspaceId],
     enabled: !!workspaceId,
@@ -44,7 +57,6 @@ export default function CreatorFinance() {
     },
   });
 
-  // Recent split entries
   const { data: entries = [], isLoading: loadingEntries } = useQuery({
     queryKey: ["split-entries", workspaceId],
     enabled: !!workspaceId,
@@ -59,7 +71,6 @@ export default function CreatorFinance() {
     },
   });
 
-  // Payout history
   const { data: payouts = [] } = useQuery({
     queryKey: ["payout-requests", workspaceId],
     enabled: !!workspaceId,
@@ -74,7 +85,6 @@ export default function CreatorFinance() {
     },
   });
 
-  // Bank accounts for payout
   const { data: accounts = [] } = useQuery({
     queryKey: ["bank-accounts-payout", workspaceId],
     enabled: !!workspaceId && showPayout,
@@ -88,7 +98,6 @@ export default function CreatorFinance() {
     },
   });
 
-  // Reserve balance
   const { data: reserveBalance } = useQuery({
     queryKey: ["reserve-balance", workspaceId],
     enabled: !!workspaceId,
@@ -99,7 +108,6 @@ export default function CreatorFinance() {
     },
   });
 
-  // Chargeback cases
   const { data: chargebacks = [] } = useQuery({
     queryKey: ["creator-chargebacks", workspaceId],
     enabled: !!workspaceId,
@@ -120,11 +128,11 @@ export default function CreatorFinance() {
 
   const payoutMutation = useMutation({
     mutationFn: async () => {
-      if (availableBalance <= 0) throw new Error("Saldo insuficiente");
+      if (availableBalance <= 0) throw new Error("Saldo insuficiente para saque");
       if (!effectiveAccount) throw new Error("Selecione uma conta bancária");
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Não autenticado");
+      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
 
       const idempotencyKey = `payout-${workspaceId}-${Date.now()}`;
 
@@ -139,7 +147,7 @@ export default function CreatorFinance() {
         idempotency_key: idempotencyKey,
       });
 
-      if (error) throw error;
+      if (error) throw new Error("Não foi possível processar agora. Tente novamente em instantes.");
 
       await supabase.from("audit_logs").insert({
         workspace_id: workspaceId!,
@@ -156,7 +164,7 @@ export default function CreatorFinance() {
       queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
       setShowPayout(false);
     },
-    onError: (e: any) => toast.error(e.message || "Erro ao solicitar saque"),
+    onError: (e: any) => toast.error(e.message || "Não foi possível processar agora. Tente novamente em instantes."),
   });
 
   const isLoading = loadingBalance || loadingEntries;
@@ -165,11 +173,11 @@ export default function CreatorFinance() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Financeiro Creator</h1>
-          <p className="text-sm text-muted-foreground">Acompanhe receita, splits e repasses</p>
+          <h1 className="text-2xl font-bold text-foreground">Meus Recebimentos</h1>
+          <p className="text-sm text-muted-foreground">Acompanhe suas vendas, saldo e saques</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate("/settings?tab=payments")} className="text-muted-foreground">
-          <Settings className="h-4 w-4 mr-1" /> Configurações
+          <Settings className="h-4 w-4 mr-1" /> Conta bancária
         </Button>
       </div>
 
@@ -178,7 +186,7 @@ export default function CreatorFinance() {
         <Card className="border-border/50">
           <CardContent className="p-5 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
-              <TrendingUp className="h-4 w-4" /> Vendido Bruto
+              <TrendingUp className="h-4 w-4" /> Total em Vendas
             </div>
             {isLoading ? <Skeleton className="h-8 w-24" /> : (
               <p className="text-2xl font-bold text-foreground">{fmt(Number(balance?.total_gross || 0))}</p>
@@ -189,7 +197,7 @@ export default function CreatorFinance() {
         <Card className="border-border/50">
           <CardContent className="p-5 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
-              <DollarSign className="h-4 w-4" /> Taxas (GW + Plataforma)
+              <DollarSign className="h-4 w-4" /> Taxas e Comissões
             </div>
             {isLoading ? <Skeleton className="h-8 w-24" /> : (
               <p className="text-2xl font-bold text-destructive">{fmt(Number(balance?.total_fees || 0))}</p>
@@ -200,7 +208,7 @@ export default function CreatorFinance() {
         <Card className="border-border/50">
           <CardContent className="p-5 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
-              <Wallet className="h-4 w-4" /> Disponível para Saque
+              <Wallet className="h-4 w-4" /> Saldo Disponível
             </div>
             {isLoading ? <Skeleton className="h-8 w-24" /> : (
               <p className="text-2xl font-bold text-foreground">{fmt(availableBalance)}</p>
@@ -214,12 +222,12 @@ export default function CreatorFinance() {
         <Card className="border-border/50">
           <CardContent className="p-5 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
-              <Clock className="h-4 w-4" /> Em Hold
+              <Clock className="h-4 w-4" /> Em Análise
             </div>
             {isLoading ? <Skeleton className="h-8 w-24" /> : (
               <p className="text-2xl font-bold text-foreground">{fmt(Number(balance?.pending_balance || 0))}</p>
             )}
-            <p className="text-xs text-muted-foreground">Aguardando janela de segurança</p>
+            <p className="text-xs text-muted-foreground">Será liberado automaticamente</p>
           </CardContent>
         </Card>
       </div>
@@ -228,19 +236,19 @@ export default function CreatorFinance() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-border/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2"><Shield className="h-4 w-4" /> Reserva Financeira</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><Shield className="h-4 w-4" /> Retenção de Segurança</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Retido</span>
+              <span className="text-muted-foreground">Retido atualmente</span>
               <span className="font-medium">{fmt(Number(reserveBalance?.total_held || 0))}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Liberações próximas (7d)</span>
+              <span className="text-muted-foreground">Liberação prevista (7 dias)</span>
               <span className="font-medium">{fmt(Number(reserveBalance?.upcoming_releases || 0))}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total liberado</span>
+              <span className="text-muted-foreground">Já liberado</span>
               <span className="font-medium text-primary">{fmt(Number(reserveBalance?.total_released || 0))}</span>
             </div>
           </CardContent>
@@ -249,7 +257,7 @@ export default function CreatorFinance() {
         {chargebacks.length > 0 && (
           <Card className="border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Chargebacks</CardTitle>
+              <CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Contestações</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -258,7 +266,7 @@ export default function CreatorFinance() {
                     <span className="text-muted-foreground">{format(new Date(c.created_at), "dd/MM/yy", { locale: ptBR })}</span>
                     <span className="font-medium text-destructive">{fmt(c.amount)}</span>
                     <Badge variant={c.status === "won" ? "default" : c.status === "lost" ? "destructive" : "secondary"} className="text-xs">
-                      {c.status}
+                      {chargebackStatusMap[c.status] || c.status}
                     </Badge>
                   </div>
                 ))}
@@ -268,46 +276,45 @@ export default function CreatorFinance() {
         )}
       </div>
 
-      {/* Split History */}
+      {/* Sales History */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle className="text-lg">Histórico de Splits</CardTitle>
+          <CardTitle className="text-lg">Histórico de Vendas</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
-                <TableHead className="text-right">Bruto</TableHead>
-                <TableHead className="text-right">Taxa GW</TableHead>
-                <TableHead className="text-right">Fee Plataforma</TableHead>
-                <TableHead className="text-right">Fee Afiliado</TableHead>
-                <TableHead className="text-right">Líquido Creator</TableHead>
+                <TableHead className="text-right">Valor da Venda</TableHead>
+                <TableHead className="text-right">Taxas</TableHead>
+                <TableHead className="text-right">Comissão Afiliado</TableHead>
+                <TableHead className="text-right">Seu Recebimento</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {entries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Nenhuma venda registrada
                   </TableCell>
                 </TableRow>
-              ) : entries.map((e: any) => (
-                <TableRow key={e.id}>
-                  <TableCell className="text-sm">{format(new Date(e.created_at), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                  <TableCell className="text-right text-sm">{fmt(e.gross_amount)}</TableCell>
-                  <TableCell className="text-right text-sm text-destructive">{fmt(e.gateway_fee)}</TableCell>
-                  <TableCell className="text-right text-sm text-destructive">{fmt(e.platform_fee)}</TableCell>
-                  <TableCell className="text-right text-sm text-destructive">{fmt(e.affiliate_fee)}</TableCell>
-                  <TableCell className="text-right text-sm font-medium">{fmt(e.creator_net)}</TableCell>
-                  <TableCell>
-                    <Badge variant={e.status === "available" ? "default" : "secondary"}>
-                      {e.status === "pending" ? "Em hold" : e.status === "available" ? "Disponível" : e.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
+              ) : entries.map((e: any) => {
+                const s = entryStatusMap[e.status] || { label: e.status, variant: "outline" as const };
+                return (
+                  <TableRow key={e.id}>
+                    <TableCell className="text-sm">{format(new Date(e.created_at), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                    <TableCell className="text-right text-sm">{fmt(e.gross_amount)}</TableCell>
+                    <TableCell className="text-right text-sm text-destructive">{fmt(e.gateway_fee + e.platform_fee)}</TableCell>
+                    <TableCell className="text-right text-sm text-destructive">{fmt(e.affiliate_fee)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{fmt(e.creator_net)}</TableCell>
+                    <TableCell>
+                      <Badge variant={s.variant}>{s.label}</Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -317,7 +324,7 @@ export default function CreatorFinance() {
       {payouts.length > 0 && (
         <Card className="border-border/50">
           <CardHeader>
-            <CardTitle className="text-lg">Histórico de Repasses</CardTitle>
+            <CardTitle className="text-lg">Histórico de Saques</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -349,16 +356,16 @@ export default function CreatorFinance() {
       <Dialog open={showPayout} onOpenChange={setShowPayout}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Solicitar Repasse</DialogTitle>
-            <DialogDescription>Valor disponível: <strong>{fmt(availableBalance)}</strong></DialogDescription>
+            <DialogTitle>Solicitar Saque</DialogTitle>
+            <DialogDescription>Saldo disponível: <strong>{fmt(availableBalance)}</strong></DialogDescription>
           </DialogHeader>
           {availableBalance <= 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nenhum saldo disponível.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum saldo disponível para saque.</p>
           ) : accounts.length === 0 ? (
             <div className="text-center py-4 space-y-2">
-              <p className="text-sm text-muted-foreground">Cadastre uma conta bancária primeiro.</p>
+              <p className="text-sm text-muted-foreground">Cadastre uma conta bancária para receber seus saques.</p>
               <Button variant="outline" onClick={() => { setShowPayout(false); navigate("/settings?tab=payments"); }}>
-                Configurar Conta
+                Cadastrar Conta
               </Button>
             </div>
           ) : (
@@ -377,7 +384,7 @@ export default function CreatorFinance() {
                 </Select>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium">Valor do repasse</p>
+                <p className="text-sm font-medium">Valor do saque</p>
                 <p className="text-xl font-bold text-foreground">{fmt(availableBalance)}</p>
                 <p className="text-xs text-muted-foreground mt-1">Transferência em até 2 dias úteis</p>
               </div>
@@ -387,7 +394,7 @@ export default function CreatorFinance() {
             <Button variant="outline" onClick={() => setShowPayout(false)}>Cancelar</Button>
             {availableBalance > 0 && accounts.length > 0 && (
               <Button onClick={() => payoutMutation.mutate()} disabled={payoutMutation.isPending || !effectiveAccount}>
-                {payoutMutation.isPending ? "Processando..." : "Confirmar Repasse"}
+                {payoutMutation.isPending ? "Processando..." : "Confirmar Saque"}
               </Button>
             )}
           </DialogFooter>
