@@ -65,14 +65,13 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   });
 
-  // Double-validate claims in code for defense-in-depth
-  const token = authHeader.replace("Bearer ", "");
-  const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-  if (claimsErr || !claimsData?.claims?.sub) {
+  // Double-validate user in code for defense-in-depth
+  const { data: { user }, error: userErr } = await userClient.auth.getUser();
+  if (userErr || !user?.id) {
     return json({ error: "Token inválido" }, 401);
   }
 
-  const userId = claimsData.claims.sub as string;
+  const userId = user.id;
 
   // ── 2. Parse & validate input ──
   let body: Record<string, unknown>;
