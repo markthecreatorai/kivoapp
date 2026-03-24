@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const userEmail = claimsData.claims.email as string;
 
     const body = await req.json();
-    const { workspace_id, plan_code, billing_cycle = "monthly", origin_path = "/" } = body;
+    const { workspace_id, plan_code, billing_cycle = "monthly", origin_path = "/", cpf, customer_name } = body;
 
     if (!workspace_id || !plan_code) {
       return new Response(JSON.stringify({ error: "workspace_id e plan_code são obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
