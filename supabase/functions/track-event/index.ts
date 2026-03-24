@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     });
 
     if (error) {
-      console.error("Insert error:", error);
+      console.error("Insert error:", JSON.stringify({ code: error.code, message: error.message, event_name }));
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -57,9 +57,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("Track event error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
+  } catch (err: any) {
+    console.error("Track event error:", JSON.stringify({ message: err.message, stack: err.stack?.slice(0, 200) }));
+    return new Response(JSON.stringify({ error: "Internal error", retryable: true }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

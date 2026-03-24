@@ -326,7 +326,7 @@ export type Database = {
           storefront_id: string | null
           user_agent: string | null
           visitor_id: string | null
-          workspace_id: string
+          workspace_id: string | null
         }
         Insert: {
           created_at?: string
@@ -340,7 +340,7 @@ export type Database = {
           storefront_id?: string | null
           user_agent?: string | null
           visitor_id?: string | null
-          workspace_id: string
+          workspace_id?: string | null
         }
         Update: {
           created_at?: string
@@ -354,7 +354,7 @@ export type Database = {
           storefront_id?: string | null
           user_agent?: string | null
           visitor_id?: string | null
-          workspace_id?: string
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -837,6 +837,7 @@ export type Database = {
           expires_at: string | null
           id: string
           ip_address: string | null
+          recovered_checkout: boolean | null
           status: string
           subtotal_amount: number
           total_amount: number
@@ -859,6 +860,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           ip_address?: string | null
+          recovered_checkout?: boolean | null
           status?: string
           subtotal_amount?: number
           total_amount?: number
@@ -881,6 +883,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           ip_address?: string | null
+          recovered_checkout?: boolean | null
           status?: string
           subtotal_amount?: number
           total_amount?: number
@@ -4442,6 +4445,53 @@ export type Database = {
           },
           {
             foreignKeyName: "wallet_ledger_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_delivery_log: {
+        Row: {
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          payload_hash: string | null
+          status: string
+          workspace_id: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          payload_hash?: string | null
+          status?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          payload_hash?: string | null
+          status?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_delivery_log_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
