@@ -29,6 +29,10 @@ const NOTIFICATION_TEXTS: Record<string, (n: any) => string> = {
   LEVEL_UP: (n) => n.title,
   POST_PINNED: () => `Seu post foi fixado por um admin`,
   EVENT_REMINDER: (n) => n.title,
+  NEW_DM: (n) => n.title,
+  REPORT_RESOLVED: (n) => n.title || `Sua denúncia foi analisada`,
+  SUBSCRIPTION_PAST_DUE: (n) => n.title,
+  SUBSCRIPTION_EXPIRED: (n) => n.title,
 };
 
 function truncate(s: string | null, max = 40) {
