@@ -10,6 +10,8 @@ interface StartCheckoutParams {
   planCode: string;
   billingCycle?: "monthly" | "annual";
   sourceUI: SourceUI;
+  cpf?: string;
+  customerName?: string;
 }
 
 export function usePlanCheckout() {
