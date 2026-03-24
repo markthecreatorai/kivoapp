@@ -450,7 +450,17 @@ export default function AnalyticsExecutive() {
         </TabsContent>
       </Tabs>
 
-      {/* Cohort section - simple monthly table */}
+      {/* Activation Metrics */}
+      <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Métricas de Ativação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ActivationMetrics workspaceId={workspaceId} periodDays={periodDays} />
+        </CardContent>
+      </Card>
+
+      {/* Cohort section */}
       <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-semibold">Coorte Mensal — Retenção de Atividade</CardTitle>
