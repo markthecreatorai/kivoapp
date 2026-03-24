@@ -199,7 +199,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
               const actorName = n.actor?.display_name || "";
               const typeText = NOTIFICATION_TEXTS[n.type];
               const displayText = typeText ? typeText(n) : n.title;
-              const hasActor = n.actor_id && actorName && !["NEW_EVENT", "LEVEL_UP", "EVENT_REMINDER", "MEMBER_JOINED", "NEW_POST_IN_SPACE"].includes(n.type);
+              const hasActor = n.actor_id && actorName && !["NEW_EVENT", "LEVEL_UP", "EVENT_REMINDER", "MEMBER_JOINED", "NEW_POST_IN_SPACE", "NEW_DM", "REPORT_RESOLVED", "SUBSCRIPTION_PAST_DUE", "SUBSCRIPTION_EXPIRED"].includes(n.type);
 
               return (
                 <button

@@ -551,16 +551,22 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="flex items-center justify-around h-14">
           {tabItems.map((item) => {
             const active = isActive(item.path);
+            const hasDmBadge = item.path === "/circle/messages" && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-2 py-1 min-w-0",
+                  "flex flex-col items-center gap-0.5 px-2 py-1 min-w-0 relative",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <div className="relative">
+                  <item.icon className="h-5 w-5" />
+                  {hasDmBadge && (
+                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
