@@ -153,6 +153,8 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/billing/success" element={<ProtectedRoute><BillingSuccess /></ProtectedRoute>} />
+                <Route path="/billing/cancel" element={<BillingCancel />} />
                 <Route path="/resend-verification" element={<Navigate to="/verify-email" replace />} />
 
                 {/* Onboarding */}
