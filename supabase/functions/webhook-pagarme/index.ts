@@ -314,6 +314,33 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
     console.error("Notification logging error (non-fatal):", notifErr);
   }
 
+  // Auto NFS-e emission (fire-and-forget)
+  try {
+    if (order) {
+      const { data: fiscalCfg } = await supabase
+        .from("fiscal_settings")
+        .select("is_auto_emission, nfse_provider")
+        .eq("workspace_id", order.workspace_id)
+        .maybeSingle();
+
+      if (fiscalCfg?.is_auto_emission && fiscalCfg?.nfse_provider) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        await fetch(`${supabaseUrl}/functions/v1/emit-nfse`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ order_id: paymentRecord.order_id }),
+        });
+        console.log(`NFS-e emission triggered for order ${paymentRecord.order_id}`);
+      }
+    }
+  } catch (nfseErr) {
+    console.error("NFS-e auto-emission error (non-fatal):", nfseErr);
+  }
+
   console.log(`Order ${paymentRecord.order_id} marked as COMPLETED`);
   return "SUCCEEDED";
 }
