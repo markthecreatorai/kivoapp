@@ -138,7 +138,19 @@ Deno.serve(async (req) => {
       checkoutUrl = `https://www.asaas.com/i/${paymentId}`;
     }
 
-    // 4. Log the subscription attempt
+    // 4. Store subscription record
+    await adminClient.from("workspace_subscriptions").upsert({
+      workspace_id,
+      user_id: userId,
+      provider: "asaas",
+      provider_subscription_id: subData.id,
+      provider_customer_id: asaasCustomerId,
+      plan_code: plan_code,
+      status: "pending",
+      billing_cycle: billing_cycle,
+    }, { onConflict: "workspace_id,provider" });
+
+    // 5. Log the subscription attempt
     await adminClient.from("audit_logs").insert({
       workspace_id,
       user_id: userId,

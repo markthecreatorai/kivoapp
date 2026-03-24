@@ -48,6 +48,8 @@ const Appointments = lazy(() => import("./pages/Appointments"));
 const BookAppointment = lazy(() => import("./pages/BookAppointment"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
+const BillingCancel = lazy(() => import("./pages/BillingCancel"));
 const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
@@ -151,6 +153,8 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/billing/success" element={<ProtectedRoute><BillingSuccess /></ProtectedRoute>} />
+                <Route path="/billing/cancel" element={<BillingCancel />} />
                 <Route path="/resend-verification" element={<Navigate to="/verify-email" replace />} />
 
                 {/* Onboarding */}
