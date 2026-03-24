@@ -59,7 +59,7 @@ export default function OpsWeekPlan() {
 
   const addItem = async () => {
     if (!currentWorkspace?.id || !newTitle.trim()) return;
-    await supabase.from("week1_plan").insert({
+    await (supabase.from as any)("week1_plan").insert({
       workspace_id: currentWorkspace.id,
       category: newCategory,
       title: newTitle.trim(),
