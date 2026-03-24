@@ -17,9 +17,9 @@ export default function AdminPayouts() {
     queryKey: ["admin-payout-stats"],
     queryFn: async () => {
       const [entriesRes, payoutsRes, refundsRes] = await Promise.all([
-        supabase.from("split_entries").select("gross_amount, platform_fee, creator_net, status", { count: "exact" }),
-        supabase.from("payout_requests").select("amount, net_amount, status"),
-        supabase.from("split_entries").select("creator_net").eq("status", "refunded"),
+        (supabase as any).from("split_entries").select("gross_amount, platform_fee, creator_net, status", { count: "exact" }),
+        (supabase as any).from("payout_requests").select("amount, net_amount, status"),
+        (supabase as any).from("split_entries").select("creator_net").eq("status", "refunded"),
       ]);
 
       const entries = entriesRes.data || [];
