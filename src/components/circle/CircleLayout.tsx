@@ -489,12 +489,13 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="hidden md:flex items-center gap-0 max-w-5xl mx-auto px-4 border-t border-border">
           {tabItems.map((item) => {
             const active = isActive(item.path);
+            const hasDmBadge = item.path === "/circle/messages" && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors relative",
                   active
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
@@ -502,6 +503,11 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
+                {hasDmBadge && (
+                  <Badge className="h-4 min-w-[16px] flex items-center justify-center p-0 px-1 text-[9px] ml-1">
+                    {dmUnreadCount! > 99 ? "99+" : dmUnreadCount}
+                  </Badge>
+                )}
               </Link>
             );
           })}
