@@ -1,6 +1,5 @@
 import { Crown, ArrowRight, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { usePlanLimits, PLAN_LABELS, PLAN_UPGRADE_MAP } from "@/hooks/usePlanLimits";
 
 export function DashboardUpgradeCard() {
@@ -11,14 +10,13 @@ export function DashboardUpgradeCard() {
   const upgradeTo = PLAN_UPGRADE_MAP[plan];
   if (!upgradeTo) return null;
 
-  const planCode = upgradeTo === "CREATOR" ? "creator" : "creator-pro";
-  const upgradeUrl = `/billing/upgrade-flow?source_ui=dashboard_upgrade_card&plan=${planCode}`;
+  const upgradeUrl = "/billing/upgrade-flow?source_ui=dashboard_upgrade_card&plan=creator";
 
   return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardContent className="p-4 flex items-center justify-between gap-4">
+    <Card className="relative isolate border-primary/20 bg-primary/5 pointer-events-auto">
+      <CardContent className="pointer-events-auto p-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="shrink-0 p-2 rounded-full bg-primary/10">
+          <div className="shrink-0 p-2 rounded-full bg-primary/10 pointer-events-none" aria-hidden="true">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
           <div className="min-w-0">
@@ -30,13 +28,23 @@ export function DashboardUpgradeCard() {
             </p>
           </div>
         </div>
-        <Button asChild size="sm" className="shrink-0 gap-1.5">
-          <a href={upgradeUrl} aria-label={`Fazer upgrade para o plano ${PLAN_LABELS[upgradeTo]}`}>
-            <Crown className="w-4 h-4" />
-            Fazer Upgrade
-            <ArrowRight className="w-3.5 h-3.5" />
-          </a>
-        </Button>
+        <a
+          href={upgradeUrl}
+          role="button"
+          target="_self"
+          rel="nofollow"
+          aria-label={`Fazer upgrade para o plano ${PLAN_LABELS[upgradeTo]}`}
+          className="relative z-20 pointer-events-auto inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+          onClickCapture={(e) => {
+            e.stopPropagation();
+            window.location.assign(upgradeUrl);
+          }}
+        >
+          <Crown className="w-4 h-4 pointer-events-none" aria-hidden="true" />
+          Fazer Upgrade
+          <ArrowRight className="w-3.5 h-3.5 pointer-events-none" aria-hidden="true" />
+        </a>
       </CardContent>
     </Card>
   );
