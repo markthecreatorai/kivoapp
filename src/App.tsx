@@ -55,6 +55,7 @@ const GtmDashboard = lazy(() => import("./pages/GtmDashboard"));
 const GtmPlaybook = lazy(() => import("./pages/GtmPlaybook"));
 const AcquisitionPipeline = lazy(() => import("./pages/AcquisitionPipeline"));
 const OpsDashboard = lazy(() => import("./pages/OpsDashboard"));
+const LaunchReadiness = lazy(() => import("./pages/LaunchReadiness"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -156,6 +157,7 @@ const App = () => (
                 <Route path="/gtm/playbook" element={<ProtectedRoute><DashboardLayout><GtmPlaybook /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/acquisition" element={<ProtectedRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/ops" element={<ProtectedRoute><DashboardLayout><OpsDashboard /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/ops/launch" element={<ProtectedRoute><DashboardLayout><LaunchReadiness /></DashboardLayout></ProtectedRoute>} />
                 
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<Checkout />} />

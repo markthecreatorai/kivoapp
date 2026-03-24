@@ -5,6 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// In-memory rate limit
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW = 60_000;
+const RATE_LIMIT_MAX = 30;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(ip) || []).filter(t => now - t < RATE_LIMIT_WINDOW);
+  if (timestamps.length >= RATE_LIMIT_MAX) return true;
+  timestamps.push(now);
+  rateLimitMap.set(ip, timestamps);
+  if (rateLimitMap.size > 5000) {
+    for (const [k, v] of rateLimitMap) {
+      if (v.every(t => now - t > RATE_LIMIT_WINDOW)) rateLimitMap.delete(k);
+    }
+  }
+  return false;
+}
+
 interface HealthStatus {
   service: string;
   status: "ok" | "degraded" | "down";
@@ -15,6 +34,14 @@ interface HealthStatus {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (isRateLimited(clientIp)) {
+    return new Response(JSON.stringify({ error: "Rate limited" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+    });
   }
 
   const results: HealthStatus[] = [];
@@ -34,10 +61,10 @@ Deno.serve(async (req) => {
       error: error?.message,
     });
   } catch (e: any) {
-    results.push({ service: "database", status: "down", latency_ms: Date.now() - dbStart, error: e.message });
+    results.push({ service: "database", status: "down", latency_ms: Date.now() - dbStart, error: e.message?.slice(0, 100) });
   }
 
-  // 2. Check critical edge functions by pinging their OPTIONS
+  // 2. Check critical edge functions
   const functions = ["create-payment", "webhook-pagarme", "track-event"];
   const baseUrl = Deno.env.get("SUPABASE_URL")!.replace("/rest/v1", "").replace("https://", "");
   const projectRef = baseUrl.split(".")[0];
@@ -59,7 +86,7 @@ Deno.serve(async (req) => {
         service: `fn:${fn}`,
         status: "down",
         latency_ms: Date.now() - fnStart,
-        error: e.message,
+        error: e.message?.slice(0, 100),
       });
     }
   }
