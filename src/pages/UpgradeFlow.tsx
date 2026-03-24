@@ -237,7 +237,7 @@ export default function UpgradeFlow() {
   const { variant: pricingVariant } = useExperiment("pricing_creator");
 
   const preselected = searchParams.get("plan") || "";
-  const sourceUI = (searchParams.get("source") || "upgrade_flow") as SourceUI;
+  const sourceUI = (searchParams.get("source_ui") || searchParams.get("source") || "upgrade_flow") as SourceUI;
   const feature = searchParams.get("feature") || "";
 
   const [step, setStep] = useState(0);
