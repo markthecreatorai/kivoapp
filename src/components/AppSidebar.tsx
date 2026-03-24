@@ -35,6 +35,7 @@ const navigationItems = [
 { title: "Clientes", url: "/clients", icon: Heart },
 { title: "Logs Pagamento", url: "/payment-logs", icon: FileText },
 { title: "Fiscal", url: "/fiscal", icon: Receipt },
+{ title: "GTM", url: "/gtm", icon: Rocket },
 { title: "Configurações", url: "/settings", icon: Settings }];
 
 
