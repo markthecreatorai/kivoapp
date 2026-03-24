@@ -6,19 +6,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PAGARME_BASE = "https://api.pagar.me/core/v5";
+// ── Asaas API helpers ──
 
-// ── Pagar.me API helpers ──
+function getAsaasBase() {
+  const env = Deno.env.get("ASAAS_ENV") || "sandbox";
+  return env === "production"
+    ? "https://api.asaas.com/v3"
+    : "https://sandbox.asaas.com/api/v3";
+}
 
-async function pagarmeRequest(path: string, method: string, body?: any, apiKey?: string) {
-  const key = apiKey || Deno.env.get("PAGARME_API_KEY");
-  if (!key) throw new Error("PAGARME_API_KEY not configured");
+async function asaasRequest(path: string, method: string, body?: any, apiKey?: string) {
+  const key = apiKey || Deno.env.get("ASAAS_API_KEY");
+  if (!key) throw new Error("ASAAS_API_KEY not configured");
 
-  const auth = btoa(`${key}:`);
-  const res = await fetch(`${PAGARME_BASE}${path}`, {
+  const res = await fetch(`${getAsaasBase()}${path}`, {
     method,
     headers: {
-      "Authorization": `Basic ${auth}`,
+      "access_token": key,
       "Content-Type": "application/json",
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -26,71 +30,72 @@ async function pagarmeRequest(path: string, method: string, body?: any, apiKey?:
 
   const data = await res.json();
   if (!res.ok) {
-    console.error("Pagar.me API error:", JSON.stringify(data));
-    throw new Error(`Pagar.me error [${res.status}]: ${data?.message || JSON.stringify(data)}`);
+    console.error("Asaas API error:", JSON.stringify(data));
+    throw new Error(`Asaas error [${res.status}]: ${data?.errors?.[0]?.description || JSON.stringify(data)}`);
   }
   return data;
 }
 
-async function findOrCreateCustomer(email: string, name: string, apiKey?: string) {
-  // Search existing
+async function findOrCreateCustomer(email: string, name: string, cpf?: string, apiKey?: string) {
+  // Search by email
   try {
-    const customers = await pagarmeRequest(`/customers?email=${encodeURIComponent(email)}`, "GET", undefined, apiKey);
-    if (customers?.data?.length > 0) return customers.data[0];
+    const search = await asaasRequest(`/customers?email=${encodeURIComponent(email)}`, "GET", undefined, apiKey);
+    if (search?.data?.length > 0) return search.data[0];
   } catch { /* ignore search errors */ }
 
-  // Create new
-  return await pagarmeRequest("/customers", "POST", {
+  // Create
+  return await asaasRequest("/customers", "POST", {
     name: name || email.split("@")[0],
     email,
-    type: "individual",
-    code: email,
+    cpfCnpj: cpf || undefined,
   }, apiKey);
 }
 
-async function findOrCreatePlan(plan: any, apiKey?: string) {
-  if (plan.provider_plan_id) {
-    // Verify it exists
-    try {
-      const existing = await pagarmeRequest(`/plans/${plan.provider_plan_id}`, "GET", undefined, apiKey);
-      if (existing?.id) return existing;
-    } catch { /* plan deleted, recreate */ }
+async function createAsaasSubscription(
+  customerId: string,
+  value: number,
+  cycle: string,
+  description: string,
+  cardData?: any,
+  trialDays?: number,
+  apiKey?: string
+) {
+  const cycleMap: Record<string, string> = { monthly: "MONTHLY", yearly: "YEARLY" };
+  const nextDueDate = trialDays && trialDays > 0
+    ? new Date(Date.now() + trialDays * 86400000).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+
+  const payload: any = {
+    customer: customerId,
+    billingType: cardData ? "CREDIT_CARD" : "PIX",
+    value,
+    cycle: cycleMap[cycle] || "MONTHLY",
+    description,
+    nextDueDate,
+  };
+
+  if (cardData) {
+    payload.creditCard = {
+      holderName: cardData.holder_name,
+      number: cardData.number?.replace(/\s/g, ""),
+      expiryMonth: cardData.exp_month,
+      expiryYear: cardData.exp_year?.length === 2 ? `20${cardData.exp_year}` : cardData.exp_year,
+      ccv: cardData.cvv,
+    };
+    payload.creditCardHolderInfo = {
+      name: cardData.holder_name,
+      email: cardData.email || "",
+      cpfCnpj: cardData.cpf || "",
+      phone: cardData.phone || "",
+      postalCode: cardData.zip || "00000000",
+    };
   }
 
-  const intervalMap: Record<string, string> = { monthly: "month", yearly: "year" };
-  const result = await pagarmeRequest("/plans", "POST", {
-    name: plan.name,
-    description: plan.description || plan.name,
-    interval: intervalMap[plan.interval] || "month",
-    interval_count: 1,
-    billing_type: "prepaid",
-    payment_methods: ["credit_card"],
-    items: [{
-      name: plan.name,
-      quantity: 1,
-      pricing_scheme: {
-        scheme_type: "unit",
-        price: plan.price_cents,
-      },
-    }],
-    currency: plan.currency || "BRL",
-    ...(plan.trial_days > 0 ? { trial_period_days: plan.trial_days } : {}),
-  }, apiKey);
-
-  return result;
+  return await asaasRequest("/subscriptions", "POST", payload, apiKey);
 }
 
-async function createSubscription(customerId: string, planId: string, cardToken: string, apiKey?: string) {
-  return await pagarmeRequest("/subscriptions", "POST", {
-    customer_id: customerId,
-    plan_id: planId,
-    payment_method: "credit_card",
-    card_token: cardToken,
-  }, apiKey);
-}
-
-async function cancelSubscription(providerSubId: string, apiKey?: string) {
-  return await pagarmeRequest(`/subscriptions/${providerSubId}`, "DELETE", undefined, apiKey);
+async function cancelAsaasSubscription(subscriptionId: string, apiKey?: string) {
+  return await asaasRequest(`/subscriptions/${subscriptionId}`, "DELETE", undefined, apiKey);
 }
 
 // ── Main handler ──
@@ -104,7 +109,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const pagarmeKey = Deno.env.get("PAGARME_API_KEY");
+    const asaasKey = Deno.env.get("ASAAS_API_KEY");
 
     // Auth
     const authHeader = req.headers.get("Authorization");
@@ -128,10 +133,10 @@ serve(async (req) => {
     const userEmail = claimsData.user.email || "";
 
     const body = await req.json();
-    const { action, plan_id, subscription_id, card_token } = body;
+    const { action, plan_id, subscription_id, card_data } = body;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    const useRealPagarme = !!pagarmeKey;
+    const useRealGateway = !!asaasKey;
 
     // ── CREATE SUBSCRIPTION ──
     if (action === "create") {
@@ -178,68 +183,62 @@ serve(async (req) => {
       let nextBillingAt: string | null = null;
       let providerSubscriptionId: string | null = null;
       let providerCustomerId: string | null = null;
-      let providerPlanId: string | null = null;
 
       if (isFree) {
         status = "active";
-      } else if (useRealPagarme) {
-        // ── REAL PAGAR.ME FLOW ──
+      } else if (useRealGateway) {
+        // ── ASAAS FLOW ──
         try {
-          // 1. Create/find customer
-          const customer = await findOrCreateCustomer(userEmail, userEmail.split("@")[0], pagarmeKey);
+          const customer = await findOrCreateCustomer(userEmail, userEmail.split("@")[0], undefined, asaasKey);
           providerCustomerId = customer.id;
 
-          // 2. Create/find plan
-          const pgPlan = await findOrCreatePlan(plan, pagarmeKey);
-          providerPlanId = pgPlan.id;
+          const valueBRL = plan.price_cents / 100;
 
-          // Save plan_id back to circle_plans if not set
-          if (!plan.provider_plan_id) {
-            await adminClient.from("circle_plans")
-              .update({ provider_plan_id: pgPlan.id })
-              .eq("id", plan.id);
-          }
+          if (card_data || hasTrial) {
+            const asaasSub = await createAsaasSubscription(
+              customer.id,
+              valueBRL,
+              plan.interval,
+              `${plan.name} - Assinatura`,
+              card_data || undefined,
+              hasTrial ? plan.trial_days : undefined,
+              asaasKey
+            );
+            providerSubscriptionId = asaasSub.id;
 
-          // 3. Create subscription
-          if (card_token) {
-            const pgSub = await createSubscription(customer.id, pgPlan.id, card_token, pagarmeKey);
-            providerSubscriptionId = pgSub.id;
-            status = pgSub.status === "active" ? "active" : hasTrial ? "trialing" : "pending";
-          } else if (hasTrial) {
-            // Trial without card — auto-activate trial
-            status = "trialing";
-            trialEndsAt = new Date(now.getTime() + plan.trial_days * 86400000).toISOString();
-            nextBillingAt = trialEndsAt;
+            if (hasTrial) {
+              status = "trialing";
+              trialEndsAt = new Date(now.getTime() + plan.trial_days * 86400000).toISOString();
+              nextBillingAt = trialEndsAt;
+            } else {
+              status = asaasSub.status === "ACTIVE" ? "active" : "pending";
+              const intervalMs = plan.interval === "yearly" ? 365 * 86400000 : 30 * 86400000;
+              nextBillingAt = new Date(now.getTime() + intervalMs).toISOString();
+            }
           } else {
-            // Paid plan, no card_token — need to collect card
+            // Paid, no card → need card
             return new Response(JSON.stringify({
-              error: "card_token required for paid plans",
+              error: "card_data required for paid plans",
               requires_card: true,
               customer_id: customer.id,
-              plan_provider_id: pgPlan.id,
             }), {
               status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
 
-          if (status === "active") {
-            const intervalMs = plan.interval === "yearly" ? 365 * 86400000 : 30 * 86400000;
-            nextBillingAt = new Date(now.getTime() + intervalMs).toISOString();
-          }
-
-          console.log(`Pagar.me subscription created: ${providerSubscriptionId}, status: ${status}`);
-        } catch (pgErr: any) {
-          console.error("Pagar.me subscription error:", pgErr);
+          console.log(`Asaas subscription created: ${providerSubscriptionId}, status: ${status}`);
+        } catch (gwErr: any) {
+          console.error("Asaas subscription error:", gwErr);
           return new Response(JSON.stringify({
             error: "Payment processing failed",
-            details: pgErr.message,
+            details: gwErr.message,
           }), {
             status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
       } else {
-        // ── SIMULATION MODE (no API key) ──
-        console.warn("PAGARME_API_KEY not set — running in simulation mode");
+        // ── SIMULATION MODE ──
+        console.warn("ASAAS_API_KEY not set — running in simulation mode");
         if (hasTrial) {
           status = "trialing";
           trialEndsAt = new Date(now.getTime() + plan.trial_days * 86400000).toISOString();
@@ -262,11 +261,11 @@ serve(async (req) => {
           started_at: startedAt,
           trial_ends_at: trialEndsAt,
           next_billing_at: nextBillingAt,
-          provider: "pagarme",
+          provider: "asaas",
           provider_subscription_id: providerSubscriptionId,
           provider_customer_id: providerCustomerId,
-          provider_plan_id: providerPlanId,
-          payment_method: card_token ? "credit_card" : (hasTrial ? "trial" : "simulation"),
+          provider_plan_id: null,
+          payment_method: card_data ? "credit_card" : (hasTrial ? "trial" : "simulation"),
         })
         .select()
         .single();
@@ -292,7 +291,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         subscription: sub,
         status,
-        mode: useRealPagarme ? "live" : "simulation",
+        mode: useRealGateway ? "live" : "simulation",
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -306,7 +305,6 @@ serve(async (req) => {
         });
       }
 
-      // Get subscription
       const { data: sub } = await adminClient
         .from("circle_subscriptions")
         .select("*")
@@ -320,14 +318,13 @@ serve(async (req) => {
         });
       }
 
-      // Cancel on Pagar.me if real
-      if (sub.provider_subscription_id && useRealPagarme) {
+      // Cancel on Asaas
+      if (sub.provider_subscription_id && useRealGateway) {
         try {
-          await cancelSubscription(sub.provider_subscription_id, pagarmeKey);
-          console.log(`Pagar.me subscription ${sub.provider_subscription_id} canceled`);
-        } catch (pgErr: any) {
-          console.error("Pagar.me cancel error:", pgErr);
-          // Still cancel locally even if Pagar.me fails
+          await cancelAsaasSubscription(sub.provider_subscription_id, asaasKey);
+          console.log(`Asaas subscription ${sub.provider_subscription_id} canceled`);
+        } catch (gwErr: any) {
+          console.error("Asaas cancel error:", gwErr);
         }
       }
 

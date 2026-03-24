@@ -6,30 +6,60 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PAGARME_BASE = "https://api.pagar.me/core/v5";
+// ── Asaas API ──
 
-async function callPagarme(path: string, body: unknown, apiKey: string) {
-  const res = await fetch(`${PAGARME_BASE}${path}`, {
-    method: "POST",
+function getAsaasBase() {
+  const env = Deno.env.get("ASAAS_ENV") || "sandbox";
+  return env === "production"
+    ? "https://api.asaas.com/v3"
+    : "https://sandbox.asaas.com/api/v3";
+}
+
+async function callAsaas(path: string, body: unknown, apiKey: string, method = "POST") {
+  const res = await fetch(`${getAsaasBase()}${path}`, {
+    method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Basic ${btoa(apiKey + ":")}`,
+      "access_token": apiKey,
     },
-    body: JSON.stringify(body),
+    body: method !== "GET" ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
   if (!res.ok) {
-    console.error("Pagar.me error:", JSON.stringify(data));
-    throw new Error(data?.message || `Pagar.me returned ${res.status}`);
+    console.error("Asaas error:", JSON.stringify(data));
+    throw new Error(data?.errors?.[0]?.description || `Asaas returned ${res.status}`);
   }
   return data;
 }
 
-function simulatePayment(method: string, totalAmount: number, installments: number) {
+async function findOrCreateAsaasCustomer(
+  customer: { name: string; email: string; cpf: string; phone?: string },
+  apiKey: string
+): Promise<string> {
+  // Search by CPF
+  try {
+    const search = await callAsaas(`/customers?cpfCnpj=${customer.cpf}`, null, apiKey, "GET");
+    if (search?.data?.length > 0) return search.data[0].id;
+  } catch { /* ignore */ }
+
+  // Create
+  const created = await callAsaas("/customers", {
+    name: customer.name,
+    email: customer.email,
+    cpfCnpj: customer.cpf,
+    mobilePhone: customer.phone?.replace(/\D/g, "") || undefined,
+  }, apiKey);
+  return created.id;
+}
+
+// ── Simulation fallback ──
+
+function simulatePayment(method: string, _totalAmount: number) {
   if (method === "pix") {
     return {
       status: "pending",
       gateway_payment_id: `sim_pix_${crypto.randomUUID().slice(0, 8)}`,
+      provider: "simulation",
       pix: {
         qr_code: `00020126580014br.gov.bcb.pix0136${crypto.randomUUID()}5204000053039865802BR5925KIVO PAGAMENTOS6009SAO PAULO62070503***6304`,
         qr_code_url: "",
@@ -41,6 +71,7 @@ function simulatePayment(method: string, totalAmount: number, installments: numb
     return {
       status: "paid",
       gateway_payment_id: `sim_cc_${crypto.randomUUID().slice(0, 8)}`,
+      provider: "simulation",
       card_last4: "4242",
       card_brand: "visa",
     };
@@ -49,8 +80,9 @@ function simulatePayment(method: string, totalAmount: number, installments: numb
     return {
       status: "pending",
       gateway_payment_id: `sim_bol_${crypto.randomUUID().slice(0, 8)}`,
+      provider: "simulation",
       boleto: {
-        barcode: `23793.38128 60000.${String(Date.now()).slice(-6)} 00000.000${Math.floor(Math.random() * 900) + 100} 1 ${String(Math.floor(totalAmount * 100)).padStart(10, "0")}`,
+        barcode: `23793.38128 60000.${String(Date.now()).slice(-6)} 00000.000${Math.floor(Math.random() * 900) + 100} 1 0000000000`,
         pdf_url: "",
         due_at: new Date(Date.now() + 3 * 86400000).toISOString(),
       },
@@ -79,8 +111,8 @@ Deno.serve(async (req) => {
     }
 
     const cpf = customer.cpf.replace(/\D/g, "");
-    if (cpf.length !== 11) {
-      return new Response(JSON.stringify({ error: "CPF inválido" }), {
+    if (cpf.length !== 11 && cpf.length !== 14) {
+      return new Response(JSON.stringify({ error: "CPF/CNPJ inválido" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -109,7 +141,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch workspace credentials
+    // Workspace + gateway config
     const { data: workspace } = await supabase
       .from("workspaces")
       .select("id, metadata")
@@ -123,8 +155,9 @@ Deno.serve(async (req) => {
     }
 
     const wsMeta = (workspace.metadata as Record<string, unknown>) || {};
-    const pagarmeApiKey = (wsMeta.pagarme_api_key as string) || Deno.env.get("PAGARME_API_KEY") || "";
-    const useLive = !!pagarmeApiKey;
+    // Priority: Asaas → Pagar.me → simulation
+    const asaasApiKey = (wsMeta.asaas_api_key as string) || Deno.env.get("ASAAS_API_KEY") || "";
+    const useAsaas = !!asaasApiKey;
 
     // Fetch product
     const { data: product } = await supabase
@@ -252,102 +285,110 @@ Deno.serve(async (req) => {
       }).eq("id", checkout_session_id);
     }
 
-    // --- Payment Processing ---
+    // ─── Payment Processing ───
     let gatewayResult: any;
 
-    if (useLive) {
-      console.log("Processing via Pagar.me live API for workspace", workspace_id);
+    if (useAsaas) {
+      console.log("Processing via Asaas for workspace", workspace_id);
 
-      const pagarmeCustomer = {
-        name: customer.name,
-        email: customer.email,
-        document: cpf,
-        document_type: "CPF",
-        type: "individual",
-        phones: customer.phone ? {
-          mobile_phone: {
-            country_code: "55",
-            area_code: customer.phone.replace(/\D/g, "").slice(0, 2),
-            number: customer.phone.replace(/\D/g, "").slice(2),
-          },
-        } : undefined,
-      };
+      // 1. Find or create Asaas customer
+      const asaasCustomerId = await findOrCreateAsaasCustomer(
+        { name: customer.name, email: customer.email, cpf, phone: customer.phone },
+        asaasApiKey
+      );
 
-      const pagarmeItems = [
-        { amount: Math.round(price.amount * 100), description: product.name, quantity: 1, code: product.id },
-        ...bumpItems.map((b, i) => ({ amount: Math.round(b.amount * 100), description: `Bump ${i + 1}`, quantity: 1, code: b.product_id })),
-      ];
-
-      let payments: any[];
+      // Asaas amounts are in BRL (decimal), our DB stores cents-ish — amount field is in reais
+      // prices.amount is stored as number (reais), so totalAmount is already in reais
+      const amountBRL = totalAmount;
 
       if (method === "pix") {
-        payments = [{
-          payment_method: "pix",
-          pix: { expires_in: 1800 },
-          amount: Math.round(totalAmount * 100),
-        }];
+        const charge = await callAsaas("/payments", {
+          customer: asaasCustomerId,
+          billingType: "PIX",
+          value: amountBRL,
+          description: product.name,
+          externalReference: order.id,
+          dueDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        }, asaasApiKey);
+
+        // Get PIX QR code
+        let pixData: any = {};
+        try {
+          pixData = await callAsaas(`/payments/${charge.id}/pixQrCode`, null, asaasApiKey, "GET");
+        } catch (e) {
+          console.error("PIX QR fetch error:", e);
+        }
+
+        gatewayResult = {
+          status: "pending",
+          gateway_payment_id: charge.id,
+          provider: "asaas",
+          pix: {
+            qr_code: pixData?.payload || "",
+            qr_code_url: pixData?.encodedImage ? `data:image/png;base64,${pixData.encodedImage}` : "",
+            expires_at: new Date(Date.now() + 30 * 60000).toISOString(),
+          },
+        };
       } else if (method === "credit_card") {
-        payments = [{
-          payment_method: "credit_card",
-          credit_card: {
-            installments: selectedInstallments,
-            card: {
-              number: card.number,
-              holder_name: card.holder_name,
-              exp_month: parseInt(card.exp_month),
-              exp_year: parseInt(card.exp_year),
-              cvv: card.cvv,
-            },
-            statement_descriptor: "KIVO",
+        const charge = await callAsaas("/payments", {
+          customer: asaasCustomerId,
+          billingType: "CREDIT_CARD",
+          value: amountBRL,
+          description: product.name,
+          externalReference: order.id,
+          dueDate: new Date().toISOString().slice(0, 10),
+          installmentCount: selectedInstallments > 1 ? selectedInstallments : undefined,
+          creditCard: {
+            holderName: card.holder_name,
+            number: card.number.replace(/\s/g, ""),
+            expiryMonth: card.exp_month,
+            expiryYear: card.exp_year.length === 2 ? `20${card.exp_year}` : card.exp_year,
+            ccv: card.cvv,
           },
-          amount: Math.round(totalAmount * 100),
-        }];
+          creditCardHolderInfo: {
+            name: customer.name,
+            email: customer.email,
+            cpfCnpj: cpf,
+            phone: customer.phone?.replace(/\D/g, "") || undefined,
+            postalCode: customer.zip || undefined,
+          },
+        }, asaasApiKey);
+
+        gatewayResult = {
+          status: charge.status === "CONFIRMED" || charge.status === "RECEIVED" ? "paid" : "pending",
+          gateway_payment_id: charge.id,
+          provider: "asaas",
+          card_last4: card.number.replace(/\s/g, "").slice(-4),
+          card_brand: charge.creditCard?.creditCardBrand || "unknown",
+        };
       } else if (method === "boleto") {
-        payments = [{
-          payment_method: "boleto",
+        const charge = await callAsaas("/payments", {
+          customer: asaasCustomerId,
+          billingType: "BOLETO",
+          value: amountBRL,
+          description: product.name,
+          externalReference: order.id,
+          dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+        }, asaasApiKey);
+
+        gatewayResult = {
+          status: "pending",
+          gateway_payment_id: charge.id,
+          provider: "asaas",
           boleto: {
-            instructions: "Pagar até o vencimento",
-            due_at: new Date(Date.now() + 3 * 86400000).toISOString(),
+            barcode: charge.nossoNumero || "",
+            pdf_url: charge.bankSlipUrl || "",
+            due_at: charge.dueDate,
           },
-          amount: Math.round(totalAmount * 100),
-        }];
+        };
       } else {
         return new Response(JSON.stringify({ error: "Método de pagamento inválido" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      const pagarmeOrder = await callPagarme("/orders", {
-        items: pagarmeItems,
-        customer: pagarmeCustomer,
-        payments,
-        closed: true,
-        antifraud_enabled: method === "credit_card",
-        metadata: { order_id: order.id, workspace_id },
-      }, pagarmeApiKey);
-
-      const charge = pagarmeOrder.charges?.[0];
-      const lastTx = charge?.last_transaction;
-
-      gatewayResult = {
-        status: charge?.status === "paid" ? "paid" : "pending",
-        gateway_payment_id: charge?.id || pagarmeOrder.id,
-        pix: lastTx?.qr_code ? {
-          qr_code: lastTx.qr_code,
-          qr_code_url: lastTx.qr_code_url,
-          expires_at: lastTx.expires_at,
-        } : undefined,
-        boleto: lastTx?.pdf ? {
-          barcode: lastTx.line,
-          pdf_url: lastTx.pdf,
-          due_at: lastTx.due_at,
-        } : undefined,
-        card_last4: lastTx?.card?.last_four_digits || null,
-        card_brand: lastTx?.card?.brand || null,
-      };
     } else {
-      console.log("Processing in SIMULATED mode (no Pagar.me credentials)");
-      gatewayResult = simulatePayment(method, totalAmount, selectedInstallments);
+      console.log("Processing in SIMULATED mode (no gateway credentials)");
+      gatewayResult = simulatePayment(method, totalAmount);
     }
 
     // Create payment record
@@ -394,6 +435,7 @@ Deno.serve(async (req) => {
       order_id: order.id,
       payment_id: payment!.id,
       status: gatewayResult.status,
+      provider: gatewayResult.provider || "simulation",
     };
 
     if (method === "pix" && gatewayResult.pix) {
