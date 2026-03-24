@@ -88,6 +88,7 @@ const creatorGroups: NavGroup[] = [
 
 const adminGroup: NavGroup = {
   label: "Admin",
+  icon: ShieldCheck,
   items: [
     { title: "Executivo", url: "/analytics/executive", icon: Activity },
     { title: "GTM", url: "/gtm", icon: Rocket },
