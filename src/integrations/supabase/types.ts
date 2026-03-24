@@ -2745,6 +2745,8 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          card_brand: string | null
+          card_last4: string | null
           created_at: string
           currency: string
           failed_at: string | null
@@ -2766,6 +2768,8 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          card_brand?: string | null
+          card_last4?: string | null
           created_at?: string
           currency?: string
           failed_at?: string | null
@@ -2787,6 +2791,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          card_brand?: string | null
+          card_last4?: string | null
           created_at?: string
           currency?: string
           failed_at?: string | null
@@ -3699,10 +3705,14 @@ export type Database = {
           headers: Json | null
           id: string
           last_attempt_at: string | null
+          next_retry_at: string | null
+          order_id: string | null
           payload: Json
           processed_at: string | null
           provider: string
           status: string
+          status_after: string | null
+          status_before: string | null
           workspace_id: string | null
         }
         Insert: {
@@ -3714,10 +3724,14 @@ export type Database = {
           headers?: Json | null
           id?: string
           last_attempt_at?: string | null
+          next_retry_at?: string | null
+          order_id?: string | null
           payload?: Json
           processed_at?: string | null
           provider: string
           status?: string
+          status_after?: string | null
+          status_before?: string | null
           workspace_id?: string | null
         }
         Update: {
@@ -3729,13 +3743,24 @@ export type Database = {
           headers?: Json | null
           id?: string
           last_attempt_at?: string | null
+          next_retry_at?: string | null
+          order_id?: string | null
           payload?: Json
           processed_at?: string | null
           provider?: string
           status?: string
+          status_after?: string | null
+          status_before?: string | null
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "webhook_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "webhook_events_workspace_id_fkey"
             columns: ["workspace_id"]
