@@ -2672,6 +2672,47 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_enabled: boolean
+          key: string
+          label: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          key: string
+          label: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          key?: string
+          label?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flags_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_invoices: {
         Row: {
           attempts: number
@@ -4813,7 +4854,13 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      data_consistency_check: {
+        Row: {
+          check_name: string | null
+          issue_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
