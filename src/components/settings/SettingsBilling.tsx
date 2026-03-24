@@ -5,14 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Check, Crown, Sparkles, Zap, Download } from "lucide-react";
+import { Check, Crown, Sparkles, Zap, Download, Loader2 } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { cn } from "@/lib/utils";
+import { usePlanCheckout } from "@/hooks/usePlanCheckout";
 
 const PLANS = [
-  { id: "free", name: "Free", monthly: 0, annual: 0, features: ["1 produto", "Taxa de 7%", "Link-in-bio", "Com marca Kivo"] },
-  { id: "creator", name: "Creator", monthly: 49, annual: 39, popular: true, features: ["Até 10 produtos", "Taxa de 5%", "Sem marca Kivo", "Área de membros", "Analytics básico"] },
-  { id: "creator-pro", name: "Creator Pro", monthly: 149, annual: 119, features: ["Produtos ilimitados", "Taxa de 3%", "WhatsApp integrado", "IA para conteúdo", "NFS-e automática", "Analytics avançado"] },
+  { id: "free", code: "free", name: "Free", monthly: 0, annual: 0, features: ["1 produto", "Taxa de 7%", "Link-in-bio", "Com marca Kivo"] },
+  { id: "creator", code: "creator", name: "Creator", monthly: 49, annual: 39, popular: true, features: ["Até 10 produtos", "Taxa de 5%", "Sem marca Kivo", "Área de membros", "Analytics básico"] },
+  { id: "creator-pro", code: "creator-pro", name: "Creator Pro", monthly: 149, annual: 119, features: ["Produtos ilimitados", "Taxa de 3%", "WhatsApp integrado", "IA para conteúdo", "NFS-e automática", "Analytics avançado"] },
 ];
 
 const INVOICES = [
@@ -25,9 +26,19 @@ export function SettingsBilling() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [isAnnual, setIsAnnual] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("free");
-  const [showConfirm, setShowConfirm] = useState(false);
+  const { startPlanCheckout, loading: checkoutLoading } = usePlanCheckout();
 
   const currentPlan = ((currentWorkspace as any)?.metadata as any)?.plan || "free";
+
+  const handleUpgrade = () => {
+    if (selectedPlan === "free" || selectedPlan === currentPlan) return;
+    setShowPlanModal(false);
+    startPlanCheckout({
+      planCode: selectedPlan,
+      billingCycle: isAnnual ? "annual" : "monthly",
+      sourceUI: "settings_plans_modal",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -51,7 +62,6 @@ export function SettingsBilling() {
               Cancelar Assinatura
             </Button>
             <Button onClick={() => setShowPlanModal(true)}>Trocar Plano</Button>
-            <Button variant="link" onClick={() => window.location.href = "/pricing"}>Ver Planos</Button>
           </div>
         </CardContent>
       </Card>
@@ -151,28 +161,12 @@ export function SettingsBilling() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPlanModal(false)}>Cancelar</Button>
             <Button
-              disabled={selectedPlan === currentPlan}
-              onClick={() => { setShowPlanModal(false); setShowConfirm(true); }}
+              disabled={selectedPlan === currentPlan || selectedPlan === "free" || checkoutLoading}
+              onClick={handleUpgrade}
             >
-              Upgrade plan
+              {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {checkoutLoading ? "Processando..." : "Assinar Plano"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation Modal */}
-      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Upgrade</DialogTitle>
-            <DialogDescription>
-              Você será cobrado R${isAnnual ? PLANS.find(p => p.id === selectedPlan)?.annual : PLANS.find(p => p.id === selectedPlan)?.monthly}/mês
-              a partir de hoje.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirm(false)}>Cancelar</Button>
-            <Button onClick={() => setShowConfirm(false)}>Confirmar Pagamento</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
