@@ -106,4 +106,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.upgrade-subscription-midcycle]
-verify_jwt = false
+verify_jwt = true
