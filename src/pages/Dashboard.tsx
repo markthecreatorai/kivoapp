@@ -11,7 +11,7 @@ import { PaymentMethodsCard } from "@/components/dashboard/PaymentMethodsCard";
 import { SalesPerformanceChart } from "@/components/dashboard/SalesPerformanceChart";
 import { TicketChart } from "@/components/dashboard/TicketChart";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
-import { UsageAlerts } from "@/components/dashboard/UsageAlerts";
+import { DashboardUpgradeCard } from "@/components/dashboard/DashboardUpgradeCard";
 import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
 
 interface Metrics {
@@ -122,7 +122,7 @@ export default function Dashboard() {
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Email Verification */}
       <EmailVerificationBanner />
-      <UsageAlerts />
+      <DashboardUpgradeCard />
       <OnboardingChecklist />
 
       {/* Page title + filters */}
