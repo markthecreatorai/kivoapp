@@ -220,9 +220,30 @@ export function AppSidebar() {
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <SidebarMenu className="mt-0.5 space-y-0.5">
-            {group.items.map(renderNavItem)}
-          </SidebarMenu>
+          <div className="relative ml-[22px] mt-1 mb-1">
+            {/* Vertical line indicator */}
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-border/60" />
+            <SidebarMenu className="space-y-px pl-4">
+              {group.items.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end={item.url !== "/circle"}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-normal transition-colors",
+                        "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      )}
+                      activeClassName="bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-foreground))] font-medium hover:bg-[hsl(var(--nav-active-bg))]"
+                    >
+                      <item.icon className="flex-shrink-0 w-4 h-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     );
