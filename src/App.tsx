@@ -156,13 +156,13 @@ const App = () => (
                 <Route path="/" element={<LandingPage />} />
                 
                 {/* GTM Dashboard */}
-                <Route path="/gtm" element={<ProtectedRoute><DashboardLayout><GtmDashboard /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/gtm/playbook" element={<ProtectedRoute><DashboardLayout><GtmPlaybook /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/acquisition" element={<ProtectedRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops" element={<ProtectedRoute><DashboardLayout><OpsDashboard /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops/launch" element={<ProtectedRoute><DashboardLayout><LaunchReadiness /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops/feedback" element={<ProtectedRoute><DashboardLayout><OpsFeedback /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops/week-plan" element={<ProtectedRoute><DashboardLayout><OpsWeekPlan /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/gtm" element={<ProtectedRoute><AdminRoute><DashboardLayout><GtmDashboard /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/gtm/playbook" element={<ProtectedRoute><AdminRoute><DashboardLayout><GtmPlaybook /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/acquisition" element={<ProtectedRoute><AdminRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsDashboard /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops/launch" element={<ProtectedRoute><AdminRoute><DashboardLayout><LaunchReadiness /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops/feedback" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsFeedback /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops/week-plan" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsWeekPlan /></DashboardLayout></AdminRoute></ProtectedRoute>} />
                 
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<Checkout />} />
