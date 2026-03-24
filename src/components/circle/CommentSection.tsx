@@ -67,6 +67,11 @@ export default function CommentSection({
   const addComment = useMutation({
     mutationFn: async ({ body, parentId }: { body: string; parentId?: string }) => {
       if (!member || !community) throw new Error("Missing");
+
+      // Anti-spam check
+      const { checkSpam } = await import("@/lib/antispam");
+      const spamResult = await checkSpam(member.id, community.id, "comment", body.trim());
+      if (!spamResult.allowed) throw new Error(spamResult.reason || "Spam detectado");
       const { data: comment, error } = await supabase.from("community_comments").insert({
         post_id: postId,
         author_id: member.id,
