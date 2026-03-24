@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, DollarSign } from "lucide-react";
 import { PagarmeWizard, PagarmeStatusBadge } from "./PagarmeWizard";
+import { BankAccountForm } from "./BankAccountForm";
 
 export function SettingsPayments() {
   const [gdprConsent, setGdprConsent] = useState(false);
@@ -55,6 +56,9 @@ export function SettingsPayments() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bank Account */}
+      <BankAccountForm />
 
       {/* Checkout Settings */}
       <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
