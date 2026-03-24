@@ -7,6 +7,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useDailyLogin } from "@/hooks/useDailyLogin";
 import { notifyMemberJoined } from "@/lib/notifications";
+import CirclePaywall from "@/components/circle/CirclePaywall";
 import {
   MessageSquare,
   Users,
@@ -115,6 +116,23 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
       return ((data as any[])?.length || 0) > 0;
     },
     enabled: !!community?.linked_product_id && !!user && community?.access_type === "FREE_WITH_PRODUCT",
+  });
+
+  // Check active circle subscription for PAID_SUBSCRIPTION communities
+  const { data: hasActiveSubscription } = useQuery({
+    queryKey: ["circle-subscription", community?.id, user?.id],
+    queryFn: async () => {
+      if (!community || !user) return false;
+      const { data } = await supabase
+        .from("circle_subscriptions" as any)
+        .select("id, status")
+        .eq("community_id", community.id)
+        .eq("user_id", user.id)
+        .in("status", ["active", "trialing"])
+        .limit(1);
+      return ((data as any[])?.length || 0) > 0;
+    },
+    enabled: !!community && !!user && community?.access_type === "PAID_SUBSCRIPTION",
   });
 
   const { data: unreadCount } = useQuery({
@@ -275,7 +293,12 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
       );
     }
   } else {
-    // Landing page for non-members
+    // ── PAID_SUBSCRIPTION: show paywall ──
+    if (community.access_type === "PAID_SUBSCRIPTION") {
+      return <CirclePaywall community={community} />;
+    }
+
+    // Landing page for non-members (OPEN / FREE_WITH_PRODUCT)
     return (
       <div className="min-h-screen bg-background">
         <div className="relative h-48 md:h-64 bg-gradient-to-br from-primary/20 via-primary/10 to-muted overflow-hidden">
@@ -327,18 +350,6 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 )}
               </>
             )}
-            {community.access_type === "PAID_SUBSCRIPTION" && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Lock className="h-4 w-4" /><span>Assinatura necessária para acesso</span>
-                </div>
-                {community.linked_product_id && (
-                  <Button size="lg" onClick={() => navigate(`/checkout/${community.linked_product_id}`)} className="w-full md:w-auto">
-                    <ShoppingCart className="h-5 w-5 mr-2" />Assinar para Acessar
-                  </Button>
-                )}
-              </div>
-            )}
           </div>
           {previewPosts && previewPosts.length > 0 && (
             <div className="space-y-3">
@@ -370,6 +381,11 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         </div>
       </div>
     );
+  }
+
+  // ── PAID_SUBSCRIPTION: active member but subscription expired? ──
+  if (community.access_type === "PAID_SUBSCRIPTION" && !isAdmin && !hasActiveSubscription) {
+    return <CirclePaywall community={community} />;
   }
 
   // === MAIN LAYOUT — Skool-style ===

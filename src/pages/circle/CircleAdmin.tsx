@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Settings, Users, LayoutGrid } from "lucide-react";
+import { BarChart3, Settings, Users, LayoutGrid, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import AdminDashboardTab from "@/components/circle/admin/AdminDashboardTab";
 import AdminSettingsTab from "@/components/circle/admin/AdminSettingsTab";
 import AdminMembersTab from "@/components/circle/admin/AdminMembersTab";
 import AdminSpacesTab from "@/components/circle/admin/AdminSpacesTab";
+import AdminSubscriptionsTab from "@/components/circle/admin/AdminSubscriptionsTab";
 
 export default function CircleAdmin() {
   const { currentWorkspace } = useWorkspace();
@@ -65,6 +66,7 @@ export default function CircleAdmin() {
             {(pendingCount ?? 0) > 0 && <Badge className="ml-1.5 h-5 px-1.5 text-[10px]">{pendingCount}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="spaces"><LayoutGrid className="h-4 w-4 mr-1.5" />Espaços</TabsTrigger>
+          <TabsTrigger value="subscriptions"><CreditCard className="h-4 w-4 mr-1.5" />Assinaturas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
@@ -78,6 +80,9 @@ export default function CircleAdmin() {
         </TabsContent>
         <TabsContent value="spaces" className="mt-4">
           {community && <AdminSpacesTab community={community} />}
+        </TabsContent>
+        <TabsContent value="subscriptions" className="mt-4">
+          {community && <AdminSubscriptionsTab community={community} />}
         </TabsContent>
       </Tabs>
     </div>
