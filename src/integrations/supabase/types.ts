@@ -2601,6 +2601,74 @@ export type Database = {
           },
         ]
       }
+      experiment_assignments: {
+        Row: {
+          created_at: string
+          experiment_key: string
+          id: string
+          session_id: string | null
+          variant: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          experiment_key: string
+          id?: string
+          session_id?: string | null
+          variant: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          experiment_key?: string
+          id?: string
+          session_id?: string | null
+          variant?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiment_assignments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      experiments: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          experiment_key: string
+          id: string
+          is_active: boolean
+          min_sample: number
+          name: string
+          variants: Json
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          experiment_key: string
+          id?: string
+          is_active?: boolean
+          min_sample?: number
+          name: string
+          variants?: Json
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          experiment_key?: string
+          id?: string
+          is_active?: boolean
+          min_sample?: number
+          name?: string
+          variants?: Json
+        }
+        Relationships: []
+      }
       fiscal_invoices: {
         Row: {
           attempts: number
