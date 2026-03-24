@@ -152,6 +152,8 @@ const App = () => (
                 
                 {/* GTM Dashboard */}
                 <Route path="/gtm" element={<ProtectedRoute><DashboardLayout><GtmDashboard /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/gtm/playbook" element={<ProtectedRoute><DashboardLayout><GtmPlaybook /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/acquisition" element={<ProtectedRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></ProtectedRoute>} />
                 
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<Checkout />} />
