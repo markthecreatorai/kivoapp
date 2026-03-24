@@ -6,6 +6,43 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+interface SplitRule {
+  id: string;
+  platform_percent: number;
+  creator_percent: number;
+  affiliate_percent: number;
+  hold_days: number;
+}
+
+async function getSplitRule(supabase: any, workspaceId: string, productId: string | null): Promise<SplitRule> {
+  // Try product-specific first, then default
+  const { data } = await supabase.rpc("get_split_rule", {
+    p_workspace_id: workspaceId,
+    p_product_id: productId,
+  });
+
+  if (data && data.length > 0) return data[0];
+
+  // Fallback: 10% platform, 90% creator
+  return {
+    id: "",
+    platform_percent: 10,
+    creator_percent: 90,
+    affiliate_percent: 0,
+    hold_days: 14,
+  };
+}
+
+function calculateSplit(grossAmount: number, rule: SplitRule, gatewayFeePercent = 3.49) {
+  const gatewayFee = Math.round(grossAmount * gatewayFeePercent / 100);
+  const netAfterGateway = grossAmount - gatewayFee;
+  const platformFee = Math.round(netAfterGateway * rule.platform_percent / 100);
+  const affiliateFee = Math.round(netAfterGateway * rule.affiliate_percent / 100);
+  const creatorNet = netAfterGateway - platformFee - affiliateFee;
+
+  return { gatewayFee, platformFee, affiliateFee, creatorNet };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -29,7 +66,7 @@ Deno.serve(async (req) => {
     // Get order details
     const { data: order } = await supabase
       .from("orders")
-      .select("id, workspace_id, product_id, customer_email, customer_name, total_amount, payment_method, customer_id")
+      .select("id, workspace_id, product_id, customer_email, customer_name, total_amount, payment_method, customer_id, checkout_session_id")
       .eq("id", order_id)
       .single();
 
@@ -59,7 +96,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!existingItem) {
-        // Get price
         const { data: price } = await supabase
           .from("prices")
           .select("id, amount")
@@ -109,9 +145,41 @@ Deno.serve(async (req) => {
         .eq("id", order.checkout_session_id);
     }
 
-    // TODO: Send email notifications via Resend when API key is configured
-    // - Email to buyer: confirmation + access link
-    // - Email to creator: new sale notification
+    // 6. SPLIT: Record split entry for this sale
+    const grossAmount = Number(order.total_amount || 0);
+    if (grossAmount > 0) {
+      const rule = await getSplitRule(supabase, order.workspace_id, order.product_id);
+      const split = calculateSplit(grossAmount, rule);
+      const availableAt = new Date();
+      availableAt.setDate(availableAt.getDate() + rule.hold_days);
+
+      // Insert split entry
+      await supabase.from("split_entries").insert({
+        workspace_id: order.workspace_id,
+        order_id: order.id,
+        split_rule_id: rule.id || null,
+        gross_amount: grossAmount,
+        gateway_fee: split.gatewayFee,
+        platform_fee: split.platformFee,
+        affiliate_fee: split.affiliateFee,
+        creator_net: split.creatorNet,
+        status: "pending",
+        available_at: availableAt.toISOString(),
+      });
+
+      // Also record in wallet_ledger for backward compatibility
+      await supabase.from("wallet_ledger").insert({
+        workspace_id: order.workspace_id,
+        order_id: order.id,
+        type: "sale",
+        amount: split.creatorNet,
+        status: "pending",
+        available_at: availableAt.toISOString(),
+        description: `Venda #${order.id.slice(0, 8)} (líq. ${split.creatorNet})`,
+      });
+
+      console.log(`Split recorded for order ${order.id}: gross=${grossAmount} gw=${split.gatewayFee} plat=${split.platformFee} aff=${split.affiliateFee} net=${split.creatorNet}`);
+    }
 
     return new Response(
       JSON.stringify({ success: true, order_id: order.id }),
