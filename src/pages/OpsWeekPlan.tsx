@@ -53,7 +53,7 @@ export default function OpsWeekPlan() {
       workspace_id: currentWorkspace.id,
       status: "todo",
     }));
-    await supabase.from("week1_plan").insert(rows);
+    await (supabase.from as any)("week1_plan").insert(rows);
     refetch();
   };
 
