@@ -249,7 +249,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     }).eq("id", order.checkout_session_id);
   }
 
-  // Wallet ledger
+  // Wallet ledger + split entries
   if (order) {
     const HOLD_DAYS = 14;
     const availableAt = new Date(Date.now() + HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -283,6 +283,43 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           amount: -netFee,
           status: "settled",
           description: `Taxa Asaas #${paymentRecord.order_id.slice(0, 8)}`,
+        });
+      }
+    }
+
+    // Record split entry (idempotent)
+    if (totalAmount > 0) {
+      const { data: existingSplit } = await supabase
+        .from("split_entries")
+        .select("id")
+        .eq("order_id", paymentRecord.order_id)
+        .maybeSingle();
+
+      if (!existingSplit) {
+        // Get split rule
+        const { data: ruleData } = await supabase.rpc("get_split_rule", {
+          p_workspace_id: order.workspace_id,
+          p_product_id: orderItems?.[0]?.product_id || null,
+        });
+        const rule = ruleData?.[0] || { platform_percent: 10, creator_percent: 90, affiliate_percent: 0, hold_days: 14 };
+        const gatewayFee = netFee > 0 ? netFee : Math.round(totalAmount * 3.49 / 100);
+        const netAfterGw = totalAmount - gatewayFee;
+        const platformFee = Math.round(netAfterGw * Number(rule.platform_percent) / 100);
+        const affiliateFee = Math.round(netAfterGw * Number(rule.affiliate_percent) / 100);
+        const creatorNet = netAfterGw - platformFee - affiliateFee;
+        const splitAvailableAt = new Date(Date.now() + (rule.hold_days || 14) * 86400000).toISOString();
+
+        await supabase.from("split_entries").insert({
+          workspace_id: order.workspace_id,
+          order_id: paymentRecord.order_id,
+          split_rule_id: rule.id || null,
+          gross_amount: totalAmount,
+          gateway_fee: gatewayFee,
+          platform_fee: platformFee,
+          affiliate_fee: affiliateFee,
+          creator_net: creatorNet,
+          status: "pending",
+          available_at: splitAvailableAt,
         });
       }
     }
@@ -456,6 +493,12 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
     description: `Reembolso Asaas #${paymentRecord.order_id.slice(0, 8)}`,
   });
 
+  // Reverse split entry
+  await supabase.from("split_entries").update({
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id);
+
   return "REFUNDED";
 }
 
@@ -471,6 +514,13 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
   });
 
   await supabase.from("orders").update({ status: "DISPUTED" }).eq("id", paymentRecord.order_id);
+
+  // Reverse split entry on chargeback
+  await supabase.from("split_entries").update({
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id);
+
   return "DISPUTED";
 }
 

@@ -61,6 +61,8 @@ const LaunchReadiness = lazy(() => import("./pages/LaunchReadiness"));
 const OpsFeedback = lazy(() => import("./pages/OpsFeedback"));
 const OpsWeekPlan = lazy(() => import("./pages/OpsWeekPlan"));
 const FinancialHealth = lazy(() => import("./pages/FinancialHealth"));
+const CreatorFinance = lazy(() => import("./pages/CreatorFinance"));
+const AdminPayouts = lazy(() => import("./pages/AdminPayouts"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -160,6 +162,7 @@ const App = () => (
                 {/* ===== PERSISTENT DASHBOARD LAYOUT ===== */}
                 <Route element={<DashboardShell />}>
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/creator-finance" element={<CreatorFinance />} />
                   <Route path="/earnings" element={<Income />} />
                   <Route path="/coupons" element={<Coupons />} />
                   <Route path="/products" element={<Products />} />
@@ -190,6 +193,7 @@ const App = () => (
                   <Route path="/ops/feedback" element={<OpsFeedback />} />
                   <Route path="/ops/week-plan" element={<OpsWeekPlan />} />
                   <Route path="/ops/financial-health" element={<FinancialHealth />} />
+                  <Route path="/admin/payouts" element={<AdminPayouts />} />
                 </Route>
 
                 {/* Full-screen protected routes (no persistent layout) */}

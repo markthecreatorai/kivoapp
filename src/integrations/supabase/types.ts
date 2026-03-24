@@ -4154,6 +4154,69 @@ export type Database = {
           },
         ]
       }
+      payout_requests: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          created_at: string
+          failed_reason: string | null
+          fee: number
+          id: string
+          idempotency_key: string | null
+          net_amount: number
+          processed_at: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          created_at?: string
+          failed_reason?: string | null
+          fee?: number
+          id?: string
+          idempotency_key?: string | null
+          net_amount: number
+          processed_at?: string | null
+          requested_by: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          created_at?: string
+          failed_reason?: string | null
+          fee?: number
+          id?: string
+          idempotency_key?: string | null
+          net_amount?: number
+          processed_at?: string | null
+          requested_by?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_requests_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_requests_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payouts: {
         Row: {
           affiliate_id: string
@@ -4646,6 +4709,143 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      split_entries: {
+        Row: {
+          affiliate_fee: number
+          available_at: string | null
+          created_at: string
+          creator_net: number
+          gateway_fee: number
+          gross_amount: number
+          id: string
+          order_id: string | null
+          platform_fee: number
+          refunded_at: string | null
+          settled_at: string | null
+          split_rule_id: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          affiliate_fee?: number
+          available_at?: string | null
+          created_at?: string
+          creator_net?: number
+          gateway_fee?: number
+          gross_amount: number
+          id?: string
+          order_id?: string | null
+          platform_fee?: number
+          refunded_at?: string | null
+          settled_at?: string | null
+          split_rule_id?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          affiliate_fee?: number
+          available_at?: string | null
+          created_at?: string
+          creator_net?: number
+          gateway_fee?: number
+          gross_amount?: number
+          id?: string
+          order_id?: string | null
+          platform_fee?: number
+          refunded_at?: string | null
+          settled_at?: string | null
+          split_rule_id?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_entries_split_rule_id_fkey"
+            columns: ["split_rule_id"]
+            isOneToOne: false
+            referencedRelation: "split_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_entries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_rules: {
+        Row: {
+          affiliate_percent: number
+          community_id: string | null
+          created_at: string
+          creator_percent: number
+          hold_days: number
+          id: string
+          is_default: boolean
+          platform_percent: number
+          product_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          affiliate_percent?: number
+          community_id?: string | null
+          created_at?: string
+          creator_percent?: number
+          hold_days?: number
+          id?: string
+          is_default?: boolean
+          platform_percent?: number
+          product_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          affiliate_percent?: number
+          community_id?: string | null
+          created_at?: string
+          creator_percent?: number
+          hold_days?: number
+          id?: string
+          is_default?: boolean
+          platform_percent?: number
+          product_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_rules_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_rules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       storefront_blocks: {
         Row: {
@@ -5517,6 +5717,27 @@ export type Database = {
       get_community_member_ids_for_user: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      get_creator_balance: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          available_balance: number
+          pending_balance: number
+          total_fees: number
+          total_gross: number
+          total_net: number
+          total_payouts: number
+        }[]
+      }
+      get_split_rule: {
+        Args: { p_product_id?: string; p_workspace_id: string }
+        Returns: {
+          affiliate_percent: number
+          creator_percent: number
+          hold_days: number
+          id: string
+          platform_percent: number
+        }[]
       }
       get_wallet_balance: {
         Args: { p_workspace_id: string }
