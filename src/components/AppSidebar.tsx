@@ -41,6 +41,7 @@ const creatorGroups: NavGroup[] = [
   },
   {
     label: "Sua Loja",
+    icon: Store,
     items: [
       { title: "Produtos", url: "/products", icon: Package },
       { title: "Cupons", url: "/coupons", icon: Tag },
