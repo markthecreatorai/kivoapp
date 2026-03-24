@@ -556,6 +556,54 @@ export type Database = {
           },
         ]
       }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          email: string
+          error_message: string | null
+          id: string
+          lead_id: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          email: string
+          error_message?: string | null
+          id?: string
+          lead_id: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          email?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           course_name: string
@@ -1970,6 +2018,72 @@ export type Database = {
           },
         ]
       }
+      email_campaigns: {
+        Row: {
+          body_html: string
+          created_at: string
+          failed_count: number
+          id: string
+          name: string
+          scheduled_at: string | null
+          segment_id: string | null
+          sent_at: string | null
+          sent_count: number
+          status: string
+          subject: string
+          total_recipients: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          body_html?: string
+          created_at?: string
+          failed_count?: number
+          id?: string
+          name: string
+          scheduled_at?: string | null
+          segment_id?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject?: string
+          total_recipients?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          failed_count?: number
+          id?: string
+          name?: string
+          scheduled_at?: string | null
+          segment_id?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject?: string
+          total_recipients?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "email_segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaigns_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_events: {
         Row: {
           campaign_id: string | null
@@ -2147,6 +2261,7 @@ export type Database = {
           description: string | null
           filter_rules: Json | null
           id: string
+          is_dynamic: boolean
           member_count: number | null
           name: string
           updated_at: string | null
@@ -2157,6 +2272,7 @@ export type Database = {
           description?: string | null
           filter_rules?: Json | null
           id?: string
+          is_dynamic?: boolean
           member_count?: number | null
           name: string
           updated_at?: string | null
@@ -2167,6 +2283,7 @@ export type Database = {
           description?: string | null
           filter_rules?: Json | null
           id?: string
+          is_dynamic?: boolean
           member_count?: number | null
           name?: string
           updated_at?: string | null

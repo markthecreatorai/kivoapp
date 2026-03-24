@@ -48,6 +48,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
+const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -127,6 +128,7 @@ const App = () => (
                 <Route path="/appointments" element={<ProtectedRoute><DashboardLayout><Appointments /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/payment-logs" element={<ProtectedRoute><DashboardLayout><PaymentLogs /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/fiscal" element={<ProtectedRoute><DashboardLayout><FiscalClosing /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/email-campaigns" element={<ProtectedRoute><DashboardLayout><EmailCampaigns /></DashboardLayout></ProtectedRoute>} />
 
                 {/* Circle routes */}
                 <Route path="/circle" element={<ProtectedRoute><CircleLayout><Navigate to="/circle/feed" replace /></CircleLayout></ProtectedRoute>} />
