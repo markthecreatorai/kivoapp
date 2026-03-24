@@ -5899,12 +5899,14 @@ export type Database = {
         Row: {
           billing_cycle: string
           canceled_at: string | null
+          change_effective_at: string | null
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
           id: string
           last_event_at: string | null
           last_event_id: string | null
+          next_plan_code: string | null
           plan_code: string
           provider: string
           provider_customer_id: string | null
@@ -5917,12 +5919,14 @@ export type Database = {
         Insert: {
           billing_cycle?: string
           canceled_at?: string | null
+          change_effective_at?: string | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
           last_event_at?: string | null
           last_event_id?: string | null
+          next_plan_code?: string | null
           plan_code: string
           provider?: string
           provider_customer_id?: string | null
@@ -5935,12 +5939,14 @@ export type Database = {
         Update: {
           billing_cycle?: string
           canceled_at?: string | null
+          change_effective_at?: string | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
           last_event_at?: string | null
           last_event_id?: string | null
+          next_plan_code?: string | null
           plan_code?: string
           provider?: string
           provider_customer_id?: string | null

@@ -662,25 +662,23 @@ async function handleSubscriptionEvent(supabase: any, eventType: string, payload
   const asaasSubId = subData?.id;
   if (!asaasSubId) return "NO_SUBSCRIPTION_ID";
 
-  // Find our subscription record
   const { data: sub } = await supabase
     .from("workspace_subscriptions")
-    .select("id, workspace_id, status, plan_code, last_event_at")
+    .select("id, workspace_id, status, plan_code, next_plan_code, change_effective_at, last_event_at")
     .eq("provider_subscription_id", asaasSubId)
     .maybeSingle();
 
   if (!sub) {
-    // Try circle subscriptions fallback
     return await handleCircleSubscriptionEvent(supabase, eventType, asaasSubId, subData);
   }
 
-  // Determine new status from event type
   let newStatus: string;
   switch (eventType) {
     case "SUBSCRIPTION_CREATED": newStatus = "pending"; break;
-    case "SUBSCRIPTION_UPDATED": newStatus = sub.status; break; // keep current
+    case "SUBSCRIPTION_UPDATED": newStatus = sub.status; break;
     case "SUBSCRIPTION_DELETED":
     case "SUBSCRIPTION_INACTIVATED": newStatus = "canceled"; break;
+    case "SUBSCRIPTION_REACTIVATED": newStatus = "active"; break;
     default: newStatus = sub.status; break;
   }
 
@@ -702,9 +700,13 @@ async function handleSubscriptionEvent(supabase: any, eventType: string, payload
     updatePayload.canceled_at = new Date().toISOString();
   }
 
+  // On reactivation, clear canceled_at
+  if (eventType === "SUBSCRIPTION_REACTIVATED") {
+    updatePayload.canceled_at = null;
+  }
+
   await supabase.from("workspace_subscriptions").update(updatePayload).eq("id", sub.id);
 
-  // Audit log
   await supabase.from("audit_logs").insert({
     workspace_id: sub.workspace_id,
     entity_type: "subscription",
@@ -721,40 +723,53 @@ async function handleSubscriptionInvoicePaid(supabase: any, paymentData: any): P
   const asaasSubId = paymentData?.subscription;
   if (!asaasSubId) return "NOT_FOUND";
 
-  // Check workspace subscription first
   const { data: wsSub } = await supabase
     .from("workspace_subscriptions")
-    .select("id, workspace_id, status, plan_code")
+    .select("id, workspace_id, status, plan_code, billing_cycle, next_plan_code, change_effective_at")
     .eq("provider_subscription_id", asaasSubId)
     .maybeSingle();
 
   if (wsSub) {
-    // Calculate period end based on billing cycle
+    const isAnnual = wsSub.billing_cycle === "annual";
     const periodEnd = new Date();
-    periodEnd.setDate(periodEnd.getDate() + 30); // default monthly
+    periodEnd.setDate(periodEnd.getDate() + (isAnnual ? 365 : 30));
 
-    await supabase.from("workspace_subscriptions").update({
+    const updateData: any = {
       status: "active",
       current_period_start: new Date().toISOString(),
       current_period_end: periodEnd.toISOString(),
       last_event_id: paymentData?.id,
       last_event_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq("id", wsSub.id);
+    };
+
+    // Apply scheduled downgrade on renewal
+    if (wsSub.next_plan_code && wsSub.change_effective_at && new Date(wsSub.change_effective_at) <= new Date()) {
+      updateData.plan_code = wsSub.next_plan_code;
+      updateData.next_plan_code = null;
+      updateData.change_effective_at = null;
+    }
+
+    await supabase.from("workspace_subscriptions").update(updateData).eq("id", wsSub.id);
 
     await supabase.from("audit_logs").insert({
       workspace_id: wsSub.workspace_id,
       entity_type: "subscription",
       entity_id: wsSub.id,
       action: "subscription_state_changed",
-      metadata: { event_type: "invoice_paid", old_status: wsSub.status, new_status: "active", plan_code: wsSub.plan_code },
+      metadata: {
+        event_type: "invoice_paid",
+        old_status: wsSub.status,
+        new_status: "active",
+        plan_code: updateData.plan_code || wsSub.plan_code,
+        downgrade_applied: !!updateData.plan_code && updateData.plan_code !== wsSub.plan_code,
+      },
     });
 
-    console.log(`Workspace subscription ${wsSub.id} activated via payment ${paymentData.id}`);
+    console.log(`Workspace subscription ${wsSub.id} renewed. Plan: ${updateData.plan_code || wsSub.plan_code}`);
     return "active";
   }
 
-  // Fallback to circle subscription
   return await handleSubscriptionPaid(supabase, paymentData);
 }
 
