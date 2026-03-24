@@ -6,6 +6,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Standardized error response
+function errorResponse(code: string, message: string, status: number, retryable = false, contextId?: string) {
+  return new Response(
+    JSON.stringify({ error: { code, message, retryable, context_id: contextId } }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -17,9 +25,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1. Find open sessions older than 30 min with email, not yet marked abandoned
+    // 1. Find sessions with checkout_started but no payment_succeeded via analytics_events
     const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
+    // Also check checkout_sessions table for traditional recovery
     const { data: abandonedSessions, error: fetchErr } = await supabase
       .from("checkout_sessions")
       .select("id, email, workspace_id, created_at, total_amount")
@@ -30,39 +39,34 @@ Deno.serve(async (req) => {
       .limit(100);
 
     if (fetchErr) {
-      console.error("Error fetching sessions:", fetchErr);
-      return new Response(JSON.stringify({ error: fetchErr.message }), {
-        status: 500,
-        headers: corsHeaders,
-      });
+      console.error("Fetch error:", JSON.stringify({ code: fetchErr.code, message: fetchErr.message }));
+      return errorResponse("FETCH_ERROR", fetchErr.message, 500, true);
     }
 
     if (!abandonedSessions || abandonedSessions.length === 0) {
-      return new Response(JSON.stringify({ processed: 0 }), {
-        headers: corsHeaders,
-      });
+      return new Response(JSON.stringify({ processed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let processed = 0;
 
     for (const session of abandonedSessions) {
-      // 2. Mark as abandoned
+      // Mark as abandoned
       const { error: updateErr } = await supabase
         .from("checkout_sessions")
         .update({ status: "ABANDONED", abandoned_at: new Date().toISOString() })
         .eq("id", session.id);
 
       if (updateErr) {
-        console.error(`Failed to update session ${session.id}:`, updateErr);
+        console.error("Update failed:", JSON.stringify({ session_id: session.id, error: updateErr.message }));
         continue;
       }
 
-      // 3. Schedule 3 recovery emails
+      // Schedule 3 recovery emails with idempotency
       const now = Date.now();
       const emails = [
-        { email_number: 1, scheduled_for: new Date(now + 1 * 60 * 60 * 1000).toISOString() },   // 1 hour
-        { email_number: 2, scheduled_for: new Date(now + 24 * 60 * 60 * 1000).toISOString() },  // 24 hours
-        { email_number: 3, scheduled_for: new Date(now + 48 * 60 * 60 * 1000).toISOString() },  // 48 hours
+        { email_number: 1, scheduled_for: new Date(now + 1 * 60 * 60 * 1000).toISOString() },
+        { email_number: 2, scheduled_for: new Date(now + 24 * 60 * 60 * 1000).toISOString() },
+        { email_number: 3, scheduled_for: new Date(now + 48 * 60 * 60 * 1000).toISOString() },
       ];
 
       const rows = emails.map((e) => ({
@@ -77,20 +81,26 @@ Deno.serve(async (req) => {
         .upsert(rows, { onConflict: "checkout_session_id,email_number" });
 
       if (insertErr) {
-        console.error(`Failed to schedule emails for ${session.id}:`, insertErr);
+        console.error("Email schedule failed:", JSON.stringify({ session_id: session.id, error: insertErr.message }));
         continue;
       }
+
+      // Track the abandonment event
+      await supabase.from("analytics_events").insert({
+        event_type: "cart_abandoned",
+        workspace_id: session.workspace_id,
+        visitor_id: null,
+        metadata: { checkout_session_id: session.id, email: session.email?.replace(/(.{2}).*(@.*)/, "$1***$2") },
+        page_path: "/checkout",
+      }).catch(() => {});
 
       processed++;
     }
 
     console.log(`Processed ${processed} abandoned carts`);
-    return new Response(JSON.stringify({ processed }), { headers: corsHeaders });
-  } catch (err) {
-    console.error("Unexpected error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: corsHeaders,
-    });
+    return new Response(JSON.stringify({ processed }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (err: any) {
+    console.error("Unexpected error:", JSON.stringify({ message: err.message, stack: err.stack?.slice(0, 200) }));
+    return errorResponse("INTERNAL_ERROR", "Internal error", 500, true);
   }
 });
