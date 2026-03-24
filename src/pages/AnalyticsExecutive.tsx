@@ -605,7 +605,7 @@ function BetaCohortLog() {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["beta-cohort-log"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("beta_cohort_log")
         .select("*")
         .order("sent_at", { ascending: false })
