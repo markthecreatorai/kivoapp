@@ -1,12 +1,13 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const periods: Array<{ label: string; value: number | "custom" }> = [
-  { label: "7D", value: 7 },
-  { label: "14D", value: 14 },
-  { label: "30D", value: 30 },
-  { label: "Custom", value: "custom" },
+  { label: "Hoje", value: 1 },
+  { label: "Esse mês", value: 30 },
+  { label: "Últimos 30 dias", value: 30 },
+  { label: "Últimos 90 dias", value: 90 },
+  { label: "Todo o período", value: 365 },
+  { label: "Personalizado", value: "custom" },
 ];
 
 interface PeriodFilterProps {
@@ -16,22 +17,20 @@ interface PeriodFilterProps {
 
 export function PeriodFilter({ selectedPeriod, onPeriodChange }: PeriodFilterProps) {
   return (
-    <div className="flex gap-1 p-1 bg-white border border-border/50 rounded-lg shadow-sm">
+    <div className="flex flex-wrap gap-1.5">
       {periods.map((period) => (
-        <Button
+        <button
           key={period.label}
-          variant="ghost"
-          size="sm"
           className={cn(
-            "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+            "px-3 py-1.5 text-xs font-medium rounded-full border transition-all",
             selectedPeriod === period.value
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              ? "bg-[hsl(var(--success-light))] text-[hsl(var(--success-light-foreground))] border-[hsl(var(--success)/0.3)]"
+              : "bg-background text-muted-foreground border-border/60 hover:border-border hover:text-foreground"
           )}
           onClick={() => onPeriodChange(period.value)}
         >
           {period.label}
-        </Button>
+        </button>
       ))}
     </div>
   );
