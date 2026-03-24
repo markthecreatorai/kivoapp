@@ -76,8 +76,8 @@ function StatusIcon({ status }: { status: QAStatus }) {
 function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
     critical: "bg-destructive/10 text-destructive border-destructive/20",
-    high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-    medium: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+    high: "bg-primary/10 text-primary border-primary/20",
+    medium: "bg-accent/10 text-accent border-accent/20",
     low: "bg-muted text-muted-foreground border-border",
   };
   return <Badge variant="outline" className={colors[severity] || ""}>{severity}</Badge>;
