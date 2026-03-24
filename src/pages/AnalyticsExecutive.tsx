@@ -193,7 +193,7 @@ export default function AnalyticsExecutive() {
       const paid = methodOrders.filter(o => o.status === "PAID").length;
       const failed = methodOrders.filter(o => o.status === "FAILED").length;
       const total = paid + failed;
-      const refunded = methodOrders.filter(o => o.refunded_at).length;
+      const refunded = methodOrders.filter(o => o.status === "REFUNDED").length;
       return {
         method: method === "credit_card" ? "Cartão" : method === "pix" ? "PIX" : "Boleto",
         total,
