@@ -32,6 +32,7 @@ const navigationItems = [
 { title: "Analytics", url: "/analytics", icon: BarChart3 },
 { title: "Clientes", url: "/clients", icon: Heart },
 { title: "Logs Pagamento", url: "/payment-logs", icon: FileText },
+{ title: "Fiscal", url: "/fiscal", icon: Receipt },
 { title: "Configurações", url: "/settings", icon: Settings }];
 
 
