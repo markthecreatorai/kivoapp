@@ -37,7 +37,7 @@ export function usePlanCheckout() {
   };
 
   // New subscription checkout (no existing active sub)
-  const startPlanCheckout = async ({ planCode, billingCycle = "monthly", sourceUI }: StartCheckoutParams) => {
+  const startPlanCheckout = async ({ planCode, billingCycle = "monthly", sourceUI, cpf, customerName }: StartCheckoutParams) => {
     if (!currentWorkspace) {
       toast({ title: "Erro", description: "Workspace não encontrado.", variant: "destructive" });
       return;
