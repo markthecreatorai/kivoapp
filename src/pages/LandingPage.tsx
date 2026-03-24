@@ -163,7 +163,6 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <img src={kivoLogo} alt="Kivo" className="h-7" />
-            <span className="text-xl font-bold text-foreground">Kivo</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Recursos</a>
