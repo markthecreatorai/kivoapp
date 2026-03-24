@@ -1,14 +1,9 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Crown, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Crown, Zap, ArrowRight, Check, Loader2 } from "lucide-react";
 import { PLAN_LABELS, PLAN_UPGRADE_MAP, type PlanType } from "@/hooks/usePlanLimits";
-import { useExperiment } from "@/hooks/useExperiment";
-import { usePlanCheckout } from "@/hooks/usePlanCheckout";
-import { toast } from "@/hooks/use-toast";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -17,97 +12,22 @@ interface UpgradeModalProps {
   feature: string;
 }
 
-const PLAN_FEATURES: Record<PlanType, string[]> = {
-  FREE: ["1 produto", "Checkout integrado", "Link-in-bio"],
-  CREATOR: [
-    "Até 10 produtos",
-    "1 curso com área de membros",
-    "Até 500 contatos de email",
-    "Até 5 afiliados",
-    "Email marketing",
-    "Cupons de desconto",
-  ],
-  CREATOR_PRO: [
-    "Produtos ilimitados",
-    "Cursos ilimitados",
-    "Contatos ilimitados",
-    "Afiliados ilimitados",
-    "Automações avançadas",
-    "Domínio customizado",
-    "Suporte prioritário",
-  ],
-};
-
 const PLAN_TO_CODE: Record<PlanType, string> = {
   FREE: "free",
   CREATOR: "creator",
   CREATOR_PRO: "creator-pro",
 };
 
-function formatCpf(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  if (digits.length <= 11) {
-    return digits
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-  }
-  return digits
-    .replace(/(\d{2})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1/$2")
-    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
-}
-
 export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: UpgradeModalProps) {
+  const navigate = useNavigate();
   const upgradeTo = PLAN_UPGRADE_MAP[currentPlan];
-  const { variant: pricingVariant } = useExperiment("pricing_creator");
-  const { variant: ctaVariant } = useExperiment("upgrade_cta");
-  const { startPlanCheckout, upgradeMidCycle, loading } = usePlanCheckout();
-  const [cpf, setCpf] = useState("");
 
   if (!upgradeTo) return null;
 
-  const getPlanPrice = (plan: PlanType): string => {
-    if (plan === "CREATOR") return pricingVariant === "B" ? "R$79/mês" : "R$67/mês";
-    if (plan === "CREATOR_PRO") return "R$149/mês";
-    return "R$0";
-  };
-
-  const getCtaText = (): string => {
-    if (ctaVariant === "B") return "Economize em taxas — Upgrade";
-    return "Fazer Upgrade";
-  };
-
-  const handleUpgrade = async () => {
+  const handleUpgrade = () => {
+    onOpenChange(false);
     const targetCode = PLAN_TO_CODE[upgradeTo];
-    const cleanCpf = cpf.replace(/\D/g, "");
-
-    // CPF required for first subscription (FREE -> paid)
-    if (currentPlan === "FREE" && cleanCpf.length < 11) {
-      toast({ title: "CPF/CNPJ obrigatório", description: "Informe seu CPF ou CNPJ para prosseguir.", variant: "destructive" });
-      return;
-    }
-
-    // If upgrading from a paid plan (mid-cycle), use the immediate upgrade
-    if (currentPlan !== "FREE") {
-      const success = await upgradeMidCycle({
-        planCode: targetCode,
-        sourceUI: "locked_features_modal",
-      });
-      if (success) {
-        onOpenChange(false);
-        window.location.reload();
-      }
-      return;
-    }
-
-    // First subscription (from FREE) -> checkout flow
-    startPlanCheckout({
-      planCode: targetCode,
-      sourceUI: "locked_features_modal",
-      cpf: cleanCpf,
-    });
+    navigate(`/billing/upgrade-flow?plan=${targetCode}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`);
   };
 
   return (
@@ -131,51 +51,12 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" />
-                Plano {PLAN_LABELS[upgradeTo]}
-              </h3>
-              <span className="text-sm font-bold text-primary">{getPlanPrice(upgradeTo)}</span>
-            </div>
-            <ul className="space-y-2">
-              {PLAN_FEATURES[upgradeTo].map((feat, i) => (
-                <li key={i} className="flex items-center gap-2 text-sm text-foreground">
-                  <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                  {feat}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {currentPlan === "FREE" && (
-            <div className="space-y-2">
-              <Label htmlFor="cpf" className="text-sm font-medium text-foreground">
-                CPF ou CNPJ
-              </Label>
-              <Input
-                id="cpf"
-                placeholder="000.000.000-00"
-                value={cpf}
-                onChange={(e) => setCpf(formatCpf(e.target.value))}
-                disabled={loading}
-                maxLength={18}
-              />
-              <p className="text-xs text-muted-foreground">Necessário para processar a assinatura.</p>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={loading}>
+        <div className="flex gap-3 pt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             Agora não
           </Button>
-          <Button className="flex-1 gap-2" onClick={handleUpgrade} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {loading ? "Processando..." : getCtaText()}
-            {!loading && <ArrowRight className="w-4 h-4" />}
+          <Button className="flex-1 gap-2" onClick={handleUpgrade}>
+            Fazer Upgrade <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </DialogContent>

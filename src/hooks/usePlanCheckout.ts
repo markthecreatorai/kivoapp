@@ -4,7 +4,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { trackEvent } from "@/lib/tracking";
 import { toast } from "@/hooks/use-toast";
 
-export type SourceUI = "dashboard_banner" | "locked_features_modal" | "settings_plans_modal" | "pricing_page";
+export type SourceUI = "dashboard_banner" | "locked_features_modal" | "settings_plans_modal" | "pricing_page" | "upgrade_flow" | string;
 
 interface StartCheckoutParams {
   planCode: string;

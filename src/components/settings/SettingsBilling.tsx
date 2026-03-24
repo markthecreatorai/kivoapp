@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,6 @@ import { Switch } from "@/components/ui/switch";
 import { Check, Crown, Sparkles, Zap, Download, Loader2 } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { cn } from "@/lib/utils";
-import { usePlanCheckout } from "@/hooks/usePlanCheckout";
 
 const PLANS = [
   { id: "free", code: "free", name: "Free", monthly: 0, annual: 0, features: ["1 produto", "Taxa de 7%", "Link-in-bio", "Com marca Kivo"] },
@@ -23,21 +23,17 @@ const INVOICES = [
 
 export function SettingsBilling() {
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [isAnnual, setIsAnnual] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("free");
-  const { startPlanCheckout, loading: checkoutLoading } = usePlanCheckout();
 
   const currentPlan = ((currentWorkspace as any)?.metadata as any)?.plan || "free";
 
   const handleUpgrade = () => {
     if (selectedPlan === "free" || selectedPlan === currentPlan) return;
     setShowPlanModal(false);
-    startPlanCheckout({
-      planCode: selectedPlan,
-      billingCycle: isAnnual ? "annual" : "monthly",
-      sourceUI: "settings_plans_modal",
-    });
+    navigate(`/billing/upgrade-flow?plan=${selectedPlan}&source=settings_plans_modal`);
   };
 
   return (
@@ -161,11 +157,10 @@ export function SettingsBilling() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPlanModal(false)}>Cancelar</Button>
             <Button
-              disabled={selectedPlan === currentPlan || selectedPlan === "free" || checkoutLoading}
+              disabled={selectedPlan === currentPlan || selectedPlan === "free"}
               onClick={handleUpgrade}
             >
-              {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {checkoutLoading ? "Processando..." : "Assinar Plano"}
+              Assinar Plano
             </Button>
           </DialogFooter>
         </DialogContent>
