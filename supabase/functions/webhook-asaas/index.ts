@@ -114,7 +114,18 @@ Deno.serve(async (req) => {
   try {
     let statusAfter: string | null = null;
 
-    if (eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") {
+    // ── Subscription lifecycle events ──
+    if (eventType.startsWith("SUBSCRIPTION_")) {
+      statusAfter = await handleSubscriptionEvent(supabase, eventType, payload);
+    }
+    // ── Payment events with subscription context → plan subscription invoice ──
+    else if ((eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") && paymentData?.subscription) {
+      statusAfter = await handleSubscriptionInvoicePaid(supabase, paymentData);
+    } else if ((eventType === "PAYMENT_OVERDUE" || eventType === "PAYMENT_FAILED") && paymentData?.subscription) {
+      statusAfter = await handleSubscriptionInvoiceFailed(supabase, paymentData);
+    }
+    // ── Regular payment events ──
+    else if (eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") {
       statusAfter = await handlePaid(supabase, paymentRecord, paymentData);
     } else if (eventType === "PAYMENT_OVERDUE" || eventType === "PAYMENT_FAILED") {
       statusAfter = await handleFailed(supabase, paymentRecord, paymentData);
@@ -124,10 +135,6 @@ Deno.serve(async (req) => {
       statusAfter = await handleCanceled(supabase, paymentRecord);
     } else if (eventType === "PAYMENT_CHARGEBACK_REQUESTED") {
       statusAfter = await handleChargeback(supabase, paymentRecord, paymentData);
-    } else if (eventType === "PAYMENT_CREATED" && paymentData?.subscription) {
-      statusAfter = "SUBSCRIPTION_INVOICE_CREATED";
-    } else if ((eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") && paymentData?.subscription) {
-      statusAfter = await handleSubscriptionPaid(supabase, paymentData);
     } else {
       console.log(`Unhandled Asaas event: ${eventType}`);
     }
