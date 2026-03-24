@@ -24,7 +24,7 @@ export function PeriodFilter({ selectedPeriod, onPeriodChange }: PeriodFilterPro
           className={cn(
             "px-3 py-1.5 text-xs font-medium rounded-full border transition-all",
             selectedPeriod === period.value
-              ? "bg-[hsl(var(--success-light))] text-[hsl(var(--success-light-foreground))] border-[hsl(var(--success)/0.3)]"
+              ? "bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-foreground))] border-[hsl(var(--nav-active)/0.3)]"
               : "bg-background text-muted-foreground border-border/60 hover:border-border hover:text-foreground"
           )}
           onClick={() => onPeriodChange(period.value)}

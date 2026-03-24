@@ -163,7 +163,7 @@ export function AppSidebar() {
               "flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
               "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
-            activeClassName="bg-[hsl(var(--success-light))] text-[hsl(var(--success-light-foreground))] hover:bg-[hsl(var(--success-light))]"
+            activeClassName="bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-foreground))] hover:bg-[hsl(var(--nav-active-bg))]"
           >
             <item.icon className="flex-shrink-0 w-[18px] h-[18px]" />
             {!collapsed && <span>{item.title}</span>}
