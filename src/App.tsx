@@ -189,6 +189,7 @@ const App = () => (
                   <Route path="/ops/launch" element={<LaunchReadiness />} />
                   <Route path="/ops/feedback" element={<OpsFeedback />} />
                   <Route path="/ops/week-plan" element={<OpsWeekPlan />} />
+                  <Route path="/ops/financial-health" element={<FinancialHealth />} />
                 </Route>
 
                 {/* Full-screen protected routes (no persistent layout) */}
