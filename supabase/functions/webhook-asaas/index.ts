@@ -456,6 +456,12 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
     description: `Reembolso Asaas #${paymentRecord.order_id.slice(0, 8)}`,
   });
 
+  // Reverse split entry
+  await supabase.from("split_entries").update({
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id);
+
   return "REFUNDED";
 }
 
