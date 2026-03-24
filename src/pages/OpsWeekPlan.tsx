@@ -71,7 +71,7 @@ export default function OpsWeekPlan() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("week1_plan").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+    await (supabase.from as any)("week1_plan").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
     refetch();
   };
 
