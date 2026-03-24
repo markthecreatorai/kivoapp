@@ -200,6 +200,8 @@ const App = () => (
                   <Route path="/admin/payouts" element={<AdminPayouts />} />
                   <Route path="/admin/risk-review" element={<AdminRiskReview />} />
                   <Route path="/admin/chargebacks" element={<AdminChargebacks />} />
+                  <Route path="/admin/financial-health" element={<FinancialHealthDashboard />} />
+                  <Route path="/admin/go-live" element={<GoLiveChecklist />} />
                 </Route>
 
                 {/* Full-screen protected routes (no persistent layout) */}
