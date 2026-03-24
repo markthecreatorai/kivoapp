@@ -235,17 +235,84 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
                 )}
               </div>
 
+              {/* Past due banner */}
+              {isPastDue && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Sua assinatura está inadimplente. Atualize seu método de pagamento.</span>
+                </div>
+              )}
+
+              {/* Card form */}
+              {showCardForm && (
+                <div className="space-y-3 border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    Dados do cartão
+                  </div>
+                  <div>
+                    <Label className="text-xs">Número do cartão</Label>
+                    <Input
+                      placeholder="0000 0000 0000 0000"
+                      value={cardData.number}
+                      onChange={(e) => setCardData(p => ({ ...p, number: e.target.value }))}
+                      maxLength={19}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Nome no cartão</Label>
+                    <Input
+                      placeholder="NOME COMPLETO"
+                      value={cardData.holder_name}
+                      onChange={(e) => setCardData(p => ({ ...p, holder_name: e.target.value.toUpperCase() }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs">Mês</Label>
+                      <Input
+                        placeholder="MM"
+                        value={cardData.exp_month}
+                        onChange={(e) => setCardData(p => ({ ...p, exp_month: e.target.value }))}
+                        maxLength={2}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Ano</Label>
+                      <Input
+                        placeholder="AA"
+                        value={cardData.exp_year}
+                        onChange={(e) => setCardData(p => ({ ...p, exp_year: e.target.value }))}
+                        maxLength={4}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">CVV</Label>
+                      <Input
+                        placeholder="***"
+                        type="password"
+                        value={cardData.cvv}
+                        onChange={(e) => setCardData(p => ({ ...p, cvv: e.target.value }))}
+                        maxLength={4}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <Button
                 size="lg"
                 className="w-full text-base"
                 onClick={handleSubscribe}
-                disabled={isProcessing || !user}
+                disabled={isProcessing || !user || (showCardForm && !cardData.number)}
               >
                 {isProcessing ? (
                   <span className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
                     Processando...
                   </span>
+                ) : showCardForm ? (
+                  `Pagar ${formatPrice(activePlan.price_cents)} e entrar`
                 ) : activePlan.trial_days > 0 ? (
                   `Começar teste grátis de ${activePlan.trial_days} dias`
                 ) : (
