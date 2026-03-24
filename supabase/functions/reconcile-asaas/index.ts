@@ -270,18 +270,37 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Reconciliation complete:`, JSON.stringify(summary));
+    const durationMs = Date.now() - startedAt;
+    console.log(JSON.stringify({
+      event: "reconcile_complete",
+      started_at: new Date(startedAt).toISOString(),
+      finished_at: new Date().toISOString(),
+      duration_ms: durationMs,
+      status: "ok",
+      reconciled: summary.reconciled,
+      divergences_fixed: summary.divergences_fixed,
+      manual_review: summary.manual_review,
+    }));
 
     return new Response(JSON.stringify({
       success: true,
       summary,
       timestamp: now.toISOString(),
+      duration_ms: durationMs,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (err: any) {
-    console.error("Reconciliation error:", err);
+    const durationMs = Date.now() - startedAt;
+    console.error(JSON.stringify({
+      event: "reconcile_error",
+      started_at: new Date(startedAt).toISOString(),
+      finished_at: new Date().toISOString(),
+      duration_ms: durationMs,
+      status: "error",
+      error: err.message,
+    }));
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
