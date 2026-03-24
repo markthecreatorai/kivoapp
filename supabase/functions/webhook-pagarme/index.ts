@@ -129,6 +129,16 @@ Deno.serve(async (req) => {
       statusAfter = await handleChargeback(supabase, paymentRecord, chargeData);
     } else if (eventType === "order.canceled" || eventType === "charge.canceled") {
       statusAfter = await handleCanceled(supabase, paymentRecord);
+    }
+    // ── Subscription events (Circle) ──
+    else if (eventType === "subscription.created" || eventType === "subscription.updated") {
+      statusAfter = await handleSubscriptionUpdate(supabase, chargeData);
+    } else if (eventType === "subscription.canceled" || eventType === "subscription.expired") {
+      statusAfter = await handleSubscriptionCanceled(supabase, chargeData, eventType);
+    } else if (eventType === "subscription.payment_failed") {
+      statusAfter = await handleSubscriptionPaymentFailed(supabase, chargeData);
+    } else if (eventType === "invoice.paid") {
+      statusAfter = await handleInvoicePaid(supabase, chargeData);
     } else {
       console.log(`Unhandled event type: ${eventType}`);
     }
@@ -562,6 +572,154 @@ async function handleChargeback(supabase: any, paymentRecord: any, chargeData: a
 
   console.log(`Dispute created for order ${paymentRecord.order_id}`);
   return "DISPUTED";
+}
+
+// ─── Circle Subscription Event Handlers ───
+
+async function handleSubscriptionUpdate(supabase: any, data: any): Promise<string> {
+  const providerSubId = data?.id;
+  if (!providerSubId) return "UNKNOWN";
+
+  const pgStatus = data?.status;
+  const statusMap: Record<string, string> = {
+    active: "active",
+    trialing: "trialing",
+    pending: "pending",
+    future: "pending",
+  };
+  const newStatus = statusMap[pgStatus] || "active";
+
+  const { data: sub } = await supabase
+    .from("circle_subscriptions")
+    .select("id, community_id, user_id, status")
+    .eq("provider_subscription_id", providerSubId)
+    .maybeSingle();
+
+  if (!sub) {
+    console.log(`No circle_subscription found for provider_sub ${providerSubId}`);
+    return "NOT_FOUND";
+  }
+
+  await supabase.from("circle_subscriptions").update({
+    status: newStatus,
+    dunning_attempts: 0,
+  }).eq("id", sub.id);
+
+  // Ensure member is active
+  if (newStatus === "active" || newStatus === "trialing") {
+    await supabase.from("community_members").update({
+      status: "ACTIVE",
+    }).eq("community_id", sub.community_id).eq("user_id", sub.user_id);
+  }
+
+  console.log(`Circle subscription ${sub.id} updated to ${newStatus}`);
+  return newStatus;
+}
+
+async function handleSubscriptionCanceled(supabase: any, data: any, eventType: string): Promise<string> {
+  const providerSubId = data?.id;
+  if (!providerSubId) return "UNKNOWN";
+
+  const newStatus = eventType === "subscription.expired" ? "expired" : "canceled";
+
+  const { data: sub } = await supabase
+    .from("circle_subscriptions")
+    .select("id, community_id, user_id")
+    .eq("provider_subscription_id", providerSubId)
+    .maybeSingle();
+
+  if (!sub) return "NOT_FOUND";
+
+  await supabase.from("circle_subscriptions").update({
+    status: newStatus,
+    canceled_at: new Date().toISOString(),
+  }).eq("id", sub.id);
+
+  // Block community access
+  await supabase.from("community_members").update({
+    status: "LEFT",
+  }).eq("community_id", sub.community_id).eq("user_id", sub.user_id).eq("role", "MEMBER");
+
+  console.log(`Circle subscription ${sub.id} ${newStatus}`);
+  return newStatus;
+}
+
+async function handleSubscriptionPaymentFailed(supabase: any, data: any): Promise<string> {
+  const providerSubId = data?.id || data?.subscription?.id;
+  if (!providerSubId) return "UNKNOWN";
+
+  const { data: sub } = await supabase
+    .from("circle_subscriptions")
+    .select("id, community_id, user_id, dunning_attempts")
+    .eq("provider_subscription_id", providerSubId)
+    .maybeSingle();
+
+  if (!sub) return "NOT_FOUND";
+
+  const newAttempts = (sub.dunning_attempts || 0) + 1;
+  const maxDunning = 3;
+
+  if (newAttempts >= maxDunning) {
+    // Max dunning reached → expire
+    await supabase.from("circle_subscriptions").update({
+      status: "expired",
+      dunning_attempts: newAttempts,
+      last_dunning_at: new Date().toISOString(),
+    }).eq("id", sub.id);
+
+    await supabase.from("community_members").update({
+      status: "LEFT",
+    }).eq("community_id", sub.community_id).eq("user_id", sub.user_id).eq("role", "MEMBER");
+
+    console.log(`Circle subscription ${sub.id} expired after ${newAttempts} failed dunning attempts`);
+    return "expired";
+  } else {
+    // Mark as past_due
+    await supabase.from("circle_subscriptions").update({
+      status: "past_due",
+      dunning_attempts: newAttempts,
+      last_dunning_at: new Date().toISOString(),
+    }).eq("id", sub.id);
+
+    console.log(`Circle subscription ${sub.id} past_due (attempt ${newAttempts}/${maxDunning})`);
+    return "past_due";
+  }
+}
+
+async function handleInvoicePaid(supabase: any, data: any): Promise<string> {
+  const providerSubId = data?.subscription?.id || data?.subscription_id;
+  if (!providerSubId) return "UNKNOWN";
+
+  const { data: sub } = await supabase
+    .from("circle_subscriptions")
+    .select("id, community_id, user_id, plan_id")
+    .eq("provider_subscription_id", providerSubId)
+    .maybeSingle();
+
+  if (!sub) return "NOT_FOUND";
+
+  // Get plan to calculate next billing
+  const { data: plan } = await supabase
+    .from("circle_plans")
+    .select("interval")
+    .eq("id", sub.plan_id)
+    .maybeSingle();
+
+  const intervalMs = plan?.interval === "yearly" ? 365 * 86400000 : 30 * 86400000;
+
+  await supabase.from("circle_subscriptions").update({
+    status: "active",
+    dunning_attempts: 0,
+    next_billing_at: new Date(Date.now() + intervalMs).toISOString(),
+  }).eq("id", sub.id);
+
+  // Ensure member active
+  await supabase.from("community_members").update({
+    status: "ACTIVE",
+  }).eq("community_id", sub.community_id).eq("user_id", sub.user_id);
+
+  console.log(`Circle subscription ${sub.id} renewed via invoice.paid`);
+  return "active";
 }
 
 async function handleCanceled(supabase: any, paymentRecord: any): Promise<string> {

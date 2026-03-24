@@ -5,9 +5,11 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   MessageSquare, Users, BookOpen, Trophy, Calendar,
-  Crown, Check, Star, Shield, Zap, Lock,
+  Crown, Check, Star, Shield, Zap, Lock, CreditCard, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -15,14 +17,19 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   community: any;
+  isPastDue?: boolean;
 }
 
-export default function CirclePaywall({ community }: Props) {
+export default function CirclePaywall({ community, isPastDue = false }: Props) {
   const { user, session } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedInterval, setSelectedInterval] = useState<"monthly" | "yearly">("monthly");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [cardData, setCardData] = useState({
+    number: "", holder_name: "", exp_month: "", exp_year: "", cvv: "",
+  });
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ["circle-plans", community.id],
@@ -57,10 +64,32 @@ export default function CirclePaywall({ community }: Props) {
       return;
     }
 
+    const hasTrial = activePlan.trial_days > 0;
+    const isFree = activePlan.price_cents === 0;
+
+    // If paid + no trial, need card token
+    if (!isFree && !hasTrial && !showCardForm) {
+      setShowCardForm(true);
+      return;
+    }
+
     setIsProcessing(true);
     try {
+      // Build card_token placeholder — in production, use Pagar.me's tokenization endpoint
+      let card_token: string | undefined;
+      if (showCardForm && cardData.number) {
+        // For sandbox: pass card data directly (in prod, use pagarme.js tokenization)
+        card_token = btoa(JSON.stringify({
+          number: cardData.number.replace(/\s/g, ""),
+          holder_name: cardData.holder_name,
+          exp_month: parseInt(cardData.exp_month),
+          exp_year: parseInt(cardData.exp_year),
+          cvv: cardData.cvv,
+        }));
+      }
+
       const { data, error } = await supabase.functions.invoke("circle-subscription", {
-        body: { action: "create", plan_id: activePlan.id },
+        body: { action: "create", plan_id: activePlan.id, card_token },
       });
 
       if (error) throw error;
@@ -74,6 +103,9 @@ export default function CirclePaywall({ community }: Props) {
         queryClient.invalidateQueries({ queryKey: ["circle-member"] });
         queryClient.invalidateQueries({ queryKey: ["circle-subscription"] });
         navigate("/circle/feed");
+      } else if (data?.requires_card) {
+        setShowCardForm(true);
+        toast.info("Informe os dados do cartão para continuar.");
       } else {
         toast.info("Assinatura criada. Aguardando confirmação de pagamento.");
       }
@@ -84,7 +116,7 @@ export default function CirclePaywall({ community }: Props) {
         queryClient.invalidateQueries({ queryKey: ["circle-member"] });
         navigate("/circle/feed");
       } else {
-        toast.error("Erro ao processar assinatura. Tente novamente.");
+        toast.error(err?.message || "Erro ao processar assinatura. Tente novamente.");
       }
     } finally {
       setIsProcessing(false);
@@ -203,17 +235,84 @@ export default function CirclePaywall({ community }: Props) {
                 )}
               </div>
 
+              {/* Past due banner */}
+              {isPastDue && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Sua assinatura está inadimplente. Atualize seu método de pagamento.</span>
+                </div>
+              )}
+
+              {/* Card form */}
+              {showCardForm && (
+                <div className="space-y-3 border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    Dados do cartão
+                  </div>
+                  <div>
+                    <Label className="text-xs">Número do cartão</Label>
+                    <Input
+                      placeholder="0000 0000 0000 0000"
+                      value={cardData.number}
+                      onChange={(e) => setCardData(p => ({ ...p, number: e.target.value }))}
+                      maxLength={19}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Nome no cartão</Label>
+                    <Input
+                      placeholder="NOME COMPLETO"
+                      value={cardData.holder_name}
+                      onChange={(e) => setCardData(p => ({ ...p, holder_name: e.target.value.toUpperCase() }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs">Mês</Label>
+                      <Input
+                        placeholder="MM"
+                        value={cardData.exp_month}
+                        onChange={(e) => setCardData(p => ({ ...p, exp_month: e.target.value }))}
+                        maxLength={2}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Ano</Label>
+                      <Input
+                        placeholder="AA"
+                        value={cardData.exp_year}
+                        onChange={(e) => setCardData(p => ({ ...p, exp_year: e.target.value }))}
+                        maxLength={4}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">CVV</Label>
+                      <Input
+                        placeholder="***"
+                        type="password"
+                        value={cardData.cvv}
+                        onChange={(e) => setCardData(p => ({ ...p, cvv: e.target.value }))}
+                        maxLength={4}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <Button
                 size="lg"
                 className="w-full text-base"
                 onClick={handleSubscribe}
-                disabled={isProcessing || !user}
+                disabled={isProcessing || !user || (showCardForm && !cardData.number)}
               >
                 {isProcessing ? (
                   <span className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
                     Processando...
                   </span>
+                ) : showCardForm ? (
+                  `Pagar ${formatPrice(activePlan.price_cents)} e entrar`
                 ) : activePlan.trial_days > 0 ? (
                   `Começar teste grátis de ${activePlan.trial_days} dias`
                 ) : (

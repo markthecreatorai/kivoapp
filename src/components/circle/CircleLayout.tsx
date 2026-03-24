@@ -120,19 +120,20 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
     enabled: !!community?.linked_product_id && !!user && community?.access_type === "FREE_WITH_PRODUCT",
   });
 
-  // Check active circle subscription for PAID_SUBSCRIPTION communities
-  const { data: hasActiveSubscription } = useQuery({
+  // Check circle subscription status for PAID_SUBSCRIPTION communities
+  const { data: subscriptionData } = useQuery({
     queryKey: ["circle-subscription", community?.id, user?.id],
     queryFn: async () => {
-      if (!community || !user) return false;
+      if (!community || !user) return null;
       const { data } = await supabase
         .from("circle_subscriptions" as any)
         .select("id, status")
         .eq("community_id", community.id)
         .eq("user_id", user.id)
-        .in("status", ["active", "trialing"])
+        .order("created_at", { ascending: false })
         .limit(1);
-      return ((data as any[])?.length || 0) > 0;
+      const sub = (data as any[])?.[0] || null;
+      return sub;
     },
     enabled: !!community && !!user && community?.access_type === "PAID_SUBSCRIPTION",
   });
@@ -385,9 +386,12 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
     );
   }
 
-  // ── PAID_SUBSCRIPTION: active member but subscription expired? ──
+  // ── PAID_SUBSCRIPTION: active member but subscription not active? ──
+  const hasActiveSubscription = subscriptionData?.status === "active" || subscriptionData?.status === "trialing";
+  const isPastDue = subscriptionData?.status === "past_due";
+
   if (community.access_type === "PAID_SUBSCRIPTION" && !isAdmin && !hasActiveSubscription) {
-    return <CirclePaywall community={community} />;
+    return <CirclePaywall community={community} isPastDue={isPastDue} />;
   }
 
   // === MAIN LAYOUT — Skool-style ===
