@@ -291,7 +291,7 @@ export default function OpsDashboard() {
   };
 
   const toggleChecklistItem = async (id: string, isDone: boolean) => {
-    await supabase.from("ops_checklist").update({
+    await (supabase.from as any)("ops_checklist").update({
       is_done: !isDone,
       completed_at: !isDone ? new Date().toISOString() : null,
     }).eq("id", id);

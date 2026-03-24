@@ -22,7 +22,7 @@ export function FeedbackButton() {
     if (!description.trim()) return;
     setSubmitting(true);
     try {
-      await supabase.from("beta_feedback").insert({
+      await (supabase.from as any)("beta_feedback").insert({
         workspace_id: currentWorkspace?.id,
         user_id: user?.id,
         category,

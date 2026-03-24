@@ -44,7 +44,7 @@ export default function OpsFeedback() {
   });
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("beta_feedback").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+    await (supabase.from as any)("beta_feedback").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
     refetch();
   };
 
