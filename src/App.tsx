@@ -70,6 +70,7 @@ const CircleEvents = lazy(() => import("./pages/circle/CircleEvents"));
 const CircleClassroom = lazy(() => import("./pages/circle/CircleClassroom"));
 const CircleAdmin = lazy(() => import("./pages/circle/CircleAdmin"));
 const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
+const CircleMessages = lazy(() => import("./pages/circle/CircleMessages"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -202,6 +203,7 @@ const App = () => (
                 <Route path="/circle/events" element={<ProtectedRoute><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circle/classroom" element={<ProtectedRoute><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circle/admin" element={<ProtectedRoute><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circle/messages" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circle/post/:id" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
 
                 {/* Landing page */}

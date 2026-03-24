@@ -24,6 +24,7 @@ import {
   UserPlus,
   Eye,
   Lock,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -65,6 +66,7 @@ const tabItems = [
   { label: "Calendário", icon: Calendar, path: "/circle/events" },
   { label: "Membros", icon: Users, path: "/circle/members" },
   { label: "Ranking", icon: Trophy, path: "/circle/leaderboard" },
+  { label: "Mensagens", icon: Mail, path: "/circle/messages" },
 ];
 
 export default function CircleLayout({ children }: CircleLayoutProps) {

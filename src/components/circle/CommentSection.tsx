@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   Heart, Send, CheckCircle, ChevronDown, ChevronUp, Link2, Trash2,
-  MoreHorizontal,
+  MoreHorizontal, Flag,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -67,6 +67,11 @@ export default function CommentSection({
   const addComment = useMutation({
     mutationFn: async ({ body, parentId }: { body: string; parentId?: string }) => {
       if (!member || !community) throw new Error("Missing");
+
+      // Anti-spam check
+      const { checkSpam } = await import("@/lib/antispam");
+      const spamResult = await checkSpam(member.id, community.id, "comment", body.trim());
+      if (!spamResult.allowed) throw new Error(spamResult.reason || "Spam detectado");
       const { data: comment, error } = await supabase.from("community_comments").insert({
         post_id: postId,
         author_id: member.id,
@@ -335,8 +340,7 @@ export default function CommentSection({
                         </button>
                       )}
                       {/* More menu - show for admin OR author */}
-                      {(isAdmin || comment.author_id === member?.id) && (
-                        <DropdownMenu>
+                      <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto">
                               <MoreHorizontal className="h-3.5 w-3.5" />
@@ -358,15 +362,35 @@ export default function CommentSection({
                                 ✏️ Editar
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => deleteComment.mutate(comment.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir
-                            </DropdownMenuItem>
+                            {(isAdmin || comment.author_id === member?.id) && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => deleteComment.mutate(comment.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir
+                              </DropdownMenuItem>
+                            )}
+                            {comment.author_id !== member?.id && community && member && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  supabase.from("community_reports" as any).insert({
+                                    community_id: community.id,
+                                    reporter_id: member.id,
+                                    comment_id: comment.id,
+                                    target_member_id: comment.author_id,
+                                    reason: "spam",
+                                    status: "PENDING",
+                                  } as any).then(({ error }) => {
+                                    if (!error) toast.success("Denúncia enviada");
+                                    else toast.error("Erro ao denunciar");
+                                  });
+                                }}
+                              >
+                                <Flag className="h-3.5 w-3.5 mr-2" />Denunciar
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
                     </div>
                   </div>
                 </div>

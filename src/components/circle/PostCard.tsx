@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Pin, BarChart3, Play } from "lucide-react";
+import { Heart, MessageCircle, Pin, BarChart3, Play, Flag } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -12,6 +16,8 @@ interface PostCardProps {
   onToggleLike: (postId: string) => void;
   isMuted: boolean;
   showSpace?: boolean;
+  communityId?: string;
+  memberId?: string;
 }
 
 function getVideoThumb(url: string | null) {
@@ -31,7 +37,7 @@ const ROLE_LABEL: Record<string, string> = {
   MODERATOR: "Mod",
 };
 
-export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true }: PostCardProps) {
+export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId }: PostCardProps) {
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
   const thumbnail = firstImage || videoThumb;
@@ -151,6 +157,39 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           <MessageCircle className="h-[14px] w-[14px]" />
           {post.comment_count > 0 && <span>{post.comment_count}</span>}
         </Link>
+
+        {/* Report */}
+        {communityId && memberId && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50">
+                <Flag className="h-[14px] w-[14px]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  import("@/integrations/supabase/client").then(({ supabase }) => {
+                    supabase.from("community_reports" as any).insert({
+                      community_id: communityId,
+                      reporter_id: memberId,
+                      post_id: post.id,
+                      target_member_id: post.author_id,
+                      reason: "spam",
+                      status: "PENDING",
+                    } as any).then(({ error }) => {
+                      if (!error) {
+                        import("sonner").then(({ toast }) => toast.success("Denúncia enviada"));
+                      }
+                    });
+                  });
+                }}
+              >
+                <Flag className="h-3.5 w-3.5 mr-2" />Denunciar post
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         <div className="flex-1" />
 
