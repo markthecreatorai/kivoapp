@@ -129,6 +129,16 @@ Deno.serve(async (req) => {
       statusAfter = await handleChargeback(supabase, paymentRecord, chargeData);
     } else if (eventType === "order.canceled" || eventType === "charge.canceled") {
       statusAfter = await handleCanceled(supabase, paymentRecord);
+    }
+    // ── Subscription events (Circle) ──
+    else if (eventType === "subscription.created" || eventType === "subscription.updated") {
+      statusAfter = await handleSubscriptionUpdate(supabase, chargeData);
+    } else if (eventType === "subscription.canceled" || eventType === "subscription.expired") {
+      statusAfter = await handleSubscriptionCanceled(supabase, chargeData, eventType);
+    } else if (eventType === "subscription.payment_failed") {
+      statusAfter = await handleSubscriptionPaymentFailed(supabase, chargeData);
+    } else if (eventType === "invoice.paid") {
+      statusAfter = await handleInvoicePaid(supabase, chargeData);
     } else {
       console.log(`Unhandled event type: ${eventType}`);
     }
