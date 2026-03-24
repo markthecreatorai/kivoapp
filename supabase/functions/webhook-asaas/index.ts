@@ -477,6 +477,13 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
   });
 
   await supabase.from("orders").update({ status: "DISPUTED" }).eq("id", paymentRecord.order_id);
+
+  // Reverse split entry on chargeback
+  await supabase.from("split_entries").update({
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id);
+
   return "DISPUTED";
 }
 
