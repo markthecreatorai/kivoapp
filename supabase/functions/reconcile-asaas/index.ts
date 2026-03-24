@@ -29,6 +29,19 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ── Auth: require x-cron-secret header ──
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const providedSecret = req.headers.get("x-cron-secret");
+  if (!cronSecret || providedSecret !== cronSecret) {
+    console.warn("Unauthorized reconcile-asaas call — missing or invalid x-cron-secret");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const startedAt = Date.now();
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const asaasKey = Deno.env.get("ASAAS_API_KEY");
@@ -257,18 +270,37 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Reconciliation complete:`, JSON.stringify(summary));
+    const durationMs = Date.now() - startedAt;
+    console.log(JSON.stringify({
+      event: "reconcile_complete",
+      started_at: new Date(startedAt).toISOString(),
+      finished_at: new Date().toISOString(),
+      duration_ms: durationMs,
+      status: "ok",
+      reconciled: summary.reconciled,
+      divergences_fixed: summary.divergences_fixed,
+      manual_review: summary.manual_review,
+    }));
 
     return new Response(JSON.stringify({
       success: true,
       summary,
       timestamp: now.toISOString(),
+      duration_ms: durationMs,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (err: any) {
-    console.error("Reconciliation error:", err);
+    const durationMs = Date.now() - startedAt;
+    console.error(JSON.stringify({
+      event: "reconcile_error",
+      started_at: new Date(startedAt).toISOString(),
+      finished_at: new Date().toISOString(),
+      duration_ms: durationMs,
+      status: "error",
+      error: err.message,
+    }));
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
