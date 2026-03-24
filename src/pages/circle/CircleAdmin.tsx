@@ -68,6 +68,7 @@ export default function CircleAdmin() {
           </TabsTrigger>
           <TabsTrigger value="spaces"><LayoutGrid className="h-4 w-4 mr-1.5" />Espaços</TabsTrigger>
           <TabsTrigger value="subscriptions"><CreditCard className="h-4 w-4 mr-1.5" />Assinaturas</TabsTrigger>
+          <TabsTrigger value="moderation"><Flag className="h-4 w-4 mr-1.5" />Moderação</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
