@@ -31,6 +31,7 @@ const navigationItems = [
 { title: "Afiliados", url: "/affiliates", icon: Users },
 { title: "Analytics", url: "/analytics", icon: BarChart3 },
 { title: "Clientes", url: "/clients", icon: Heart },
+{ title: "Logs Pagamento", url: "/payment-logs", icon: FileText },
 { title: "Configurações", url: "/settings", icon: Settings }];
 
 
