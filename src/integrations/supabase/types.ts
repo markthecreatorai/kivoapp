@@ -1058,6 +1058,119 @@ export type Database = {
           },
         ]
       }
+      circle_plans: {
+        Row: {
+          community_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          interval: string
+          is_active: boolean
+          name: string
+          price_cents: number
+          trial_days: number
+          updated_at: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          interval?: string
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          trial_days?: number
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          interval?: string
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          trial_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_plans_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_subscriptions: {
+        Row: {
+          canceled_at: string | null
+          community_id: string
+          created_at: string
+          id: string
+          next_billing_at: string | null
+          plan_id: string
+          provider: string | null
+          provider_subscription_id: string | null
+          started_at: string | null
+          status: string
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          community_id: string
+          created_at?: string
+          id?: string
+          next_billing_at?: string | null
+          plan_id: string
+          provider?: string | null
+          provider_subscription_id?: string | null
+          started_at?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          community_id?: string
+          created_at?: string
+          id?: string
+          next_billing_at?: string | null
+          plan_id?: string
+          provider?: string | null
+          provider_subscription_id?: string | null
+          started_at?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_subscriptions_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "circle_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_rules: {
         Row: {
           created_at: string
@@ -5076,6 +5189,10 @@ export type Database = {
           pending_balance: number
           total_balance: number
         }[]
+      }
+      has_active_circle_subscription: {
+        Args: { _community_id: string; _user_id: string }
+        Returns: boolean
       }
       is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_community_member: {
