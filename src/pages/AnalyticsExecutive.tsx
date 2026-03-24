@@ -450,7 +450,17 @@ export default function AnalyticsExecutive() {
         </TabsContent>
       </Tabs>
 
-      {/* Cohort section - simple monthly table */}
+      {/* Activation Metrics */}
+      <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Métricas de Ativação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ActivationMetrics workspaceId={workspaceId} periodDays={periodDays} />
+        </CardContent>
+      </Card>
+
+      {/* Cohort section */}
       <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-semibold">Coorte Mensal — Retenção de Atividade</CardTitle>
@@ -551,5 +561,82 @@ function CohortTable({ workspaceId }: { workspaceId?: string }) {
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function ActivationMetrics({ workspaceId, periodDays }: { workspaceId?: string; periodDays: number }) {
+  const { data: progress = [] } = useQuery({
+    queryKey: ["activation-progress", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("onboarding_progress")
+        .select("step_key, completed_at, created_at")
+        .eq("workspace_id", workspaceId!);
+      return (data ?? []) as Array<{ step_key: string; completed_at: string | null; created_at: string }>;
+    },
+  });
+
+  const { data: workspace } = useQuery({
+    queryKey: ["activation-workspace", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("workspaces")
+        .select("created_at, activated_at")
+        .eq("id", workspaceId!)
+        .single();
+      return data;
+    },
+  });
+
+  const metrics = useMemo(() => {
+    if (!workspace) return null;
+
+    const wsCreated = new Date(workspace.created_at);
+    const productStep = progress.find(p => p.step_key === "product_created" && p.completed_at);
+    const saleStep = progress.find(p => p.step_key === "first_sale" && p.completed_at);
+
+    const timeToProduct = productStep
+      ? Math.round((new Date(productStep.completed_at!).getTime() - wsCreated.getTime()) / (1000 * 60 * 60))
+      : null;
+
+    const timeToSale = saleStep
+      ? Math.round((new Date(saleStep.completed_at!).getTime() - wsCreated.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    const completedSteps = progress.filter(p => p.completed_at).length;
+    const activationRate = (completedSteps / 5) * 100;
+
+    return { timeToProduct, timeToSale, activationRate, isActivated: !!workspace.activated_at };
+  }, [progress, workspace]);
+
+  if (!metrics) return <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>;
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="text-center p-4 rounded-lg bg-muted/30">
+        <p className="text-2xl font-bold text-foreground">
+          {metrics.timeToProduct !== null ? `${metrics.timeToProduct}h` : "—"}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">Signup → 1º Produto</p>
+      </div>
+      <div className="text-center p-4 rounded-lg bg-muted/30">
+        <p className="text-2xl font-bold text-foreground">
+          {metrics.timeToSale !== null ? `${metrics.timeToSale}d` : "—"}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">Signup → 1ª Venda</p>
+      </div>
+      <div className="text-center p-4 rounded-lg bg-muted/30">
+        <p className="text-2xl font-bold text-foreground">{metrics.activationRate.toFixed(0)}%</p>
+        <p className="text-xs text-muted-foreground mt-1">Progresso de Ativação</p>
+      </div>
+      <div className="text-center p-4 rounded-lg bg-muted/30">
+        <p className={cn("text-2xl font-bold", metrics.isActivated ? "text-emerald-600" : "text-amber-600")}>
+          {metrics.isActivated ? "Ativado ✓" : "Pendente"}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">Status</p>
+      </div>
+    </div>
   );
 }
