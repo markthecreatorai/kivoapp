@@ -33,7 +33,7 @@ export function SettingsBilling() {
   const handleUpgrade = () => {
     if (selectedPlan === "free" || selectedPlan === currentPlan) return;
     setShowPlanModal(false);
-    navigate(`/pricing?plan=${selectedPlan}&source=settings_plans_modal`);
+    window.location.assign(`/#pricing?plan=${selectedPlan}&source=settings_plans_modal`);
   };
 
   return (

@@ -10,7 +10,7 @@ export function DashboardUpgradeCard() {
   const upgradeTo = PLAN_UPGRADE_MAP[plan];
   if (!upgradeTo) return null;
 
-  const upgradeUrl = "/pricing?source_ui=dashboard_upgrade_card&plan=creator";
+  const upgradeUrl = "/#pricing?source_ui=dashboard_upgrade_card&plan=creator";
 
   return (
     <Card className="relative isolate border-primary/20 bg-primary/5 pointer-events-auto">
