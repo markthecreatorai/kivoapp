@@ -124,6 +124,7 @@ const App = () => (
                 <Route path="/leads/segments" element={<ProtectedRoute><DashboardLayout><LeadSegments /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/leads/email" element={<ProtectedRoute><DashboardLayout><LeadEmail /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/appointments" element={<ProtectedRoute><DashboardLayout><Appointments /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/payment-logs" element={<ProtectedRoute><DashboardLayout><PaymentLogs /></DashboardLayout></ProtectedRoute>} />
 
                 {/* Circle routes */}
                 <Route path="/circle" element={<ProtectedRoute><CircleLayout><Navigate to="/circle/feed" replace /></CircleLayout></ProtectedRoute>} />
