@@ -158,6 +158,39 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           {post.comment_count > 0 && <span>{post.comment_count}</span>}
         </Link>
 
+        {/* Report */}
+        {communityId && memberId && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50">
+                <Flag className="h-[14px] w-[14px]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  import("@/integrations/supabase/client").then(({ supabase }) => {
+                    supabase.from("community_reports" as any).insert({
+                      community_id: communityId,
+                      reporter_id: memberId,
+                      post_id: post.id,
+                      target_member_id: post.author_id,
+                      reason: "spam",
+                      status: "PENDING",
+                    } as any).then(({ error }) => {
+                      if (!error) {
+                        import("sonner").then(({ toast }) => toast.success("Denúncia enviada"));
+                      }
+                    });
+                  });
+                }}
+              >
+                <Flag className="h-3.5 w-3.5 mr-2" />Denunciar post
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <div className="flex-1" />
 
         {/* Right side: commenter avatars + "New comment X ago" */}
