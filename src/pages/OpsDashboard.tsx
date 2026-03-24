@@ -273,8 +273,7 @@ export default function OpsDashboard() {
     queryKey: ["ops-checklist", currentWorkspace?.id],
     queryFn: async () => {
       if (!currentWorkspace?.id) return [];
-      const { data } = await supabase
-        .from("ops_checklist")
+      const { data } = await (supabase.from as any)("ops_checklist")
         .select("*")
         .eq("workspace_id", currentWorkspace.id)
         .order("created_at");
