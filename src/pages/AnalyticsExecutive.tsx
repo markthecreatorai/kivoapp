@@ -151,21 +151,7 @@ export default function AnalyticsExecutive() {
     },
   });
 
-  // ── Products published count (for funnel) ──
-  const { data: productsPublished = [] } = useQuery({
-    queryKey: ["exec-products-published", workspaceId, fromISO],
-    enabled: !!workspaceId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("products")
-        .select("id, created_at")
-        .eq("workspace_id", workspaceId!)
-        .is("deleted_at", null)
-        .eq("is_published", true)
-        .gte("created_at", fromISO);
-      return data ?? [];
-    },
-  });
+  // Products query removed - RLS permission issues
 
   // ── Computed metrics ──
   const currentOrders = useMemo(() => orders.filter(o => new Date(o.created_at) >= from), [orders, from]);
