@@ -68,7 +68,7 @@ export default {
         "kivo-pill": "9999px",
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Fustat', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         "accordion-down": {
