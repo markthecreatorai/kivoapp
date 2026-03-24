@@ -174,7 +174,6 @@ export default function CircleMessages() {
           const msg = payload.new as any;
           // Only process if it's in one of our conversations
           if (convIds.length > 0 && !convIds.includes(msg.conversation_id)) return;
-          const msg = payload.new as any;
           // Only refresh if it's not from me
           if (msg.sender_id !== member.id) {
             queryClient.invalidateQueries({ queryKey: ["circle-conversations"] });
