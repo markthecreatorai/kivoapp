@@ -205,6 +205,23 @@ export default function Signup() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="creatorType">Tipo de creator</Label>
+                  <Select value={creatorType} onValueChange={setCreatorType}>
+                    <SelectTrigger className="input-radius">
+                      <SelectValue placeholder="Selecione seu nicho" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cursos">Cursos online</SelectItem>
+                      <SelectItem value="mentorias">Mentorias/Consultorias</SelectItem>
+                      <SelectItem value="ebooks">E-books/Templates</SelectItem>
+                      <SelectItem value="comunidade">Comunidade paga</SelectItem>
+                      <SelectItem value="saas">SaaS/Software</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
