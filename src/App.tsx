@@ -134,7 +134,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <WorkspaceProvider>
-            <Suspense fallback={<PageSkeleton />}>
+            <Suspense fallback={null}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
