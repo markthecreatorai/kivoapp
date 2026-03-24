@@ -25,7 +25,7 @@ async function callPagarme(path: string, body: unknown, apiKey: string) {
   return data;
 }
 
-function simulatePayment(method: string, totalAmount: number) {
+function simulatePayment(method: string, totalAmount: number, installments: number) {
   if (method === "pix") {
     return {
       status: "pending",
@@ -41,6 +41,8 @@ function simulatePayment(method: string, totalAmount: number) {
     return {
       status: "paid",
       gateway_payment_id: `sim_cc_${crypto.randomUUID().slice(0, 8)}`,
+      card_last4: "4242",
+      card_brand: "visa",
     };
   }
   if (method === "boleto") {
@@ -50,6 +52,7 @@ function simulatePayment(method: string, totalAmount: number) {
       boleto: {
         barcode: `23793.38128 60000.${String(Date.now()).slice(-6)} 00000.000${Math.floor(Math.random() * 900) + 100} 1 ${String(Math.floor(totalAmount * 100)).padStart(10, "0")}`,
         pdf_url: "",
+        due_at: new Date(Date.now() + 3 * 86400000).toISOString(),
       },
     };
   }
@@ -69,7 +72,6 @@ Deno.serve(async (req) => {
       affiliate_link_id, idempotency_key, bump_product_ids,
     } = body;
 
-    // Validate required fields
     if (!product_id || !price_id || !method || !customer?.email || !customer?.name || !customer?.cpf || !workspace_id) {
       return new Response(JSON.stringify({ error: "Campos obrigatórios não preenchidos" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -107,7 +109,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch workspace to get Pagar.me credentials from metadata
+    // Fetch workspace credentials
     const { data: workspace } = await supabase
       .from("workspaces")
       .select("id, metadata")
@@ -135,8 +137,6 @@ Deno.serve(async (req) => {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Verify product belongs to workspace
     if (product.workspace_id !== workspace_id) {
       return new Response(JSON.stringify({ error: "Produto não pertence a este workspace" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -158,13 +158,10 @@ Deno.serve(async (req) => {
     // Calculate totals
     let subtotal = price.amount;
     let discountAmount = 0;
-
-    // PIX discount
     if (method === "pix" && price.pix_discount_percent) {
       discountAmount += subtotal * (price.pix_discount_percent / 100);
     }
 
-    // Bump products
     const bumpItems: { product_id: string; price_id: string; amount: number }[] = [];
     if (bump_product_ids && Array.isArray(bump_product_ids)) {
       for (const bumpId of bump_product_ids) {
@@ -183,6 +180,7 @@ Deno.serve(async (req) => {
     }
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
+    const selectedInstallments = Math.min(installments || 1, price.max_installments || 12);
 
     // Upsert customer
     const { data: existingCustomer } = await supabase
@@ -234,7 +232,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create order items
     const orderItems = [
       { order_id: order.id, product_id: product.id, price_id: price.id, quantity: 1, unit_amount: price.amount, total_amount: price.amount, is_order_bump: false, is_upsell: false },
       ...bumpItems.map((b) => ({
@@ -243,11 +240,10 @@ Deno.serve(async (req) => {
     ];
     await supabase.from("order_items").insert(orderItems);
 
-    // Update checkout session
     if (checkout_session_id) {
       await supabase.from("checkout_sessions").update({
         customer_id: customerId,
-        status: method === "pix" ? "AWAITING_PAYMENT" : "PROCESSING",
+        status: method === "credit_card" ? "PROCESSING" : "AWAITING_PAYMENT",
         subtotal_amount: subtotal,
         discount_amount: discountAmount,
         total_amount: totalAmount,
@@ -294,7 +290,7 @@ Deno.serve(async (req) => {
         payments = [{
           payment_method: "credit_card",
           credit_card: {
-            installments: installments || 1,
+            installments: selectedInstallments,
             card: {
               number: card.number,
               holder_name: card.holder_name,
@@ -344,11 +340,14 @@ Deno.serve(async (req) => {
         boleto: lastTx?.pdf ? {
           barcode: lastTx.line,
           pdf_url: lastTx.pdf,
+          due_at: lastTx.due_at,
         } : undefined,
+        card_last4: lastTx?.card?.last_four_digits || null,
+        card_brand: lastTx?.card?.brand || null,
       };
     } else {
       console.log("Processing in SIMULATED mode (no Pagar.me credentials)");
-      gatewayResult = simulatePayment(method, totalAmount);
+      gatewayResult = simulatePayment(method, totalAmount, selectedInstallments);
     }
 
     // Create payment record
@@ -362,8 +361,10 @@ Deno.serve(async (req) => {
         amount: totalAmount,
         status: paymentStatus,
         gateway_payment_id: gatewayResult.gateway_payment_id || null,
-        installments: installments || 1,
+        installments: selectedInstallments,
         processed_at: paymentStatus === "SUCCEEDED" ? new Date().toISOString() : null,
+        card_last4: gatewayResult.card_last4 || null,
+        card_brand: gatewayResult.card_brand || null,
       })
       .select("id")
       .single();
@@ -385,8 +386,6 @@ Deno.serve(async (req) => {
       if (checkout_session_id) {
         await supabase.from("checkout_sessions").update({ status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", checkout_session_id);
       }
-
-      // Grant entitlements immediately for card payments
       await grantEntitlements(supabase, order.id, customerId, orderItems);
     }
 
@@ -405,9 +404,12 @@ Deno.serve(async (req) => {
     if (method === "boleto" && gatewayResult.boleto) {
       response.boleto_barcode = gatewayResult.boleto.barcode;
       response.boleto_pdf_url = gatewayResult.boleto.pdf_url || "";
+      response.boleto_due_at = gatewayResult.boleto.due_at || new Date(Date.now() + 3 * 86400000).toISOString();
     }
     if (gatewayResult.status === "paid") {
       response.message = "Pagamento aprovado";
+      response.card_last4 = gatewayResult.card_last4;
+      response.card_brand = gatewayResult.card_brand;
     }
 
     return new Response(JSON.stringify(response), {
@@ -422,15 +424,11 @@ Deno.serve(async (req) => {
   }
 });
 
-// Helper: Grant entitlements idempotently
 async function grantEntitlements(
-  supabase: any,
-  orderId: string,
-  customerId: string,
+  supabase: any, orderId: string, customerId: string,
   orderItems: { product_id: string }[]
 ) {
   for (const item of orderItems) {
-    // Check if entitlement already exists
     const { data: existing } = await supabase
       .from("entitlements")
       .select("id")
@@ -447,7 +445,6 @@ async function grantEntitlements(
       });
     }
 
-    // Increment sales_count
     const { data: prod } = await supabase
       .from("products")
       .select("sales_count")

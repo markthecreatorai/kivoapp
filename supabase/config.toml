@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.test-pagarme]
 verify_jwt = false
+
+[functions.retry-webhooks]
+verify_jwt = false
+
+[functions.reconcile-payments]
+verify_jwt = false

@@ -16,7 +16,7 @@ interface PaymentTabsProps {
   onPayCard: (cardData: CardData) => Promise<void>;
   onPayBoleto: () => Promise<void>;
   pixData: { qr_code: string; qr_code_url: string; expires_at: string } | null;
-  boletoData: { barcode: string; pdf_url: string } | null;
+  boletoData: { barcode: string; pdf_url: string; due_at?: string } | null;
   paymentLoading: boolean;
   paymentError: string | null;
   paymentSuccess: boolean;
@@ -268,7 +268,9 @@ export function PaymentTabs({
                 </a>
               )}
               <p className="text-xs text-muted-foreground text-center">
-                Seu boleto vence em 3 dias úteis. O acesso será liberado após confirmação.
+                {boletoData.due_at
+                  ? `Vencimento: ${new Date(boletoData.due_at).toLocaleDateString("pt-BR")}. O acesso será liberado após confirmação.`
+                  : "Seu boleto vence em 3 dias úteis. O acesso será liberado após confirmação."}
               </p>
             </div>
           ) : (
