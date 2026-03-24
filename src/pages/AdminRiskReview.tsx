@@ -276,7 +276,7 @@ export default function AdminRiskReview() {
                   {fraudChecks.map((c: any) => (
                     <div key={c.id} className="flex items-center gap-2 text-xs">
                       {c.passed ? (
-                        <CheckCircle className="h-3 w-3 text-green-500" />
+                        <CheckCircle className="h-3 w-3 text-primary" />
                       ) : (
                         <XCircle className="h-3 w-3 text-destructive" />
                       )}
