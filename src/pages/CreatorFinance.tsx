@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, TrendingUp, Clock, Wallet, ArrowDownToLine, Settings } from "lucide-react";
+import { DollarSign, TrendingUp, Clock, Wallet, ArrowDownToLine, Settings, Shield, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -84,6 +84,32 @@ export default function CreatorFinance() {
         .select("id, bank_name, agency, account_number, is_default, holder_name")
         .eq("workspace_id", workspaceId!)
         .order("is_default", { ascending: false });
+      return data || [];
+    },
+  });
+
+  // Reserve balance
+  const { data: reserveBalance } = useQuery({
+    queryKey: ["reserve-balance", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_reserve_balance", { p_workspace_id: workspaceId! });
+      if (data && data.length > 0) return data[0];
+      return { total_held: 0, total_released: 0, upcoming_releases: 0 };
+    },
+  });
+
+  // Chargeback cases
+  const { data: chargebacks = [] } = useQuery({
+    queryKey: ["creator-chargebacks", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("chargeback_cases")
+        .select("id, amount, status, reason, created_at")
+        .eq("workspace_id", workspaceId!)
+        .order("created_at", { ascending: false })
+        .limit(10);
       return data || [];
     },
   });
@@ -196,6 +222,50 @@ export default function CreatorFinance() {
             <p className="text-xs text-muted-foreground">Aguardando janela de segurança</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Reserve & Chargebacks */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Shield className="h-4 w-4" /> Reserva Financeira</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Retido</span>
+              <span className="font-medium">{fmt(Number(reserveBalance?.total_held || 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Liberações próximas (7d)</span>
+              <span className="font-medium">{fmt(Number(reserveBalance?.upcoming_releases || 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Total liberado</span>
+              <span className="font-medium text-primary">{fmt(Number(reserveBalance?.total_released || 0))}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {chargebacks.length > 0 && (
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Chargebacks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {chargebacks.slice(0, 5).map((c: any) => (
+                  <div key={c.id} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{format(new Date(c.created_at), "dd/MM/yy", { locale: ptBR })}</span>
+                    <span className="font-medium text-destructive">{fmt(c.amount)}</span>
+                    <Badge variant={c.status === "won" ? "default" : c.status === "lost" ? "destructive" : "secondary"} className="text-xs">
+                      {c.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Split History */}

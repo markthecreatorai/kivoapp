@@ -25,7 +25,6 @@ Deno.serve(async (req) => {
     return new Response("Invalid JSON", { status: 400, headers: corsHeaders });
   }
 
-  // Token validation (Asaas sends token in header or query param)
   if (webhookToken) {
     const headerToken = req.headers.get("asaas-access-token") || "";
     if (headerToken !== webhookToken) {
@@ -55,7 +54,6 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Find payment record by externalReference (our order_id) or gateway_payment_id
   let paymentRecord: any = null;
   const gatewayPaymentId = paymentData?.id;
   const externalReference = paymentData?.externalReference;
@@ -79,7 +77,6 @@ Deno.serve(async (req) => {
 
   const statusBefore = paymentRecord?.status || null;
 
-  // Save webhook event
   const webhookInsert: any = {
     provider: "ASAAS",
     event_type: eventType,
@@ -117,13 +114,6 @@ Deno.serve(async (req) => {
   try {
     let statusAfter: string | null = null;
 
-    // ── Asaas event mapping ──
-    // PAYMENT_CONFIRMED / PAYMENT_RECEIVED → paid
-    // PAYMENT_OVERDUE / PAYMENT_FAILED → failed
-    // PAYMENT_REFUNDED / PAYMENT_REFUND_IN_PROGRESS → refunded
-    // PAYMENT_DELETED → canceled
-    // PAYMENT_CHARGEBACK_REQUESTED → chargeback
-
     if (eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") {
       statusAfter = await handlePaid(supabase, paymentRecord, paymentData);
     } else if (eventType === "PAYMENT_OVERDUE" || eventType === "PAYMENT_FAILED") {
@@ -134,17 +124,11 @@ Deno.serve(async (req) => {
       statusAfter = await handleCanceled(supabase, paymentRecord);
     } else if (eventType === "PAYMENT_CHARGEBACK_REQUESTED") {
       statusAfter = await handleChargeback(supabase, paymentRecord, paymentData);
-    }
-    // ── Subscription events ──
-    else if (eventType === "PAYMENT_CREATED" && paymentData?.subscription) {
-      // Subscription invoice created — ignore for now
+    } else if (eventType === "PAYMENT_CREATED" && paymentData?.subscription) {
       statusAfter = "SUBSCRIPTION_INVOICE_CREATED";
-    }
-    // Subscription payment confirmed → reactivate circle subscription
-    else if ((eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") && paymentData?.subscription) {
+    } else if ((eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") && paymentData?.subscription) {
       statusAfter = await handleSubscriptionPaid(supabase, paymentData);
-    }
-    else {
+    } else {
       console.log(`Unhandled Asaas event: ${eventType}`);
     }
 
@@ -199,7 +183,6 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     paid_at: new Date().toISOString(),
   }).eq("id", paymentRecord.order_id);
 
-  // Grant entitlements
   const { data: orderItems } = await supabase
     .from("order_items")
     .select("product_id")
@@ -249,7 +232,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     }).eq("id", order.checkout_session_id);
   }
 
-  // Wallet ledger + split entries
+  // Wallet ledger + split + reserve
   if (order) {
     const HOLD_DAYS = 14;
     const availableAt = new Date(Date.now() + HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -287,7 +270,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       }
     }
 
-    // Record split entry (idempotent)
+    // Split entry + rolling reserve
     if (totalAmount > 0) {
       const { data: existingSplit } = await supabase
         .from("split_entries")
@@ -296,7 +279,6 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
         .maybeSingle();
 
       if (!existingSplit) {
-        // Get split rule
         const { data: ruleData } = await supabase.rpc("get_split_rule", {
           p_workspace_id: order.workspace_id,
           p_product_id: orderItems?.[0]?.product_id || null,
@@ -309,7 +291,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
         const creatorNet = netAfterGw - platformFee - affiliateFee;
         const splitAvailableAt = new Date(Date.now() + (rule.hold_days || 14) * 86400000).toISOString();
 
-        await supabase.from("split_entries").insert({
+        const { data: splitEntry } = await supabase.from("split_entries").insert({
           workspace_id: order.workspace_id,
           order_id: paymentRecord.order_id,
           split_rule_id: rule.id || null,
@@ -320,12 +302,37 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           creator_net: creatorNet,
           status: "pending",
           available_at: splitAvailableAt,
-        });
+        }).select("id").single();
+
+        // Rolling reserve: withhold % of creator_net
+        if (creatorNet > 0) {
+          const { data: reservePolicy } = await supabase
+            .from("reserve_policies")
+            .select("reserve_percent, release_window_days")
+            .eq("workspace_id", order.workspace_id)
+            .maybeSingle();
+
+          const reservePercent = reservePolicy?.reserve_percent || 10;
+          const releaseWindowDays = reservePolicy?.release_window_days || 30;
+          const reserveAmount = Math.round(creatorNet * Number(reservePercent) / 100);
+
+          if (reserveAmount > 0) {
+            await supabase.from("reserve_entries").insert({
+              workspace_id: order.workspace_id,
+              order_id: paymentRecord.order_id,
+              split_entry_id: splitEntry?.id || null,
+              amount: reserveAmount,
+              reserve_percent: reservePercent,
+              release_at: new Date(Date.now() + releaseWindowDays * 86400000).toISOString(),
+              status: "held",
+            });
+          }
+        }
       }
     }
   }
 
-  // Affiliate commissions (same logic as pagarme webhook)
+  // Affiliate commissions
   try {
     if (order) {
       let affiliateLinkId: string | null = null;
@@ -499,28 +506,117 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
     refunded_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
+  // Forfeit reserve
+  await supabase.from("reserve_entries").update({
+    status: "forfeited",
+    released_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
   return "REFUNDED";
 }
 
 async function handleChargeback(supabase: any, paymentRecord: any, paymentData: any): Promise<string> {
   if (!paymentRecord) return "NOT_FOUND";
 
-  await supabase.from("disputes").insert({
-    order_id: paymentRecord.order_id,
-    status: "OPEN",
-    reason: "Chargeback",
-    amount: paymentData?.value || 0,
-    gateway_dispute_id: paymentData?.id || null,
-  });
+  const chargebackAmount = paymentData?.value || 0;
 
+  // 1. Create chargeback case with SLA (7 days to submit evidence)
+  const slaDeadline = new Date(Date.now() + 7 * 86400000).toISOString();
+  const { data: cbCase } = await supabase.from("chargeback_cases").insert({
+    workspace_id: paymentRecord.workspace_id,
+    order_id: paymentRecord.order_id,
+    payment_id: paymentRecord.id,
+    gateway_dispute_id: paymentData?.id || null,
+    amount: chargebackAmount,
+    reason: paymentData?.chargebackReason || "Chargeback",
+    status: "new",
+    sla_deadline_at: slaDeadline,
+    financial_impact: chargebackAmount,
+  }).select("id").single();
+
+  // 2. Timeline entry
+  if (cbCase) {
+    await supabase.from("chargeback_timeline").insert({
+      case_id: cbCase.id,
+      action: "case_opened",
+      note: `Chargeback recebido do Asaas. Valor: ${chargebackAmount}. Prazo para evidência: 7 dias.`,
+      metadata: { gateway_id: paymentData?.id, amount: chargebackAmount },
+    });
+  }
+
+  // 3. Update order status
   await supabase.from("orders").update({ status: "DISPUTED" }).eq("id", paymentRecord.order_id);
 
-  // Reverse split entry on chargeback
+  // 4. Reverse split entry (freeze creator balance)
   await supabase.from("split_entries").update({
     status: "refunded",
     refunded_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
+  // 5. Forfeit any held reserve for this order
+  await supabase.from("reserve_entries").update({
+    status: "forfeited",
+    released_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
+  // 6. Ledger reversal
+  await supabase.from("wallet_ledger").update({ status: "canceled" })
+    .eq("order_id", paymentRecord.order_id).eq("type", "sale");
+  await supabase.from("wallet_ledger").insert({
+    workspace_id: paymentRecord.workspace_id,
+    order_id: paymentRecord.order_id,
+    type: "chargeback",
+    amount: -chargebackAmount,
+    status: "settled",
+    description: `Chargeback #${paymentRecord.order_id.slice(0, 8)}`,
+  });
+
+  // 7. Check if creator balance went negative → block payouts
+  const { data: balanceData } = await supabase.rpc("get_creator_balance", {
+    p_workspace_id: paymentRecord.workspace_id,
+  });
+  const creatorBalance = balanceData?.[0]?.available_balance || 0;
+  if (creatorBalance < 0) {
+    // Block all pending payouts for this workspace
+    await supabase.from("payout_requests").update({
+      status: "failed",
+      failed_reason: "Saldo negativo por chargeback — payout bloqueado",
+      processed_at: new Date().toISOString(),
+    }).eq("workspace_id", paymentRecord.workspace_id).in("status", ["requested", "processing"]);
+  }
+
+  // 8. Auto-increase reserve for high-risk workspaces
+  const { data: riskData } = await supabase.rpc("calculate_payout_risk", {
+    p_workspace_id: paymentRecord.workspace_id,
+  });
+  const riskScore = riskData?.[0]?.risk_score || 0;
+  if (riskScore >= 40) {
+    // Increase reserve to 20% and extend window to 60 days
+    await supabase.from("reserve_policies").upsert({
+      workspace_id: paymentRecord.workspace_id,
+      reserve_percent: Math.min(20 + Math.floor(riskScore / 10), 50),
+      release_window_days: 60,
+      auto_adjust_by_risk: true,
+    }, { onConflict: "workspace_id" });
+  }
+
+  // 9. Send Telegram alert
+  try {
+    const telegramKey = Deno.env.get("TELEGRAM_API_KEY");
+    const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+    if (telegramKey && chatId) {
+      const msg = `🚨 CHARGEBACK\nWorkspace: ${paymentRecord.workspace_id.slice(0, 8)}\nOrder: ${paymentRecord.order_id.slice(0, 8)}\nValor: R$ ${(chargebackAmount / 100).toFixed(2)}\nRisk Score: ${riskScore}`;
+      await fetch(`https://api.telegram.org/bot${telegramKey}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: msg }),
+      });
+    }
+  } catch (e) {
+    console.error("Telegram alert error (non-fatal):", e);
+  }
+
+  console.log(`Asaas: Chargeback case created for order ${paymentRecord.order_id}`);
   return "DISPUTED";
 }
 
