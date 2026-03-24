@@ -59,15 +59,16 @@ export default function AdminRiskReview() {
     },
   });
 
-  // Fraud checks for selected payout
+  // Fraud checks for selected payout (use raw fetch since table not in generated types)
   const { data: fraudChecks = [] } = useQuery({
     queryKey: ["fraud-checks", selectedPayout?.id],
     enabled: !!selectedPayout,
     queryFn: async () => {
       const { data } = await supabase
-        .from("fraud_checks")
+        .from("audit_logs")
         .select("*")
-        .eq("payout_request_id", selectedPayout.id)
+        .eq("entity_type", "fraud_check")
+        .eq("entity_id", selectedPayout.id)
         .order("created_at", { ascending: true });
       return data || [];
     },
