@@ -309,7 +309,7 @@ export default function Checkout() {
         if (data?.status === "SUCCEEDED") {
           clearInterval(pollInterval);
           setPaymentSuccess(true);
-          // Call post-purchase
+          trackEvent("payment_succeeded", { method: "pix", order_id: orderId }, product?.workspace_id);
           await supabase.functions.invoke("post-purchase", { body: { order_id: orderId } });
           navigate(`/order/success/${orderId}`);
         }
