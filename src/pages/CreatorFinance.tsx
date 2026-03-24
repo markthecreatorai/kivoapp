@@ -49,7 +49,7 @@ export default function CreatorFinance() {
     queryKey: ["split-entries", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("split_entries")
         .select("*")
         .eq("workspace_id", workspaceId!)
