@@ -43,10 +43,15 @@
     --sidebar-border: 214.3 31.8% 91.4%;
     --sidebar-ring: 6 95% 60%;
 
-    /* Dashboard page background */
-    --page-background: 220 14% 96%;
+    /* Dashboard page background — white */
+    --page-background: 0 0% 99%;
 
-    /* Success/active green */
+    /* Active nav uses brand orange */
+    --nav-active: 6 95% 60%;
+    --nav-active-bg: 6 95% 97%;
+    --nav-active-foreground: 6 95% 45%;
+
+    /* Keep success green only for semantic status */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --success-light: 142 76% 95%;
