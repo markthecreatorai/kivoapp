@@ -2251,6 +2251,149 @@ export type Database = {
           },
         ]
       }
+      fiscal_invoices: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_message: string | null
+          external_id: string | null
+          id: string
+          invoice_number: string | null
+          issued_at: string | null
+          last_attempt_at: string | null
+          order_id: string
+          pdf_url: string | null
+          provider: string | null
+          service_amount: number
+          status: string
+          tax_amount: number
+          updated_at: string
+          verification_code: string | null
+          workspace_id: string
+          xml_url: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          issued_at?: string | null
+          last_attempt_at?: string | null
+          order_id: string
+          pdf_url?: string | null
+          provider?: string | null
+          service_amount?: number
+          status?: string
+          tax_amount?: number
+          updated_at?: string
+          verification_code?: string | null
+          workspace_id: string
+          xml_url?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          issued_at?: string | null
+          last_attempt_at?: string | null
+          order_id?: string
+          pdf_url?: string | null
+          provider?: string | null
+          service_amount?: number
+          status?: string
+          tax_amount?: number
+          updated_at?: string
+          verification_code?: string | null
+          workspace_id?: string
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_invoices_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_settings: {
+        Row: {
+          address_city: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          address_zip: string | null
+          company_name: string | null
+          created_at: string
+          default_tax_rate: number | null
+          document: string | null
+          id: string
+          is_auto_emission: boolean
+          municipal_registration: string | null
+          nfse_provider: string | null
+          tax_regime: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          address_city?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          company_name?: string | null
+          created_at?: string
+          default_tax_rate?: number | null
+          document?: string | null
+          id?: string
+          is_auto_emission?: boolean
+          municipal_registration?: string | null
+          nfse_provider?: string | null
+          tax_regime?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          address_city?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          company_name?: string | null
+          created_at?: string
+          default_tax_rate?: number | null
+          document?: string | null
+          id?: string
+          is_auto_emission?: boolean
+          municipal_registration?: string | null
+          nfse_provider?: string | null
+          tax_regime?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gateway_accounts: {
         Row: {
           created_at: string
