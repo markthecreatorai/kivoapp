@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { WorkspaceProvider } from "@/contexts/WorkspaceProvider";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 
 // Lazy-loaded pages
