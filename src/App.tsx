@@ -69,6 +69,7 @@ const AdminRiskReview = lazy(() => import("./pages/AdminRiskReview"));
 const AdminChargebacks = lazy(() => import("./pages/AdminChargebacks"));
 const FinancialHealthDashboard = lazy(() => import("./pages/FinancialHealthDashboard"));
 const GoLiveChecklist = lazy(() => import("./pages/GoLiveChecklist"));
+const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
