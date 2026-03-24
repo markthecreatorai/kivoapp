@@ -51,7 +51,7 @@ export function AppSidebar() {
         <div className="flex items-center justify-center p-4 group-data-[collapsible=icon]:group-data-[state=collapsed]:p-2 px-[20px] py-[20px]">
           <img
             src="/src/assets/kivo-logo.svg"
-            alt="Kora"
+            alt="Kivo"
             className="w-full h-auto max-h-12 group-data-[collapsible=icon]:group-data-[state=collapsed]:max-h-8 text-center object-contain px-0 mx-[4px] my-[4px]" />
           
         </div>

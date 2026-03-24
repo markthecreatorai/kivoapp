@@ -88,7 +88,7 @@ export function SettingsIntegrations() {
     if (!workspaceId || !apiUrl.trim()) return;
     setConnecting(true);
     try {
-      const instanceName = `kora_${workspaceId.slice(0, 8)}`;
+      const instanceName = `kivo_${workspaceId.slice(0, 8)}`;
 
       // Save config
       const { error } = await supabase.from("whatsapp_config").upsert({

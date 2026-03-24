@@ -640,11 +640,11 @@ export default function PublicStorefront() {
           {/* Footer — Free plan */}
           <div className="mt-12 text-center">
             <a
-              href="https://kora.com.br"
+              href="https://kivo.com.br"
               className="text-xs opacity-40 hover:opacity-60 transition-opacity"
               style={{ color: t.text }}
             >
-              Feito com 💜 na Kora
+              Feito com 💜 na Kivo
             </a>
           </div>
         </div>

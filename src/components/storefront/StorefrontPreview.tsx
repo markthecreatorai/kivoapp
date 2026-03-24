@@ -377,7 +377,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
                 className="text-xs opacity-40"
                 style={{ color: currentTheme.text_color }}
               >
-                Feito com ❤️ no Kora
+                Feito com ❤️ no Kivo
               </p>
             </div>
           </div>
