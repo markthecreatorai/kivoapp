@@ -83,3 +83,24 @@ verify_jwt = false
 
 [functions.release-reserves]
 verify_jwt = false
+
+[functions.subscription-health-daily]
+verify_jwt = false
+
+[functions.reconcile-subscriptions]
+verify_jwt = false
+
+[functions.circle-subscription]
+verify_jwt = false
+
+[functions.create-subscription-checkout]
+verify_jwt = false
+
+[functions.send-dunning-email]
+verify_jwt = false
+
+[functions.track-event]
+verify_jwt = false
+
+[functions.notify-creator]
+verify_jwt = false

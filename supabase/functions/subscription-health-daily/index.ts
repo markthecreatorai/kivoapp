@@ -10,11 +10,15 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: CRON_SECRET or admin JWT
+  // Auth: CRON_SECRET only (no anon key fallback)
   const cronSecret = Deno.env.get("CRON_SECRET");
-  const authHeader = req.headers.get("x-cron-secret") || req.headers.get("authorization") || "";
-  if (cronSecret && authHeader !== cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (!cronSecret) {
+    console.error("CRON_SECRET not configured");
+    return new Response(JSON.stringify({ error: "Server misconfigured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  const provided = req.headers.get("x-cron-secret") || "";
+  if (provided !== cronSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
