@@ -6,6 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-hub-signature",
 };
 
+const MAX_ATTEMPTS = 5;
+const RETRY_DELAYS = [60, 300, 900, 3600, 7200]; // 1m, 5m, 15m, 1h, 2h
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -47,7 +50,7 @@ Deno.serve(async (req) => {
   const eventType = payload?.type || payload?.event || "unknown";
   const externalEventId = payload?.id || payload?.data?.id || crypto.randomUUID();
 
-  // Idempotency: check if already processed
+  // Idempotency check
   const { data: existingEvent } = await supabase
     .from("webhook_events")
     .select("id, status")
@@ -55,14 +58,14 @@ Deno.serve(async (req) => {
     .eq("external_event_id", String(externalEventId))
     .maybeSingle();
 
-  if (existingEvent) {
+  if (existingEvent && existingEvent.status === "PROCESSED") {
     console.log(`Duplicate webhook ${externalEventId}, skipping`);
     return new Response(JSON.stringify({ ok: true, duplicate: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Find payment record from charge data
+  // Find payment record
   const chargeData = payload?.data;
   const gatewayPaymentId = chargeData?.charges?.[0]?.id || chargeData?.id;
 
@@ -76,53 +79,81 @@ Deno.serve(async (req) => {
     paymentRecord = data;
   }
 
-  // Save webhook event
-  const { data: webhookEvent } = await supabase
-    .from("webhook_events")
-    .insert({
-      provider: "PAGARME",
-      event_type: eventType,
-      external_event_id: String(externalEventId),
-      payload,
-      status: "RECEIVED",
-      workspace_id: paymentRecord?.workspace_id || null,
-    })
-    .select("id")
-    .single();
+  const statusBefore = paymentRecord?.status || null;
 
-  if (!webhookEvent) {
-    return new Response(JSON.stringify({ ok: false, error: "Failed to save event" }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  // Save or update webhook event
+  const webhookInsert = {
+    provider: "PAGARME",
+    event_type: eventType,
+    external_event_id: String(externalEventId),
+    payload,
+    status: "RECEIVED",
+    workspace_id: paymentRecord?.workspace_id || null,
+    order_id: paymentRecord?.order_id || null,
+    status_before: statusBefore,
+    attempts: existingEvent ? (existingEvent as any).attempts + 1 : 1,
+  };
+
+  let webhookEventId: string;
+  if (existingEvent) {
+    await supabase.from("webhook_events").update({
+      status: "RECEIVED",
+      attempts: webhookInsert.attempts,
+      last_attempt_at: new Date().toISOString(),
+    }).eq("id", existingEvent.id);
+    webhookEventId = existingEvent.id;
+  } else {
+    const { data: webhookEvent } = await supabase
+      .from("webhook_events")
+      .insert(webhookInsert)
+      .select("id")
+      .single();
+    if (!webhookEvent) {
+      return new Response(JSON.stringify({ ok: false, error: "Failed to save event" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    webhookEventId = webhookEvent.id;
   }
 
   try {
+    let statusAfter: string | null = null;
+
     if (eventType === "order.paid" || eventType === "charge.paid") {
-      await handlePaid(supabase, paymentRecord, chargeData, gatewayPaymentId);
+      statusAfter = await handlePaid(supabase, paymentRecord, chargeData, gatewayPaymentId);
     } else if (eventType === "order.payment_failed" || eventType === "charge.payment_failed") {
-      await handleFailed(supabase, paymentRecord, chargeData);
+      statusAfter = await handleFailed(supabase, paymentRecord, chargeData);
     } else if (eventType === "order.refunded" || eventType === "charge.refunded") {
-      await handleRefunded(supabase, paymentRecord, chargeData);
+      statusAfter = await handleRefunded(supabase, paymentRecord, chargeData);
     } else if (eventType === "charge.chargeback") {
-      await handleChargeback(supabase, paymentRecord, chargeData);
+      statusAfter = await handleChargeback(supabase, paymentRecord, chargeData);
+    } else if (eventType === "order.canceled" || eventType === "charge.canceled") {
+      statusAfter = await handleCanceled(supabase, paymentRecord);
     } else {
       console.log(`Unhandled event type: ${eventType}`);
     }
 
-    // Mark event as processed
     await supabase.from("webhook_events").update({
       status: "PROCESSED",
       processed_at: new Date().toISOString(),
-      attempts: 1,
-    }).eq("id", webhookEvent.id);
+      status_after: statusAfter,
+      error_message: null,
+    }).eq("id", webhookEventId);
 
   } catch (err) {
     console.error("Webhook processing error:", err);
+    const currentAttempts = webhookInsert.attempts;
+    const isDeadLetter = currentAttempts >= MAX_ATTEMPTS;
+    const nextRetryAt = isDeadLetter
+      ? null
+      : new Date(Date.now() + (RETRY_DELAYS[currentAttempts - 1] || 7200) * 1000).toISOString();
+
     await supabase.from("webhook_events").update({
-      status: "FAILED",
+      status: isDeadLetter ? "DEAD_LETTER" : "FAILED",
       error_message: err.message || "Unknown error",
-      attempts: 1,
-    }).eq("id", webhookEvent.id);
+      next_retry_at: nextRetryAt,
+      last_attempt_at: new Date().toISOString(),
+    }).eq("id", webhookEventId);
   }
 
   return new Response(JSON.stringify({ ok: true }), {
@@ -133,16 +164,23 @@ Deno.serve(async (req) => {
 
 // ─── Event Handlers ───
 
-async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, gatewayPaymentId: string) {
+async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, gatewayPaymentId: string): Promise<string> {
   if (!paymentRecord) {
     throw new Error(`Payment not found for gateway_payment_id: ${gatewayPaymentId}`);
   }
 
-  // Update payment
-  await supabase.from("payments").update({
+  const lastTx = chargeData?.charges?.[0]?.last_transaction;
+
+  // Update payment with card info if available
+  const paymentUpdate: any = {
     status: "SUCCEEDED",
     processed_at: new Date().toISOString(),
-  }).eq("id", paymentRecord.id);
+  };
+  if (lastTx?.card) {
+    paymentUpdate.card_last4 = lastTx.card.last_four_digits || null;
+    paymentUpdate.card_brand = lastTx.card.brand || null;
+  }
+  await supabase.from("payments").update(paymentUpdate).eq("id", paymentRecord.id);
 
   // Update PIX paid_at if applicable
   await supabase.from("pix_payment_data").update({
@@ -155,7 +193,7 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
     paid_at: new Date().toISOString(),
   }).eq("id", paymentRecord.order_id);
 
-  // Get order details for entitlements
+  // Grant entitlements
   const { data: orderItems } = await supabase
     .from("order_items")
     .select("product_id")
@@ -163,12 +201,11 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
 
   const { data: order } = await supabase
     .from("orders")
-    .select("customer_id, checkout_session_id")
+    .select("customer_id, checkout_session_id, customer_email, customer_name, total_amount, workspace_id, payment_method")
     .eq("id", paymentRecord.order_id)
     .single();
 
   if (order?.customer_id && orderItems) {
-    // Create entitlements idempotently
     for (const item of orderItems) {
       const { data: existing } = await supabase
         .from("entitlements")
@@ -186,7 +223,6 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
         });
       }
 
-      // Increment sales_count
       const { data: prod } = await supabase
         .from("products")
         .select("sales_count")
@@ -208,11 +244,40 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
     }).eq("id", order.checkout_session_id);
   }
 
+  // Send notifications (fire-and-forget)
+  try {
+    if (order) {
+      const productNames = [];
+      for (const item of (orderItems || [])) {
+        const { data: p } = await supabase.from("products").select("name").eq("id", item.product_id).single();
+        if (p) productNames.push(p.name);
+      }
+
+      // Log notification intent (notifications table)
+      await supabase.from("audit_logs").insert({
+        workspace_id: order.workspace_id,
+        entity_type: "order",
+        entity_id: paymentRecord.order_id,
+        action: "payment_confirmed",
+        metadata: {
+          customer_email: order.customer_email,
+          customer_name: order.customer_name,
+          amount: order.total_amount,
+          method: order.payment_method,
+          products: productNames,
+        },
+      });
+    }
+  } catch (notifErr) {
+    console.error("Notification logging error (non-fatal):", notifErr);
+  }
+
   console.log(`Order ${paymentRecord.order_id} marked as COMPLETED`);
+  return "SUCCEEDED";
 }
 
-async function handleFailed(supabase: any, paymentRecord: any, chargeData: any) {
-  if (!paymentRecord) return;
+async function handleFailed(supabase: any, paymentRecord: any, chargeData: any): Promise<string> {
+  if (!paymentRecord) return "UNKNOWN";
 
   const failureReason = chargeData?.charges?.[0]?.last_transaction?.acquirer_message || "Payment failed";
   await supabase.from("payments").update({
@@ -226,10 +291,11 @@ async function handleFailed(supabase: any, paymentRecord: any, chargeData: any) 
   }).eq("id", paymentRecord.order_id);
 
   console.log(`Payment ${paymentRecord.id} marked as FAILED`);
+  return "FAILED";
 }
 
-async function handleRefunded(supabase: any, paymentRecord: any, chargeData: any) {
-  if (!paymentRecord) return;
+async function handleRefunded(supabase: any, paymentRecord: any, chargeData: any): Promise<string> {
+  if (!paymentRecord) return "UNKNOWN";
 
   const refundAmount = chargeData?.amount ? chargeData.amount / 100 : 0;
 
@@ -246,16 +312,16 @@ async function handleRefunded(supabase: any, paymentRecord: any, chargeData: any
     status: "REFUNDED",
   }).eq("id", paymentRecord.order_id);
 
-  // Revoke entitlements
   await supabase.from("entitlements").update({
     revoked_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
   console.log(`Order ${paymentRecord.order_id} REFUNDED`);
+  return "REFUNDED";
 }
 
-async function handleChargeback(supabase: any, paymentRecord: any, chargeData: any) {
-  if (!paymentRecord) return;
+async function handleChargeback(supabase: any, paymentRecord: any, chargeData: any): Promise<string> {
+  if (!paymentRecord) return "UNKNOWN";
 
   await supabase.from("disputes").insert({
     order_id: paymentRecord.order_id,
@@ -270,4 +336,22 @@ async function handleChargeback(supabase: any, paymentRecord: any, chargeData: a
   }).eq("id", paymentRecord.order_id);
 
   console.log(`Dispute created for order ${paymentRecord.order_id}`);
+  return "DISPUTED";
+}
+
+async function handleCanceled(supabase: any, paymentRecord: any): Promise<string> {
+  if (!paymentRecord) return "UNKNOWN";
+
+  await supabase.from("payments").update({
+    status: "CANCELED",
+    failed_at: new Date().toISOString(),
+    failure_reason: "Canceled",
+  }).eq("id", paymentRecord.id);
+
+  await supabase.from("orders").update({
+    status: "CANCELED",
+  }).eq("id", paymentRecord.order_id);
+
+  console.log(`Order ${paymentRecord.order_id} CANCELED`);
+  return "CANCELED";
 }
