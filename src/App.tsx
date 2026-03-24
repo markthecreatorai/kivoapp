@@ -162,6 +162,7 @@ const App = () => (
                 {/* ===== PERSISTENT DASHBOARD LAYOUT ===== */}
                 <Route element={<DashboardShell />}>
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/creator-finance" element={<CreatorFinance />} />
                   <Route path="/earnings" element={<Income />} />
                   <Route path="/coupons" element={<Coupons />} />
                   <Route path="/products" element={<Products />} />
