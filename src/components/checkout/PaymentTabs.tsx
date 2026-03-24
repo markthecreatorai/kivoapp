@@ -16,7 +16,7 @@ interface PaymentTabsProps {
   onPayCard: (cardData: CardData) => Promise<void>;
   onPayBoleto: () => Promise<void>;
   pixData: { qr_code: string; qr_code_url: string; expires_at: string } | null;
-  boletoData: { barcode: string; pdf_url: string } | null;
+  boletoData: { barcode: string; pdf_url: string; due_at?: string } | null;
   paymentLoading: boolean;
   paymentError: string | null;
   paymentSuccess: boolean;
