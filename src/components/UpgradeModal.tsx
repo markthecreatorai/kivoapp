@@ -29,7 +29,8 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
     e.stopPropagation();
     const targetCode = PLAN_TO_CODE[upgradeTo];
     const url = `/billing/upgrade-flow?plan=${targetCode}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`;
-    navigate(url);
+    // Use window.location to bypass Radix Dialog Portal context issues with React Router
+    window.location.href = url;
   };
 
   return (
