@@ -33,11 +33,7 @@ export function SettingsBilling() {
   const handleUpgrade = () => {
     if (selectedPlan === "free" || selectedPlan === currentPlan) return;
     setShowPlanModal(false);
-    startPlanCheckout({
-      planCode: selectedPlan,
-      billingCycle: isAnnual ? "annual" : "monthly",
-      sourceUI: "settings_plans_modal",
-    });
+    navigate(`/billing/upgrade-flow?plan=${selectedPlan}&source=settings_plans_modal`);
   };
 
   return (
