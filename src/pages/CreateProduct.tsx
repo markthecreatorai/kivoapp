@@ -111,7 +111,27 @@ export default function CreateProduct() {
   };
 
   const saveProduct = async (status: "DRAFT" | "PUBLISHED") => {
-    if (!currentWorkspace || !form.type) return;
+    if (!currentWorkspace) {
+      toast.error("Nenhum workspace ativo. Faça login novamente.");
+      return;
+    }
+
+    // Validate required fields
+    if (!form.type) {
+      toast.error("Selecione o tipo do produto (passo 1).");
+      setStep(0);
+      return;
+    }
+    if (!form.name.trim()) {
+      toast.error("Preencha o nome do produto (passo 2).");
+      setStep(1);
+      return;
+    }
+    if (status === "PUBLISHED" && !form.isFree && form.price <= 0) {
+      toast.error("Defina um preço ou marque como gratuito (passo 3).");
+      setStep(2);
+      return;
+    }
 
     // Plan limit check
     if (!planInfo.canCreateProduct) {
@@ -120,8 +140,8 @@ export default function CreateProduct() {
       return;
     }
 
-      const isCourseType = form.type === "COURSE";
-      if (isCourseType && !planInfo.canCreateCourse) {
+    const isCourseType = form.type === "COURSE";
+    if (isCourseType && !planInfo.canCreateCourse) {
       setUpgradeFeature("criar cursos");
       setUpgradeOpen(true);
       return;
