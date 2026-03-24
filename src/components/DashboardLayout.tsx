@@ -18,14 +18,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Thin topbar */}
+          {/* Thin topbar — always mounted */}
           <header className="h-12 flex items-center border-b border-border/40 bg-background shrink-0">
             <div className="flex items-center px-4">
               <SidebarTrigger className="lg:inline-flex" />
             </div>
           </header>
 
-          {/* Main content with neutral page bg */}
+          {/* Page content swaps here — sidebar/topbar persist */}
           <main className={`flex-1 bg-[hsl(var(--page-background))] ${isMobile ? 'pb-20' : ''}`}>
             {children}
           </main>
