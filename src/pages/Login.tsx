@@ -335,19 +335,6 @@ export default function Login() {
               </CardContent>
             </Card>
           )}
-        </div>
-      </div>
-
-      {/* Right side - Gradient/Image */}
-      <div className="hidden lg:flex flex-1 kivo-gradient items-center justify-center text-white p-8">
-        <div className="max-w-md text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Transforme sua paixão em renda
-          </h2>
-          <p className="text-lg opacity-90">
-            Venda produtos digitais, cursos, consultoria e muito mais em uma única plataforma.
-          </p>
-        </div>
       </div>
     </div>
   );
