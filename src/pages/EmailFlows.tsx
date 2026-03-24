@@ -224,7 +224,7 @@ export default function EmailFlows() {
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-green-600">{stats.sent}</p>
+                <p className="text-2xl font-bold text-primary">{stats.sent}</p>
                 <p className="text-xs text-muted-foreground">Sucesso</p>
               </CardContent>
             </Card>
