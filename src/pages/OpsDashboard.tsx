@@ -286,7 +286,7 @@ export default function OpsDashboard() {
     const rows = CHECKLIST_72H.flatMap(w =>
       w.tasks.map(task => ({ workspace_id: currentWorkspace.id, time_window: w.window, task }))
     );
-    await supabase.from("ops_checklist").insert(rows);
+    await (supabase.from as any)("ops_checklist").insert(rows);
     refetchChecklist();
   };
 
