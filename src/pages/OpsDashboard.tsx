@@ -24,7 +24,7 @@ interface HealthCheck {
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "ok") return <Badge className="bg-accent/20 text-accent border-accent/30"><CheckCircle2 className="w-3 h-3 mr-1" />OK</Badge>;
-  if (status === "degraded") return <Badge variant="outline" className="text-yellow-600 border-yellow-300"><AlertTriangle className="w-3 h-3 mr-1" />Degraded</Badge>;
+  if (status === "degraded") return <Badge variant="outline" className="text-primary border-primary/30"><AlertTriangle className="w-3 h-3 mr-1" />Degraded</Badge>;
   return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Down</Badge>;
 }
 
