@@ -176,7 +176,7 @@ export function AppSidebar() {
 
   const renderGroup = (group: NavGroup) => {
     const hasActive = group.items.some(i => isActive(i.url));
-    const isOpen = openGroups[group.label] ?? hasActive;
+    const isOpen = openGroup === group.label;
 
     // Single-item groups: render flat
     if (group.items.length === 1) {
