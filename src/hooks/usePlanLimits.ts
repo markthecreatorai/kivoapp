@@ -82,8 +82,34 @@ export function usePlanLimits(): PlanInfo {
   const { currentWorkspace } = useWorkspace();
   const [usage, setUsage] = useState<PlanUsage>({ products: 0, courses: 0, affiliates: 0, emailContacts: 0 });
   const [loading, setLoading] = useState(true);
+  const [realPlan, setRealPlan] = useState<PlanType>("FREE");
 
-  const plan = ((currentWorkspace as any)?.plan as PlanType) || "FREE";
+  // Read plan from workspace_subscriptions (source of truth)
+  useEffect(() => {
+    if (!currentWorkspace) return;
+    const fetchPlan = async () => {
+      const { data } = await supabase
+        .from("workspace_subscriptions")
+        .select("plan_code, status")
+        .eq("workspace_id", currentWorkspace.id)
+        .in("status", ["active", "trialing", "past_due"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data?.plan_code) {
+        const codeMap: Record<string, PlanType> = { creator: "CREATOR", "creator-pro": "CREATOR_PRO", free: "FREE" };
+        setRealPlan(codeMap[data.plan_code] || "FREE");
+      } else {
+        // Fallback to workspace metadata
+        const metaPlan = ((currentWorkspace as any)?.plan as PlanType);
+        setRealPlan(metaPlan || "FREE");
+      }
+    };
+    fetchPlan();
+  }, [currentWorkspace]);
+
+  const plan = realPlan;
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.FREE;
 
   const fetchUsage = useCallback(async () => {
