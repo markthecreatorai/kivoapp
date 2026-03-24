@@ -815,6 +815,158 @@ export type Database = {
           },
         ]
       }
+      chargeback_cases: {
+        Row: {
+          amount: number
+          assigned_to: string | null
+          created_at: string
+          currency: string
+          financial_impact: number | null
+          gateway_dispute_id: string | null
+          id: string
+          order_id: string
+          payment_id: string | null
+          reason: string | null
+          resolved_at: string | null
+          sla_deadline_at: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          amount?: number
+          assigned_to?: string | null
+          created_at?: string
+          currency?: string
+          financial_impact?: number | null
+          gateway_dispute_id?: string | null
+          id?: string
+          order_id: string
+          payment_id?: string | null
+          reason?: string | null
+          resolved_at?: string | null
+          sla_deadline_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          assigned_to?: string | null
+          created_at?: string
+          currency?: string
+          financial_impact?: number | null
+          gateway_dispute_id?: string | null
+          id?: string
+          order_id?: string
+          payment_id?: string | null
+          reason?: string | null
+          resolved_at?: string | null
+          sla_deadline_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chargeback_cases_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chargeback_cases_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chargeback_cases_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chargeback_evidences: {
+        Row: {
+          case_id: string
+          created_at: string
+          description: string | null
+          file_name: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chargeback_evidences_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "chargeback_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chargeback_timeline: {
+        Row: {
+          action: string
+          actor_id: string | null
+          case_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          note: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          case_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          note?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          case_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chargeback_timeline_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "chargeback_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checkout_line_items: {
         Row: {
           checkout_session_id: string
@@ -4677,6 +4829,98 @@ export type Database = {
           },
         ]
       }
+      reserve_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          release_at: string
+          released_at: string | null
+          reserve_percent: number
+          split_entry_id: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          release_at: string
+          released_at?: string | null
+          reserve_percent?: number
+          split_entry_id?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          release_at?: string
+          released_at?: string | null
+          reserve_percent?: number
+          split_entry_id?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserve_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserve_entries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reserve_policies: {
+        Row: {
+          auto_adjust_by_risk: boolean
+          created_at: string
+          id: string
+          release_window_days: number
+          reserve_percent: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          auto_adjust_by_risk?: boolean
+          created_at?: string
+          id?: string
+          release_window_days?: number
+          reserve_percent?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          auto_adjust_by_risk?: boolean
+          created_at?: string
+          id?: string
+          release_window_days?: number
+          reserve_percent?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserve_policies_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           created_at: string
@@ -5738,6 +5982,14 @@ export type Database = {
           total_gross: number
           total_net: number
           total_payouts: number
+        }[]
+      }
+      get_reserve_balance: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          total_held: number
+          total_released: number
+          upcoming_releases: number
         }[]
       }
       get_split_rule: {
