@@ -3906,6 +3906,27 @@ export type Database = {
           },
         ]
       }
+      rate_limit_log: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          ip_address: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          ip_address: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          ip_address?: string
+        }
+        Relationships: []
+      }
       recovery_emails: {
         Row: {
           checkout_session_id: string
@@ -4863,6 +4884,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_rate_limits: { Args: never; Returns: undefined }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
       get_community_ids_for_user: {
         Args: { _user_id: string }
