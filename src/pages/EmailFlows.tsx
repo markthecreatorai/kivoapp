@@ -3,88 +3,96 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Plus, Mail, Play, Pause, Trash2, GripVertical, Clock, Users, Eye, MousePointerClick, UserMinus, ChevronDown, ChevronUp, Sparkles, Loader2, Crown,
-} from "lucide-react";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import {
+  Mail, ShoppingCart, UserPlus, Clock, CheckCircle, XCircle, AlertCircle,
+  Crown, Eye, RefreshCw,
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-const TRIGGER_LABELS: Record<string, string> = {
-  lead_captured: "Quando lead é capturado",
-  product_purchased: "Quando compra produto",
-  subscription: "Quando assina",
-  manual: "Manual",
-};
+interface FlowConfig {
+  key: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  event: string;
+  defaultDelay?: number;
+  hasDelay: boolean;
+}
 
-const DELAY_PRESETS = [
-  { label: "1 hora", hours: 1 },
-  { label: "6 horas", hours: 6 },
-  { label: "1 dia", hours: 24 },
-  { label: "3 dias", hours: 72 },
-  { label: "7 dias", hours: 168 },
+const FLOWS: FlowConfig[] = [
+  {
+    key: "purchase_confirmed",
+    title: "Confirmação de Compra",
+    description: "Enviado automaticamente quando o pagamento é confirmado",
+    icon: <CheckCircle className="h-5 w-5 text-primary" />,
+    event: "Pagamento confirmado (webhook)",
+    hasDelay: false,
+  },
+  {
+    key: "welcome_member",
+    title: "Boas-vindas ao Membro",
+    description: "Email de boas-vindas após primeira compra do cliente",
+    icon: <UserPlus className="h-5 w-5 text-accent-foreground" />,
+    event: "Primeira compra do cliente",
+    hasDelay: false,
+  },
+  {
+    key: "cart_abandoned_reminder",
+    title: "Carrinho Abandonado",
+    description: "Lembrete enviado quando o cliente não finaliza a compra",
+    icon: <ShoppingCart className="h-5 w-5 text-accent-foreground" />,
+    event: "Checkout abandonado",
+    hasDelay: true,
+    defaultDelay: 60,
+  },
 ];
 
-interface Step {
-  id?: string;
-  position: number;
-  delay_hours: number;
-  subject: string;
-  body: string;
-}
+const DELAY_OPTIONS = [
+  { label: "30 minutos", value: 30 },
+  { label: "1 hora", value: 60 },
+  { label: "2 horas", value: 120 },
+  { label: "6 horas", value: 360 },
+  { label: "24 horas", value: 1440 },
+];
 
-interface SequenceForm {
-  name: string;
-  trigger_type: string;
-  trigger_product_id: string | null;
-  steps: Step[];
-}
+const STATUS_BADGES: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  sent: { label: "Enviado", variant: "default" },
+  queued: { label: "Na fila", variant: "secondary" },
+  failed: { label: "Falhou", variant: "destructive" },
+};
 
-const emptyStep = (pos: number): Step => ({
-  position: pos,
-  delay_hours: 24,
-  subject: "",
-  body: "",
-});
+const TEMPLATE_LABELS: Record<string, string> = {
+  purchase_confirmed: "Confirmação de Compra",
+  welcome_member: "Boas-vindas",
+  cart_abandoned_reminder: "Carrinho Abandonado",
+};
 
-const generateEmailCopy = async (
-  stepIndex: number,
-  updateStepFn: (idx: number, field: keyof Step, value: any) => void,
-  setLoadingFn: (v: boolean) => void
-) => {
-  setLoadingFn(true);
-  try {
-    const { data, error } = await (await import("@/integrations/supabase/client")).supabase.functions.invoke("ai-generate", {
-      body: {
-        type: "email",
-        context: {
-          objective: "engajamento e conversão",
-          segment: "leads e clientes",
-          productName: "produto digital",
-          tone: "profissional e envolvente",
-        },
-      },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-    const email = data.emails?.[0];
-    if (email) {
-      updateStepFn(stepIndex, "subject", email.subject);
-      updateStepFn(stepIndex, "body", email.body);
-    }
-  } catch (err: any) {
-    console.error("AI email error:", err);
-  } finally {
-    setLoadingFn(false);
-  }
+// Preview templates
+const PREVIEWS: Record<string, { subject: string; body: string }> = {
+  purchase_confirmed: {
+    subject: "Compra confirmada — Curso de Marketing Digital",
+    body: `Olá, João!\n\nSua compra de Curso de Marketing Digital no valor de R$ 197,00 foi confirmada com sucesso.\n\nVocê já pode acessar seu conteúdo na área de membros.`,
+  },
+  welcome_member: {
+    subject: "Bem-vindo(a) à Kivo! 🎉",
+    body: `Olá, João!\n\nEstamos muito felizes em ter você conosco. Seu acesso ao Curso de Marketing Digital já está liberado.\n\nAcesse agora e comece sua jornada.`,
+  },
+  cart_abandoned_reminder: {
+    subject: "Você esqueceu algo no carrinho 🛒",
+    body: `Olá, João!\n\nNotamos que você estava prestes a adquirir Curso de Marketing Digital por R$ 197,00, mas não finalizou sua compra.\n\nSeu carrinho ainda está reservado.`,
+  },
 };
 
 export default function EmailFlows() {
@@ -94,488 +102,313 @@ export default function EmailFlows() {
   const workspaceId = currentWorkspace?.id;
   const planInfo = usePlanLimits();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [expandedSeq, setExpandedSeq] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [form, setForm] = useState<SequenceForm>({
-    name: "",
-    trigger_type: "lead_captured",
-    trigger_product_id: null,
-    steps: [emptyStep(0)],
-  });
-
-  // Fetch sequences
-  const { data: sequences = [], isLoading } = useQuery({
-    queryKey: ["email-sequences", workspaceId],
+  // Fetch flow settings
+  const { data: settings = [] } = useQuery({
+    queryKey: ["email-flow-settings", workspaceId],
     queryFn: async () => {
       if (!workspaceId) return [];
       const { data, error } = await supabase
-        .from("email_sequences")
+        .from("email_flow_settings")
         .select("*")
-        .eq("workspace_id", workspaceId)
-        .order("created_at", { ascending: false });
+        .eq("workspace_id", workspaceId);
       if (error) throw error;
-      return data;
-    },
-    enabled: !!workspaceId,
-  });
-
-  // Fetch steps for expanded sequence
-  const { data: expandedSteps = [] } = useQuery({
-    queryKey: ["email-sequence-steps", expandedSeq],
-    queryFn: async () => {
-      if (!expandedSeq) return [];
-      const { data, error } = await supabase
-        .from("email_sequence_steps")
-        .select("*")
-        .eq("sequence_id", expandedSeq)
-        .order("position");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!expandedSeq,
-  });
-
-  // Fetch enrollment metrics per sequence
-  const { data: metrics = {} } = useQuery({
-    queryKey: ["email-sequence-metrics", workspaceId],
-    queryFn: async () => {
-      if (!workspaceId) return {};
-      const seqIds = sequences.map((s: any) => s.id);
-      if (!seqIds.length) return {};
-      const { data, error } = await supabase
-        .from("email_sequence_enrollments")
-        .select("sequence_id, completed_at, unsubscribed_at")
-        .in("sequence_id", seqIds);
-      if (error) throw error;
-      const m: Record<string, { enrolled: number; completed: number; unsubscribed: number }> = {};
-      for (const e of data || []) {
-        if (!m[e.sequence_id]) m[e.sequence_id] = { enrolled: 0, completed: 0, unsubscribed: 0 };
-        m[e.sequence_id].enrolled++;
-        if (e.completed_at) m[e.sequence_id].completed++;
-        if (e.unsubscribed_at) m[e.sequence_id].unsubscribed++;
-      }
-      return m;
-    },
-    enabled: !!workspaceId && sequences.length > 0,
-  });
-
-  // Fetch products for trigger
-  const { data: products = [] } = useQuery({
-    queryKey: ["products-list", workspaceId],
-    queryFn: async () => {
-      if (!workspaceId) return [];
-      const { data } = await supabase.from("products").select("id, name").eq("workspace_id", workspaceId);
       return data || [];
     },
     enabled: !!workspaceId,
   });
 
-  // Create sequence
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      if (!workspaceId) throw new Error("No workspace");
-      if (!form.name.trim()) throw new Error("Nome obrigatório");
-      if (form.steps.some((s) => !s.subject.trim())) throw new Error("Todos os steps precisam de assunto");
-
-      const { data: seq, error } = await supabase
-        .from("email_sequences")
-        .insert({
-          workspace_id: workspaceId,
-          name: form.name,
-          trigger_type: form.trigger_type,
-          trigger_product_id: form.trigger_product_id,
-        })
-        .select()
-        .single();
+  // Fetch email logs
+  const { data: logs = [], isLoading: logsLoading } = useQuery({
+    queryKey: ["email-logs", workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return [];
+      const { data, error } = await supabase
+        .from("email_logs")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error) throw error;
+      return data || [];
+    },
+    enabled: !!workspaceId,
+  });
 
-      const stepsToInsert = form.steps.map((s, i) => ({
-        sequence_id: seq.id,
-        position: i,
-        delay_hours: s.delay_hours,
-        subject: s.subject,
-        body: s.body,
-      }));
-      const { error: stepErr } = await supabase.from("email_sequence_steps").insert(stepsToInsert);
-      if (stepErr) throw stepErr;
-
-      return seq;
+  // Upsert flow setting
+  const upsertMutation = useMutation({
+    mutationFn: async (params: { flow_key: string; is_enabled?: boolean; delay_minutes?: number; support_email?: string }) => {
+      if (!workspaceId) throw new Error("No workspace");
+      const existing = settings.find((s: any) => s.flow_key === params.flow_key);
+      if (existing) {
+        const { error } = await supabase
+          .from("email_flow_settings")
+          .update({
+            is_enabled: params.is_enabled ?? existing.is_enabled,
+            delay_minutes: params.delay_minutes ?? existing.delay_minutes,
+            support_email: params.support_email !== undefined ? params.support_email : existing.support_email,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("email_flow_settings")
+          .insert({
+            workspace_id: workspaceId,
+            flow_key: params.flow_key,
+            is_enabled: params.is_enabled ?? true,
+            delay_minutes: params.delay_minutes ?? 60,
+            support_email: params.support_email || null,
+          });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      toast({ title: "Sequência criada com sucesso!" });
-      qc.invalidateQueries({ queryKey: ["email-sequences"] });
-      setShowCreate(false);
-      setForm({ name: "", trigger_type: "lead_captured", trigger_product_id: null, steps: [emptyStep(0)] });
+      qc.invalidateQueries({ queryKey: ["email-flow-settings"] });
+      toast({ title: "Configuração salva" });
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  // Toggle active
-  const toggleMutation = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase.from("email_sequences").update({ is_active }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["email-sequences"] }),
-  });
+  const getFlowSetting = (key: string) => settings.find((s: any) => s.flow_key === key);
 
-  // Delete sequence
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("email_sequences").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: "Sequência excluída" });
-      qc.invalidateQueries({ queryKey: ["email-sequences"] });
-    },
-  });
-
-  // Step management
-  const addStep = () => {
-    if (form.steps.length >= 10) return;
-    setForm((f) => ({ ...f, steps: [...f.steps, emptyStep(f.steps.length)] }));
+  // Stats
+  const stats = {
+    total: logs.length,
+    sent: logs.filter((l: any) => l.status === "sent").length,
+    failed: logs.filter((l: any) => l.status === "failed").length,
+    queued: logs.filter((l: any) => l.status === "queued").length,
   };
 
-  const removeStep = (idx: number) => {
-    if (form.steps.length <= 1) return;
-    setForm((f) => ({ ...f, steps: f.steps.filter((_, i) => i !== idx).map((s, i) => ({ ...s, position: i })) }));
-  };
-
-  const updateStep = (idx: number, field: keyof Step, value: any) => {
-    setForm((f) => ({
-      ...f,
-      steps: f.steps.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
-    }));
-  };
-
-  const moveStep = (idx: number, dir: -1 | 1) => {
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= form.steps.length) return;
-    setForm((f) => {
-      const steps = [...f.steps];
-      [steps[idx], steps[newIdx]] = [steps[newIdx], steps[idx]];
-      return { ...f, steps: steps.map((s, i) => ({ ...s, position: i })) };
-    });
-  };
-
-  const formatDelay = (hours: number) => {
-    if (hours < 24) return `${hours}h`;
-    const days = Math.floor(hours / 24);
-    return `${days}d`;
-  };
-
-  // Block if email marketing not available (after all hooks)
   if (!planInfo.loading && !planInfo.limits.hasEmailMarketing) {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
         <div className="p-4 rounded-full bg-muted">
           <Crown className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-bold text-foreground">Email Marketing</h2>
+        <h2 className="text-xl font-bold text-foreground">Email Flows</h2>
         <p className="text-muted-foreground max-w-md">
-          Email marketing está disponível a partir do plano Creator. 
-          Crie sequências automáticas para converter seus leads.
+          Automação de emails está disponível a partir do plano Creator.
         </p>
         <Button onClick={() => setUpgradeOpen(true)} className="gap-2">
           <Crown className="w-4 h-4" /> Fazer Upgrade
         </Button>
-        <UpgradeModal
-          open={upgradeOpen}
-          onOpenChange={setUpgradeOpen}
-          currentPlan={planInfo.plan}
-          feature="usar email marketing"
-        />
+        <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} currentPlan={planInfo.plan} feature="usar email flows" />
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Sequências de Email</h1>
-          <p className="text-muted-foreground">Automatize envios com fluxos de emails programados</p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Nova Sequência
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Email Flows</h1>
+        <p className="text-muted-foreground">Emails transacionais automáticos para suas vendas</p>
       </div>
 
-      {/* Sequences List */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
-      ) : sequences.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Mail className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground">Nenhuma sequência criada</h3>
-            <p className="text-muted-foreground mt-1 mb-4">Crie sua primeira sequência de emails automatizados</p>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Criar Sequência
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {sequences.map((seq: any) => {
-            const m = metrics[seq.id] || { enrolled: 0, completed: 0, unsubscribed: 0 };
-            const isExpanded = expandedSeq === seq.id;
+      <Tabs defaultValue="flows">
+        <TabsList>
+          <TabsTrigger value="flows"><Mail className="h-4 w-4 mr-2" />Fluxos</TabsTrigger>
+          <TabsTrigger value="logs"><Clock className="h-4 w-4 mr-2" />Logs ({stats.total})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="flows" className="mt-6 space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                <p className="text-xs text-muted-foreground">Total enviados</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-primary">{stats.sent}</p>
+                <p className="text-xs text-muted-foreground">Sucesso</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-destructive">{stats.failed}</p>
+                <p className="text-xs text-muted-foreground">Falhas</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-muted-foreground">{stats.queued}</p>
+                <p className="text-xs text-muted-foreground">Na fila</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Flow Cards */}
+          {FLOWS.map((flow) => {
+            const setting = getFlowSetting(flow.key);
+            const isEnabled = setting?.is_enabled ?? true;
+            const delayMinutes = setting?.delay_minutes ?? flow.defaultDelay ?? 60;
+            const supportEmail = setting?.support_email || "";
+
             return (
-              <Card key={seq.id} className="overflow-hidden">
-                <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => setExpandedSeq(isExpanded ? null : seq.id)}
-                >
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground truncate">{seq.name}</h3>
-                        <Badge variant={seq.is_active ? "default" : "secondary"} className="text-xs">
-                          {seq.is_active ? "Ativa" : "Pausada"}
-                        </Badge>
+              <Card key={flow.key}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {flow.icon}
+                      <div>
+                        <CardTitle className="text-base">{flow.title}</CardTitle>
+                        <CardDescription className="text-sm">{flow.description}</CardDescription>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {TRIGGER_LABELS[seq.trigger_type] || seq.trigger_type}
-                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={isEnabled ? "default" : "secondary"}>
+                        {isEnabled ? "Ativo" : "Inativo"}
+                      </Badge>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(v) =>
+                          upsertMutation.mutate({ flow_key: flow.key, is_enabled: v })
+                        }
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Disparo: {flow.event}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {flow.hasDelay && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Delay do envio</Label>
+                        <Select
+                          value={String(delayMinutes)}
+                          onValueChange={(v) =>
+                            upsertMutation.mutate({ flow_key: flow.key, delay_minutes: Number(v) })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DELAY_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={String(opt.value)}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Email de suporte</Label>
+                      <Input
+                        placeholder="suporte@seusite.com"
+                        value={supportEmail}
+                        onChange={(e) => {
+                          // Debounce: save on blur
+                        }}
+                        onBlur={(e) =>
+                          upsertMutation.mutate({ flow_key: flow.key, support_email: e.target.value })
+                        }
+                        defaultValue={supportEmail}
+                      />
                     </div>
 
-                    {/* Metrics */}
-                    <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{m.enrolled}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <UserMinus className="h-4 w-4" />
-                        <span>{m.unsubscribed}</span>
-                      </div>
+                    <div className="flex items-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPreviewKey(previewKey === flow.key ? null : flow.key)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        {previewKey === flow.key ? "Fechar Preview" : "Preview"}
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-4">
-                    <Switch
-                      checked={seq.is_active}
-                      onCheckedChange={(v) => {
-                        toggleMutation.mutate({ id: seq.id, is_active: v });
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteMutation.mutate(seq.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </div>
-
-                {/* Expanded: show steps timeline */}
-                {isExpanded && (
-                  <div className="border-t px-6 py-4 bg-muted/20">
-                    <h4 className="text-sm font-medium text-foreground mb-3">Timeline dos emails</h4>
-                    <div className="relative ml-4">
-                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-border" />
-                      {expandedSteps.map((step: any, i: number) => (
-                        <div key={step.id} className="relative pl-6 pb-6 last:pb-0">
-                          <div className="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-primary -translate-x-1" />
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                            <Clock className="h-3 w-3" />
-                            <span>
-                              {i === 0 && step.delay_hours === 0
-                                ? "Imediatamente"
-                                : `Após ${formatDelay(step.delay_hours)}`}
-                            </span>
-                          </div>
-                          <p className="text-sm font-medium text-foreground">{step.subject}</p>
-                          {step.body && (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{step.body}</p>
-                          )}
-                        </div>
-                      ))}
+                  {/* Preview */}
+                  {previewKey === flow.key && PREVIEWS[flow.key] && (
+                    <div className="mt-4 border rounded-lg overflow-hidden">
+                      <div className="bg-muted/50 px-4 py-2 border-b">
+                        <p className="text-xs text-muted-foreground">Assunto</p>
+                        <p className="text-sm font-medium text-foreground">{PREVIEWS[flow.key].subject}</p>
+                      </div>
+                      <div className="p-4 text-sm text-foreground whitespace-pre-line bg-card">
+                        {PREVIEWS[flow.key].body}
+                      </div>
+                      <div className="bg-muted/50 px-4 py-2 border-t text-center">
+                        <span className="inline-block bg-primary text-primary-foreground px-6 py-2 rounded-md text-sm font-medium">
+                          Botão de Ação
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </CardContent>
               </Card>
             );
           })}
-        </div>
-      )}
+        </TabsContent>
 
-      {/* Create Dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nova Sequência de Email</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            {/* Name */}
-            <div className="space-y-2">
-              <Label>Nome da sequência</Label>
-              <Input
-                placeholder="Ex: Boas-vindas para novos leads"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-
-            {/* Trigger */}
-            <div className="space-y-2">
-              <Label>Trigger</Label>
-              <Select value={form.trigger_type} onValueChange={(v) => setForm((f) => ({ ...f, trigger_type: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lead_captured">Quando lead é capturado</SelectItem>
-                  <SelectItem value="product_purchased">Quando compra produto</SelectItem>
-                  <SelectItem value="subscription">Quando assina</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {form.trigger_type === "product_purchased" && (
-              <div className="space-y-2">
-                <Label>Produto</Label>
-                <Select
-                  value={form.trigger_product_id || ""}
-                  onValueChange={(v) => setForm((f) => ({ ...f, trigger_product_id: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um produto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((p: any) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Steps */}
+        <TabsContent value="logs" className="mt-6">
+          {logsLoading ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Emails da sequência ({form.steps.length}/10)</Label>
-                <Button variant="outline" size="sm" onClick={addStep} disabled={form.steps.length >= 10}>
-                  <Plus className="mr-1 h-3 w-3" /> Adicionar
-                </Button>
-              </div>
-
-              <div className="relative ml-4">
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-border" />
-                {form.steps.map((step, i) => (
-                  <div key={i} className="relative pl-8 pb-6 last:pb-0">
-                    <div className="absolute left-0 top-2 w-3 h-3 rounded-full bg-primary -translate-x-[5px] z-10" />
-
-                    <Card className="border">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-foreground">Email {i + 1}</span>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 text-xs gap-1 text-primary"
-                              onClick={() => generateEmailCopy(i, updateStep, setAiLoading)}
-                              disabled={aiLoading}
-                            >
-                              {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                              Sugerir copy
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveStep(i, -1)} disabled={i === 0}>
-                              <ChevronUp className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveStep(i, 1)} disabled={i === form.steps.length - 1}>
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeStep(i)} disabled={form.steps.length <= 1}>
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Delay */}
-                        <div className="space-y-1">
-                          <Label className="text-xs">Delay antes do envio</Label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {DELAY_PRESETS.map((d) => (
-                              <Button
-                                key={d.hours}
-                                type="button"
-                                variant={step.delay_hours === d.hours ? "default" : "outline"}
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() => updateStep(i, "delay_hours", d.hours)}
-                              >
-                                {d.label}
-                              </Button>
-                            ))}
-                            <Input
-                              type="number"
-                              min={0}
-                              className="w-20 h-7 text-xs"
-                              placeholder="Custom h"
-                              value={DELAY_PRESETS.some((d) => d.hours === step.delay_hours) ? "" : step.delay_hours}
-                              onChange={(e) => updateStep(i, "delay_hours", parseInt(e.target.value) || 0)}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Subject */}
-                        <div className="space-y-1">
-                          <Label className="text-xs">Assunto</Label>
-                          <Input
-                            placeholder="Assunto do email"
-                            value={step.subject}
-                            onChange={(e) => updateStep(i, "subject", e.target.value)}
-                          />
-                        </div>
-
-                        {/* Body */}
-                        <div className="space-y-1">
-                          <Label className="text-xs">Corpo do email</Label>
-                          <Textarea
-                            placeholder="Conteúdo do email..."
-                            rows={3}
-                            value={step.body}
-                            onChange={(e) => updateStep(i, "body", e.target.value)}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ))}
-              </div>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+              ))}
             </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Criando..." : "Criar Sequência"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          ) : logs.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <Mail className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold text-foreground">Nenhum email enviado ainda</h3>
+                <p className="text-muted-foreground mt-1">Os emails aparecerão aqui conforme forem disparados</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Template</TableHead>
+                    <TableHead>Destinatário</TableHead>
+                    <TableHead>Assunto</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.map((log: any) => {
+                    const badge = STATUS_BADGES[log.status] || { label: log.status, variant: "outline" as const };
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-sm font-medium">
+                          {TEMPLATE_LABELS[log.template_key] || log.template_key}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {log.recipient_email}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                          {log.subject}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

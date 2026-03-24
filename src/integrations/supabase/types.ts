@@ -2021,6 +2021,126 @@ export type Database = {
           },
         ]
       }
+      email_flow_settings: {
+        Row: {
+          created_at: string
+          delay_minutes: number | null
+          flow_key: string
+          id: string
+          is_enabled: boolean
+          metadata: Json | null
+          support_email: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          delay_minutes?: number | null
+          flow_key: string
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          support_email?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          delay_minutes?: number | null
+          flow_key?: string
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          support_email?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_flow_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_logs: {
+        Row: {
+          checkout_session_id: string | null
+          created_at: string
+          customer_id: string | null
+          error_message: string | null
+          id: string
+          idempotency_key: string | null
+          metadata: Json | null
+          order_id: string | null
+          provider_message_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          template_key: string
+          workspace_id: string
+        }
+        Insert: {
+          checkout_session_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          order_id?: string | null
+          provider_message_id?: string | null
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_key: string
+          workspace_id: string
+        }
+        Update: {
+          checkout_session_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          order_id?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_key?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_segments: {
         Row: {
           created_at: string | null

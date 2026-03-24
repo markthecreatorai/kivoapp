@@ -65,7 +65,7 @@ function buildEmailHtml(heading: string, bodyContent: string, ctaText: string, c
 
 function generateCoupon(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "KORA-";
+  let code = "KIVO-";
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
