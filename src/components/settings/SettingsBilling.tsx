@@ -157,11 +157,10 @@ export function SettingsBilling() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPlanModal(false)}>Cancelar</Button>
             <Button
-              disabled={selectedPlan === currentPlan || selectedPlan === "free" || checkoutLoading}
+              disabled={selectedPlan === currentPlan || selectedPlan === "free"}
               onClick={handleUpgrade}
             >
-              {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {checkoutLoading ? "Processando..." : "Assinar Plano"}
+              Assinar Plano
             </Button>
           </DialogFooter>
         </DialogContent>
