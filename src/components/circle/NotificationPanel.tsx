@@ -41,6 +41,8 @@ function truncate(s: string | null, max = 40) {
 }
 
 function getNotificationRoute(n: any): string | null {
+  if (n.type === "NEW_DM") return `/circle/messages`;
+  if (n.type === "SUBSCRIPTION_PAST_DUE" || n.type === "SUBSCRIPTION_EXPIRED") return `/circle/feed`;
   if (n.post_id) return `/circle/post/${n.post_id}`;
   if (n.event_id) return `/circle/events`;
   if (n.type === "LEVEL_UP") return `/circle/leaderboard`;
