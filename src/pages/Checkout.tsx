@@ -96,6 +96,7 @@ export default function Checkout() {
       setProduct(prod);
       setPrice(priceData);
       setLoading(false);
+      trackEvent("checkout_started", { product_id: prod.id, product_name: prod.name }, prod.workspace_id);
     }
     load();
   }, [productSlug]);
