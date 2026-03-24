@@ -195,6 +195,15 @@ export default function CreateProduct() {
         }
       }
 
+      // Save commission rule for affiliates
+      if (product && form.affiliateEnabled && form.affiliateCommission > 0) {
+        await supabase.from("commission_rules").upsert({
+          product_id: product.id,
+          percent: Math.min(Math.max(form.affiliateCommission, 1), 80),
+          is_active: true,
+        }, { onConflict: "product_id" });
+      }
+
       toast.success(
         status === "PUBLISHED"
           ? "Produto publicado com sucesso!"

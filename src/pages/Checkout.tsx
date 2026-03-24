@@ -103,7 +103,18 @@ export default function Checkout() {
   const utmSource = searchParams.get("utm_source") || sessionStorage.getItem("kivo_utm_source") || undefined;
   const utmMedium = searchParams.get("utm_medium") || sessionStorage.getItem("kivo_utm_medium") || undefined;
   const utmCampaign = searchParams.get("utm_campaign") || sessionStorage.getItem("kivo_utm_campaign") || undefined;
-  const affiliateLinkId = sessionStorage.getItem("kivo_affiliate_link_id") || undefined;
+  // Get affiliate link from localStorage (cookie-based) or sessionStorage fallback
+  const affiliateLinkId = (() => {
+    try {
+      const raw = localStorage.getItem("kivo_affiliate_link_id");
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (new Date(data.expiresAt) > new Date()) return data.linkId;
+        localStorage.removeItem("kivo_affiliate_link_id");
+      }
+    } catch {}
+    return sessionStorage.getItem("kivo_affiliate_link_id") || undefined;
+  })();
 
   // Price calculations
   const subtotal = price?.amount ?? 0;
