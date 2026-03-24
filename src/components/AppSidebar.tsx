@@ -77,6 +77,7 @@ const creatorGroups: NavGroup[] = [
   },
   {
     label: "Configurações",
+    icon: Wrench,
     items: [
       { title: "Minha Loja", url: "/store", icon: Store },
       { title: "Analytics", url: "/analytics", icon: BarChart3 },
