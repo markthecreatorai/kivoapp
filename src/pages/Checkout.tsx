@@ -7,7 +7,8 @@ import { CouponSection } from "@/components/checkout/CouponSection";
 import { PaymentTabs, type CardData } from "@/components/checkout/PaymentTabs";
 import { OrderTotal } from "@/components/checkout/OrderTotal";
 import { validateCPF } from "@/lib/cpf";
-import { Loader2, ShieldCheck, Lock } from "lucide-react";
+import { Loader2, ShieldCheck, Lock, RefreshCw } from "lucide-react";
+import { trackEvent } from "@/lib/tracking";
 
 interface Product {
   id: string;
