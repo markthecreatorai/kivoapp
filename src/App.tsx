@@ -207,6 +207,7 @@ const App = () => (
                   <Route path="/admin/chargebacks" element={<AdminChargebacks />} />
                   <Route path="/admin/financial-health" element={<FinancialHealthDashboard />} />
                   <Route path="/admin/go-live" element={<GoLiveChecklist />} />
+                  <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
                 </Route>
 
                 {/* Full-screen protected routes (no persistent layout) */}
