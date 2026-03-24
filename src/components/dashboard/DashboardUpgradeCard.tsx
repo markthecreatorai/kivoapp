@@ -13,8 +13,8 @@ export function DashboardUpgradeCard() {
   const upgradeUrl = "/#pricing?source_ui=dashboard_upgrade_card&plan=creator";
 
   return (
-    <Card className="relative isolate border-primary/20 bg-primary/5 pointer-events-auto">
-      <CardContent className="pointer-events-auto p-4 flex items-center justify-between gap-4">
+    <Card className="border-primary/20 bg-primary/5">
+      <CardContent className="p-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="shrink-0 p-2 rounded-full bg-primary/10 pointer-events-none" aria-hidden="true">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -30,20 +30,13 @@ export function DashboardUpgradeCard() {
         </div>
         <a
           href={upgradeUrl}
-          role="button"
-          target="_self"
           rel="nofollow"
           aria-label={`Fazer upgrade para o plano ${PLAN_LABELS[upgradeTo]}`}
-          className="relative z-20 pointer-events-auto inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
-          onClickCapture={(e) => {
-            e.stopPropagation();
-            window.location.assign(upgradeUrl);
-          }}
+          className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <Crown className="w-4 h-4 pointer-events-none" aria-hidden="true" />
+          <Crown className="w-4 h-4" aria-hidden="true" />
           Fazer Upgrade
-          <ArrowRight className="w-3.5 h-3.5 pointer-events-none" aria-hidden="true" />
+          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
         </a>
       </CardContent>
     </Card>
