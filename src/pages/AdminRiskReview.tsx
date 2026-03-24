@@ -80,15 +80,15 @@ export default function AdminRiskReview() {
       if (!user) throw new Error("Not authenticated");
 
       if (action === "approve") {
-        await supabase.from("payout_requests").update({
-          status: "requested", // back to requested so process-payouts picks it up
+        await (supabase as any).from("payout_requests").update({
+          status: "requested",
           review_reason: reviewNote || null,
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
-          risk_score: 0, // Reset risk so it passes next check
+          risk_score: 0,
         }).eq("id", payoutId);
       } else {
-        await supabase.from("payout_requests").update({
+        await (supabase as any).from("payout_requests").update({
           status: "failed",
           failed_reason: `Rejeitado por admin: ${reviewNote || "Risco elevado"}`,
           reviewed_by: user.id,
