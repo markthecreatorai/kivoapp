@@ -66,6 +66,7 @@ export default function Signup() {
     }
 
     setIsLoading(true);
+    trackEvent("signup_started", { creator_type: creatorType });
 
     try {
       const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
