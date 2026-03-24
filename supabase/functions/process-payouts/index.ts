@@ -202,6 +202,9 @@ Deno.serve(async (req) => {
           await sendAlert(supabase, payout.workspace_id,
             `⚠️ Payout #${payout.id.slice(0, 8)} enviado para revisão manual. Score: ${risk.risk_score}`);
 
+          // Notify creator
+          await notifyCreator(supabase, payout.workspace_id, "payout_review", { amount: payout.net_amount });
+
           summary.manual_review++;
           summary.processed++;
           continue;
