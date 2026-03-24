@@ -48,6 +48,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
+const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
