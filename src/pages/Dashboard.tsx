@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { TrendingUp, DollarSign, Eye, Users } from "lucide-react";
+import { DollarSign, TrendingUp, Receipt } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-// Components
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
-import { RecentSales } from "@/components/dashboard/RecentSales";
+import { PaymentMethodsCard } from "@/components/dashboard/PaymentMethodsCard";
+import { SalesPerformanceChart } from "@/components/dashboard/SalesPerformanceChart";
+import { TicketChart } from "@/components/dashboard/TicketChart";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { UsageAlerts } from "@/components/dashboard/UsageAlerts";
 import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
@@ -16,17 +17,16 @@ import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificatio
 interface Metrics {
   totalRevenue: number;
   totalSales: number;
-  totalVisits: number;
-  totalLeads: number;
+  ticketMedio: number;
   revenueChange: number;
   salesChange: number;
-  visitsChange: number;
-  leadsChange: number;
 }
 
-interface RevenueData {
+interface ChartData {
   date: string;
   revenue: number;
+  sales: number;
+  ticket: number;
 }
 
 export default function Dashboard() {
@@ -34,28 +34,15 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics>({
     totalRevenue: 0,
     totalSales: 0,
-    totalVisits: 0,
-    totalLeads: 0,
+    ticketMedio: 0,
     revenueChange: 0,
     salesChange: 0,
-    visitsChange: 0,
-    leadsChange: 0
   });
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
-
-  const currentDate = new Date();
-  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Creator';
-  const greeting = `Olá, ${displayName}! 👋`;
-  const dateString = currentDate.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
 
   useEffect(() => {
     if (!currentWorkspace) return;
@@ -72,96 +59,54 @@ export default function Dashboard() {
         const prevEndDate = new Date();
         prevEndDate.setDate(prevEndDate.getDate() - periodDays);
 
-        // Buscar receita total
-        const { data: revenueData, error: revenueError } = await supabase.
-        from('orders').
-        select('total_amount, created_at').
-        eq('workspace_id', currentWorkspace.id).
-        eq('status', 'PAID').
-        gte('created_at', startDate.toISOString());
+        const { data: ordersData, error } = await supabase
+          .from("orders")
+          .select("total_amount, created_at, payment_method")
+          .eq("workspace_id", currentWorkspace.id)
+          .eq("status", "PAID")
+          .gte("created_at", startDate.toISOString());
 
-        if (revenueError) throw revenueError;
+        if (error) throw error;
 
-        const totalRevenue = revenueData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+        const totalRevenue = ordersData?.reduce((sum, o) => sum + Number(o.total_amount), 0) || 0;
+        const totalSales = ordersData?.length || 0;
+        const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-        // Buscar vendas
-        const { data: salesData, error: salesError } = await supabase.
-        from('orders').
-        select('id, created_at').
-        eq('workspace_id', currentWorkspace.id).
-        eq('status', 'PAID').
-        gte('created_at', startDate.toISOString());
+        // Previous period
+        const { data: prevData } = await supabase
+          .from("orders")
+          .select("total_amount")
+          .eq("workspace_id", currentWorkspace.id)
+          .eq("status", "PAID")
+          .gte("created_at", prevStartDate.toISOString())
+          .lt("created_at", prevEndDate.toISOString());
 
-        if (salesError) throw salesError;
+        const prevRevenue = prevData?.reduce((sum, o) => sum + Number(o.total_amount), 0) || 0;
+        const revenueChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
-        const totalSales = salesData?.length || 0;
-
-        // Buscar visitas
-        const { data: visitsData, error: visitsError } = await supabase.
-        from('analytics_events').
-        select('id, created_at').
-        eq('workspace_id', currentWorkspace.id).
-        eq('event_type', 'PAGE_VIEW').
-        gte('created_at', startDate.toISOString());
-
-        if (visitsError) throw visitsError;
-
-        const totalVisits = visitsData?.length || 0;
-
-        // Buscar leads
-        const { data: leadsData, error: leadsError } = await supabase.
-        from('leads').
-        select('id, created_at').
-        eq('workspace_id', currentWorkspace.id).
-        gte('created_at', startDate.toISOString());
-
-        if (leadsError) throw leadsError;
-
-        const totalLeads = leadsData?.length || 0;
-
-        // Buscar dados do período anterior para comparação
-        const { data: prevRevenueData } = await supabase.
-        from('orders').
-        select('total_amount').
-        eq('workspace_id', currentWorkspace.id).
-        eq('status', 'PAID').
-        gte('created_at', prevStartDate.toISOString()).
-        lt('created_at', prevEndDate.toISOString());
-
-        const prevRevenue = prevRevenueData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
-        const revenueChange = prevRevenue > 0 ? (totalRevenue - prevRevenue) / prevRevenue * 100 : 0;
-
-        // Preparar dados para o gráfico
-        const chartData: RevenueData[] = [];
+        // Chart data
+        const chart: ChartData[] = [];
         for (let i = periodDays - 1; i >= 0; i--) {
           const date = new Date();
           date.setDate(date.getDate() - i);
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = date.toISOString().split("T")[0];
 
-          const dayRevenue = revenueData?.filter((order) =>
-          order.created_at.startsWith(dateStr)
-          ).reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+          const dayOrders = ordersData?.filter((o) => o.created_at.startsWith(dateStr)) || [];
+          const dayRevenue = dayOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+          const daySales = dayOrders.length;
 
-          chartData.push({
+          chart.push({
             date: dateStr,
-            revenue: dayRevenue
+            revenue: dayRevenue,
+            sales: daySales,
+            ticket: daySales > 0 ? dayRevenue / daySales : 0,
           });
         }
 
-        setMetrics({
-          totalRevenue,
-          totalSales,
-          totalVisits,
-          totalLeads,
-          revenueChange,
-          salesChange: 0, // Simplificado para este exemplo
-          visitsChange: 0,
-          leadsChange: 0
-        });
-
-        setRevenueData(chartData);
+        setMetrics({ totalRevenue, totalSales, ticketMedio, revenueChange, salesChange: 0 });
+        setChartData(chart);
       } catch (error) {
-        console.error('Erro ao buscar métricas:', error);
+        console.error("Erro ao buscar métricas:", error);
       } finally {
         setLoading(false);
       }
@@ -170,76 +115,47 @@ export default function Dashboard() {
     fetchMetrics();
   }, [currentWorkspace, selectedPeriod]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto px-0">
-      {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground">{greeting}</h1>
-        <p className="text-muted-foreground capitalize">{dateString}</p>
-      </div>
-
-      {/* Email Verification Banner */}
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Email Verification */}
       <EmailVerificationBanner />
-
-      {/* Usage Alerts */}
       <UsageAlerts />
-
-      {/* Onboarding Checklist */}
       <OnboardingChecklist />
 
-      {/* Period Filter */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground">Visão Geral</h2>
-        <PeriodFilter
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod} />
-        
+      {/* Page title + filters */}
+      <div className="space-y-3">
+        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+        <PeriodFilter selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 3 KPI cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricCard
-          title="Receita Total"
+          title="Total em vendas"
           value={formatCurrency(metrics.totalRevenue)}
-          icon={DollarSign}
-          change={metrics.revenueChange} />
-        
+          change={metrics.revenueChange}
+        />
         <MetricCard
-          title="Vendas"
+          title="Total de transações"
           value={metrics.totalSales}
-          icon={TrendingUp}
-          change={metrics.salesChange} />
-        
+        />
         <MetricCard
-          title="Visitas"
-          value={metrics.totalVisits}
-          icon={Eye}
-          change={metrics.visitsChange} />
-        
-        <MetricCard
-          title="Leads"
-          value={metrics.totalLeads}
-          icon={Users}
-          change={metrics.leadsChange} />
-        
+          title="Ticket médio"
+          value={formatCurrency(metrics.ticketMedio)}
+        />
       </div>
 
-      {/* Charts and Recent Sales */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RevenueChart data={revenueData} period={selectedPeriod} />
-        </div>
-        <div>
-          <RecentSales />
-        </div>
-      </div>
-    </div>);
+      {/* Payment methods block */}
+      <PaymentMethodsCard />
 
+      {/* 2 charts side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SalesPerformanceChart data={chartData.map((d) => ({ date: d.date, sales: d.sales }))} />
+        <TicketChart data={chartData.map((d) => ({ date: d.date, ticket: d.ticket }))} />
+      </div>
+    </div>
+  );
 }
