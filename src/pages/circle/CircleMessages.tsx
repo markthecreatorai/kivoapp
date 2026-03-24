@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { createNotification } from "@/lib/notifications";
 
 export default function CircleMessages() {
   const { currentWorkspace } = useWorkspace();
@@ -49,7 +50,6 @@ export default function CircleMessages() {
     queryKey: ["circle-conversations", member?.id],
     queryFn: async () => {
       if (!member) return [];
-      // Get conversation IDs for this member
       const { data: memberships } = await supabase
         .from("community_conversation_members" as any)
         .select("conversation_id, last_read_at")
@@ -61,7 +61,6 @@ export default function CircleMessages() {
       const readMap: Record<string, string | null> = {};
       (memberships as any[]).forEach((m: any) => { readMap[m.conversation_id] = m.last_read_at; });
 
-      // Get conversations with other members
       const { data: convMembers } = await supabase
         .from("community_conversation_members" as any)
         .select("conversation_id, member_id")
@@ -79,7 +78,6 @@ export default function CircleMessages() {
       const memberMap: Record<string, any> = {};
       members?.forEach((m: any) => { memberMap[m.id] = m; });
 
-      // Get last message per conversation
       const { data: lastMessages } = await supabase
         .from("community_messages" as any)
         .select("conversation_id, body, created_at, sender_id")
@@ -114,7 +112,7 @@ export default function CircleMessages() {
     enabled: !!member,
   });
 
-  // Messages for selected conversation
+  // Messages for selected conversation — no polling, realtime handles it
   const { data: messages } = useQuery({
     queryKey: ["circle-messages", selectedConv],
     queryFn: async () => {
@@ -128,8 +126,62 @@ export default function CircleMessages() {
       return (data as any[]) || [];
     },
     enabled: !!selectedConv,
-    refetchInterval: 5000,
   });
+
+  // ── Realtime: new messages in selected conversation ──
+  useEffect(() => {
+    if (!selectedConv) return;
+
+    const channel = supabase
+      .channel(`dm:${selectedConv}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "community_messages",
+          filter: `conversation_id=eq.${selectedConv}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["circle-messages", selectedConv] });
+          queryClient.invalidateQueries({ queryKey: ["circle-conversations"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedConv, queryClient]);
+
+  // ── Realtime: new messages across ALL conversations (for unread badges) ──
+  useEffect(() => {
+    if (!member || !community) return;
+
+    const channel = supabase
+      .channel(`dm-inbox:${member.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "community_messages",
+        },
+        (payload) => {
+          const msg = payload.new as any;
+          // Only refresh if it's not from me
+          if (msg.sender_id !== member.id) {
+            queryClient.invalidateQueries({ queryKey: ["circle-conversations"] });
+            queryClient.invalidateQueries({ queryKey: ["circle-dm-unread"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [member?.id, community?.id, queryClient]);
 
   // Mark as read when selecting conversation
   useEffect(() => {
@@ -141,6 +193,7 @@ export default function CircleMessages() {
         .eq("member_id", member.id)
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ["circle-conversations"] });
+          queryClient.invalidateQueries({ queryKey: ["circle-dm-unread"] });
         });
     }
   }, [selectedConv, member, messages?.length]);
@@ -153,13 +206,26 @@ export default function CircleMessages() {
   // Send message
   const sendMessage = useMutation({
     mutationFn: async () => {
-      if (!member || !selectedConv || !messageBody.trim()) return;
+      if (!member || !selectedConv || !messageBody.trim() || !community) return;
       const { error } = await supabase.from("community_messages" as any).insert({
         conversation_id: selectedConv,
         sender_id: member.id,
         body: messageBody.trim(),
       } as any);
       if (error) throw error;
+
+      // Notify other member about new DM
+      const convData = conversations?.find((c: any) => c.id === selectedConv);
+      if (convData?.otherMember) {
+        createNotification({
+          communityId: community.id,
+          recipientId: convData.otherMember.id,
+          actorId: member.id,
+          type: "NEW_DM",
+          title: `💬 ${member.display_name || "Alguém"} te enviou uma mensagem`,
+          body: messageBody.trim().slice(0, 80),
+        });
+      }
     },
     onSuccess: () => {
       setMessageBody("");
@@ -192,7 +258,6 @@ export default function CircleMessages() {
     mutationFn: async (targetMemberId: string) => {
       if (!member || !community) throw new Error("Missing");
 
-      // Check if conversation already exists
       const { data: myConvs } = await supabase
         .from("community_conversation_members" as any)
         .select("conversation_id")
@@ -211,7 +276,6 @@ export default function CircleMessages() {
         }
       }
 
-      // Create new conversation
       const { data: conv, error } = await supabase
         .from("community_conversations" as any)
         .insert({ community_id: community.id } as any)
@@ -219,7 +283,6 @@ export default function CircleMessages() {
         .single();
       if (error) throw error;
 
-      // Add both members
       await supabase.from("community_conversation_members" as any).insert([
         { conversation_id: (conv as any).id, member_id: member.id },
         { conversation_id: (conv as any).id, member_id: targetMemberId },
@@ -235,6 +298,9 @@ export default function CircleMessages() {
     },
     onError: () => toast.error("Erro ao criar conversa"),
   });
+
+  // Unread DM count (used by CircleLayout)
+  const totalUnreadDMs = conversations?.filter((c: any) => c.hasUnread).length || 0;
 
   const selectedConvData = conversations?.find((c: any) => c.id === selectedConv);
 
