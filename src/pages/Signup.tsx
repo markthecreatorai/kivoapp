@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, EyeOff, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [creatorType, setCreatorType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -65,12 +67,17 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
+      const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
+            creator_type: creatorType,
+            utm_source: utmData.utm_source || searchParams.get("utm_source") || "",
+            utm_medium: utmData.utm_medium || searchParams.get("utm_medium") || "",
+            utm_campaign: utmData.utm_campaign || searchParams.get("utm_campaign") || "",
           },
           emailRedirectTo: `${window.location.origin}/onboarding`,
         },
@@ -195,6 +202,23 @@ export default function Signup() {
                     className="input-radius"
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="creatorType">Tipo de creator</Label>
+                  <Select value={creatorType} onValueChange={setCreatorType}>
+                    <SelectTrigger className="input-radius">
+                      <SelectValue placeholder="Selecione seu nicho" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cursos">Cursos online</SelectItem>
+                      <SelectItem value="mentorias">Mentorias/Consultorias</SelectItem>
+                      <SelectItem value="ebooks">E-books/Templates</SelectItem>
+                      <SelectItem value="comunidade">Comunidade paga</SelectItem>
+                      <SelectItem value="saas">SaaS/Software</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

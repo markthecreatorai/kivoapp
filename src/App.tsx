@@ -50,6 +50,8 @@ const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
 const AnalyticsExecutive = lazy(() => import("./pages/AnalyticsExecutive"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const GtmDashboard = lazy(() => import("./pages/GtmDashboard"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -143,8 +145,11 @@ const App = () => (
                 <Route path="/circle/admin" element={<ProtectedRoute><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circle/post/:id" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
 
-                {/* Root redirect */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                {/* Landing page */}
+                <Route path="/" element={<LandingPage />} />
+                
+                {/* GTM Dashboard */}
+                <Route path="/gtm" element={<ProtectedRoute><DashboardLayout><GtmDashboard /></DashboardLayout></ProtectedRoute>} />
                 
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<Checkout />} />
