@@ -106,6 +106,11 @@ export default function PostComposer({
     mutationFn: async () => {
       if (!selectedSpace || !title.trim()) throw new Error("Preencha espaço e título");
 
+      // Anti-spam check
+      const { checkSpam } = await import("@/lib/antispam");
+      const spamResult = await checkSpam(memberId, communityId, "post", title.trim());
+      if (!spamResult.allowed) throw new Error(spamResult.reason || "Spam detectado");
+
       const body = editor?.getHTML() || "";
       const plainBody = editor?.getText() || "";
 
