@@ -25,8 +25,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          {/* Page content swaps here — sidebar/topbar persist */}
-          <main className={`flex-1 bg-[hsl(var(--page-background))] ${isMobile ? 'pb-20' : ''}`}>
+          {/* Page content swaps here — sidebar/topbar persist, fade-in on swap */}
+          <main className={`flex-1 bg-[hsl(var(--page-background))] animate-in fade-in-0 duration-150 ${isMobile ? 'pb-20' : ''}`}>
             {children}
           </main>
         </div>

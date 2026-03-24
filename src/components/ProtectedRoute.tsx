@@ -18,16 +18,11 @@ export default function ProtectedRoute({
   const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
   const location = useLocation();
 
-  // Show loading while checking auth state
+  // While auth/workspace loads, render nothing — the persistent layout
+  // (sidebar + topbar) stays mounted. Only the inner content is blank
+  // for a brief moment, avoiding a full white-screen flash.
   if (authLoading || (user && workspaceLoading)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Redirect to login if not authenticated
