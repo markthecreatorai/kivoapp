@@ -66,7 +66,7 @@ export default function AdminPayouts() {
   const { data: recentRefunds = [] } = useQuery({
     queryKey: ["admin-recent-refunds"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("split_entries")
         .select("*")
         .eq("status", "refunded")

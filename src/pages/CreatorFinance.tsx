@@ -102,7 +102,7 @@ export default function CreatorFinance() {
 
       const idempotencyKey = `payout-${workspaceId}-${Date.now()}`;
 
-      const { error } = await supabase.from("payout_requests").insert({
+      const { error } = await (supabase as any).from("payout_requests").insert({
         workspace_id: workspaceId!,
         bank_account_id: effectiveAccount,
         requested_by: user.id,
