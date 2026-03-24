@@ -86,6 +86,9 @@ export default function CircleAdmin() {
         <TabsContent value="subscriptions" className="mt-4">
           {community && <AdminSubscriptionsTab community={community} />}
         </TabsContent>
+        <TabsContent value="moderation" className="mt-4">
+          {community && member && <AdminModerationTab community={community} currentMember={member} />}
+        </TabsContent>
       </Tabs>
     </div>
   );
