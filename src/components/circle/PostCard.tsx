@@ -37,7 +37,7 @@ const ROLE_LABEL: Record<string, string> = {
   MODERATOR: "Mod",
 };
 
-export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true }: PostCardProps) {
+export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId }: PostCardProps) {
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
   const thumbnail = firstImage || videoThumb;
