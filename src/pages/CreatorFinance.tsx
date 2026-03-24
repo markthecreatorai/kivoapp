@@ -64,7 +64,7 @@ export default function CreatorFinance() {
     queryKey: ["payout-requests", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("payout_requests")
         .select("*")
         .eq("workspace_id", workspaceId!)
