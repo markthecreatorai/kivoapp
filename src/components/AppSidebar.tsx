@@ -51,6 +51,11 @@ export function AppSidebar() {
   const { currentWorkspace } = useWorkspace();
   const { signOut, user } = useAuth();
 
+  const isAdmin = isAdminUser(user);
+  const navigationItems = isAdmin
+    ? [...baseNavigationItems, ...adminNavigationItems]
+    : baseNavigationItems;
+
   const isActive = (path: string) => currentPath === path;
   const isExpanded = navigationItems.some((i) => isActive(i.url));
 
