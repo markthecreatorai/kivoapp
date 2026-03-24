@@ -3225,6 +3225,47 @@ export type Database = {
           },
         ]
       }
+      ops_checklist: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          is_done: boolean
+          task: string
+          time_window: string
+          workspace_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_done?: boolean
+          task: string
+          time_window: string
+          workspace_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_done?: boolean
+          task?: string
+          time_window?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_checklist_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_bumps: {
         Row: {
           bump_product_id: string
@@ -4629,6 +4670,53 @@ export type Database = {
           },
           {
             foreignKeyName: "webhook_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      week1_plan: {
+        Row: {
+          category: string
+          created_at: string
+          due_date: string | null
+          id: string
+          owner: string | null
+          priority: number
+          status: string
+          title: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          priority?: number
+          status?: string
+          title: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          priority?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "week1_plan_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"

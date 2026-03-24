@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -37,6 +38,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       <BottomNavigation />
+      <FeedbackButton />
     </SidebarProvider>
   );
 }

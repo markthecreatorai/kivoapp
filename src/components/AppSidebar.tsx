@@ -1,4 +1,4 @@
-import { Home, DollarSign, Store, BarChart3, Heart, Settings, LogOut, Package, Users, UserCheck, Tag, Mail, CalendarCheck, MessagesSquare, FileText, Receipt, Send, Activity, Rocket, Shield, Zap } from "lucide-react";
+import { Home, DollarSign, Store, BarChart3, Heart, Settings, LogOut, Package, Users, UserCheck, Tag, Mail, CalendarCheck, MessagesSquare, FileText, Receipt, Send, Activity, Rocket, Shield, Zap, MessageSquare, CalendarDays } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -38,6 +38,8 @@ const navigationItems = [
 { title: "GTM", url: "/gtm", icon: Rocket },
 { title: "Ops", url: "/ops", icon: Shield },
 { title: "Launch", url: "/ops/launch", icon: Zap },
+{ title: "Feedback", url: "/ops/feedback", icon: MessageSquare },
+{ title: "Semana 1", url: "/ops/week-plan", icon: CalendarDays },
 { title: "Configurações", url: "/settings", icon: Settings }];
 
 

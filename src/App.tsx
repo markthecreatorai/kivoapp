@@ -56,6 +56,8 @@ const GtmPlaybook = lazy(() => import("./pages/GtmPlaybook"));
 const AcquisitionPipeline = lazy(() => import("./pages/AcquisitionPipeline"));
 const OpsDashboard = lazy(() => import("./pages/OpsDashboard"));
 const LaunchReadiness = lazy(() => import("./pages/LaunchReadiness"));
+const OpsFeedback = lazy(() => import("./pages/OpsFeedback"));
+const OpsWeekPlan = lazy(() => import("./pages/OpsWeekPlan"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -158,6 +160,8 @@ const App = () => (
                 <Route path="/acquisition" element={<ProtectedRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/ops" element={<ProtectedRoute><DashboardLayout><OpsDashboard /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/ops/launch" element={<ProtectedRoute><DashboardLayout><LaunchReadiness /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/ops/feedback" element={<ProtectedRoute><DashboardLayout><OpsFeedback /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/ops/week-plan" element={<ProtectedRoute><DashboardLayout><OpsWeekPlan /></DashboardLayout></ProtectedRoute>} />
                 
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<Checkout />} />
