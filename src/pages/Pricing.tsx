@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
-// Pricing page now redirects to the unified upgrade flow
+// Pricing page — renders upgrade flow inline
 export default function Pricing() {
   const navigate = useNavigate();
 
