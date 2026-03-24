@@ -34,7 +34,7 @@ export default function AdminRiskReview() {
   const { data: reviewPayouts = [], isLoading } = useQuery({
     queryKey: ["admin-review-payouts"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("payout_requests")
         .select("*")
         .in("status", ["manual_review", "requested"])
