@@ -5,8 +5,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreditCard, DollarSign } from "lucide-react";
-import { PagarmeWizard, PagarmeStatusBadge } from "./PagarmeWizard";
+import { CreditCard, DollarSign, Zap } from "lucide-react";
+import { GatewayWizard, GatewayStatusBadge } from "./GatewayWizard";
 import { BankAccountForm } from "./BankAccountForm";
 
 export function SettingsPayments() {
@@ -14,7 +14,13 @@ export function SettingsPayments() {
   const [termsEnabled, setTermsEnabled] = useState(false);
   const [termsText, setTermsText] = useState("");
   const [checkoutLang, setCheckoutLang] = useState("pt-BR");
-  const [showPagarmeWizard, setShowPagarmeWizard] = useState(false);
+  const [showGatewayWizard, setShowGatewayWizard] = useState(false);
+  const [selectedGateway, setSelectedGateway] = useState<"asaas" | "pagarme">("asaas");
+
+  const openWizard = (gw: "asaas" | "pagarme") => {
+    setSelectedGateway(gw);
+    setShowGatewayWizard(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -24,6 +30,26 @@ export function SettingsPayments() {
           <CardTitle className="text-lg">Métodos de Pagamento</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Asaas - Primary */}
+          <div className="flex items-center justify-between p-4 border border-primary/30 rounded-lg bg-primary/5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Asaas</p>
+                <p className="text-xs text-muted-foreground">Gateway principal — PIX, cartão, boleto + assinaturas</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <GatewayStatusBadge gateway="asaas" />
+              <Button variant="outline" size="sm" onClick={() => openWizard("asaas")}>
+                Configurar
+              </Button>
+            </div>
+          </div>
+
+          {/* Pagar.me - Legacy */}
           <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-muted">
@@ -31,17 +57,18 @@ export function SettingsPayments() {
               </div>
               <div>
                 <p className="text-sm font-medium">Pagar.me</p>
-                <p className="text-xs text-muted-foreground">Gateway de pagamento brasileiro — PIX, cartão, boleto</p>
+                <p className="text-xs text-muted-foreground">Gateway legado — PIX, cartão, boleto</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <PagarmeStatusBadge />
-              <Button variant="outline" size="sm" onClick={() => setShowPagarmeWizard(true)}>
+              <GatewayStatusBadge gateway="pagarme" />
+              <Button variant="outline" size="sm" onClick={() => openWizard("pagarme")}>
                 Configurar
               </Button>
             </div>
           </div>
 
+          {/* Stripe - Coming soon */}
           <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-muted">
@@ -108,7 +135,7 @@ export function SettingsPayments() {
         </CardContent>
       </Card>
 
-      <PagarmeWizard open={showPagarmeWizard} onOpenChange={setShowPagarmeWizard} />
+      <GatewayWizard open={showGatewayWizard} onOpenChange={setShowGatewayWizard} gateway={selectedGateway} />
     </div>
   );
 }

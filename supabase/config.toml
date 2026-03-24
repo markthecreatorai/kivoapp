@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.ops-alerts]
 verify_jwt = false
+
+[functions.webhook-asaas]
+verify_jwt = false
+
+[functions.test-asaas]
+verify_jwt = false
