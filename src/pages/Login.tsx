@@ -164,7 +164,7 @@ export default function Login() {
         <div className="w-full max-w-md space-y-6">
           {/* Logo/Brand */}
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-primary">Kivo</h1>
+            <img src="/src/assets/kivo-logo.svg" alt="Kivo" className="h-10 mx-auto" />
             <p className="text-muted-foreground mt-2">
               Sua plataforma all-in-one para vender produtos digitais
             </p>
