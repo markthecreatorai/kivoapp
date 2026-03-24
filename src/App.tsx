@@ -70,6 +70,7 @@ const CircleEvents = lazy(() => import("./pages/circle/CircleEvents"));
 const CircleClassroom = lazy(() => import("./pages/circle/CircleClassroom"));
 const CircleAdmin = lazy(() => import("./pages/circle/CircleAdmin"));
 const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
+const CircleMessages = lazy(() => import("./pages/circle/CircleMessages"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
