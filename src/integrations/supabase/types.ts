@@ -1069,6 +1069,7 @@ export type Database = {
           is_active: boolean
           name: string
           price_cents: number
+          provider_plan_id: string | null
           trial_days: number
           updated_at: string
         }
@@ -1082,6 +1083,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           price_cents?: number
+          provider_plan_id?: string | null
           trial_days?: number
           updated_at?: string
         }
@@ -1095,6 +1097,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           price_cents?: number
+          provider_plan_id?: string | null
           trial_days?: number
           updated_at?: string
         }
@@ -1113,10 +1116,15 @@ export type Database = {
           canceled_at: string | null
           community_id: string
           created_at: string
+          dunning_attempts: number
           id: string
+          last_dunning_at: string | null
           next_billing_at: string | null
+          payment_method: string | null
           plan_id: string
           provider: string | null
+          provider_customer_id: string | null
+          provider_plan_id: string | null
           provider_subscription_id: string | null
           started_at: string | null
           status: string
@@ -1128,10 +1136,15 @@ export type Database = {
           canceled_at?: string | null
           community_id: string
           created_at?: string
+          dunning_attempts?: number
           id?: string
+          last_dunning_at?: string | null
           next_billing_at?: string | null
+          payment_method?: string | null
           plan_id: string
           provider?: string | null
+          provider_customer_id?: string | null
+          provider_plan_id?: string | null
           provider_subscription_id?: string | null
           started_at?: string | null
           status?: string
@@ -1143,10 +1156,15 @@ export type Database = {
           canceled_at?: string | null
           community_id?: string
           created_at?: string
+          dunning_attempts?: number
           id?: string
+          last_dunning_at?: string | null
           next_billing_at?: string | null
+          payment_method?: string | null
           plan_id?: string
           provider?: string | null
+          provider_customer_id?: string | null
+          provider_plan_id?: string | null
           provider_subscription_id?: string | null
           started_at?: string | null
           status?: string
