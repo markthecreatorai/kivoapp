@@ -17,9 +17,9 @@ export default function AdminPayouts() {
     queryKey: ["admin-payout-stats"],
     queryFn: async () => {
       const [entriesRes, payoutsRes, refundsRes] = await Promise.all([
-        supabase.from("split_entries").select("gross_amount, platform_fee, creator_net, status", { count: "exact" }),
-        supabase.from("payout_requests").select("amount, net_amount, status"),
-        supabase.from("split_entries").select("creator_net").eq("status", "refunded"),
+        (supabase as any).from("split_entries").select("gross_amount, platform_fee, creator_net, status", { count: "exact" }),
+        (supabase as any).from("payout_requests").select("amount, net_amount, status"),
+        (supabase as any).from("split_entries").select("creator_net").eq("status", "refunded"),
       ]);
 
       const entries = entriesRes.data || [];
@@ -53,7 +53,7 @@ export default function AdminPayouts() {
   const { data: recentPayouts = [] } = useQuery({
     queryKey: ["admin-recent-payouts"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("payout_requests")
         .select("*")
         .order("created_at", { ascending: false })
@@ -66,7 +66,7 @@ export default function AdminPayouts() {
   const { data: recentRefunds = [] } = useQuery({
     queryKey: ["admin-recent-refunds"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("split_entries")
         .select("*")
         .eq("status", "refunded")

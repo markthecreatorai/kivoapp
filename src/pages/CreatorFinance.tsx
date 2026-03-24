@@ -49,7 +49,7 @@ export default function CreatorFinance() {
     queryKey: ["split-entries", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("split_entries")
         .select("*")
         .eq("workspace_id", workspaceId!)
@@ -64,7 +64,7 @@ export default function CreatorFinance() {
     queryKey: ["payout-requests", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("payout_requests")
         .select("*")
         .eq("workspace_id", workspaceId!)
@@ -102,7 +102,7 @@ export default function CreatorFinance() {
 
       const idempotencyKey = `payout-${workspaceId}-${Date.now()}`;
 
-      const { error } = await supabase.from("payout_requests").insert({
+      const { error } = await (supabase as any).from("payout_requests").insert({
         workspace_id: workspaceId!,
         bank_account_id: effectiveAccount,
         requested_by: user.id,

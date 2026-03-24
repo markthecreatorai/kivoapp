@@ -63,6 +63,7 @@ const OpsWeekPlan = lazy(() => import("./pages/OpsWeekPlan"));
 const FinancialHealth = lazy(() => import("./pages/FinancialHealth"));
 const CreatorFinance = lazy(() => import("./pages/CreatorFinance"));
 const AdminPayouts = lazy(() => import("./pages/AdminPayouts"));
+const AdminRiskReview = lazy(() => import("./pages/AdminRiskReview"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -194,6 +195,7 @@ const App = () => (
                   <Route path="/ops/week-plan" element={<OpsWeekPlan />} />
                   <Route path="/ops/financial-health" element={<FinancialHealth />} />
                   <Route path="/admin/payouts" element={<AdminPayouts />} />
+                  <Route path="/admin/risk-review" element={<AdminRiskReview />} />
                 </Route>
 
                 {/* Full-screen protected routes (no persistent layout) */}

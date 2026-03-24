@@ -5704,6 +5704,17 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_payout_risk: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          payout_count_today: number
+          payout_total_today: number
+          recent_chargebacks: number
+          refund_ratio: number
+          risk_flags: Json
+          risk_score: number
+        }[]
+      }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
       get_community_ids_for_user: {
