@@ -147,11 +147,13 @@ export default function LandingPage() {
     const utm_campaign = searchParams.get("utm_campaign") || "";
     // Store UTMs for signup attribution
     sessionStorage.setItem("kivo_utm", JSON.stringify({ utm_source, utm_medium, utm_campaign, ab_variant: variant, landed_at: new Date().toISOString() }));
+    trackEvent("page_view", { ab_variant: variant, utm_source, utm_medium, utm_campaign });
   }, [searchParams, variant]);
 
   const ctaClick = (label: string) => {
     const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
     sessionStorage.setItem("kivo_utm", JSON.stringify({ ...utmData, cta_clicked: label, cta_at: new Date().toISOString() }));
+    trackEvent("cta_click", { label, ab_variant: variant });
   };
 
   return (
