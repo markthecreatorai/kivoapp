@@ -244,6 +244,48 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
     }).eq("id", order.checkout_session_id);
   }
 
+  // Create wallet ledger entries (sale + fee)
+  if (order) {
+    const HOLD_DAYS = 14;
+    const availableAt = new Date(Date.now() + HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const totalAmount = Number(order.total_amount || 0);
+    const gatewayFee = Number(paymentRecord.gateway_fee || 0);
+    const netAmount = totalAmount - gatewayFee;
+
+    // Check idempotency - don't duplicate ledger entries
+    const { data: existingLedger } = await supabase
+      .from("wallet_ledger")
+      .select("id")
+      .eq("order_id", paymentRecord.order_id)
+      .eq("type", "sale")
+      .maybeSingle();
+
+    if (!existingLedger) {
+      // Sale entry (positive)
+      await supabase.from("wallet_ledger").insert({
+        workspace_id: order.workspace_id,
+        order_id: paymentRecord.order_id,
+        type: "sale",
+        amount: netAmount,
+        status: "pending",
+        available_at: availableAt,
+        description: `Venda #${paymentRecord.order_id.slice(0, 8)}`,
+      });
+
+      // Fee entry (negative, settled immediately)
+      if (gatewayFee > 0) {
+        await supabase.from("wallet_ledger").insert({
+          workspace_id: order.workspace_id,
+          order_id: paymentRecord.order_id,
+          type: "fee",
+          amount: -gatewayFee,
+          status: "settled",
+          description: `Taxa gateway #${paymentRecord.order_id.slice(0, 8)}`,
+        });
+      }
+    }
+  }
+
   // Send notifications (fire-and-forget)
   try {
     if (order) {
