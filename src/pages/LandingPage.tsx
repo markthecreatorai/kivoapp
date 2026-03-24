@@ -73,9 +73,9 @@ function SavingsCalculator() {
                   <p className="text-sm font-medium text-foreground">Hotmart (~13,9%)</p>
                   <p className="text-lg font-bold text-destructive">{fmt(hotmartFees)}/mês em taxas</p>
                 </div>
-                <div className="p-4 rounded-lg bg-orange-100 dark:bg-orange-900/20 space-y-1">
+                <div className="p-4 rounded-lg bg-muted space-y-1">
                   <p className="text-sm font-medium text-foreground">Kiwify (~12,8%)</p>
-                  <p className="text-lg font-bold text-orange-600">{fmt(kiwifyFees)}/mês em taxas</p>
+                  <p className="text-lg font-bold text-muted-foreground">{fmt(kiwifyFees)}/mês em taxas</p>
                 </div>
                 <div className="p-4 rounded-lg bg-accent space-y-1">
                   <p className="text-sm font-medium text-foreground">Kivo (4,9%)</p>

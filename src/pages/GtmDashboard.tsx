@@ -16,7 +16,7 @@ export default function GtmDashboard() {
   const { data: signups } = useQuery({
     queryKey: ["gtm-signups", since],
     queryFn: async () => {
-      const { count } = await supabase.from("workspaces").select("*", { count: "exact", head: true }).gte("created_at", since);
+      const { count } = await supabase.from("workspaces").select("id", { count: "exact", head: true }).gte("created_at", since);
       return count || 0;
     },
   });
