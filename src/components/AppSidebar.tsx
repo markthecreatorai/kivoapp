@@ -3,7 +3,7 @@ import {
   Home, DollarSign, Store, BarChart3, Settings, LogOut, Package, Users,
   UserCheck, Tag, Mail, MessagesSquare, Receipt, Send, Activity, Rocket,
   Shield, Zap, MessageSquare, CalendarDays, CalendarCheck, ChevronRight,
-  Plus, Heart, FileText, CreditCard
+  Plus, Heart, FileText, Megaphone, Truck, Wallet, Wrench, ShieldCheck
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
