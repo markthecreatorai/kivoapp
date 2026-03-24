@@ -69,6 +69,7 @@ const creatorGroups: NavGroup[] = [
   },
   {
     label: "Financeiro",
+    icon: Wallet,
     items: [
       { title: "Renda", url: "/earnings", icon: DollarSign },
       { title: "Fiscal", url: "/fiscal", icon: Receipt },
