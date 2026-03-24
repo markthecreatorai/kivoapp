@@ -169,28 +169,6 @@ export function OnboardingChecklist() {
 
   return (
     <div className="space-y-4">
-      {/* Next best step banner */}
-      {nextStep && (
-        <Card className="bg-primary/5 border border-primary/20 shadow-sm rounded-xl">
-          <CardContent className="flex items-center gap-4 py-4">
-            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Próximo passo: {nextStep.title}</p>
-              <p className="text-xs text-muted-foreground">{nextStep.description}</p>
-            </div>
-            {nextStep.href && (
-              <Button asChild size="sm" className="flex-shrink-0">
-                <Link to={nextStep.href}>
-                  {nextStep.action} <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Full checklist */}
       <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
         <CardHeader className="pb-4">
