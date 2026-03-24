@@ -152,6 +152,36 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
     enabled: !!member,
   });
 
+  // Unread DM count
+  const { data: dmUnreadCount } = useQuery({
+    queryKey: ["circle-dm-unread", member?.id],
+    queryFn: async () => {
+      if (!member) return 0;
+      const { data: memberships } = await supabase
+        .from("community_conversation_members" as any)
+        .select("conversation_id, last_read_at")
+        .eq("member_id", member.id);
+      if (!memberships?.length) return 0;
+
+      let unread = 0;
+      for (const m of memberships as any[]) {
+        const q = supabase
+          .from("community_messages" as any)
+          .select("id", { count: "exact", head: true })
+          .eq("conversation_id", m.conversation_id)
+          .neq("sender_id", member.id)
+          .is("deleted_at", null);
+        if (m.last_read_at) {
+          q.gt("created_at", m.last_read_at);
+        }
+        const { count } = await q;
+        unread += count || 0;
+      }
+      return unread;
+    },
+    enabled: !!member,
+  });
+
   const { data: previewPosts } = useQuery({
     queryKey: ["circle-preview-posts", community?.id],
     queryFn: async () => {
