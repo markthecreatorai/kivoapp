@@ -92,6 +92,7 @@ const App = () => (
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/pricing" element={<Pricing />} />
                 <Route path="/resend-verification" element={<Navigate to="/verify-email" replace />} />
                 
                 {/* Onboarding */}

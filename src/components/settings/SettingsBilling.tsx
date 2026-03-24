@@ -51,6 +51,7 @@ export function SettingsBilling() {
               Cancelar Assinatura
             </Button>
             <Button onClick={() => setShowPlanModal(true)}>Trocar Plano</Button>
+            <Button variant="link" onClick={() => window.location.href = "/pricing"}>Ver Planos</Button>
           </div>
         </CardContent>
       </Card>
