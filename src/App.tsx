@@ -49,6 +49,7 @@ const Pricing = lazy(() => import("./pages/Pricing"));
 const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
+const AnalyticsExecutive = lazy(() => import("./pages/AnalyticsExecutive"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
