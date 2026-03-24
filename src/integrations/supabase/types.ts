@@ -4994,6 +4994,7 @@ export type Database = {
           total_balance: number
         }[]
       }
+      is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_community_member: {
         Args: { _community_id: string; _user_id: string }
         Returns: boolean
