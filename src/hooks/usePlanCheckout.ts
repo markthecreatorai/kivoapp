@@ -16,6 +16,25 @@ export function usePlanCheckout() {
   const [loading, setLoading] = useState(false);
   const { currentWorkspace } = useWorkspace();
 
+  const getToken = async (): Promise<string | null> => {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token || null;
+  };
+
+  const callFunction = async (name: string, body: Record<string, unknown>, token: string) => {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    return fetch(`https://${projectId}.supabase.co/functions/v1/${name}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+  };
+
+  // New subscription checkout (no existing active sub)
   const startPlanCheckout = async ({ planCode, billingCycle = "monthly", sourceUI }: StartCheckoutParams) => {
     if (!currentWorkspace) {
       toast({ title: "Erro", description: "Workspace não encontrado.", variant: "destructive" });
@@ -26,28 +45,18 @@ export function usePlanCheckout() {
 
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = await getToken();
       if (!token) {
         toast({ title: "Sessão expirada", description: "Faça login novamente.", variant: "destructive" });
         return;
       }
 
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/create-subscription-checkout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({
-          workspace_id: currentWorkspace.id,
-          plan_code: planCode,
-          billing_cycle: billingCycle,
-          origin_path: window.location.pathname,
-        }),
-      });
+      const res = await callFunction("create-subscription-checkout", {
+        workspace_id: currentWorkspace.id,
+        plan_code: planCode,
+        billing_cycle: billingCycle,
+        origin_path: window.location.pathname,
+      }, token);
 
       const result = await res.json();
 
@@ -74,5 +83,53 @@ export function usePlanCheckout() {
     }
   };
 
-  return { startPlanCheckout, loading };
+  // Mid-cycle upgrade (existing active sub -> higher plan)
+  const upgradeMidCycle = async ({ planCode, sourceUI }: { planCode: string; sourceUI: SourceUI }): Promise<boolean> => {
+    if (!currentWorkspace) {
+      toast({ title: "Erro", description: "Workspace não encontrado.", variant: "destructive" });
+      return false;
+    }
+
+    trackEvent("upgrade_midcycle_click", { plan_code: planCode, source_ui: sourceUI, workspace_id: currentWorkspace.id });
+
+    setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast({ title: "Sessão expirada", description: "Faça login novamente.", variant: "destructive" });
+        return false;
+      }
+
+      const res = await callFunction("upgrade-subscription-midcycle", {
+        workspace_id: currentWorkspace.id,
+        target_plan_code: planCode,
+        source_ui: sourceUI,
+      }, token);
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        trackEvent("upgrade_midcycle_failed", { plan_code: planCode, source_ui: sourceUI, error: result.error });
+        toast({ title: "Erro ao fazer upgrade", description: result.error || "Tente novamente.", variant: "destructive" });
+        return false;
+      }
+
+      trackEvent("upgrade_midcycle_succeeded", {
+        plan_code: planCode,
+        source_ui: sourceUI,
+        status: result.status,
+      });
+
+      toast({ title: "Upgrade realizado! 🎉", description: `Seu plano foi atualizado para ${planCode === "creator-pro" ? "Creator Pro" : "Creator"}.` });
+      return true;
+    } catch (err: any) {
+      trackEvent("upgrade_midcycle_failed", { plan_code: planCode, source_ui: sourceUI, error: err?.message });
+      toast({ title: "Erro inesperado", description: "Não foi possível processar agora, tente novamente em instantes.", variant: "destructive" });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { startPlanCheckout, upgradeMidCycle, loading };
 }
