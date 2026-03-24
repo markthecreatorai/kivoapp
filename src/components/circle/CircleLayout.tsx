@@ -118,6 +118,23 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
     enabled: !!community?.linked_product_id && !!user && community?.access_type === "FREE_WITH_PRODUCT",
   });
 
+  // Check active circle subscription for PAID_SUBSCRIPTION communities
+  const { data: hasActiveSubscription } = useQuery({
+    queryKey: ["circle-subscription", community?.id, user?.id],
+    queryFn: async () => {
+      if (!community || !user) return false;
+      const { data } = await supabase
+        .from("circle_subscriptions" as any)
+        .select("id, status")
+        .eq("community_id", community.id)
+        .eq("user_id", user.id)
+        .in("status", ["active", "trialing"])
+        .limit(1);
+      return ((data as any[])?.length || 0) > 0;
+    },
+    enabled: !!community && !!user && community?.access_type === "PAID_SUBSCRIPTION",
+  });
+
   const { data: unreadCount } = useQuery({
     queryKey: ["circle-unread", member?.id],
     queryFn: async () => {
