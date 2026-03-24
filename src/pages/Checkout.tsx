@@ -276,35 +276,34 @@ export default function Checkout() {
   // Polling for PIX payment confirmation
   const [orderId, setOrderId] = useState<string | null>(null);
 
-  // Store order_id from PIX response
-  useEffect(() => {
-    // orderId is set when PIX payment is created
-  }, []);
-
-  // Polling for PIX payment confirmation via check-payment-status
+  // Poll check-payment-status every 7 seconds when PIX is active
   useEffect(() => {
     if (!pixData || paymentSuccess || !orderId) return;
-    const interval = setInterval(async () => {
+    
+    const pollInterval = setInterval(async () => {
       try {
-        const res = await supabase.functions.invoke("check-payment-status", {
-          body: null,
-          method: "GET",
-        });
-        // Use fetch directly since invoke doesn't support GET params well
-        const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/check-payment-status?order_id=${orderId}`;
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const url = `https://${projectId}.supabase.co/functions/v1/check-payment-status?order_id=${orderId}`;
         const resp = await fetch(url, {
-          headers: { "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+          headers: { "apikey": apiKey },
         });
+        if (!resp.ok) return;
         const data = await resp.json();
         if (data?.status === "SUCCEEDED") {
-          clearInterval(interval);
+          clearInterval(pollInterval);
           setPaymentSuccess(true);
+          // Call post-purchase
+          await supabase.functions.invoke("post-purchase", { body: { order_id: orderId } });
           navigate(`/order/success/${orderId}`);
         }
-      } catch {}
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [pixData, paymentSuccess, orderId]);
+      } catch {
+        // Silently continue polling
+      }
+    }, 7000);
+
+    return () => clearInterval(pollInterval);
+  }, [pixData, paymentSuccess, orderId, navigate]);
 
   if (loading) {
     return (

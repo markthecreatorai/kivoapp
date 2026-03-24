@@ -25,13 +25,13 @@ async function callPagarme(path: string, body: unknown, apiKey: string) {
   return data;
 }
 
-function simulatePayment(method: string, totalAmount: number, orderId: string) {
+function simulatePayment(method: string, totalAmount: number) {
   if (method === "pix") {
     return {
       status: "pending",
       gateway_payment_id: `sim_pix_${crypto.randomUUID().slice(0, 8)}`,
       pix: {
-        qr_code: `00020126580014br.gov.bcb.pix0136${crypto.randomUUID()}5204000053039865802BR5925KORA PAGAMENTOS6009SAO PAULO62070503***6304`,
+        qr_code: `00020126580014br.gov.bcb.pix0136${crypto.randomUUID()}5204000053039865802BR5925KIVO PAGAMENTOS6009SAO PAULO62070503***6304`,
         qr_code_url: "",
         expires_at: new Date(Date.now() + 30 * 60000).toISOString(),
       },
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const {
       product_id, price_id, method, customer, workspace_id,
-      checkout_session_id, card, installments, coupon_code, 
+      checkout_session_id, card, installments, coupon_code,
       affiliate_link_id, idempotency_key, bump_product_ids,
     } = body;
 
@@ -107,6 +107,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch workspace to get Pagar.me credentials from metadata
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("id, metadata")
+      .eq("id", workspace_id)
+      .single();
+
+    if (!workspace) {
+      return new Response(JSON.stringify({ error: "Workspace não encontrado" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const wsMeta = (workspace.metadata as Record<string, unknown>) || {};
+    const pagarmeApiKey = (wsMeta.pagarme_api_key as string) || Deno.env.get("PAGARME_API_KEY") || "";
+    const useLive = !!pagarmeApiKey;
+
     // Fetch product
     const { data: product } = await supabase
       .from("products")
@@ -116,6 +133,13 @@ Deno.serve(async (req) => {
     if (!product) {
       return new Response(JSON.stringify({ error: "Produto não encontrado" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify product belongs to workspace
+    if (product.workspace_id !== workspace_id) {
+      return new Response(JSON.stringify({ error: "Produto não pertence a este workspace" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -141,7 +165,7 @@ Deno.serve(async (req) => {
     }
 
     // Bump products
-    let bumpItems: { product_id: string; price_id: string; amount: number }[] = [];
+    const bumpItems: { product_id: string; price_id: string; amount: number }[] = [];
     if (bump_product_ids && Array.isArray(bump_product_ids)) {
       for (const bumpId of bump_product_ids) {
         const { data: bumpPrice } = await supabase
@@ -233,13 +257,10 @@ Deno.serve(async (req) => {
     }
 
     // --- Payment Processing ---
-    const pagarmeKey = Deno.env.get("PAGARME_API_KEY");
-    const useLive = !!pagarmeKey;
     let gatewayResult: any;
 
     if (useLive) {
-      // Real Pagar.me integration
-      console.log("Processing via Pagar.me live API");
+      console.log("Processing via Pagar.me live API for workspace", workspace_id);
 
       const pagarmeCustomer = {
         name: customer.name,
@@ -247,7 +268,13 @@ Deno.serve(async (req) => {
         document: cpf,
         document_type: "CPF",
         type: "individual",
-        phones: customer.phone ? { mobile_phone: { country_code: "55", area_code: customer.phone.slice(0, 2), number: customer.phone.slice(2) } } : undefined,
+        phones: customer.phone ? {
+          mobile_phone: {
+            country_code: "55",
+            area_code: customer.phone.replace(/\D/g, "").slice(0, 2),
+            number: customer.phone.replace(/\D/g, "").slice(2),
+          },
+        } : undefined,
       };
 
       const pagarmeItems = [
@@ -275,7 +302,7 @@ Deno.serve(async (req) => {
               exp_year: parseInt(card.exp_year),
               cvv: card.cvv,
             },
-            statement_descriptor: "KORA",
+            statement_descriptor: "KIVO",
           },
           amount: Math.round(totalAmount * 100),
         }];
@@ -300,7 +327,8 @@ Deno.serve(async (req) => {
         payments,
         closed: true,
         antifraud_enabled: method === "credit_card",
-      }, pagarmeKey);
+        metadata: { order_id: order.id, workspace_id },
+      }, pagarmeApiKey);
 
       const charge = pagarmeOrder.charges?.[0];
       const lastTx = charge?.last_transaction;
@@ -319,9 +347,8 @@ Deno.serve(async (req) => {
         } : undefined,
       };
     } else {
-      // Simulated mode
-      console.log("Processing in SIMULATED mode (no PAGARME_API_KEY)");
-      gatewayResult = simulatePayment(method, totalAmount, order.id);
+      console.log("Processing in SIMULATED mode (no Pagar.me credentials)");
+      gatewayResult = simulatePayment(method, totalAmount);
     }
 
     // Create payment record
@@ -358,6 +385,9 @@ Deno.serve(async (req) => {
       if (checkout_session_id) {
         await supabase.from("checkout_sessions").update({ status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", checkout_session_id);
       }
+
+      // Grant entitlements immediately for card payments
+      await grantEntitlements(supabase, order.id, customerId, orderItems);
     }
 
     // Build response
@@ -391,3 +421,42 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// Helper: Grant entitlements idempotently
+async function grantEntitlements(
+  supabase: any,
+  orderId: string,
+  customerId: string,
+  orderItems: { product_id: string }[]
+) {
+  for (const item of orderItems) {
+    // Check if entitlement already exists
+    const { data: existing } = await supabase
+      .from("entitlements")
+      .select("id")
+      .eq("order_id", orderId)
+      .eq("product_id", item.product_id)
+      .eq("customer_id", customerId)
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from("entitlements").insert({
+        customer_id: customerId,
+        product_id: item.product_id,
+        order_id: orderId,
+      });
+    }
+
+    // Increment sales_count
+    const { data: prod } = await supabase
+      .from("products")
+      .select("sales_count")
+      .eq("id", item.product_id)
+      .single();
+    if (prod) {
+      await supabase.from("products").update({
+        sales_count: (prod.sales_count || 0) + 1,
+      }).eq("id", item.product_id);
+    }
+  }
+}

@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     return new Response("Invalid JSON", { status: 400, headers: corsHeaders });
   }
 
-  // HMAC signature validation using Web Crypto API
+  // HMAC signature validation
   if (webhookSecret) {
     const signature = req.headers.get("x-hub-signature") || "";
     const encoder = new TextEncoder();
@@ -62,11 +62,10 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Find workspace from charge/order metadata
+  // Find payment record from charge data
   const chargeData = payload?.data;
   const gatewayPaymentId = chargeData?.charges?.[0]?.id || chargeData?.id;
 
-  // Try to find the payment in our DB
   let paymentRecord: any = null;
   if (gatewayPaymentId) {
     const { data } = await supabase
@@ -98,136 +97,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Process based on event type
     if (eventType === "order.paid" || eventType === "charge.paid") {
-      if (!paymentRecord) {
-        throw new Error(`Payment not found for gateway_payment_id: ${gatewayPaymentId}`);
-      }
-
-      // Update payment
-      await supabase.from("payments").update({
-        status: "SUCCEEDED",
-        processed_at: new Date().toISOString(),
-      }).eq("id", paymentRecord.id);
-
-      // Update PIX paid_at if applicable
-      await supabase.from("pix_payment_data").update({
-        paid_at: new Date().toISOString(),
-      }).eq("payment_id", paymentRecord.id);
-
-      // Update order
-      await supabase.from("orders").update({
-        status: "COMPLETED",
-        paid_at: new Date().toISOString(),
-      }).eq("id", paymentRecord.order_id);
-
-      // Get order details for entitlements
-      const { data: orderItems } = await supabase
-        .from("order_items")
-        .select("product_id")
-        .eq("order_id", paymentRecord.order_id);
-
-      const { data: order } = await supabase
-        .from("orders")
-        .select("customer_id, checkout_session_id")
-        .eq("id", paymentRecord.order_id)
-        .single();
-
-      if (order?.customer_id && orderItems) {
-        // Create entitlements
-        const entitlements = orderItems.map((item) => ({
-          customer_id: order.customer_id,
-          product_id: item.product_id,
-          order_id: paymentRecord.order_id,
-        }));
-        await supabase.from("entitlements").insert(entitlements);
-
-        // Increment sales_count
-        for (const item of orderItems) {
-          await supabase.rpc("generate_unique_slug", { base_name: "noop" }).then(() => {});
-          // Direct increment via raw update
-          const { data: prod } = await supabase
-            .from("products")
-            .select("sales_count")
-            .eq("id", item.product_id)
-            .single();
-          if (prod) {
-            await supabase.from("products").update({
-              sales_count: (prod.sales_count || 0) + 1,
-            }).eq("id", item.product_id);
-          }
-        }
-      }
-
-      // Update checkout session
-      if (order?.checkout_session_id) {
-        await supabase.from("checkout_sessions").update({
-          status: "COMPLETED",
-          completed_at: new Date().toISOString(),
-        }).eq("id", order.checkout_session_id);
-      }
-
-      console.log(`Order ${paymentRecord.order_id} marked as COMPLETED`);
-
+      await handlePaid(supabase, paymentRecord, chargeData, gatewayPaymentId);
     } else if (eventType === "order.payment_failed" || eventType === "charge.payment_failed") {
-      if (paymentRecord) {
-        const failureReason = chargeData?.charges?.[0]?.last_transaction?.acquirer_message || "Payment failed";
-        await supabase.from("payments").update({
-          status: "FAILED",
-          failed_at: new Date().toISOString(),
-          failure_reason: failureReason,
-        }).eq("id", paymentRecord.id);
-
-        await supabase.from("orders").update({
-          status: "FAILED",
-        }).eq("id", paymentRecord.order_id);
-
-        console.log(`Payment ${paymentRecord.id} marked as FAILED`);
-      }
-
+      await handleFailed(supabase, paymentRecord, chargeData);
     } else if (eventType === "order.refunded" || eventType === "charge.refunded") {
-      if (paymentRecord) {
-        const refundAmount = chargeData?.amount ? chargeData.amount / 100 : 0;
-
-        // Create refund record
-        await supabase.from("refunds").insert({
-          order_id: paymentRecord.order_id,
-          payment_id: paymentRecord.id,
-          amount: refundAmount,
-          status: "PROCESSED",
-          processed_at: new Date().toISOString(),
-          gateway_refund_id: chargeData?.charges?.[0]?.last_transaction?.id || null,
-        });
-
-        // Update order status
-        await supabase.from("orders").update({
-          status: "REFUNDED",
-        }).eq("id", paymentRecord.order_id);
-
-        // Revoke entitlements
-        await supabase.from("entitlements").update({
-          revoked_at: new Date().toISOString(),
-        }).eq("order_id", paymentRecord.order_id);
-
-        console.log(`Order ${paymentRecord.order_id} REFUNDED`);
-      }
-
+      await handleRefunded(supabase, paymentRecord, chargeData);
     } else if (eventType === "charge.chargeback") {
-      if (paymentRecord) {
-        await supabase.from("disputes").insert({
-          order_id: paymentRecord.order_id,
-          status: "OPEN",
-          reason: chargeData?.charges?.[0]?.last_transaction?.acquirer_message || "Chargeback",
-          amount: chargeData?.amount ? chargeData.amount / 100 : 0,
-          gateway_dispute_id: chargeData?.charges?.[0]?.id || null,
-        });
-
-        await supabase.from("orders").update({
-          status: "DISPUTED",
-        }).eq("id", paymentRecord.order_id);
-
-        console.log(`Dispute created for order ${paymentRecord.order_id}`);
-      }
+      await handleChargeback(supabase, paymentRecord, chargeData);
     } else {
       console.log(`Unhandled event type: ${eventType}`);
     }
@@ -248,9 +125,149 @@ Deno.serve(async (req) => {
     }).eq("id", webhookEvent.id);
   }
 
-  // Always return 200 to prevent retries
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
+
+// ─── Event Handlers ───
+
+async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, gatewayPaymentId: string) {
+  if (!paymentRecord) {
+    throw new Error(`Payment not found for gateway_payment_id: ${gatewayPaymentId}`);
+  }
+
+  // Update payment
+  await supabase.from("payments").update({
+    status: "SUCCEEDED",
+    processed_at: new Date().toISOString(),
+  }).eq("id", paymentRecord.id);
+
+  // Update PIX paid_at if applicable
+  await supabase.from("pix_payment_data").update({
+    paid_at: new Date().toISOString(),
+  }).eq("payment_id", paymentRecord.id);
+
+  // Update order
+  await supabase.from("orders").update({
+    status: "COMPLETED",
+    paid_at: new Date().toISOString(),
+  }).eq("id", paymentRecord.order_id);
+
+  // Get order details for entitlements
+  const { data: orderItems } = await supabase
+    .from("order_items")
+    .select("product_id")
+    .eq("order_id", paymentRecord.order_id);
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("customer_id, checkout_session_id")
+    .eq("id", paymentRecord.order_id)
+    .single();
+
+  if (order?.customer_id && orderItems) {
+    // Create entitlements idempotently
+    for (const item of orderItems) {
+      const { data: existing } = await supabase
+        .from("entitlements")
+        .select("id")
+        .eq("order_id", paymentRecord.order_id)
+        .eq("product_id", item.product_id)
+        .eq("customer_id", order.customer_id)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from("entitlements").insert({
+          customer_id: order.customer_id,
+          product_id: item.product_id,
+          order_id: paymentRecord.order_id,
+        });
+      }
+
+      // Increment sales_count
+      const { data: prod } = await supabase
+        .from("products")
+        .select("sales_count")
+        .eq("id", item.product_id)
+        .single();
+      if (prod) {
+        await supabase.from("products").update({
+          sales_count: (prod.sales_count || 0) + 1,
+        }).eq("id", item.product_id);
+      }
+    }
+  }
+
+  // Update checkout session
+  if (order?.checkout_session_id) {
+    await supabase.from("checkout_sessions").update({
+      status: "COMPLETED",
+      completed_at: new Date().toISOString(),
+    }).eq("id", order.checkout_session_id);
+  }
+
+  console.log(`Order ${paymentRecord.order_id} marked as COMPLETED`);
+}
+
+async function handleFailed(supabase: any, paymentRecord: any, chargeData: any) {
+  if (!paymentRecord) return;
+
+  const failureReason = chargeData?.charges?.[0]?.last_transaction?.acquirer_message || "Payment failed";
+  await supabase.from("payments").update({
+    status: "FAILED",
+    failed_at: new Date().toISOString(),
+    failure_reason: failureReason,
+  }).eq("id", paymentRecord.id);
+
+  await supabase.from("orders").update({
+    status: "FAILED",
+  }).eq("id", paymentRecord.order_id);
+
+  console.log(`Payment ${paymentRecord.id} marked as FAILED`);
+}
+
+async function handleRefunded(supabase: any, paymentRecord: any, chargeData: any) {
+  if (!paymentRecord) return;
+
+  const refundAmount = chargeData?.amount ? chargeData.amount / 100 : 0;
+
+  await supabase.from("refunds").insert({
+    order_id: paymentRecord.order_id,
+    payment_id: paymentRecord.id,
+    amount: refundAmount,
+    status: "PROCESSED",
+    processed_at: new Date().toISOString(),
+    gateway_refund_id: chargeData?.charges?.[0]?.last_transaction?.id || null,
+  });
+
+  await supabase.from("orders").update({
+    status: "REFUNDED",
+  }).eq("id", paymentRecord.order_id);
+
+  // Revoke entitlements
+  await supabase.from("entitlements").update({
+    revoked_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id);
+
+  console.log(`Order ${paymentRecord.order_id} REFUNDED`);
+}
+
+async function handleChargeback(supabase: any, paymentRecord: any, chargeData: any) {
+  if (!paymentRecord) return;
+
+  await supabase.from("disputes").insert({
+    order_id: paymentRecord.order_id,
+    status: "OPEN",
+    reason: chargeData?.charges?.[0]?.last_transaction?.acquirer_message || "Chargeback",
+    amount: chargeData?.amount ? chargeData.amount / 100 : 0,
+    gateway_dispute_id: chargeData?.charges?.[0]?.id || null,
+  });
+
+  await supabase.from("orders").update({
+    status: "DISPUTED",
+  }).eq("id", paymentRecord.order_id);
+
+  console.log(`Dispute created for order ${paymentRecord.order_id}`);
+}

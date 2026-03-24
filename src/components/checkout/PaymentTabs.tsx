@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { QrCode, CreditCard, FileText, Copy, Check, Loader2 } from "lucide-react";
+import { QrCode, CreditCard, FileText, Copy, Check, Loader2, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { formatCardNumber, formatExpiry, detectCardBrand } from "@/lib/cpf";
 
@@ -28,6 +28,41 @@ export interface CardData {
   cvv: string;
   holder_name: string;
   installments: number;
+}
+
+function PixCountdown({ expiresAt, onExpired }: { expiresAt: string; onExpired: () => void }) {
+  const [timeLeft, setTimeLeft] = useState("");
+  const expiredRef = useRef(false);
+
+  useEffect(() => {
+    const target = new Date(expiresAt).getTime();
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) {
+        setTimeLeft("Expirado");
+        if (!expiredRef.current) {
+          expiredRef.current = true;
+          onExpired();
+        }
+        return;
+      }
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt, onExpired]);
+
+  return (
+    <div className="flex items-center justify-center gap-2 text-sm">
+      <Clock className="w-4 h-4 text-muted-foreground" />
+      <span className={timeLeft === "Expirado" ? "text-destructive font-medium" : "text-muted-foreground font-mono"}>
+        {timeLeft}
+      </span>
+    </div>
+  );
 }
 
 export function PaymentTabs({
@@ -80,22 +115,39 @@ export function PaymentTabs({
         <TabsContent value="pix" className="mt-4 space-y-4">
           {pixData && !pixExpired ? (
             <div className="text-center space-y-4">
-              <p className="text-sm text-muted-foreground">Escaneie o QR Code ou copie o código</p>
-              {pixData.qr_code_url && (
-                <img src={pixData.qr_code_url} alt="QR Code PIX" className="w-48 h-48 mx-auto rounded-lg" />
-              )}
-              <div className="bg-muted p-3 rounded-lg">
-                <p className="text-xs text-muted-foreground break-all font-mono">{pixData.qr_code}</p>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm font-semibold text-green-800">⏳ Aguardando pagamento PIX</p>
               </div>
+
+              {/* Countdown */}
+              <PixCountdown expiresAt={pixData.expires_at} onExpired={() => setPixExpired(true)} />
+
+              {/* QR Code image */}
+              {pixData.qr_code_url && (
+                <img src={pixData.qr_code_url} alt="QR Code PIX" className="w-48 h-48 mx-auto rounded-lg border" />
+              )}
+
+              {/* Copy-paste code */}
+              <div className="bg-muted p-3 rounded-lg">
+                <p className="text-[10px] text-muted-foreground mb-1">Código Copia e Cola</p>
+                <p className="text-xs text-foreground break-all font-mono select-all leading-relaxed">
+                  {pixData.qr_code}
+                </p>
+              </div>
+
               <Button onClick={() => copyToClipboard(pixData.qr_code)} variant="outline" className="w-full h-12">
-                {copied ? <><Check className="w-4 h-4" /> Copiado!</> : <><Copy className="w-4 h-4" /> Copiar código PIX</>}
+                {copied ? <><Check className="w-4 h-4 mr-2" /> Copiado!</> : <><Copy className="w-4 h-4 mr-2" /> Copiar código PIX</>}
               </Button>
-              <p className="text-xs text-muted-foreground">⏳ Aguardando pagamento... O código expira em 30 minutos.</p>
+
+              <div className="flex items-center gap-2 justify-center">
+                <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Confirmação automática ao pagar</p>
+              </div>
             </div>
           ) : pixExpired ? (
             <div className="text-center space-y-3">
-              <p className="text-sm text-muted-foreground">QR Code expirou</p>
-              <Button onClick={onPayPix} disabled={paymentLoading} className="w-full h-12 bg-green-600 hover:bg-green-700">
+              <p className="text-sm text-destructive font-medium">QR Code expirado</p>
+              <Button onClick={() => { setPixExpired(false); onPayPix(); }} disabled={paymentLoading} className="w-full h-12 bg-green-600 hover:bg-green-700">
                 {paymentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gerar novo PIX"}
               </Button>
             </div>
@@ -206,12 +258,12 @@ export function PaymentTabs({
                 <p className="text-xs font-mono break-all">{boletoData.barcode}</p>
               </div>
               <Button onClick={() => copyToClipboard(boletoData.barcode)} variant="outline" className="w-full h-12">
-                {copied ? <><Check className="w-4 h-4" /> Copiado!</> : <><Copy className="w-4 h-4" /> Copiar linha digitável</>}
+                {copied ? <><Check className="w-4 h-4 mr-2" /> Copiado!</> : <><Copy className="w-4 h-4 mr-2" /> Copiar linha digitável</>}
               </Button>
               {boletoData.pdf_url && (
                 <a href={boletoData.pdf_url} target="_blank" rel="noopener noreferrer">
                   <Button variant="outline" className="w-full h-12">
-                    <FileText className="w-4 h-4" /> Ver PDF do boleto
+                    <FileText className="w-4 h-4 mr-2" /> Ver PDF do boleto
                   </Button>
                 </a>
               )}
