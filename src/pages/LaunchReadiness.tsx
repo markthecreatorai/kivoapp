@@ -69,7 +69,7 @@ const RELEASE_CHECKLIST = [
 function StatusIcon({ status }: { status: QAStatus }) {
   if (status === "pass") return <CheckCircle2 className="w-4 h-4 text-accent" />;
   if (status === "fail") return <XCircle className="w-4 h-4 text-destructive" />;
-  if (status === "warn") return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+  if (status === "warn") return <AlertTriangle className="w-4 h-4 text-primary" />;
   return <Activity className="w-4 h-4 text-muted-foreground" />;
 }
 
