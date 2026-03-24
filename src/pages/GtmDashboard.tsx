@@ -6,9 +6,68 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
-import { ArrowRight, TrendingUp, Users, Package, CreditCard, Eye, FlaskConical, BarChart3, Beaker } from "lucide-react";
+import { ArrowRight, TrendingUp, Users, Package, CreditCard, Eye, FlaskConical, BarChart3, Beaker, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";
 import { subDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+
+const MIN_SAMPLE = 30;
+
+type VariantData = { started: number; completed: number };
+
+function getExperimentStatus(a: VariantData, b: VariantData): {
+  status: "insufficient" | "inconclusive" | "winner_a" | "winner_b";
+  label: string;
+  icon: typeof Clock;
+  color: string;
+  uplift: number;
+  sampleSize: number;
+  convA: number;
+  convB: number;
+} {
+  const sampleSize = a.started + b.started;
+  const convA = a.started > 0 ? (a.completed / a.started) * 100 : 0;
+  const convB = b.started > 0 ? (b.completed / b.started) * 100 : 0;
+  const uplift = convA > 0 ? ((convB - convA) / convA) * 100 : 0;
+
+  if (sampleSize < MIN_SAMPLE * 2) {
+    return {
+      status: "insufficient",
+      label: `Amostra insuficiente (${sampleSize}/${MIN_SAMPLE * 2})`,
+      icon: Clock,
+      color: "text-muted-foreground",
+      uplift, sampleSize, convA, convB,
+    };
+  }
+
+  if (Math.abs(uplift) < 5) {
+    return {
+      status: "inconclusive",
+      label: "Inconclusivo — diferença < 5%",
+      icon: AlertTriangle,
+      color: "text-amber-600",
+      uplift, sampleSize, convA, convB,
+    };
+  }
+
+  if (uplift > 0) {
+    return {
+      status: "winner_b",
+      label: `Vencedor: Variante B (+${uplift.toFixed(1)}%)`,
+      icon: CheckCircle,
+      color: "text-emerald-600",
+      uplift, sampleSize, convA, convB,
+    };
+  }
+
+  return {
+    status: "winner_a",
+    label: `Vencedor: Variante A (B é ${Math.abs(uplift).toFixed(1)}% pior)`,
+    icon: CheckCircle,
+    color: "text-emerald-600",
+    uplift, sampleSize, convA, convB,
+  };
+}
 
 export default function GtmDashboard() {
   const [days, setDays] = useState(7);
@@ -84,7 +143,7 @@ export default function GtmDashboard() {
         .in("event_type", ["upgrade_started", "upgrade_completed", "checkout_started", "payment_succeeded"])
         .gte("created_at", since);
 
-      const experiments: Record<string, { A: { started: number; completed: number }; B: { started: number; completed: number } }> = {
+      const experiments: Record<string, { A: VariantData; B: VariantData }> = {
         pricing_creator: { A: { started: 0, completed: 0 }, B: { started: 0, completed: 0 } },
         upgrade_cta: { A: { started: 0, completed: 0 }, B: { started: 0, completed: 0 } },
       };
@@ -142,17 +201,10 @@ export default function GtmDashboard() {
     { label: "1ª Venda", value: sales ?? 0, icon: CreditCard, color: "text-primary", sub: `${productToSale}% dos pub.` },
   ];
 
-  const MIN_SAMPLE = 30;
-
-  function getRecommendation(a: { started: number; completed: number }, b: { started: number; completed: number }): string {
-    const totalSample = a.started + b.started;
-    if (totalSample < MIN_SAMPLE * 2) return "⏳ Continuar teste (dados insuficientes)";
-    const convA = a.started > 0 ? a.completed / a.started : 0;
-    const convB = b.started > 0 ? b.completed / b.started : 0;
-    const lift = convA > 0 ? ((convB - convA) / convA * 100) : 0;
-    if (Math.abs(lift) < 5) return "↔ Sem diferença significativa — continuar teste";
-    return lift > 0 ? `🏆 Manter B (+${lift.toFixed(1)}% uplift)` : `🏆 Manter A (B é ${Math.abs(lift).toFixed(1)}% pior)`;
-  }
+  const experiments = [
+    { key: "pricing_creator", name: "Pricing Creator", descA: "R$67/mês", descB: "R$79/mês" },
+    { key: "upgrade_cta", name: "Upgrade CTA", descA: "Upgrade para Creator", descB: "Economize em taxas — Upgrade" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -268,48 +320,95 @@ export default function GtmDashboard() {
         </CardContent>
       </Card>
 
-      {/* Experiment Panel - Pricing & Upgrade CTA */}
+      {/* Enhanced Experiment Panel */}
       <Card className="card-radius">
-        <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Beaker className="w-4 h-4" /> Experimentos Ativos</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2"><Beaker className="w-4 h-4" /> Experimentos Ativos</CardTitle>
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              Amostra mínima: {MIN_SAMPLE} por variante
+            </Badge>
+          </div>
+        </CardHeader>
         <CardContent className="space-y-6">
           {experimentData ? (
             <>
-              {[
-                { key: "pricing_creator", name: "Pricing Creator", descA: "R$67/mês", descB: "R$79/mês" },
-                { key: "upgrade_cta", name: "Upgrade CTA", descA: "Upgrade para Creator", descB: "Economize em taxas — Upgrade" },
-              ].map((exp) => {
+              {experiments.map((exp) => {
                 const data = experimentData[exp.key];
                 if (!data) return null;
-                const convA = data.A.started > 0 ? ((data.A.completed / data.A.started) * 100).toFixed(1) : "0";
-                const convB = data.B.started > 0 ? ((data.B.completed / data.B.started) * 100).toFixed(1) : "0";
+                const result = getExperimentStatus(data.A, data.B);
+                const StatusIcon = result.icon;
+
                 return (
-                  <div key={exp.key} className="space-y-3">
+                  <div key={exp.key} className="space-y-3 p-4 rounded-lg border bg-card">
+                    {/* Header */}
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold text-foreground">{exp.name}</h3>
-                      <Badge variant="outline" className="text-xs">Ativo</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={result.status === "insufficient" ? "outline" : "secondary"}
+                          className={cn("text-xs", result.color)}
+                        >
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {result.status === "insufficient" ? "Coletando" :
+                           result.status === "inconclusive" ? "Inconclusivo" :
+                           result.status === "winner_a" ? "Vencedor A" : "Vencedor B"}
+                        </Badge>
+                      </div>
                     </div>
+
+                    {/* Variant cards */}
                     <div className="grid grid-cols-2 gap-3">
-                      {(["A", "B"] as const).map(v => (
-                        <div key={v} className="p-3 rounded-lg border bg-muted/30">
-                          <p className="text-xs text-muted-foreground mb-1">Variante {v}: {v === "A" ? exp.descA : exp.descB}</p>
-                          <div className="flex gap-4">
-                            <div>
-                              <p className="text-lg font-bold text-foreground">{data[v].started}</p>
-                              <p className="text-[10px] text-muted-foreground">Iniciaram</p>
+                      {(["A", "B"] as const).map(v => {
+                        const isWinner = (result.status === "winner_a" && v === "A") || (result.status === "winner_b" && v === "B");
+                        const conv = v === "A" ? result.convA : result.convB;
+                        return (
+                          <div key={v} className={cn(
+                            "p-3 rounded-lg border transition-all",
+                            isWinner ? "border-emerald-300 bg-emerald-50/50" : "bg-muted/30"
+                          )}>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs text-muted-foreground">
+                                Variante {v}: {v === "A" ? exp.descA : exp.descB}
+                              </p>
+                              {isWinner && <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">🏆</Badge>}
                             </div>
-                            <div>
-                              <p className="text-lg font-bold text-foreground">{data[v].completed}</p>
-                              <p className="text-[10px] text-muted-foreground">Concluíram</p>
-                            </div>
-                            <div>
-                              <p className="text-lg font-bold text-primary">{v === "A" ? convA : convB}%</p>
-                              <p className="text-[10px] text-muted-foreground">Conv.</p>
+                            <div className="flex gap-4">
+                              <div>
+                                <p className="text-lg font-bold text-foreground">{data[v].started}</p>
+                                <p className="text-[10px] text-muted-foreground">Amostra</p>
+                              </div>
+                              <div>
+                                <p className="text-lg font-bold text-foreground">{data[v].completed}</p>
+                                <p className="text-[10px] text-muted-foreground">Conversões</p>
+                              </div>
+                              <div>
+                                <p className="text-lg font-bold text-primary">{conv.toFixed(1)}%</p>
+                                <p className="text-[10px] text-muted-foreground">Taxa Conv.</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                    <p className="text-xs text-muted-foreground text-center">{getRecommendation(data.A, data.B)}</p>
+
+                    {/* Result summary */}
+                    <div className={cn("flex items-center justify-between p-2.5 rounded-md text-sm", {
+                      "bg-muted/30": result.status === "insufficient",
+                      "bg-amber-50": result.status === "inconclusive",
+                      "bg-emerald-50": result.status === "winner_a" || result.status === "winner_b",
+                    })}>
+                      <div className="flex items-center gap-2">
+                        <StatusIcon className={cn("w-4 h-4", result.color)} />
+                        <span className={cn("font-medium", result.color)}>{result.label}</span>
+                      </div>
+                      <div className="flex gap-3 text-xs text-muted-foreground">
+                        <span>N={result.sampleSize}</span>
+                        {result.sampleSize >= MIN_SAMPLE * 2 && (
+                          <span>Uplift: {result.uplift >= 0 ? "+" : ""}{result.uplift.toFixed(1)}%</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}

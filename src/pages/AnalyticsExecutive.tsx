@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DollarSign, TrendingUp, TrendingDown, Users, CreditCard, AlertTriangle,
-  Mail, Download, ArrowUpRight, ArrowDownRight, Activity, BarChart3,
+  Mail, Download, ArrowUpRight, ArrowDownRight, Activity, BarChart3, UserCheck,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, Legend,
@@ -151,7 +151,75 @@ export default function AnalyticsExecutive() {
     },
   });
 
-  // Products query removed - RLS permission issues
+  // ── Retention data (platform-wide for admin) ──
+  const { data: retentionData } = useQuery({
+    queryKey: ["exec-retention", periodDays],
+    queryFn: async () => {
+      const now = new Date();
+      // Get all workspaces with creation dates
+      const { data: allWorkspaces } = await supabase
+        .from("workspaces")
+        .select("id, created_at")
+        .lte("created_at", subDays(now, 1).toISOString());
+
+      if (!allWorkspaces?.length) return null;
+
+      // "Active" = workspace has at least one order OR product created in the check window
+      const checkRetention = async (daysAgo: number) => {
+        const windowStart = subDays(now, daysAgo + periodDays).toISOString();
+        const windowEnd = subDays(now, daysAgo).toISOString();
+        
+        // Workspaces that existed by windowEnd
+        const eligibleWs = allWorkspaces.filter(
+          ws => new Date(ws.created_at) <= new Date(windowEnd)
+        );
+        if (eligibleWs.length === 0) return { rate: 0, eligible: 0, active: 0 };
+
+        const eligibleIds = eligibleWs.map(ws => ws.id);
+
+        // Check for activity: orders or products created in window
+        const { data: activeOrders } = await supabase
+          .from("orders")
+          .select("workspace_id")
+          .in("workspace_id", eligibleIds.slice(0, 100))
+          .gte("created_at", windowStart)
+          .lte("created_at", windowEnd);
+
+        const { data: activeProducts } = await supabase
+          .from("products")
+          .select("workspace_id")
+          .in("workspace_id", eligibleIds.slice(0, 100))
+          .gte("created_at", windowStart)
+          .lte("created_at", windowEnd);
+
+        const activeSet = new Set([
+          ...(activeOrders || []).map((o: any) => o.workspace_id),
+          ...(activeProducts || []).map((p: any) => p.workspace_id),
+        ]);
+
+        return {
+          rate: eligibleWs.length > 0 ? (activeSet.size / eligibleWs.length) * 100 : 0,
+          eligible: eligibleWs.length,
+          active: activeSet.size,
+        };
+      };
+
+      const [d1, d7, d30] = await Promise.all([
+        checkRetention(1),
+        checkRetention(7),
+        checkRetention(30),
+      ]);
+
+      // Previous period for comparison
+      const [prevD1, prevD7, prevD30] = await Promise.all([
+        checkRetention(1 + periodDays),
+        checkRetention(7 + periodDays),
+        checkRetention(30 + periodDays),
+      ]);
+
+      return { d1, d7, d30, prevD1, prevD7, prevD30 };
+    },
+  });
 
   // ── Computed metrics ──
   const currentOrders = useMemo(() => orders.filter(o => new Date(o.created_at) >= from), [orders, from]);
@@ -290,6 +358,52 @@ export default function AnalyticsExecutive() {
           <StatCard title="Leads Capturados" value={currentLeads.length} previousValue={previousLeads.length} icon={Users} />
         </div>
       )}
+
+      {/* Retention Cards */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+          <UserCheck className="h-5 w-5 text-primary" />
+          Retenção de Creators
+          <Badge variant="secondary" className="text-[10px]">
+            Ativo = publicou produto OU recebeu venda
+          </Badge>
+        </h2>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: "D1", data: retentionData?.d1, prev: retentionData?.prevD1 },
+            { label: "D7", data: retentionData?.d7, prev: retentionData?.prevD7 },
+            { label: "D30", data: retentionData?.d30, prev: retentionData?.prevD30 },
+          ].map(({ label, data, prev }) => {
+            const rate = data?.rate ?? 0;
+            const prevRate = prev?.rate ?? 0;
+            const change = prevRate > 0 ? rate - prevRate : undefined;
+            return (
+              <Card key={label} className="bg-card border border-border/50 shadow-sm rounded-xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">Retenção {label}</h3>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-foreground">{rate.toFixed(1)}%</span>
+                    {change !== undefined && Math.abs(change) > 0.1 && (
+                      <span className={cn("text-xs font-medium flex items-center gap-0.5",
+                        change >= 0 ? "text-emerald-600" : "text-rose-600"
+                      )}>
+                        {change >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                        {Math.abs(change).toFixed(1)}pp
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {data?.active ?? 0} ativos / {data?.eligible ?? 0} elegíveis
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Revenue Chart */}
       <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
@@ -470,7 +584,88 @@ export default function AnalyticsExecutive() {
           <CohortTable workspaceId={workspaceId} />
         </CardContent>
       </Card>
+
+      {/* Beta Cohort Onboarding Log */}
+      <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            Cohort Beta — Log de Onboarding
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BetaCohortLog />
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function BetaCohortLog() {
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ["beta-cohort-log"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("beta_cohort_log")
+        .select("*")
+        .order("sent_at", { ascending: false })
+        .limit(50);
+      return (data ?? []) as Array<{
+        id: string; workspace_id: string; user_email: string;
+        step: string; status: string; sent_at: string;
+        opened_at: string | null; actioned_at: string | null;
+      }>;
+    },
+  });
+
+  const stepLabels: Record<string, string> = {
+    d0_welcome: "D0 Boas-vindas",
+    d1_activate: "D1 Ativação",
+    d3_publish: "D3 Publicação",
+    d7_first_sale: "D7 1ª Venda",
+  };
+
+  const statusColor: Record<string, string> = {
+    sent: "bg-blue-100 text-blue-700",
+    opened: "bg-amber-100 text-amber-700",
+    actioned: "bg-emerald-100 text-emerald-700",
+  };
+
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+
+  if (!logs.length) {
+    return <p className="text-sm text-muted-foreground text-center py-6">Nenhum nudge enviado ainda</p>;
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Email</TableHead>
+          <TableHead>Etapa</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Enviado em</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {logs.map(log => (
+          <TableRow key={log.id}>
+            <TableCell className="font-medium text-foreground text-sm">{log.user_email}</TableCell>
+            <TableCell>
+              <Badge variant="outline" className="text-xs">{stepLabels[log.step] || log.step}</Badge>
+            </TableCell>
+            <TableCell>
+              <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", statusColor[log.status] || "")}>
+                {log.status}
+              </span>
+            </TableCell>
+            <TableCell className="text-right text-sm text-muted-foreground">
+              {format(new Date(log.sent_at), "dd/MM HH:mm")}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -493,7 +688,6 @@ function CohortTable({ workspaceId }: { workspaceId?: string }) {
   const cohort = useMemo(() => {
     if (!allOrders.length) return [];
 
-    // Group customers by first purchase month
     const customerFirstMonth: Record<string, string> = {};
     const customerMonths: Record<string, Set<string>> = {};
 
@@ -507,7 +701,6 @@ function CohortTable({ workspaceId }: { workspaceId?: string }) {
       customerMonths[email].add(month);
     });
 
-    // Build cohort rows
     const months = [...new Set(Object.values(customerFirstMonth))].sort();
     const now = new Date();
 

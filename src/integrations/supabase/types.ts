@@ -3225,6 +3225,42 @@ export type Database = {
           },
         ]
       }
+      ops_alert_log: {
+        Row: {
+          alert_key: string
+          alert_type: string
+          created_at: string
+          external_channel: string | null
+          id: string
+          message: string
+          notified_externally: boolean | null
+          resolved_at: string | null
+          severity: string
+        }
+        Insert: {
+          alert_key: string
+          alert_type: string
+          created_at?: string
+          external_channel?: string | null
+          id?: string
+          message: string
+          notified_externally?: boolean | null
+          resolved_at?: string | null
+          severity?: string
+        }
+        Update: {
+          alert_key?: string
+          alert_type?: string
+          created_at?: string
+          external_channel?: string | null
+          id?: string
+          message?: string
+          notified_externally?: boolean | null
+          resolved_at?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       ops_checklist: {
         Row: {
           completed_at: string | null
