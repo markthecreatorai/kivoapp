@@ -22,11 +22,18 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
 
   if (!upgradeTo) return null;
 
-  const upgradeUrl = `/billing/upgrade-flow?plan=${PLAN_TO_CODE[upgradeTo]}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`;
+  const upgradeUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/billing/upgrade-flow?plan=${PLAN_TO_CODE[upgradeTo]}&source_ui=locked_features_modal&feature=${encodeURIComponent(feature)}`
+    : `/billing/upgrade-flow?plan=${PLAN_TO_CODE[upgradeTo]}&source_ui=locked_features_modal&feature=${encodeURIComponent(feature)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 rounded-full bg-primary/10">
@@ -49,12 +56,17 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             Agora não
           </Button>
-          <a
-            href={upgradeUrl}
-            className="flex-1 gap-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-          >
-            Fazer Upgrade <ArrowRight className="w-4 h-4 ml-1" />
-          </a>
+          <div className="flex-1 relative z-[60] pointer-events-auto">
+            <a
+              data-upgrade-cta="true"
+              href={upgradeUrl}
+              target="_self"
+              rel="nofollow"
+              className="w-full gap-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              Fazer Upgrade <ArrowRight className="w-4 h-4 ml-1" />
+            </a>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
