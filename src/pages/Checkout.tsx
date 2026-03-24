@@ -245,6 +245,7 @@ export default function Checkout() {
         setPaymentError(data?.message || "Pagamento recusado. Tente outro cartão.");
       }
     } catch (e: any) {
+      trackEvent("payment_failed", { method: "credit_card", reason: e.message }, product.workspace_id);
       setPaymentError(e.message || "Erro ao processar pagamento.");
     } finally {
       setPaymentLoading(false);

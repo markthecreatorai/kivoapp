@@ -92,6 +92,7 @@ export default function Signup() {
           variant: "destructive",
         });
       } else {
+        trackEvent("signup_completed", { creator_type: creatorType });
         toast({
           title: "Conta criada!",
           description: "Verifique seu email para confirmar a conta e continue",

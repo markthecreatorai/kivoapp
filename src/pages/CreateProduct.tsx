@@ -205,6 +205,10 @@ export default function CreateProduct() {
         }, { onConflict: "product_id" });
       }
 
+      trackEvent("product_created", { type: form.type, status }, currentWorkspace.id);
+      if (status === "PUBLISHED") {
+        trackEvent("product_published", { type: form.type }, currentWorkspace.id);
+      }
       toast.success(
         status === "PUBLISHED"
           ? "Produto publicado com sucesso!"
