@@ -672,7 +672,6 @@ async function handleSubscriptionPaymentFailed(supabase: any, data: any): Promis
     }).eq("community_id", sub.community_id).eq("user_id", sub.user_id).eq("role", "MEMBER");
 
     console.log(`Circle subscription ${sub.id} expired after ${newAttempts} failed dunning attempts`);
-    return "expired";
   } else {
     // Mark as past_due
     await supabase.from("circle_subscriptions").update({
@@ -682,8 +681,30 @@ async function handleSubscriptionPaymentFailed(supabase: any, data: any): Promis
     }).eq("id", sub.id);
 
     console.log(`Circle subscription ${sub.id} past_due (attempt ${newAttempts}/${maxDunning})`);
-    return "past_due";
   }
+
+  // Fire dunning notification (email + in-app + telegram)
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(`${supabaseUrl}/functions/v1/send-dunning-email`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subscription_id: sub.id,
+        dunning_attempt: newAttempts,
+        user_id: sub.user_id,
+        community_id: sub.community_id,
+      }),
+    });
+  } catch (e) {
+    console.error("Dunning email trigger error (non-fatal):", e);
+  }
+
+  return newAttempts >= maxDunning ? "expired" : "past_due";
 }
 
 async function handleInvoicePaid(supabase: any, data: any): Promise<string> {

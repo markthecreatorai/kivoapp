@@ -152,6 +152,36 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
     enabled: !!member,
   });
 
+  // Unread DM count
+  const { data: dmUnreadCount } = useQuery({
+    queryKey: ["circle-dm-unread", member?.id],
+    queryFn: async () => {
+      if (!member) return 0;
+      const { data: memberships } = await supabase
+        .from("community_conversation_members" as any)
+        .select("conversation_id, last_read_at")
+        .eq("member_id", member.id);
+      if (!memberships?.length) return 0;
+
+      let unread = 0;
+      for (const m of memberships as any[]) {
+        const q = supabase
+          .from("community_messages" as any)
+          .select("id", { count: "exact", head: true })
+          .eq("conversation_id", m.conversation_id)
+          .neq("sender_id", member.id)
+          .is("deleted_at", null);
+        if (m.last_read_at) {
+          q.gt("created_at", m.last_read_at);
+        }
+        const { count } = await q;
+        unread += count || 0;
+      }
+      return unread;
+    },
+    enabled: !!member,
+  });
+
   const { data: previewPosts } = useQuery({
     queryKey: ["circle-preview-posts", community?.id],
     queryFn: async () => {
@@ -459,12 +489,13 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="hidden md:flex items-center gap-0 max-w-5xl mx-auto px-4 border-t border-border">
           {tabItems.map((item) => {
             const active = isActive(item.path);
+            const hasDmBadge = item.path === "/circle/messages" && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors relative",
                   active
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
@@ -472,6 +503,11 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
+                {hasDmBadge && (
+                  <Badge className="h-4 min-w-[16px] flex items-center justify-center p-0 px-1 text-[9px] ml-1">
+                    {dmUnreadCount! > 99 ? "99+" : dmUnreadCount}
+                  </Badge>
+                )}
               </Link>
             );
           })}
@@ -515,16 +551,22 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="flex items-center justify-around h-14">
           {tabItems.map((item) => {
             const active = isActive(item.path);
+            const hasDmBadge = item.path === "/circle/messages" && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-2 py-1 min-w-0",
+                  "flex flex-col items-center gap-0.5 px-2 py-1 min-w-0 relative",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <div className="relative">
+                  <item.icon className="h-5 w-5" />
+                  {hasDmBadge && (
+                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );

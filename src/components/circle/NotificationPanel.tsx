@@ -29,6 +29,10 @@ const NOTIFICATION_TEXTS: Record<string, (n: any) => string> = {
   LEVEL_UP: (n) => n.title,
   POST_PINNED: () => `Seu post foi fixado por um admin`,
   EVENT_REMINDER: (n) => n.title,
+  NEW_DM: (n) => n.title,
+  REPORT_RESOLVED: (n) => n.title || `Sua denúncia foi analisada`,
+  SUBSCRIPTION_PAST_DUE: (n) => n.title,
+  SUBSCRIPTION_EXPIRED: (n) => n.title,
 };
 
 function truncate(s: string | null, max = 40) {
@@ -37,6 +41,8 @@ function truncate(s: string | null, max = 40) {
 }
 
 function getNotificationRoute(n: any): string | null {
+  if (n.type === "NEW_DM") return `/circle/messages`;
+  if (n.type === "SUBSCRIPTION_PAST_DUE" || n.type === "SUBSCRIPTION_EXPIRED") return `/circle/feed`;
   if (n.post_id) return `/circle/post/${n.post_id}`;
   if (n.event_id) return `/circle/events`;
   if (n.type === "LEVEL_UP") return `/circle/leaderboard`;
@@ -193,7 +199,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
               const actorName = n.actor?.display_name || "";
               const typeText = NOTIFICATION_TEXTS[n.type];
               const displayText = typeText ? typeText(n) : n.title;
-              const hasActor = n.actor_id && actorName && !["NEW_EVENT", "LEVEL_UP", "EVENT_REMINDER", "MEMBER_JOINED", "NEW_POST_IN_SPACE"].includes(n.type);
+              const hasActor = n.actor_id && actorName && !["NEW_EVENT", "LEVEL_UP", "EVENT_REMINDER", "MEMBER_JOINED", "NEW_POST_IN_SPACE", "NEW_DM", "REPORT_RESOLVED", "SUBSCRIPTION_PAST_DUE", "SUBSCRIPTION_EXPIRED"].includes(n.type);
 
               return (
                 <button
