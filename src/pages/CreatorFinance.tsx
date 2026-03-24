@@ -88,6 +88,32 @@ export default function CreatorFinance() {
     },
   });
 
+  // Reserve balance
+  const { data: reserveBalance } = useQuery({
+    queryKey: ["reserve-balance", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_reserve_balance", { p_workspace_id: workspaceId! });
+      if (data && data.length > 0) return data[0];
+      return { total_held: 0, total_released: 0, upcoming_releases: 0 };
+    },
+  });
+
+  // Chargeback cases
+  const { data: chargebacks = [] } = useQuery({
+    queryKey: ["creator-chargebacks", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("chargeback_cases")
+        .select("id, amount, status, reason, created_at")
+        .eq("workspace_id", workspaceId!)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      return data || [];
+    },
+  });
+
   const defaultAcc = accounts.find((a: any) => a.is_default);
   const effectiveAccount = selectedAccount || defaultAcc?.id || "";
   const availableBalance = Number(balance?.available_balance || 0);
