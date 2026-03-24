@@ -14,6 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
+      acquisition_leads: {
+        Row: {
+          channel: string
+          converted_at: string | null
+          cost: number | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner: string | null
+          phone: string | null
+          revenue_attributed: number | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          channel?: string
+          converted_at?: string | null
+          cost?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner?: string | null
+          phone?: string | null
+          revenue_attributed?: number | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          channel?: string
+          converted_at?: string | null
+          cost?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner?: string | null
+          phone?: string | null
+          revenue_attributed?: number | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_leads_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          due_date: string
+          id: string
+          lead_id: string | null
+          notes: string | null
+          status: string
+          task_type: string
+          title: string
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          status?: string
+          task_type?: string
+          title: string
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          status?: string
+          task_type?: string
+          title?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_tasks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliate_attributions: {
         Row: {
           affiliate_link_id: string
@@ -3447,6 +3560,44 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: true
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbook_checklist: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          day_number: number
+          id: string
+          is_done: boolean
+          item_key: string
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          day_number: number
+          id?: string
+          is_done?: boolean
+          item_key: string
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          day_number?: number
+          id?: string
+          is_done?: boolean
+          item_key?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_checklist_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
