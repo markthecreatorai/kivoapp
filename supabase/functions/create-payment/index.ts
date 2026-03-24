@@ -141,10 +141,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Workspace + gateway config
+    // Verify workspace exists
     const { data: workspace } = await supabase
       .from("workspaces")
-      .select("id, metadata")
+      .select("id")
       .eq("id", workspace_id)
       .single();
 
@@ -154,9 +154,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const wsMeta = (workspace.metadata as Record<string, unknown>) || {};
-    // Priority: Asaas → Pagar.me → simulation
-    const asaasApiKey = (wsMeta.asaas_api_key as string) || Deno.env.get("ASAAS_API_KEY") || "";
+    // Platform-owned model: always use global platform credentials
+    const asaasApiKey = Deno.env.get("ASAAS_API_KEY") || "";
     const useAsaas = !!asaasApiKey;
 
     // Fetch product

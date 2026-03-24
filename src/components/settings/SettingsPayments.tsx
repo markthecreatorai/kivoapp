@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreditCard, DollarSign, Zap } from "lucide-react";
+import { CreditCard, DollarSign, Zap, Info } from "lucide-react";
 import { GatewayWizard, GatewayStatusBadge } from "./GatewayWizard";
 import { BankAccountForm } from "./BankAccountForm";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -28,6 +28,22 @@ export function SettingsPayments() {
 
   return (
     <div className="space-y-6">
+      {/* Creator info banner */}
+      {!isAdmin && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Como funcionam seus recebimentos</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Todas as vendas são processadas automaticamente pela plataforma. 
+                Cadastre sua conta bancária abaixo para receber os valores das suas vendas.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Gateway config — admin only */}
       {isAdmin && (
         <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
@@ -35,7 +51,6 @@ export function SettingsPayments() {
             <CardTitle className="text-lg">Métodos de Pagamento</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Asaas - Primary */}
             <div className="flex items-center justify-between p-4 border border-primary/30 rounded-lg bg-primary/5">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -54,7 +69,6 @@ export function SettingsPayments() {
               </div>
             </div>
 
-            {/* Pagar.me - Legacy */}
             <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-muted">
@@ -73,7 +87,6 @@ export function SettingsPayments() {
               </div>
             </div>
 
-            {/* Stripe - Coming soon */}
             <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-muted">
