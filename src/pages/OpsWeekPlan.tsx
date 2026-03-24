@@ -38,8 +38,7 @@ export default function OpsWeekPlan() {
     queryKey: ["week1-plan", currentWorkspace?.id],
     queryFn: async () => {
       if (!currentWorkspace?.id) return [];
-      const { data } = await supabase
-        .from("week1_plan")
+      const { data } = await (supabase.from as any)("week1_plan")
         .select("*")
         .eq("workspace_id", currentWorkspace.id)
         .order("priority");
