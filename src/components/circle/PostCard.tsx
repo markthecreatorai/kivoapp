@@ -16,6 +16,8 @@ interface PostCardProps {
   onToggleLike: (postId: string) => void;
   isMuted: boolean;
   showSpace?: boolean;
+  communityId?: string;
+  memberId?: string;
 }
 
 function getVideoThumb(url: string | null) {
