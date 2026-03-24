@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   Heart, Send, CheckCircle, ChevronDown, ChevronUp, Link2, Trash2,
-  MoreHorizontal,
+  MoreHorizontal, Flag,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
