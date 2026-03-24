@@ -50,6 +50,8 @@ const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
 const AnalyticsExecutive = lazy(() => import("./pages/AnalyticsExecutive"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const GtmDashboard = lazy(() => import("./pages/GtmDashboard"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
