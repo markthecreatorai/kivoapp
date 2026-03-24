@@ -177,8 +177,8 @@ export default function AnalyticsExecutive() {
   const gmvCurrent = paidCurrent.reduce((s, o) => s + Number(o.total_amount || 0), 0);
   const gmvPrevious = paidPrevious.reduce((s, o) => s + Number(o.total_amount || 0), 0);
 
-  const netRevenueCurrent = paidCurrent.reduce((s, o) => s + Number(o.net_amount || o.total_amount || 0), 0);
-  const netRevenuePrevious = paidPrevious.reduce((s, o) => s + Number(o.net_amount || o.total_amount || 0), 0);
+  const netRevenueCurrent = paidCurrent.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+  const netRevenuePrevious = paidPrevious.reduce((s, o) => s + Number(o.total_amount || 0), 0);
 
   const currentLeads = leads.filter(l => new Date(l.created_at) >= from);
   const previousLeads = leads.filter(l => new Date(l.created_at) < from);
