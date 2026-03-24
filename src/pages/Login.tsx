@@ -158,10 +158,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Login form */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex items-center justify-center p-8">
+      <div className="w-full max-w-md space-y-6">
           {/* Logo/Brand */}
           <div className="text-center">
             <img src="/src/assets/kivo-logo.svg" alt="Kivo" className="h-10 mx-auto" />
