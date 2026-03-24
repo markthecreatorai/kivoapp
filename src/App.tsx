@@ -61,6 +61,8 @@ const LaunchReadiness = lazy(() => import("./pages/LaunchReadiness"));
 const OpsFeedback = lazy(() => import("./pages/OpsFeedback"));
 const OpsWeekPlan = lazy(() => import("./pages/OpsWeekPlan"));
 const FinancialHealth = lazy(() => import("./pages/FinancialHealth"));
+const CreatorFinance = lazy(() => import("./pages/CreatorFinance"));
+const AdminPayouts = lazy(() => import("./pages/AdminPayouts"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
