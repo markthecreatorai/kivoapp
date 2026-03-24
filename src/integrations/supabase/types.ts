@@ -669,6 +669,53 @@ export type Database = {
           },
         ]
       }
+      beta_cohort_log: {
+        Row: {
+          action_type: string | null
+          actioned_at: string | null
+          created_at: string
+          id: string
+          opened_at: string | null
+          sent_at: string | null
+          status: string
+          step: string
+          user_email: string
+          workspace_id: string
+        }
+        Insert: {
+          action_type?: string | null
+          actioned_at?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string
+          step: string
+          user_email: string
+          workspace_id: string
+        }
+        Update: {
+          action_type?: string | null
+          actioned_at?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string
+          step?: string
+          user_email?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beta_cohort_log_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_recipients: {
         Row: {
           campaign_id: string

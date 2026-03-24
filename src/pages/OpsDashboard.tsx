@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertTriangle, CheckCircle2, XCircle, Activity, CreditCard,
   Mail, Webhook, RefreshCw, Clock, Shield, TrendingUp, Users,
-  MessageSquare, BookOpen, Zap,
+  MessageSquare, BookOpen, Zap, Bell, Filter, ChevronLeft, ChevronRight,
+  Send,
 } from "lucide-react";
-import { subDays, subHours } from "date-fns";
+import { subDays, subHours, format } from "date-fns";
 
 interface HealthCheck {
   service: string;
@@ -98,17 +100,44 @@ const CHECKLIST_72H = [
   ]},
 ];
 
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  payment_failure_rate: "Falha de Pagamento",
+  webhook_dead_letter: "Dead-Letter Webhook",
+  health_check: "Health Check",
+  recurring_email_failures: "Falha de Email",
+};
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: "destructive",
+  warning: "outline",
+};
+
+const ITEMS_PER_PAGE = 15;
+
 export default function OpsDashboard() {
   const { currentWorkspace } = useWorkspace();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState("24h");
   const [activeTab, setActiveTab] = useState("warroom");
 
+  // Alert history filters
+  const [alertPeriod, setAlertPeriod] = useState("7d");
+  const [alertType, setAlertType] = useState("all");
+  const [alertSeverity, setAlertSeverity] = useState("all");
+  const [alertPage, setAlertPage] = useState(0);
+
   const since = useMemo(() => {
     if (period === "1h") return subHours(new Date(), 1).toISOString();
     if (period === "6h") return subHours(new Date(), 6).toISOString();
     return subDays(new Date(), 1).toISOString();
   }, [period]);
+
+  const alertSince = useMemo(() => {
+    if (alertPeriod === "24h") return subDays(new Date(), 1).toISOString();
+    if (alertPeriod === "7d") return subDays(new Date(), 7).toISOString();
+    if (alertPeriod === "30d") return subDays(new Date(), 30).toISOString();
+    return subDays(new Date(), 90).toISOString();
+  }, [alertPeriod]);
 
   // Auto-refresh every 30s
   useEffect(() => {
@@ -255,17 +284,40 @@ export default function OpsDashboard() {
     },
   });
 
-  // Recent alerts
-  const { data: recentAlerts } = useQuery({
-    queryKey: ["ops-alerts"],
+  // Alert history with filters + pagination
+  const { data: alertHistory, isLoading: alertsLoading } = useQuery({
+    queryKey: ["ops-alert-history", alertSince, alertType, alertSeverity, alertPage],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("ops_alert_log")
-        .select("*")
+      let query = (supabase.from as any)("ops_alert_log")
+        .select("*", { count: "exact" })
+        .gte("created_at", alertSince)
         .order("created_at", { ascending: false })
-        .limit(10);
-      return data || [];
+        .range(alertPage * ITEMS_PER_PAGE, (alertPage + 1) * ITEMS_PER_PAGE - 1);
+
+      if (alertType !== "all") query = query.eq("alert_type", alertType);
+      if (alertSeverity !== "all") query = query.eq("severity", alertSeverity);
+
+      const { data, count } = await query;
+      return { items: data || [], total: count || 0 };
     },
     refetchInterval: 30000,
+  });
+
+  // Alert summary stats
+  const { data: alertSummary } = useQuery({
+    queryKey: ["ops-alert-summary", alertSince],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("ops_alert_log")
+        .select("severity, notified_externally")
+        .gte("created_at", alertSince);
+      const items = data || [];
+      return {
+        total: items.length,
+        critical: items.filter((a: any) => a.severity === "critical").length,
+        warning: items.filter((a: any) => a.severity === "warning").length,
+        notified: items.filter((a: any) => a.notified_externally).length,
+      };
+    },
   });
 
   // 72h checklist
@@ -300,6 +352,7 @@ export default function OpsDashboard() {
 
   const ALERT_THRESHOLD = 8;
   const gmvFormatted = paymentStats?.gmv ? `R$ ${(paymentStats.gmv / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "R$ 0,00";
+  const totalAlertPages = Math.ceil((alertHistory?.total || 0) / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -331,9 +384,16 @@ export default function OpsDashboard() {
           <TabsTrigger value="warroom">War Room</TabsTrigger>
           <TabsTrigger value="runbooks">Runbooks</TabsTrigger>
           <TabsTrigger value="checklist72h">72h Checklist</TabsTrigger>
-          <TabsTrigger value="alerts">Alertas</TabsTrigger>
+          <TabsTrigger value="alerts" className="flex items-center gap-1.5">
+            <Bell className="w-3.5 h-3.5" />
+            Histórico de Alertas
+            {alertSummary && alertSummary.total > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">{alertSummary.total}</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
+        {/* ===== WAR ROOM TAB ===== */}
         <TabsContent value="warroom" className="space-y-4 mt-4">
           {/* Health */}
           <Card>
@@ -387,7 +447,6 @@ export default function OpsDashboard() {
                 <p className="text-xl font-bold text-foreground">{gmvFormatted}</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -398,7 +457,6 @@ export default function OpsDashboard() {
                 <p className="text-xs text-muted-foreground">{paymentStats?.failed ?? 0} falhos ({paymentStats?.rate ?? 0}%)</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -409,7 +467,6 @@ export default function OpsDashboard() {
                 <p className="text-xs text-muted-foreground">{webhookStats?.failed ?? 0} dead-letter</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -421,7 +478,6 @@ export default function OpsDashboard() {
                 </p>
               </CardContent>
             </Card>
-
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -514,7 +570,7 @@ export default function OpsDashboard() {
           )}
         </TabsContent>
 
-        {/* Runbooks Tab */}
+        {/* ===== RUNBOOKS TAB ===== */}
         <TabsContent value="runbooks" className="space-y-4 mt-4">
           <p className="text-sm text-muted-foreground">Playbooks de resposta rápida para incidentes comuns.</p>
           {RUNBOOKS.map((rb, i) => (
@@ -553,7 +609,7 @@ export default function OpsDashboard() {
           ))}
         </TabsContent>
 
-        {/* 72h Checklist Tab */}
+        {/* ===== 72H CHECKLIST TAB ===== */}
         <TabsContent value="checklist72h" className="space-y-4 mt-4">
           {(!checklistItems || checklistItems.length === 0) ? (
             <Card>
@@ -603,29 +659,150 @@ export default function OpsDashboard() {
           )}
         </TabsContent>
 
-        {/* Alerts Tab */}
+        {/* ===== ALERT HISTORY TAB ===== */}
         <TabsContent value="alerts" className="space-y-4 mt-4">
-          <p className="text-sm text-muted-foreground">Alertas recentes disparados pelo sistema.</p>
-          {(recentAlerts || []).length === 0 ? (
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card>
-              <CardContent className="p-6 text-center">
-                <CheckCircle2 className="w-8 h-8 text-accent mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Nenhum alerta recente. Tudo operacional.</p>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-foreground">{alertSummary?.total ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Total Alertas</p>
               </CardContent>
             </Card>
-          ) : (
-            (recentAlerts || []).map((alert: any) => (
-              <div key={alert.id} className="flex items-start gap-3 p-3 rounded-lg border bg-muted/20">
-                {alert.severity === "critical" ? <XCircle className="w-4 h-4 text-destructive mt-0.5" /> : <AlertTriangle className="w-4 h-4 text-primary mt-0.5" />}
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{alert.message}</p>
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">{alert.alert_type}</Badge>
-                    <span className="text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString("pt-BR")}</span>
-                  </div>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-destructive">{alertSummary?.critical ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Críticos</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-primary">{alertSummary?.warning ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Warnings</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-accent">{alertSummary?.notified ?? 0}</p>
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Send className="w-3 h-3" /> Telegram</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Select value={alertPeriod} onValueChange={(v) => { setAlertPeriod(v); setAlertPage(0); }}>
+              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Últimas 24h</SelectItem>
+                <SelectItem value="7d">7 dias</SelectItem>
+                <SelectItem value="30d">30 dias</SelectItem>
+                <SelectItem value="90d">90 dias</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={alertType} onValueChange={(v) => { setAlertType(v); setAlertPage(0); }}>
+              <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                <SelectItem value="payment_failure_rate">Falha de Pagamento</SelectItem>
+                <SelectItem value="webhook_dead_letter">Dead-Letter</SelectItem>
+                <SelectItem value="health_check">Health Check</SelectItem>
+                <SelectItem value="recurring_email_failures">Falha de Email</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={alertSeverity} onValueChange={(v) => { setAlertSeverity(v); setAlertPage(0); }}>
+              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="critical">Crítico</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Table */}
+          <Card>
+            <CardContent className="p-0">
+              {alertsLoading ? (
+                <div className="p-6 space-y-3">
+                  {[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}
                 </div>
+              ) : (alertHistory?.items || []).length === 0 ? (
+                <div className="p-8 text-center">
+                  <CheckCircle2 className="w-8 h-8 text-accent mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhum alerta no período selecionado.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Mensagem</TableHead>
+                      <TableHead>Severidade</TableHead>
+                      <TableHead>Canal</TableHead>
+                      <TableHead>Data/Hora</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(alertHistory?.items || []).map((alert: any) => (
+                      <TableRow key={alert.id}>
+                        <TableCell>
+                          {alert.severity === "critical"
+                            ? <XCircle className="w-4 h-4 text-destructive" />
+                            : <AlertTriangle className="w-4 h-4 text-primary" />
+                          }
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            {ALERT_TYPE_LABELS[alert.alert_type] || alert.alert_type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[300px]">
+                          <p className="text-sm text-foreground truncate">{alert.message}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={SEVERITY_COLORS[alert.severity] as any || "secondary"} className="text-[10px]">
+                            {alert.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {alert.notified_externally ? (
+                            <Badge className="bg-accent/20 text-accent border-accent/30 text-[10px]">
+                              <Send className="w-2.5 h-2.5 mr-1" />
+                              {alert.external_channel || "telegram"}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {format(new Date(alert.created_at), "dd/MM HH:mm")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pagination */}
+          {totalAlertPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {alertHistory?.total ?? 0} alertas • Página {alertPage + 1} de {totalAlertPages}
+              </p>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" disabled={alertPage === 0} onClick={() => setAlertPage(p => p - 1)}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="sm" disabled={alertPage >= totalAlertPages - 1} onClick={() => setAlertPage(p => p + 1)}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
-            ))
+            </div>
           )}
         </TabsContent>
       </Tabs>
