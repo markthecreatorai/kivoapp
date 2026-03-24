@@ -268,7 +268,9 @@ export function PaymentTabs({
                 </a>
               )}
               <p className="text-xs text-muted-foreground text-center">
-                Seu boleto vence em 3 dias úteis. O acesso será liberado após confirmação.
+                {boletoData.due_at
+                  ? `Vencimento: ${new Date(boletoData.due_at).toLocaleDateString("pt-BR")}. O acesso será liberado após confirmação.`
+                  : "Seu boleto vence em 3 dias úteis. O acesso será liberado após confirmação."}
               </p>
             </div>
           ) : (
