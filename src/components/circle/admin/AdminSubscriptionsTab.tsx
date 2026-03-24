@@ -294,11 +294,24 @@ export default function AdminSubscriptionsTab({ community }: Props) {
                     <Badge className={`text-[10px] ${STATUS_COLORS[sub.status] || ""}`}>
                       {STATUS_LABELS[sub.status] || sub.status}
                     </Badge>
+                    {sub.payment_method && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {sub.payment_method === "credit_card" ? "Cartão" : sub.payment_method === "trial" ? "Trial" : sub.payment_method}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {sub.plan?.name || "Plano"} · {formatPrice(sub.plan?.price_cents || 0)}
                     {sub.next_billing_at && ` · Próx: ${format(new Date(sub.next_billing_at), "dd/MM/yy")}`}
                   </p>
+                  {sub.provider_subscription_id && (
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      PG: {sub.provider_subscription_id.substring(0, 12)}...
+                      {sub.dunning_attempts > 0 && (
+                        <span className="text-destructive ml-2">Dunning: {sub.dunning_attempts}/3</span>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {sub.created_at && format(new Date(sub.created_at), "dd/MM/yy")}
