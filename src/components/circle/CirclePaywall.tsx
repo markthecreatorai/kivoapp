@@ -20,6 +20,20 @@ interface Props {
   isPastDue?: boolean;
 }
 
+// Asaas.js tokenization helper
+async function tokenizeCard(cardData: {
+  number: string; holder_name: string;
+  exp_month: string; exp_year: string; cvv: string;
+  email: string; cpf?: string;
+}): Promise<string | null> {
+  // In production, use Asaas.js SDK for PCI-compliant tokenization
+  // For sandbox/MVP: send card_data directly (Asaas sandbox accepts raw data)
+  // TODO: Replace with Asaas.js tokenization when SDK is loaded
+  // <script src="https://www.asaas.com/asaasJs/asaas.js"></script>
+  console.warn("[Asaas] Using direct card data — replace with Asaas.js tokenization for production");
+  return null; // null means "send card_data directly" (sandbox mode)
+}
+
 export default function CirclePaywall({ community, isPastDue = false }: Props) {
   const { user, session } = useAuth();
   const navigate = useNavigate();
@@ -67,7 +81,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
     const hasTrial = activePlan.trial_days > 0;
     const isFree = activePlan.price_cents === 0;
 
-    // If paid + no trial, need card token
+    // If paid + no trial, need card
     if (!isFree && !hasTrial && !showCardForm) {
       setShowCardForm(true);
       return;
@@ -75,17 +89,29 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
 
     setIsProcessing(true);
     try {
-      // Build card_data for Asaas
+      // Build card_data for Asaas (sandbox sends raw, prod uses token)
       let card_data: any = undefined;
       if (showCardForm && cardData.number) {
-        card_data = {
-          number: cardData.number.replace(/\s/g, ""),
-          holder_name: cardData.holder_name,
-          exp_month: cardData.exp_month,
-          exp_year: cardData.exp_year,
-          cvv: cardData.cvv,
+        // Attempt tokenization (returns null in sandbox mode)
+        const token = await tokenizeCard({
+          ...cardData,
           email: user.email || "",
-        };
+        });
+
+        if (token) {
+          // Production: send only token
+          card_data = { creditCardToken: token };
+        } else {
+          // Sandbox: send card details directly
+          card_data = {
+            number: cardData.number.replace(/\s/g, ""),
+            holder_name: cardData.holder_name,
+            exp_month: cardData.exp_month,
+            exp_year: cardData.exp_year,
+            cvv: cardData.cvv,
+            email: user.email || "",
+          };
+        }
       }
 
       const { data, error } = await supabase.functions.invoke("circle-subscription", {
@@ -205,7 +231,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
             >
               Anual
               {yearlySavings > 0 && (
-                <Badge className="absolute -top-2 -right-2 text-[10px] px-1.5 py-0 bg-green-600">
+                <Badge className="absolute -top-2 -right-2 text-[10px] px-1.5 py-0 bg-accent text-accent-foreground">
                   -{yearlySavings}%
                 </Badge>
               )}
@@ -350,7 +376,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
         {/* Trust */}
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Shield className="h-3.5 w-3.5" />
-          <span>Pagamento seguro · Cancele quando quiser</span>
+          <span>Pagamento seguro via Asaas · Cancele quando quiser</span>
         </div>
       </div>
     </div>
