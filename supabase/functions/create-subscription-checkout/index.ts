@@ -5,7 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Plan mapping to Asaas billing values
 const PLAN_CONFIG: Record<string, { name: string; monthly_cents: number; annual_cents: number }> = {
   creator: { name: "Creator", monthly_cents: 6700, annual_cents: 5400 },
   "creator-pro": { name: "Creator Pro", monthly_cents: 14900, annual_cents: 11900 },
@@ -17,7 +16,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -40,13 +38,25 @@ Deno.serve(async (req) => {
     const userEmail = user.email || "";
 
     const body = await req.json();
-    const { workspace_id, plan_code, billing_cycle = "monthly", origin_path = "/", cpf, customer_name } = body;
+    const {
+      workspace_id,
+      plan_code,
+      billing_cycle = "monthly",
+      origin_path = "/",
+      cpf,
+      customer_name,
+      payment_method, // "card" | "pix"
+      credit_card,    // { holderName, number, expiryMonth, expiryYear, ccv }
+    } = body;
 
     if (!workspace_id || !plan_code) {
       return new Response(JSON.stringify({ error: "workspace_id e plan_code são obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Validate plan
+    if (!payment_method || !["card", "pix"].includes(payment_method)) {
+      return new Response(JSON.stringify({ error: "payment_method deve ser 'card' ou 'pix'" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const planConfig = PLAN_CONFIG[plan_code];
     if (!planConfig) {
       return new Response(JSON.stringify({ error: `Plano "${plan_code}" não encontrado` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -69,15 +79,12 @@ Deno.serve(async (req) => {
     const cycle = billing_cycle === "annual" ? "YEARLY" : "MONTHLY";
 
     if (!asaasApiKey) {
-      // Fallback: no Asaas key configured, redirect to pricing page
-      console.error("ASAAS_API_KEY not configured for subscription checkout");
-      return new Response(JSON.stringify({ error: "Gateway de pagamento não configurado. Contate o suporte." }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Gateway de pagamento não configurado." }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const asaasBase = "https://api.asaas.com/v3";
 
-    // 1. Find or create Asaas customer
-    // Try to find CPF from body, or from bank_accounts, or from workspace profile
+    // Resolve CPF/CNPJ
     let customerCpf = cpf?.replace(/\D/g, "") || "";
     if (!customerCpf) {
       const { data: bankAcc } = await adminClient.from("bank_accounts")
@@ -91,11 +98,12 @@ Deno.serve(async (req) => {
     }
 
     if (!customerCpf) {
-      return new Response(JSON.stringify({ error: "CPF/CNPJ é obrigatório para criar a assinatura. Cadastre na área de Recebimentos ou informe no checkout." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "CPF/CNPJ é obrigatório para criar a assinatura." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const displayName = customer_name || userEmail.split("@")[0];
 
+    // Find or create Asaas customer
     const customerSearchRes = await fetch(`${asaasBase}/customers?email=${encodeURIComponent(userEmail)}`, {
       headers: { access_token: asaasApiKey },
     });
@@ -104,7 +112,6 @@ Deno.serve(async (req) => {
     let asaasCustomerId: string;
     if (customerSearchData.data?.length > 0) {
       asaasCustomerId = customerSearchData.data[0].id;
-      // Update CPF if missing on existing customer
       if (!customerSearchData.data[0].cpfCnpj && customerCpf) {
         await fetch(`${asaasBase}/customers/${asaasCustomerId}`, {
           method: "PUT",
@@ -121,19 +128,21 @@ Deno.serve(async (req) => {
       const newCustomer = await createCustomerRes.json();
       if (!newCustomer.id) {
         console.error("Failed to create Asaas customer:", newCustomer);
-        return new Response(JSON.stringify({ error: "Não foi possível processar agora, tente novamente em instantes." }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Não foi possível processar agora, tente novamente." }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       asaasCustomerId = newCustomer.id;
     }
 
-    // 2. Create subscription in Asaas
+    // Build subscription payload
     const nextDueDate = new Date();
     nextDueDate.setDate(nextDueDate.getDate() + 1);
     const dueDateStr = nextDueDate.toISOString().split("T")[0];
 
-    const subscriptionPayload = {
+    const billingType = payment_method === "card" ? "CREDIT_CARD" : "PIX";
+
+    const subscriptionPayload: Record<string, unknown> = {
       customer: asaasCustomerId,
-      billingType: "UNDEFINED", // Allows customer to choose payment method
+      billingType,
       cycle,
       value: valueCents / 100,
       nextDueDate: dueDateStr,
@@ -141,6 +150,29 @@ Deno.serve(async (req) => {
       externalReference: workspace_id,
     };
 
+    // For credit card, include card data
+    if (payment_method === "card") {
+      if (!credit_card?.holderName || !credit_card?.number || !credit_card?.expiryMonth || !credit_card?.expiryYear || !credit_card?.ccv) {
+        return new Response(JSON.stringify({ error: "Dados do cartão incompletos" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      subscriptionPayload.creditCard = {
+        holderName: credit_card.holderName,
+        number: credit_card.number.replace(/\s/g, ""),
+        expiryMonth: credit_card.expiryMonth,
+        expiryYear: credit_card.expiryYear,
+        ccv: credit_card.ccv,
+      };
+      subscriptionPayload.creditCardHolderInfo = {
+        name: credit_card.holderName,
+        email: userEmail,
+        cpfCnpj: customerCpf,
+        postalCode: credit_card.postalCode || "00000000",
+        addressNumber: credit_card.addressNumber || "0",
+        phone: credit_card.phone || "",
+      };
+    }
+
+    // Create subscription
     const subRes = await fetch(`${asaasBase}/subscriptions`, {
       method: "POST",
       headers: { access_token: asaasApiKey, "Content-Type": "application/json" },
@@ -150,51 +182,78 @@ Deno.serve(async (req) => {
 
     if (!subRes.ok || !subData.id) {
       console.error("Asaas subscription creation failed:", subData);
-      return new Response(JSON.stringify({ error: "Não foi possível criar a assinatura. Tente novamente." }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const errorDetail = subData.errors?.[0]?.description || subData.errors?.[0]?.code || "Não foi possível criar a assinatura.";
+      return new Response(JSON.stringify({ error: errorDetail }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3. Get the payment link for the first invoice
-    const invoicesRes = await fetch(`${asaasBase}/subscriptions/${subData.id}/payments?limit=1`, {
-      headers: { access_token: asaasApiKey },
-    });
-    const invoicesData = await invoicesRes.json();
-
-    let checkoutUrl = `https://www.asaas.com/c/${subData.id}`;
-    if (invoicesData.data?.length > 0) {
-      const paymentId = invoicesData.data[0].id;
-      checkoutUrl = `https://www.asaas.com/i/${paymentId}`;
-    }
-
-    // 4. Store subscription record
+    // Store subscription record
     await adminClient.from("workspace_subscriptions").upsert({
       workspace_id,
       user_id: userId,
       provider: "asaas",
       provider_subscription_id: subData.id,
       provider_customer_id: asaasCustomerId,
-      plan_code: plan_code,
-      status: "pending",
-      billing_cycle: billing_cycle,
+      plan_code,
+      status: payment_method === "card" ? "active" : "pending",
+      billing_cycle,
     }, { onConflict: "workspace_id,provider" });
 
-    // 5. Log the subscription attempt
+    // Audit log
     await adminClient.from("audit_logs").insert({
       workspace_id,
       user_id: userId,
       entity_type: "subscription",
       entity_id: subData.id,
       action: "subscription_checkout_created",
-      metadata: { plan_code, billing_cycle, origin_path, asaas_subscription_id: subData.id },
+      metadata: { plan_code, billing_cycle, origin_path, payment_method, asaas_subscription_id: subData.id },
     });
 
+    // For CARD: subscription is active immediately
+    if (payment_method === "card") {
+      return new Response(JSON.stringify({
+        status: "active",
+        subscription_id: subData.id,
+        provider: "asaas",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // For PIX: get the first payment and its QR code
+    const invoicesRes = await fetch(`${asaasBase}/subscriptions/${subData.id}/payments?limit=1`, {
+      headers: { access_token: asaasApiKey },
+    });
+    const invoicesData = await invoicesRes.json();
+
+    if (!invoicesData.data?.length) {
+      return new Response(JSON.stringify({
+        status: "pending",
+        subscription_id: subData.id,
+        provider: "asaas",
+        pix: null,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const paymentId = invoicesData.data[0].id;
+
+    // Get PIX QR Code
+    const qrRes = await fetch(`${asaasBase}/payments/${paymentId}/pixQrCode`, {
+      headers: { access_token: asaasApiKey },
+    });
+    const qrData = await qrRes.json();
+
     return new Response(JSON.stringify({
-      checkout_url: checkoutUrl,
+      status: "pending_pix",
       subscription_id: subData.id,
+      payment_id: paymentId,
       provider: "asaas",
+      pix: {
+        qr_code_image: qrData.encodedImage || null,
+        copy_paste: qrData.payload || null,
+        expiration_date: qrData.expirationDate || null,
+      },
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
     console.error("Subscription checkout error:", err);
-    return new Response(JSON.stringify({ error: "Não foi possível processar agora, tente novamente em instantes." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Não foi possível processar agora, tente novamente." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Check,
   Crown,
@@ -16,15 +17,18 @@ import {
   ArrowRight,
   Loader2,
   CheckCircle2,
-  Rocket,
   Store,
+  Copy,
+  RefreshCw,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
-import { usePlanCheckout, type SourceUI } from "@/hooks/usePlanCheckout";
+import { usePlanCheckout, type SourceUI, type PixData } from "@/hooks/usePlanCheckout";
 import { useExperiment } from "@/hooks/useExperiment";
 import { trackEvent } from "@/lib/tracking";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 /* ─── Plan data ─── */
 const PLANS = [
@@ -74,7 +78,7 @@ const PLANS = [
   },
 ];
 
-/* ─── CPF formatter ─── */
+/* ─── Formatters ─── */
 function formatCpf(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 14);
   if (digits.length <= 11) {
@@ -90,7 +94,17 @@ function formatCpf(value: string): string {
     .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
 }
 
-/* ─── Stepper indicator ─── */
+function formatCardNumber(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+function formatExpiry(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length > 2) return digits.slice(0, 2) + "/" + digits.slice(2);
+  return digits;
+}
+
+/* ─── Step indicator ─── */
 function StepIndicator({ current, total }: { current: number; total: number }) {
   const labels = ["Plano", "Pagamento", "Confirmação"];
   return (
@@ -119,6 +133,101 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   );
 }
 
+/* ─── PIX Modal ─── */
+function PixModal({
+  open,
+  onOpenChange,
+  pixData,
+  onConfirmed,
+  onRegeneratePix,
+  regenerating,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  pixData: PixData | null;
+  onConfirmed: () => void;
+  onRegeneratePix: () => void;
+  regenerating: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [polling, setPolling] = useState(true);
+
+  const handleCopy = () => {
+    if (pixData?.copy_paste) {
+      navigator.clipboard.writeText(pixData.copy_paste);
+      setCopied(true);
+      toast({ title: "Código PIX copiado!" });
+      setTimeout(() => setCopied(false), 3000);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <QrCode className="h-5 w-5 text-primary" />
+            Pague com PIX
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {pixData?.qr_code_image ? (
+            <div className="flex justify-center">
+              <img
+                src={`data:image/png;base64,${pixData.qr_code_image}`}
+                alt="QR Code PIX"
+                className="w-56 h-56 rounded-lg border border-border"
+              />
+            </div>
+          ) : (
+            <div className="flex justify-center items-center h-56">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {pixData?.copy_paste && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Código PIX (copia e cola)</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={pixData.copy_paste}
+                  className="text-xs font-mono"
+                />
+                <Button variant="outline" size="icon" onClick={handleCopy} className="shrink-0">
+                  {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {pixData?.expiration_date && (
+            <p className="text-xs text-muted-foreground text-center">
+              Expira em: {new Date(pixData.expiration_date).toLocaleString("pt-BR")}
+            </p>
+          )}
+
+          <div className="flex items-center justify-center gap-2 py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Aguardando pagamento...</span>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={onRegeneratePix}
+            disabled={regenerating}
+          >
+            {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Gerar novo PIX
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ─── Main component ─── */
 export default function UpgradeFlow() {
   const navigate = useNavigate();
@@ -137,6 +246,19 @@ export default function UpgradeFlow() {
   const [cpf, setCpf] = useState("");
   const [confirmStatus, setConfirmStatus] = useState<"polling" | "confirmed" | "timeout">("polling");
   const [currentPlanCode, setCurrentPlanCode] = useState<string>("free");
+
+  // Card fields
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolder, setCardHolder] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [cardError, setCardError] = useState("");
+
+  // PIX state
+  const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [pixData, setPixData] = useState<PixData | null>(null);
+  const [pixPaymentId, setPixPaymentId] = useState<string | null>(null);
+  const [regeneratingPix, setRegeneratingPix] = useState(false);
 
   // Fetch current plan
   useEffect(() => {
@@ -165,6 +287,42 @@ export default function UpgradeFlow() {
     return p;
   });
 
+  // PIX polling for payment confirmation
+  useEffect(() => {
+    if (!pixModalOpen || !currentWorkspace) return;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 90; // 3 minutes
+
+    const poll = async () => {
+      if (cancelled) return;
+      attempts++;
+      const { data } = await supabase
+        .from("workspace_subscriptions")
+        .select("status, plan_code")
+        .eq("workspace_id", currentWorkspace.id)
+        .in("status", ["active", "trialing"])
+        .maybeSingle();
+
+      if (data) {
+        setPixModalOpen(false);
+        setStep(2);
+        setConfirmStatus("confirmed");
+        trackEvent("upgrade_checkout_succeeded", { plan_code: data.plan_code, source_ui: sourceUI, method: "pix" });
+        return;
+      }
+      if (attempts >= maxAttempts) {
+        setPixModalOpen(false);
+        setStep(2);
+        setConfirmStatus("timeout");
+        return;
+      }
+      if (!cancelled) setTimeout(poll, 2000);
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [pixModalOpen, currentWorkspace]);
+
   /* ─── Step 1: Choose plan ─── */
   const handleSelectPlan = (code: string) => {
     setSelectedPlan(code);
@@ -176,39 +334,93 @@ export default function UpgradeFlow() {
     setStep(1);
   };
 
-  /* ─── Step 2: Payment method ─── */
-  const handleChoosePaymentMethod = (method: "card" | "pix") => {
-    setPaymentMethod(method);
-    trackEvent("upgrade_payment_method_selected", { method, plan_code: selectedPlan, source_ui: sourceUI });
+  /* ─── Step 2: Submit payment ─── */
+  const isCardValid = () => {
+    const num = cardNumber.replace(/\s/g, "");
+    const parts = cardExpiry.split("/");
+    return (
+      num.length >= 13 &&
+      cardHolder.trim().length >= 3 &&
+      parts.length === 2 &&
+      parts[0].length === 2 &&
+      parts[1].length === 2 &&
+      cardCvv.length >= 3
+    );
   };
 
-  const handleStartCheckout = async () => {
+  const handleSubmitPayment = async () => {
     if (!paymentMethod || !selectedPlan) return;
     const cleanCpf = cpf.replace(/\D/g, "");
+    setCardError("");
 
-    // For mid-cycle upgrade (already paid)
+    // Mid-cycle upgrade
     if (currentPlanCode !== "free") {
       const success = await upgradeMidCycle({ planCode: selectedPlan, sourceUI });
       if (success) {
         setStep(2);
         setConfirmStatus("confirmed");
-        trackEvent("upgrade_checkout_succeeded", { plan_code: selectedPlan, source_ui: sourceUI, method: "midcycle" });
       }
       return;
     }
 
-    // New subscription checkout via Asaas
-    trackEvent("upgrade_checkout_created", { plan_code: selectedPlan, source_ui: sourceUI, payment_method: paymentMethod });
-    await startPlanCheckout({
+    if (paymentMethod === "card") {
+      if (!isCardValid()) {
+        setCardError("Preencha todos os campos do cartão corretamente.");
+        return;
+      }
+      const parts = cardExpiry.split("/");
+      const result = await startPlanCheckout({
+        planCode: selectedPlan,
+        sourceUI,
+        cpf: cleanCpf || undefined,
+        paymentMethod: "card",
+        creditCard: {
+          holderName: cardHolder.trim(),
+          number: cardNumber.replace(/\s/g, ""),
+          expiryMonth: parts[0],
+          expiryYear: `20${parts[1]}`,
+          ccv: cardCvv,
+        },
+      });
+
+      if (result?.status === "active") {
+        setStep(2);
+        setConfirmStatus("confirmed");
+      }
+    } else {
+      // PIX
+      const result = await startPlanCheckout({
+        planCode: selectedPlan,
+        sourceUI,
+        cpf: cleanCpf || undefined,
+        paymentMethod: "pix",
+      });
+
+      if (result) {
+        setPixData(result.pix || null);
+        setPixPaymentId(result.payment_id || null);
+        setPixModalOpen(true);
+      }
+    }
+  };
+
+  const handleRegeneratePix = async () => {
+    setRegeneratingPix(true);
+    const cleanCpf = cpf.replace(/\D/g, "");
+    const result = await startPlanCheckout({
       planCode: selectedPlan,
       sourceUI,
       cpf: cleanCpf || undefined,
+      paymentMethod: "pix",
     });
-    // startPlanCheckout redirects to Asaas checkout URL, so the flow continues
-    // via /billing/success which will now redirect to /billing/upgrade-flow?step=confirm
+    if (result) {
+      setPixData(result.pix || null);
+      setPixPaymentId(result.payment_id || null);
+    }
+    setRegeneratingPix(false);
   };
 
-  /* ─── Step 3: Confirmation (polling) ─── */
+  /* ─── Step 3: Confirmation polling (for redirect-based flows) ─── */
   useEffect(() => {
     if (step !== 2 || confirmStatus !== "polling" || !currentWorkspace) return;
     let attempts = 0;
@@ -237,7 +449,7 @@ export default function UpgradeFlow() {
     poll();
   }, [step, confirmStatus, currentWorkspace]);
 
-  // If arriving from /billing/success or /billing/cancel redirect
+  // Handle return from billing pages
   useEffect(() => {
     const stepParam = searchParams.get("step");
     if (stepParam === "confirm") {
@@ -254,6 +466,8 @@ export default function UpgradeFlow() {
     navigate("/store/editor");
   };
 
+  const selectedPlanObj = plans.find((p) => p.code === selectedPlan);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8 md:py-16">
@@ -262,7 +476,7 @@ export default function UpgradeFlow() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => (step === 0 ? navigate(-1) : setStep(step - 1))}
+            onClick={() => (step === 0 ? navigate(-1) : setStep(0))}
             className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -270,7 +484,6 @@ export default function UpgradeFlow() {
           </Button>
         )}
 
-        {/* Step header */}
         {step < 2 && <StepIndicator current={step} total={3} />}
 
         {/* ═══════ STEP 1: Choose Plan ═══════ */}
@@ -289,7 +502,7 @@ export default function UpgradeFlow() {
                 const isCurrent = plan.code === currentPlanCode;
                 const isSelected = plan.code === selectedPlan;
                 const isDowngrade =
-                  (currentPlanCode === "creator-pro") ||
+                  currentPlanCode === "creator-pro" ||
                   (currentPlanCode === "creator" && plan.code === "free");
 
                 return (
@@ -355,49 +568,131 @@ export default function UpgradeFlow() {
           </div>
         )}
 
-        {/* ═══════ STEP 2: Payment ═══════ */}
+        {/* ═══════ STEP 2: Payment (inline) ═══════ */}
         {step === 1 && (
           <div className="space-y-6 max-w-lg mx-auto">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">Método de pagamento</h1>
+              <h1 className="text-2xl font-bold text-foreground">Pagamento</h1>
               <p className="text-muted-foreground mt-2">
-                Plano selecionado: <strong>{plans.find((p) => p.code === selectedPlan)?.name}</strong> — R$
-                {plans.find((p) => p.code === selectedPlan)?.monthly}/mês
+                Plano <strong>{selectedPlanObj?.name}</strong> — R${selectedPlanObj?.monthly}/mês
               </p>
             </div>
 
-            {/* Payment options */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card
+            {/* Payment method selector */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
                 className={cn(
-                  "cursor-pointer transition-all hover:shadow-md p-6 text-center",
-                  paymentMethod === "card" && "ring-2 ring-primary"
+                  "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all",
+                  paymentMethod === "card"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
                 )}
-                onClick={() => handleChoosePaymentMethod("card")}
+                onClick={() => { setPaymentMethod("card"); trackEvent("upgrade_payment_method_selected", { method: "card", plan_code: selectedPlan, source_ui: sourceUI }); }}
               >
-                <CreditCard className="h-8 w-8 text-primary mx-auto mb-3" />
-                <p className="font-semibold text-foreground">Cartão de Crédito</p>
-                <p className="text-xs text-muted-foreground mt-1">Ativação imediata</p>
-              </Card>
-              <Card
+                <CreditCard className={cn("h-6 w-6", paymentMethod === "card" ? "text-primary" : "text-muted-foreground")} />
+                <span className={cn("text-sm font-medium", paymentMethod === "card" ? "text-foreground" : "text-muted-foreground")}>
+                  Cartão de Crédito
+                </span>
+              </button>
+              <button
+                type="button"
                 className={cn(
-                  "cursor-pointer transition-all hover:shadow-md p-6 text-center",
-                  paymentMethod === "pix" && "ring-2 ring-primary"
+                  "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all",
+                  paymentMethod === "pix"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
                 )}
-                onClick={() => handleChoosePaymentMethod("pix")}
+                onClick={() => { setPaymentMethod("pix"); trackEvent("upgrade_payment_method_selected", { method: "pix", plan_code: selectedPlan, source_ui: sourceUI }); }}
               >
-                <QrCode className="h-8 w-8 text-primary mx-auto mb-3" />
-                <p className="font-semibold text-foreground">PIX</p>
-                <p className="text-xs text-muted-foreground mt-1">Aprovação em minutos</p>
-              </Card>
+                <QrCode className={cn("h-6 w-6", paymentMethod === "pix" ? "text-primary" : "text-muted-foreground")} />
+                <span className={cn("text-sm font-medium", paymentMethod === "pix" ? "text-foreground" : "text-muted-foreground")}>
+                  PIX
+                </span>
+              </button>
             </div>
 
-            {/* CPF field (only for first subscription) */}
+            {/* Card form (inline) */}
+            {paymentMethod === "card" && (
+              <Card className="border-border">
+                <CardContent className="p-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="card-number" className="text-sm">Número do cartão</Label>
+                    <Input
+                      id="card-number"
+                      placeholder="0000 0000 0000 0000"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                      maxLength={19}
+                      autoComplete="cc-number"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="card-holder" className="text-sm">Nome no cartão</Label>
+                    <Input
+                      id="card-holder"
+                      placeholder="Como está no cartão"
+                      value={cardHolder}
+                      onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
+                      autoComplete="cc-name"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="card-expiry" className="text-sm">Validade</Label>
+                      <Input
+                        id="card-expiry"
+                        placeholder="MM/AA"
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                        maxLength={5}
+                        autoComplete="cc-exp"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="card-cvv" className="text-sm">CVV</Label>
+                      <Input
+                        id="card-cvv"
+                        placeholder="000"
+                        value={cardCvv}
+                        onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        maxLength={4}
+                        autoComplete="cc-csc"
+                        disabled={loading}
+                        type="password"
+                      />
+                    </div>
+                  </div>
+                  {cardError && (
+                    <p className="text-sm text-destructive">{cardError}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* PIX info */}
+            {paymentMethod === "pix" && (
+              <Card className="border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <QrCode className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>Ao confirmar, um <strong className="text-foreground">QR Code PIX</strong> será gerado.</p>
+                      <p>Escaneie com o app do seu banco ou copie o código para pagar.</p>
+                      <p>A ativação ocorre automaticamente após o pagamento.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* CPF field */}
             {currentPlanCode === "free" && (
               <div className="space-y-2">
-                <Label htmlFor="cpf" className="text-sm font-medium text-foreground">
-                  CPF ou CNPJ
-                </Label>
+                <Label htmlFor="cpf" className="text-sm font-medium text-foreground">CPF ou CNPJ</Label>
                 <Input
                   id="cpf"
                   placeholder="000.000.000-00"
@@ -406,30 +701,40 @@ export default function UpgradeFlow() {
                   disabled={loading}
                   maxLength={18}
                 />
-                <p className="text-xs text-muted-foreground">Necessário para processar a assinatura.</p>
               </div>
             )}
 
+            {/* Submit button */}
             <Button
               size="lg"
               className="w-full gap-2"
-              disabled={!paymentMethod || loading || (currentPlanCode === "free" && cpf.replace(/\D/g, "").length < 11)}
-              onClick={handleStartCheckout}
+              disabled={
+                !paymentMethod ||
+                loading ||
+                (currentPlanCode === "free" && cpf.replace(/\D/g, "").length < 11) ||
+                (paymentMethod === "card" && !isCardValid())
+              }
+              onClick={handleSubmitPayment}
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> Processando...
                 </>
+              ) : paymentMethod === "pix" ? (
+                <>
+                  Gerar PIX <QrCode className="h-4 w-4" />
+                </>
               ) : (
                 <>
-                  Concluir assinatura <ArrowRight className="h-4 w-4" />
+                  Assinar agora <Shield className="h-4 w-4" />
                 </>
               )}
             </Button>
 
-            <p className="text-center text-xs text-muted-foreground">
-              Pagamento processado de forma segura via Asaas. Cancele a qualquer momento.
-            </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Shield className="h-3 w-3" />
+              <span>Pagamento seguro via Asaas. Cancele a qualquer momento.</span>
+            </div>
           </div>
         )}
 
@@ -471,7 +776,7 @@ export default function UpgradeFlow() {
 
             {confirmStatus === "timeout" && (
               <>
-                <Rocket className="h-16 w-16 text-muted-foreground mx-auto" />
+                <QrCode className="h-16 w-16 text-muted-foreground mx-auto" />
                 <h1 className="text-2xl font-bold text-foreground">Pagamento em processamento</h1>
                 <p className="text-muted-foreground">
                   Seu pagamento está sendo processado. O plano será ativado automaticamente assim que confirmado.
@@ -488,6 +793,20 @@ export default function UpgradeFlow() {
             )}
           </div>
         )}
+
+        {/* PIX Modal */}
+        <PixModal
+          open={pixModalOpen}
+          onOpenChange={setPixModalOpen}
+          pixData={pixData}
+          onConfirmed={() => {
+            setPixModalOpen(false);
+            setStep(2);
+            setConfirmStatus("confirmed");
+          }}
+          onRegeneratePix={handleRegeneratePix}
+          regenerating={regeneratingPix}
+        />
       </div>
     </div>
   );

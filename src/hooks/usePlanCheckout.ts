@@ -6,12 +6,39 @@ import { toast } from "@/hooks/use-toast";
 
 export type SourceUI = "dashboard_banner" | "locked_features_modal" | "settings_plans_modal" | "pricing_page" | "upgrade_flow" | string;
 
+export interface PixData {
+  qr_code_image: string | null;
+  copy_paste: string | null;
+  expiration_date: string | null;
+}
+
+export interface CheckoutResult {
+  status: "active" | "pending" | "pending_pix";
+  subscription_id: string;
+  provider: string;
+  payment_id?: string;
+  pix?: PixData | null;
+}
+
+interface CreditCardData {
+  holderName: string;
+  number: string;
+  expiryMonth: string;
+  expiryYear: string;
+  ccv: string;
+  postalCode?: string;
+  addressNumber?: string;
+  phone?: string;
+}
+
 interface StartCheckoutParams {
   planCode: string;
   billingCycle?: "monthly" | "annual";
   sourceUI: SourceUI;
   cpf?: string;
   customerName?: string;
+  paymentMethod: "card" | "pix";
+  creditCard?: CreditCardData;
 }
 
 export function usePlanCheckout() {
@@ -36,21 +63,28 @@ export function usePlanCheckout() {
     });
   };
 
-  // New subscription checkout (no existing active sub)
-  const startPlanCheckout = async ({ planCode, billingCycle = "monthly", sourceUI, cpf, customerName }: StartCheckoutParams) => {
+  const startPlanCheckout = async ({
+    planCode,
+    billingCycle = "monthly",
+    sourceUI,
+    cpf,
+    customerName,
+    paymentMethod,
+    creditCard,
+  }: StartCheckoutParams): Promise<CheckoutResult | null> => {
     if (!currentWorkspace) {
       toast({ title: "Erro", description: "Workspace não encontrado.", variant: "destructive" });
-      return;
+      return null;
     }
 
-    trackEvent("upgrade_click", { plan_code: planCode, source_ui: sourceUI, workspace_id: currentWorkspace.id });
+    trackEvent("upgrade_checkout_created", { plan_code: planCode, source_ui: sourceUI, payment_method: paymentMethod });
 
     setLoading(true);
     try {
       const token = await getToken();
       if (!token) {
         toast({ title: "Sessão expirada", description: "Faça login novamente.", variant: "destructive" });
-        return;
+        return null;
       }
 
       const res = await callFunction("create-subscription-checkout", {
@@ -60,41 +94,44 @@ export function usePlanCheckout() {
         origin_path: window.location.pathname,
         cpf: cpf || undefined,
         customer_name: customerName || undefined,
+        payment_method: paymentMethod,
+        credit_card: creditCard || undefined,
       }, token);
 
       const result = await res.json();
 
-      if (!res.ok || !result.checkout_url) {
+      if (!res.ok) {
         const errorMsg = result.error || "Não foi possível iniciar o checkout. Tente novamente.";
         trackEvent("upgrade_checkout_failed", { plan_code: planCode, source_ui: sourceUI, error: errorMsg });
         toast({ title: "Erro ao iniciar assinatura", description: errorMsg, variant: "destructive" });
-        return;
+        return null;
       }
 
-      trackEvent("upgrade_checkout_created", {
+      trackEvent("upgrade_checkout_succeeded", {
         plan_code: planCode,
         source_ui: sourceUI,
         subscription_id: result.subscription_id,
-        provider: result.provider,
+        status: result.status,
       });
 
-      window.location.assign(result.checkout_url);
+      return result as CheckoutResult;
     } catch (err: any) {
       trackEvent("upgrade_checkout_failed", { plan_code: planCode, source_ui: sourceUI, error: err?.message });
-      toast({ title: "Erro inesperado", description: "Não foi possível processar agora, tente novamente em instantes.", variant: "destructive" });
+      toast({ title: "Erro inesperado", description: "Não foi possível processar agora, tente novamente.", variant: "destructive" });
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
-  // Mid-cycle upgrade (existing active sub -> higher plan)
+  // Mid-cycle upgrade
   const upgradeMidCycle = async ({ planCode, sourceUI }: { planCode: string; sourceUI: SourceUI }): Promise<boolean> => {
     if (!currentWorkspace) {
       toast({ title: "Erro", description: "Workspace não encontrado.", variant: "destructive" });
       return false;
     }
 
-    trackEvent("upgrade_midcycle_click", { plan_code: planCode, source_ui: sourceUI, workspace_id: currentWorkspace.id });
+    trackEvent("upgrade_midcycle_click", { plan_code: planCode, source_ui: sourceUI });
 
     setLoading(true);
     try {
@@ -118,17 +155,12 @@ export function usePlanCheckout() {
         return false;
       }
 
-      trackEvent("upgrade_midcycle_succeeded", {
-        plan_code: planCode,
-        source_ui: sourceUI,
-        status: result.status,
-      });
-
-      toast({ title: "Upgrade realizado! 🎉", description: `Seu plano foi atualizado para ${planCode === "creator-pro" ? "Creator Pro" : "Creator"}.` });
+      trackEvent("upgrade_midcycle_succeeded", { plan_code: planCode, source_ui: sourceUI });
+      toast({ title: "Upgrade realizado! 🎉", description: `Seu plano foi atualizado.` });
       return true;
     } catch (err: any) {
       trackEvent("upgrade_midcycle_failed", { plan_code: planCode, source_ui: sourceUI, error: err?.message });
-      toast({ title: "Erro inesperado", description: "Não foi possível processar agora, tente novamente em instantes.", variant: "destructive" });
+      toast({ title: "Erro inesperado", description: "Não foi possível processar agora.", variant: "destructive" });
       return false;
     } finally {
       setLoading(false);
