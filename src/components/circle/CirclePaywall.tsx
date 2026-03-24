@@ -75,21 +75,21 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
 
     setIsProcessing(true);
     try {
-      // Build card_token placeholder — in production, use Pagar.me's tokenization endpoint
-      let card_token: string | undefined;
+      // Build card_data for Asaas
+      let card_data: any = undefined;
       if (showCardForm && cardData.number) {
-        // For sandbox: pass card data directly (in prod, use pagarme.js tokenization)
-        card_token = btoa(JSON.stringify({
+        card_data = {
           number: cardData.number.replace(/\s/g, ""),
           holder_name: cardData.holder_name,
-          exp_month: parseInt(cardData.exp_month),
-          exp_year: parseInt(cardData.exp_year),
+          exp_month: cardData.exp_month,
+          exp_year: cardData.exp_year,
           cvv: cardData.cvv,
-        }));
+          email: user.email || "",
+        };
       }
 
       const { data, error } = await supabase.functions.invoke("circle-subscription", {
-        body: { action: "create", plan_id: activePlan.id, card_token },
+        body: { action: "create", plan_id: activePlan.id, card_data },
       });
 
       if (error) throw error;
