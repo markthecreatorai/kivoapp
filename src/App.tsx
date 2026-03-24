@@ -52,6 +52,8 @@ const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
 const AnalyticsExecutive = lazy(() => import("./pages/AnalyticsExecutive"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const GtmDashboard = lazy(() => import("./pages/GtmDashboard"));
+const GtmPlaybook = lazy(() => import("./pages/GtmPlaybook"));
+const AcquisitionPipeline = lazy(() => import("./pages/AcquisitionPipeline"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
