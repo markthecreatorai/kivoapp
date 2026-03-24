@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, DollarSign } from "lucide-react";
+import { PagarmeWizard, PagarmeStatusBadge } from "./PagarmeWizard";
 
 export function SettingsPayments() {
   const [gdprConsent, setGdprConsent] = useState(false);
   const [termsEnabled, setTermsEnabled] = useState(false);
   const [termsText, setTermsText] = useState("");
   const [checkoutLang, setCheckoutLang] = useState("pt-BR");
+  const [showPagarmeWizard, setShowPagarmeWizard] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -32,7 +33,12 @@ export function SettingsPayments() {
                 <p className="text-xs text-muted-foreground">Gateway de pagamento brasileiro — PIX, cartão, boleto</p>
               </div>
             </div>
-            <Badge variant="secondary">Não conectado</Badge>
+            <div className="flex items-center gap-2">
+              <PagarmeStatusBadge />
+              <Button variant="outline" size="sm" onClick={() => setShowPagarmeWizard(true)}>
+                Configurar
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
@@ -45,10 +51,8 @@ export function SettingsPayments() {
                 <p className="text-xs text-muted-foreground">Pagamentos internacionais via cartão</p>
               </div>
             </div>
-            <Button variant="outline" size="sm">Registrar</Button>
+            <Button variant="outline" size="sm" disabled>Em breve</Button>
           </div>
-
-          <button className="text-sm text-primary hover:underline">+ Adicionar PayPal</button>
         </CardContent>
       </Card>
 
@@ -99,6 +103,8 @@ export function SettingsPayments() {
           </div>
         </CardContent>
       </Card>
+
+      <PagarmeWizard open={showPagarmeWizard} onOpenChange={setShowPagarmeWizard} />
     </div>
   );
 }

@@ -293,7 +293,7 @@ export function SettingsProfile() {
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Badge "Feito com Kora"</p>
+              <p className="text-sm font-medium">Badge "Feito com Kivo"</p>
               <p className="text-xs text-muted-foreground">Mostrar selo na sua loja pública</p>
             </div>
             <Switch checked={showKoraBadge} onCheckedChange={saveBadge} />

@@ -45,6 +45,7 @@ const EmailFlows = lazy(() => import("./pages/EmailFlows"));
 const Appointments = lazy(() => import("./pages/Appointments"));
 const BookAppointment = lazy(() => import("./pages/BookAppointment"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Pricing = lazy(() => import("./pages/Pricing"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -91,6 +92,7 @@ const App = () => (
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/pricing" element={<Pricing />} />
                 <Route path="/resend-verification" element={<Navigate to="/verify-email" replace />} />
                 
                 {/* Onboarding */}

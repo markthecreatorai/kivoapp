@@ -100,10 +100,10 @@ export default function Checkout() {
   }, [productSlug]);
 
   // UTM + affiliate from sessionStorage
-  const utmSource = searchParams.get("utm_source") || sessionStorage.getItem("kora_utm_source") || undefined;
-  const utmMedium = searchParams.get("utm_medium") || sessionStorage.getItem("kora_utm_medium") || undefined;
-  const utmCampaign = searchParams.get("utm_campaign") || sessionStorage.getItem("kora_utm_campaign") || undefined;
-  const affiliateLinkId = sessionStorage.getItem("kora_affiliate_link_id") || undefined;
+  const utmSource = searchParams.get("utm_source") || sessionStorage.getItem("kivo_utm_source") || undefined;
+  const utmMedium = searchParams.get("utm_medium") || sessionStorage.getItem("kivo_utm_medium") || undefined;
+  const utmCampaign = searchParams.get("utm_campaign") || sessionStorage.getItem("kivo_utm_campaign") || undefined;
+  const affiliateLinkId = sessionStorage.getItem("kivo_affiliate_link_id") || undefined;
 
   // Price calculations
   const subtotal = price?.amount ?? 0;
@@ -401,7 +401,7 @@ export default function Checkout() {
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground pt-4">
           Feito com 💜 na{" "}
-          <a href="https://kora.com.br" className="hover:underline text-primary">Kora</a>
+          <a href="https://kivo.com.br" className="hover:underline text-primary">Kivo</a>
         </p>
       </div>
 

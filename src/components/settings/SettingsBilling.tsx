@@ -10,8 +10,8 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { cn } from "@/lib/utils";
 
 const PLANS = [
-  { id: "free", name: "Free", monthly: 0, annual: 0, features: ["1 produto", "Taxa de 7%", "Link-in-bio", "Com marca Kora"] },
-  { id: "creator", name: "Creator", monthly: 49, annual: 39, popular: true, features: ["Até 10 produtos", "Taxa de 5%", "Sem marca Kora", "Área de membros", "Analytics básico"] },
+  { id: "free", name: "Free", monthly: 0, annual: 0, features: ["1 produto", "Taxa de 7%", "Link-in-bio", "Com marca Kivo"] },
+  { id: "creator", name: "Creator", monthly: 49, annual: 39, popular: true, features: ["Até 10 produtos", "Taxa de 5%", "Sem marca Kivo", "Área de membros", "Analytics básico"] },
   { id: "creator-pro", name: "Creator Pro", monthly: 149, annual: 119, features: ["Produtos ilimitados", "Taxa de 3%", "WhatsApp integrado", "IA para conteúdo", "NFS-e automática", "Analytics avançado"] },
 ];
 
@@ -51,6 +51,7 @@ export function SettingsBilling() {
               Cancelar Assinatura
             </Button>
             <Button onClick={() => setShowPlanModal(true)}>Trocar Plano</Button>
+            <Button variant="link" onClick={() => window.location.href = "/pricing"}>Ver Planos</Button>
           </div>
         </CardContent>
       </Card>

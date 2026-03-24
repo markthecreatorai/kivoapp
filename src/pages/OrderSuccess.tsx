@@ -255,7 +255,7 @@ export default function OrderSuccess() {
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground pt-4">
           Feito com 💜 na{" "}
-          <a href="https://kora.com.br" className="hover:underline text-primary">Kora</a>
+          <a href="https://kivo.com.br" className="hover:underline text-primary">Kivo</a>
         </p>
       </div>
     </div>

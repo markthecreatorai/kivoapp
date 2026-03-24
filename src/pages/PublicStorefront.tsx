@@ -310,7 +310,7 @@ export default function PublicStorefront() {
       const ref = searchParams.get("ref");
 
       if (ref) {
-        sessionStorage.setItem("kora_ref", ref);
+        sessionStorage.setItem("kivo_ref", ref);
       }
 
       supabase.from("analytics_events").insert({
@@ -369,11 +369,11 @@ export default function PublicStorefront() {
           Esse link não existe ou ainda não foi publicado.
         </p>
         <a
-          href="https://kora.com.br"
+          href="https://kivo.com.br"
           className="px-6 py-3 rounded-full text-white font-medium"
           style={{ backgroundColor: "#F9423A" }}
         >
-          Crie sua própria loja na Kora
+          Crie sua própria loja na Kivo
         </a>
       </div>
     );
@@ -640,11 +640,11 @@ export default function PublicStorefront() {
           {/* Footer — Free plan */}
           <div className="mt-12 text-center">
             <a
-              href="https://kora.com.br"
+              href="https://kivo.com.br"
               className="text-xs opacity-40 hover:opacity-60 transition-opacity"
               style={{ color: t.text }}
             >
-              Feito com 💜 na Kora
+              Feito com 💜 na Kivo
             </a>
           </div>
         </div>
