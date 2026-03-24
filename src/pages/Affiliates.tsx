@@ -159,6 +159,23 @@ export default function Affiliates() {
       status,
       approved_at: status === "APPROVED" ? new Date().toISOString() : null 
     }).eq("id", id);
+
+    // Generate default affiliate link on approval
+    if (status === "APPROVED") {
+      const { data: existingLink } = await supabase
+        .from("affiliate_links")
+        .select("id")
+        .eq("affiliate_id", id)
+        .maybeSingle();
+      
+      if (!existingLink) {
+        await supabase.from("affiliate_links").insert({
+          affiliate_id: id,
+          code: "", // trigger generates code
+        });
+      }
+    }
+
     setAffiliates(prev => prev.map(a => a.id === id ? { ...a, status } : a));
     toast.success(`Afiliado ${status === "APPROVED" ? "aprovado" : status === "REJECTED" ? "rejeitado" : "suspenso"}`);
   };

@@ -286,32 +286,91 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
     }
   }
 
-  // Send notifications (fire-and-forget)
+  // Affiliate commission attribution (fire-and-forget)
   try {
     if (order) {
-      const productNames = [];
-      for (const item of (orderItems || [])) {
-        const { data: p } = await supabase.from("products").select("name").eq("id", item.product_id).single();
-        if (p) productNames.push(p.name);
+      // Check if order has an affiliate_link_id via checkout_session
+      let affiliateLinkId: string | null = null;
+      if (order.checkout_session_id) {
+        const { data: session } = await supabase
+          .from("checkout_sessions")
+          .select("affiliate_link_id")
+          .eq("id", order.checkout_session_id)
+          .maybeSingle();
+        affiliateLinkId = session?.affiliate_link_id || null;
       }
 
-      // Log notification intent (notifications table)
-      await supabase.from("audit_logs").insert({
-        workspace_id: order.workspace_id,
-        entity_type: "order",
-        entity_id: paymentRecord.order_id,
-        action: "payment_confirmed",
-        metadata: {
-          customer_email: order.customer_email,
-          customer_name: order.customer_name,
-          amount: order.total_amount,
-          method: order.payment_method,
-          products: productNames,
-        },
-      });
+      if (affiliateLinkId) {
+        // Get affiliate info
+        const { data: affLink } = await supabase
+          .from("affiliate_links")
+          .select("id, affiliate_id, product_id")
+          .eq("id", affiliateLinkId)
+          .maybeSingle();
+
+        if (affLink) {
+          // Check idempotency
+          const { data: existingComm } = await supabase
+            .from("commissions")
+            .select("id")
+            .eq("order_id", paymentRecord.order_id)
+            .eq("affiliate_id", affLink.affiliate_id)
+            .maybeSingle();
+
+          if (!existingComm) {
+            // Determine commission percentage
+            let commissionPercent = 20; // default
+
+            // Check product-specific commission rule first
+            for (const item of (orderItems || [])) {
+              const { data: rule } = await supabase
+                .from("commission_rules")
+                .select("percent")
+                .eq("product_id", item.product_id)
+                .eq("is_active", true)
+                .maybeSingle();
+              if (rule) {
+                commissionPercent = rule.percent;
+                break;
+              }
+            }
+
+            // Fallback to program default
+            const { data: prog } = await supabase
+              .from("affiliate_programs")
+              .select("default_commission_percent, hold_days")
+              .eq("workspace_id", order.workspace_id)
+              .maybeSingle();
+            if (prog && commissionPercent === 20) {
+              commissionPercent = prog.default_commission_percent;
+            }
+            const holdDays = prog?.hold_days || 14;
+
+            const totalAmount = Number(order.total_amount || 0);
+            const commissionAmount = Math.round(totalAmount * (commissionPercent / 100));
+
+            // Create commission record
+            await supabase.from("commissions").insert({
+              affiliate_id: affLink.affiliate_id,
+              order_id: paymentRecord.order_id,
+              amount: commissionAmount,
+              status: "PENDING",
+              hold_until: new Date(Date.now() + holdDays * 86400000).toISOString(),
+            });
+
+            // Mark attribution as converted
+            await supabase.from("affiliate_attributions")
+              .update({ converted_at: new Date().toISOString() })
+              .eq("affiliate_link_id", affiliateLinkId)
+              .is("converted_at", null);
+
+            console.log(`Affiliate commission created: ${commissionAmount} for affiliate ${affLink.affiliate_id}`);
+          }
+        }
+      }
     }
-  } catch (notifErr) {
-    console.error("Notification logging error (non-fatal):", notifErr);
+  } catch (affErr) {
+    console.error("Affiliate commission error (non-fatal):", affErr);
   }
 
   // Auto NFS-e emission (fire-and-forget)
