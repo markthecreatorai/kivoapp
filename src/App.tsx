@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { WorkspaceProvider } from "@/contexts/WorkspaceProvider";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 
 // Lazy-loaded pages
@@ -127,7 +128,7 @@ const App = () => (
                 <Route path="/store" element={<ProtectedRoute><DashboardLayout><Store /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/store/editor" element={<ProtectedRoute><StorefrontEditor /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><Analytics /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/analytics/executive" element={<ProtectedRoute><DashboardLayout><AnalyticsExecutive /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/analytics/executive" element={<ProtectedRoute><AdminRoute><DashboardLayout><AnalyticsExecutive /></DashboardLayout></AdminRoute></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><DashboardLayout><Customers /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/affiliates" element={<ProtectedRoute><DashboardLayout><Affiliates /></DashboardLayout></ProtectedRoute>} />
@@ -155,13 +156,13 @@ const App = () => (
                 <Route path="/" element={<LandingPage />} />
                 
                 {/* GTM Dashboard */}
-                <Route path="/gtm" element={<ProtectedRoute><DashboardLayout><GtmDashboard /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/gtm/playbook" element={<ProtectedRoute><DashboardLayout><GtmPlaybook /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/acquisition" element={<ProtectedRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops" element={<ProtectedRoute><DashboardLayout><OpsDashboard /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops/launch" element={<ProtectedRoute><DashboardLayout><LaunchReadiness /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops/feedback" element={<ProtectedRoute><DashboardLayout><OpsFeedback /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/ops/week-plan" element={<ProtectedRoute><DashboardLayout><OpsWeekPlan /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/gtm" element={<ProtectedRoute><AdminRoute><DashboardLayout><GtmDashboard /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/gtm/playbook" element={<ProtectedRoute><AdminRoute><DashboardLayout><GtmPlaybook /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/acquisition" element={<ProtectedRoute><AdminRoute><DashboardLayout><AcquisitionPipeline /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsDashboard /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops/launch" element={<ProtectedRoute><AdminRoute><DashboardLayout><LaunchReadiness /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops/feedback" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsFeedback /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+                <Route path="/ops/week-plan" element={<ProtectedRoute><AdminRoute><DashboardLayout><OpsWeekPlan /></DashboardLayout></AdminRoute></ProtectedRoute>} />
                 
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<Checkout />} />
