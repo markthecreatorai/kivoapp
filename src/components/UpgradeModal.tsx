@@ -25,9 +25,10 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
   if (!upgradeTo) return null;
 
   const handleUpgrade = () => {
-    onOpenChange(false);
     const targetCode = PLAN_TO_CODE[upgradeTo];
-    navigate(`/billing/upgrade-flow?plan=${targetCode}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`);
+    const url = `/billing/upgrade-flow?plan=${targetCode}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`;
+    onOpenChange(false);
+    setTimeout(() => navigate(url), 0);
   };
 
   return (
