@@ -52,7 +52,7 @@ export default function GtmDashboard() {
   const { data: ctaClicks } = useQuery({
     queryKey: ["gtm-cta", since],
     queryFn: async () => {
-      const { count } = await supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "cta_click").gte("created_at", since);
+      const { count } = await supabase.from("analytics_events").select("id", { count: "exact", head: true }).eq("event_type", "cta_click").gte("created_at", since);
       return count || 0;
     },
   });
