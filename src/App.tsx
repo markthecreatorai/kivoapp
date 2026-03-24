@@ -49,6 +49,7 @@ const Pricing = lazy(() => import("./pages/Pricing"));
 const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
+const AnalyticsExecutive = lazy(() => import("./pages/AnalyticsExecutive"));
 
 // Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
@@ -118,6 +119,7 @@ const App = () => (
                 <Route path="/store" element={<ProtectedRoute><DashboardLayout><Store /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/store/editor" element={<ProtectedRoute><StorefrontEditor /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><Analytics /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/analytics/executive" element={<ProtectedRoute><DashboardLayout><AnalyticsExecutive /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><DashboardLayout><Customers /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/affiliates" element={<ProtectedRoute><DashboardLayout><Affiliates /></DashboardLayout></ProtectedRoute>} />
