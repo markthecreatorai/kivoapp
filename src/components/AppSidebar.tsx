@@ -99,19 +99,19 @@ const adminGroup: NavGroup = {
   ],
 };
 
-const STORAGE_KEY = "kivo-sidebar-groups";
+const STORAGE_KEY = "kivo-sidebar-open";
 
-function loadOpenGroups(): Record<string, boolean> {
+function loadOpenGroup(): string | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
+    return localStorage.getItem(STORAGE_KEY) || null;
   } catch {}
-  return {};
+  return null;
 }
 
-function saveOpenGroups(state: Record<string, boolean>) {
+function saveOpenGroup(label: string | null) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (label) localStorage.setItem(STORAGE_KEY, label);
+    else localStorage.removeItem(STORAGE_KEY);
   } catch {}
 }
 
@@ -129,28 +129,22 @@ export function AppSidebar() {
     g.items.some(i => location.pathname === i.url || location.pathname.startsWith(i.url + "/"))
   )?.label;
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const stored = loadOpenGroups();
-    if (activeGroupLabel && stored[activeGroupLabel] === undefined) {
-      stored[activeGroupLabel] = true;
-    }
-    return stored;
+  const [openGroup, setOpenGroup] = useState<string | null>(() => {
+    const stored = loadOpenGroup();
+    return stored || activeGroupLabel || null;
   });
 
   useEffect(() => {
-    if (activeGroupLabel && !openGroups[activeGroupLabel]) {
-      setOpenGroups(prev => {
-        const next = { ...prev, [activeGroupLabel]: true };
-        saveOpenGroups(next);
-        return next;
-      });
+    if (activeGroupLabel && openGroup !== activeGroupLabel) {
+      setOpenGroup(activeGroupLabel);
+      saveOpenGroup(activeGroupLabel);
     }
   }, [activeGroupLabel]);
 
   const toggleGroup = useCallback((label: string) => {
-    setOpenGroups(prev => {
-      const next = { ...prev, [label]: !prev[label] };
-      saveOpenGroups(next);
+    setOpenGroup(prev => {
+      const next = prev === label ? null : label;
+      saveOpenGroup(next);
       return next;
     });
   }, []);
