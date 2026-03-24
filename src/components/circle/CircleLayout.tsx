@@ -293,7 +293,12 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
       );
     }
   } else {
-    // Landing page for non-members
+    // ── PAID_SUBSCRIPTION: show paywall ──
+    if (community.access_type === "PAID_SUBSCRIPTION") {
+      return <CirclePaywall community={community} />;
+    }
+
+    // Landing page for non-members (OPEN / FREE_WITH_PRODUCT)
     return (
       <div className="min-h-screen bg-background">
         <div className="relative h-48 md:h-64 bg-gradient-to-br from-primary/20 via-primary/10 to-muted overflow-hidden">
@@ -345,18 +350,6 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 )}
               </>
             )}
-            {community.access_type === "PAID_SUBSCRIPTION" && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Lock className="h-4 w-4" /><span>Assinatura necessária para acesso</span>
-                </div>
-                {community.linked_product_id && (
-                  <Button size="lg" onClick={() => navigate(`/checkout/${community.linked_product_id}`)} className="w-full md:w-auto">
-                    <ShoppingCart className="h-5 w-5 mr-2" />Assinar para Acessar
-                  </Button>
-                )}
-              </div>
-            )}
           </div>
           {previewPosts && previewPosts.length > 0 && (
             <div className="space-y-3">
@@ -373,6 +366,26 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                     <div className="flex-1 min-w-0">
                       <span className="font-medium text-sm">{post.author?.display_name || "Membro"}</span>
                       <h4 className="font-semibold text-foreground mt-1">{post.title}</h4>
+                      {post.body && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{post.body}</p>}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+                  <Eye className="h-4 w-4" /> Entre para ver todos os posts
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── PAID_SUBSCRIPTION: active member but subscription expired? ──
+  if (community.access_type === "PAID_SUBSCRIPTION" && !isAdmin && !hasActiveSubscription) {
+    return <CirclePaywall community={community} />;
                       {post.body && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{post.body}</p>}
                     </div>
                   </div>
