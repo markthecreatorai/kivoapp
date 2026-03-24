@@ -128,7 +128,7 @@ const App = () => (
                 <Route path="/store" element={<ProtectedRoute><DashboardLayout><Store /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/store/editor" element={<ProtectedRoute><StorefrontEditor /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><Analytics /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/analytics/executive" element={<ProtectedRoute><DashboardLayout><AnalyticsExecutive /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/analytics/executive" element={<ProtectedRoute><AdminRoute><DashboardLayout><AnalyticsExecutive /></DashboardLayout></AdminRoute></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><DashboardLayout><Customers /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/affiliates" element={<ProtectedRoute><DashboardLayout><Affiliates /></DashboardLayout></ProtectedRoute>} />
