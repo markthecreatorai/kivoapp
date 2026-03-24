@@ -25,6 +25,7 @@ const navigationItems = [
 { title: "Minha Loja", url: "/store", icon: Store },
 { title: "Leads", url: "/leads", icon: UserCheck },
 { title: "Email Flows", url: "/email-flows", icon: Mail },
+{ title: "Campanhas", url: "/email-campaigns", icon: Send },
 { title: "Agendamentos", url: "/appointments", icon: CalendarCheck },
 { title: "Circles", url: "/circle", icon: MessagesSquare },
 { title: "Renda", url: "/earnings", icon: DollarSign },
