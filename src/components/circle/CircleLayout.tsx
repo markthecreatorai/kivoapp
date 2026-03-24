@@ -386,9 +386,12 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
     );
   }
 
-  // ── PAID_SUBSCRIPTION: active member but subscription expired? ──
+  // ── PAID_SUBSCRIPTION: active member but subscription not active? ──
+  const hasActiveSubscription = subscriptionData?.status === "active" || subscriptionData?.status === "trialing";
+  const isPastDue = subscriptionData?.status === "past_due";
+
   if (community.access_type === "PAID_SUBSCRIPTION" && !isAdmin && !hasActiveSubscription) {
-    return <CirclePaywall community={community} />;
+    return <CirclePaywall community={community} isPastDue={isPastDue} />;
   }
 
   // === MAIN LAYOUT — Skool-style ===
