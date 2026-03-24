@@ -2968,6 +2968,38 @@ export type Database = {
           },
         ]
       }
+      onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          step_key: string
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          step_key: string
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          step_key?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_progress_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_bumps: {
         Row: {
           bump_product_id: string
@@ -4470,6 +4502,7 @@ export type Database = {
       }
       workspaces: {
         Row: {
+          activated_at: string | null
           created_at: string
           currency: string
           id: string
@@ -4482,6 +4515,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
           created_at?: string
           currency?: string
           id?: string
@@ -4494,6 +4528,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
           created_at?: string
           currency?: string
           id?: string
