@@ -24,11 +24,12 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
 
   if (!upgradeTo) return null;
 
-  const handleUpgrade = () => {
+  const handleUpgrade = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     const targetCode = PLAN_TO_CODE[upgradeTo];
     const url = `/billing/upgrade-flow?plan=${targetCode}&source=locked_features_modal&feature=${encodeURIComponent(feature)}`;
-    onOpenChange(false);
-    setTimeout(() => navigate(url), 0);
+    navigate(url);
   };
 
   return (
