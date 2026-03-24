@@ -325,7 +325,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
       {/* ── Header: Logo ── */}
-      <SidebarHeader className="border-b border-border/30 bg-sidebar px-3 py-3">
+      <SidebarHeader className="border-b border-border/30 bg-sidebar px-4 py-4">
         <div className={cn(
           "flex items-center transition-all duration-200",
           collapsed ? "justify-center" : "gap-2"
@@ -340,8 +340,8 @@ export function AppSidebar() {
           />
         </div>
         {!collapsed && currentWorkspace && (
-          <div className="mt-2 px-1">
-            <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground">
+          <div className="mt-3 px-0">
+            <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               <Store className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">{currentWorkspace.name || "Minha Loja"}</span>
             </div>
@@ -350,12 +350,12 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* ── Content ── */}
-      <SidebarContent className="px-2 py-2 bg-sidebar overflow-y-auto overflow-x-hidden">
+      <SidebarContent className="px-3 py-3 bg-sidebar overflow-y-auto overflow-x-hidden">
         {!collapsed && (
-          <div className="px-1 pb-2">
+          <div className="px-0 pb-3">
             <Button
               size="sm"
-              className="w-full gap-2 text-xs h-8"
+              className="w-full gap-2 text-xs h-9"
               onClick={() => navigate("/products/new")}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -365,7 +365,7 @@ export function AppSidebar() {
         )}
 
         {collapsed && (
-          <div className="flex justify-center pb-2">
+          <div className="flex justify-center pb-3">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -382,18 +382,18 @@ export function AppSidebar() {
           </div>
         )}
 
-        <SidebarGroup className="p-0">
+        <SidebarGroup className="p-0 space-y-0.5">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
+            <SidebarMenu className="space-y-1.5">
               {creatorGroups.map(renderGroup)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {isAdmin && (
-          <SidebarGroup className="mt-2 pt-2 border-t border-border/30 p-0">
+          <SidebarGroup className="mt-3 pt-3 border-t border-border/30 p-0">
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
+              <SidebarMenu className="space-y-1.5">
                 {renderGroup(adminGroup)}
               </SidebarMenu>
             </SidebarGroupContent>
@@ -402,7 +402,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* ── Footer: compact user block ── */}
-      <SidebarFooter className="border-t border-border/30 bg-sidebar p-2">
+      <SidebarFooter className="border-t border-border/30 bg-sidebar px-4 py-3">
         <div className={cn(
           "flex items-center transition-all duration-200",
           collapsed ? "justify-center" : "gap-2.5"
