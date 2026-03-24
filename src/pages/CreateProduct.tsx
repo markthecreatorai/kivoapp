@@ -12,6 +12,7 @@ import { ProductDeliveryStep } from "@/components/products/ProductDeliveryStep";
 import { ProductExtrasStep } from "@/components/products/ProductExtrasStep";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { trackEvent } from "@/lib/tracking";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProductType = Database["public"]["Enums"]["product_type"];
@@ -204,6 +205,10 @@ export default function CreateProduct() {
         }, { onConflict: "product_id" });
       }
 
+      trackEvent("product_created", { type: form.type, status }, currentWorkspace.id);
+      if (status === "PUBLISHED") {
+        trackEvent("product_published", { type: form.type }, currentWorkspace.id);
+      }
       toast.success(
         status === "PUBLISHED"
           ? "Produto publicado com sucesso!"

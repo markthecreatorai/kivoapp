@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 const SESSION_KEY = "kivo_session_id";
 
 function getSessionId(): string {

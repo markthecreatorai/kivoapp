@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Zap, Crown, Sparkles, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useExperiment } from "@/hooks/useExperiment";
+import { trackEvent } from "@/lib/tracking";
 
-const PLANS = [
+const PLANS_BASE = [
   {
     id: "free",
     name: "Free",
@@ -24,7 +26,7 @@ const PLANS = [
   {
     id: "creator",
     name: "Creator",
-    price: "R$67",
+    price: "R$67", // default, overridden by experiment
     period: "/mês",
     description: "Para quem quer crescer",
     icon: Crown,
@@ -61,22 +63,32 @@ const PLANS = [
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const { variant: pricingVariant } = useExperiment("pricing_creator");
+
+  const plans = PLANS_BASE.map(plan => {
+    if (plan.id === "creator") {
+      return { ...plan, price: pricingVariant === "B" ? "R$79" : "R$67" };
+    }
+    return plan;
+  });
+
+  const handleChoosePlan = (planId: string) => {
+    trackEvent("upgrade_started", {
+      plan: planId,
+      experiment_key: "pricing_creator",
+      variant: pricingVariant,
+    });
+    navigate("/settings?tab=billing");
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-4 py-12 md:py-20">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(-1)}
-          className="mb-8"
-        >
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-8">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
 
-        {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
             Planos & Preços
@@ -86,9 +98,8 @@ export default function Pricing() {
           </p>
         </div>
 
-        {/* Plan Cards */}
         <div className="grid md:grid-cols-3 gap-6">
-          {PLANS.map((plan) => {
+          {plans.map((plan) => {
             const Icon = plan.icon;
             return (
               <Card
@@ -135,7 +146,7 @@ export default function Pricing() {
                   <Button
                     className="w-full mt-4"
                     variant={plan.popular ? "default" : "outline"}
-                    onClick={() => navigate("/settings?tab=billing")}
+                    onClick={() => handleChoosePlan(plan.id)}
                   >
                     {plan.id === "free" ? "Começar Grátis" : "Escolher Plano"}
                   </Button>

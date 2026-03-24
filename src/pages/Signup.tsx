@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, EyeOff, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/tracking";
 import zxcvbn from "zxcvbn";
 import { Progress } from "@/components/ui/progress";
 
@@ -65,6 +66,7 @@ export default function Signup() {
     }
 
     setIsLoading(true);
+    trackEvent("signup_started", { creator_type: creatorType });
 
     try {
       const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
@@ -90,6 +92,7 @@ export default function Signup() {
           variant: "destructive",
         });
       } else {
+        trackEvent("signup_completed", { creator_type: creatorType });
         toast({
           title: "Conta criada!",
           description: "Verifique seu email para confirmar a conta e continue",
