@@ -147,7 +147,7 @@ export default function LaunchReadiness() {
           <p className="text-xs text-muted-foreground">Passou</p>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-500">{warnCount}</p>
+          <p className="text-2xl font-bold text-primary">{warnCount}</p>
           <p className="text-xs text-muted-foreground">Atenção</p>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
