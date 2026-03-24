@@ -237,12 +237,15 @@ export default function UpgradeFlow() {
     poll();
   }, [step, confirmStatus, currentWorkspace]);
 
-  // If arriving from /billing/success redirect
+  // If arriving from /billing/success or /billing/cancel redirect
   useEffect(() => {
     const stepParam = searchParams.get("step");
     if (stepParam === "confirm") {
       setStep(2);
       setConfirmStatus("polling");
+    } else if (stepParam === "cancel") {
+      setStep(1);
+      trackEvent("upgrade_checkout_failed", { source_ui: sourceUI, reason: "user_cancelled" });
     }
   }, [searchParams]);
 
