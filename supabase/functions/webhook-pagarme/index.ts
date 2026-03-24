@@ -400,6 +400,89 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
     console.error("NFS-e auto-emission error (non-fatal):", nfseErr);
   }
 
+  // ─── Transactional Emails (fire-and-forget) ───
+  try {
+    if (order) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      // Get product name for email
+      let productName = "seu produto";
+      if (orderItems && orderItems.length > 0) {
+        const { data: prod } = await supabase
+          .from("products")
+          .select("name")
+          .eq("id", orderItems[0].product_id)
+          .maybeSingle();
+        if (prod) productName = prod.name;
+      }
+
+      // Get workspace name
+      const { data: ws } = await supabase
+        .from("workspaces")
+        .select("name, slug")
+        .eq("id", order.workspace_id)
+        .maybeSingle();
+
+      const valor = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+        .format(Number(order.total_amount || 0) / 100);
+
+      const memberUrl = ws?.slug
+        ? `https://kivostore.lovable.app/member/dashboard`
+        : "#";
+
+      const emailData = {
+        nome: order.customer_name || undefined,
+        produto: productName,
+        valor,
+        member_url: memberUrl,
+        workspace_name: ws?.name || "Kivo",
+      };
+
+      // 1. Purchase confirmed
+      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          template_key: "purchase_confirmed",
+          recipient_email: order.customer_email,
+          workspace_id: order.workspace_id,
+          order_id: paymentRecord.order_id,
+          customer_id: order.customer_id,
+          idempotency_key: `purchase_confirmed_${paymentRecord.order_id}`,
+          data: emailData,
+        }),
+      });
+      console.log(`Purchase confirmed email queued for ${order.customer_email}`);
+
+      // 2. Welcome member (idempotent per customer)
+      if (order.customer_id) {
+        await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            template_key: "welcome_member",
+            recipient_email: order.customer_email,
+            workspace_id: order.workspace_id,
+            order_id: paymentRecord.order_id,
+            customer_id: order.customer_id,
+            idempotency_key: `welcome_member_${order.customer_id}_${order.workspace_id}`,
+            data: emailData,
+          }),
+        });
+        console.log(`Welcome member email queued for ${order.customer_email}`);
+      }
+    }
+  } catch (emailErr) {
+    console.error("Post-payment email error (non-fatal):", emailErr);
+  }
+
   console.log(`Order ${paymentRecord.order_id} marked as COMPLETED`);
   return "SUCCEEDED";
 }
