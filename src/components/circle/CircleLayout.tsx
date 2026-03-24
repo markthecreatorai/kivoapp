@@ -386,21 +386,6 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   // ── PAID_SUBSCRIPTION: active member but subscription expired? ──
   if (community.access_type === "PAID_SUBSCRIPTION" && !isAdmin && !hasActiveSubscription) {
     return <CirclePaywall community={community} />;
-                      {post.body && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{post.body}</p>}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-                  <Eye className="h-4 w-4" /> Entre para ver todos os posts
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
   }
 
   // === MAIN LAYOUT — Skool-style ===
