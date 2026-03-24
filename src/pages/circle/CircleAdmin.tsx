@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Settings, Users, LayoutGrid, CreditCard } from "lucide-react";
+import { BarChart3, Settings, Users, LayoutGrid, CreditCard, Flag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import AdminDashboardTab from "@/components/circle/admin/AdminDashboardTab";
