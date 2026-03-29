@@ -264,7 +264,8 @@ Deno.serve(async (req) => {
         action: "upgrade_midcycle_provider_failed",
         metadata: { old_plan: currentSub.plan_code, new_plan: target_plan_code, asaas_status: asaasRes.status, provider_subscription_id: currentSub.provider_subscription_id },
       });
-      return json({ error: "Falha ao atualizar assinatura no gateway. Tente novamente." }, 502);
+      const asaasErrorMessage = asaasData.errors?.[0]?.description || "O banco emissor não autorizou a transação ou não há limite. Tente outro cartão.";
+      return json({ error: asaasErrorMessage }, 502);
     }
 
     // ── 11. Update DB only after Asaas success ──
