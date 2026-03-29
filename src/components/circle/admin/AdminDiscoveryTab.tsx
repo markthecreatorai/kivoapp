@@ -46,7 +46,7 @@ export default function AdminDiscoveryTab({ community }: Props) {
           discovery_enabled: discoveryEnabled,
           discovery_category: category || null,
           discovery_tags: tags,
-        })
+        } as any)
         .eq("id", community.id);
       if (error) throw error;
     },
