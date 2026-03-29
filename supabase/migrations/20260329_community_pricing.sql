@@ -4,7 +4,9 @@
 ALTER TABLE communities
   ADD COLUMN IF NOT EXISTS price numeric,
   ADD COLUMN IF NOT EXISTS billing_period text DEFAULT 'monthly',
-  ADD COLUMN IF NOT EXISTS checkout_product_slug text;
+  ADD COLUMN IF NOT EXISTS checkout_product_slug text,
+  ADD COLUMN IF NOT EXISTS about_video_url text,
+  ADD COLUMN IF NOT EXISTS online_count int DEFAULT 0;
 
 -- =============================================================
 -- Fase 8: Circle Courses Access Rules
