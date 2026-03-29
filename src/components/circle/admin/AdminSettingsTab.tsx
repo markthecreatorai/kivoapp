@@ -164,6 +164,29 @@ export default function AdminSettingsTab({ community, member }: Props) {
           </Select>
         </div>
 
+        {/* Pricing */}
+        {settings.access_type === "PAID_SUBSCRIPTION" && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Preço (centavos)</Label>
+              <Input type="number" value={settings.price_cents} onChange={(e) => set("price_cents", +e.target.value || 0)} placeholder="4990" />
+              <p className="text-xs text-muted-foreground mt-1">Ex: 4990 = R$ 49,90</p>
+            </div>
+            <div>
+              <Label>Período de cobrança</Label>
+              <Select value={settings.billing_period} onValueChange={(v) => set("billing_period", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="quarterly">Trimestral</SelectItem>
+                  <SelectItem value="yearly">Anual</SelectItem>
+                  <SelectItem value="one_time">Pagamento único</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
         {(settings.access_type === "FREE_WITH_PRODUCT" || settings.access_type === "PAID_SUBSCRIPTION") && (
           <div>
             <Label>Produto vinculado</Label>
