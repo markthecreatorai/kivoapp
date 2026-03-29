@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Bold, Italic, Strikethrough, Code, List, ListOrdered,
   Quote, Image, Link, Youtube, Heading1, Heading2, Heading3, Heading4,
-  Loader2, Save, X,
+  Loader2, Save, X, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -24,6 +24,9 @@ interface LessonEditorProps {
   };
   isAdmin: boolean;
   courseId: string;
+  memberId?: string;
+  onMarkCompleted?: (lessonId: string) => void;
+  isCompleted?: boolean;
 }
 
 const TOOLBAR_BUTTONS = [
@@ -46,7 +49,7 @@ const TOOLBAR_BUTTONS = [
   { icon: Youtube, label: "YouTube", tag: "[youtube](url)" },
 ];
 
-export default function LessonEditor({ lesson, isAdmin, courseId }: LessonEditorProps) {
+export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMarkCompleted, isCompleted = false }: LessonEditorProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(lesson.title);
   const [content, setContent] = useState(lesson.content || "");
@@ -139,6 +142,22 @@ export default function LessonEditor({ lesson, isAdmin, courseId }: LessonEditor
             <p className="text-muted-foreground text-sm italic">Conteúdo em breve...</p>
           )}
         </div>
+        {/* Member: Mark as completed */}
+        {memberId && onMarkCompleted && (
+          <div className="px-6 pb-6">
+            <Button
+              variant={isCompleted ? "outline" : "default"}
+              size="sm"
+              onClick={() => !isCompleted && onMarkCompleted(lesson.id)}
+              disabled={isCompleted}
+              className={cn(isCompleted && "border-emerald-500/40 text-emerald-600")}
+              id="mark-lesson-complete"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {isCompleted ? "Concluída!" : "Marcar como concluída"}
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

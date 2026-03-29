@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
+import { useLessonProgress } from "@/hooks/useLessonProgress";
 import {
   BookOpen, Play, Crown, ArrowLeft, Plus,
-  FileText, Circle, Trash2, Loader2,
+  FileText, Circle, Trash2, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder, Pencil,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -89,6 +90,12 @@ export default function CircleClassroom() {
   });
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
+
+  // ─── Lesson progress tracking ────────────────────────
+  const { progressMap, getCourseProgress, markStarted, markCompleted } = useLessonProgress(
+    member?.id || null,
+    selectedCourseId
+  );
 
   // ─── Circle courses query ────────────────────────────
   const { data: circleCourses = [], isLoading } = useQuery({
@@ -249,7 +256,7 @@ export default function CircleClassroom() {
   // ═══════════════════════════════════════════════════════════
   if (selectedCourseId && selectedCourse) {
     const totalPages = allPages.length;
-    const percent = 0; // Progress TBD
+    const percent = getCourseProgress(totalPages);
     const isMockCourse = selectedCourseId.startsWith("mock-");
 
     return (
@@ -378,15 +385,21 @@ export default function CircleClassroom() {
                           {/* Child pages */}
                           {isExpanded && childPages.map((page) => {
                             const isActive = page.id === selectedLessonId;
+                            const prog = progressMap[page.id];
                             return (
                               <div
                                 key={page.id}
-                                onClick={() => setSelectedLessonId(page.id)}
+                                onClick={() => { setSelectedLessonId(page.id); markStarted.mutate(page.id); }}
                                 className={cn(
                                   "flex items-center gap-2 pl-11 pr-3 py-2 rounded-lg cursor-pointer transition-colors group/page ml-1",
                                   isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
                                 )}
                               >
+                                {prog?.completed ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                ) : (
+                                  <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                                )}
                                 <span className={cn(
                                   "text-[13px] flex-1 truncate",
                                   isActive ? "font-medium text-foreground" : "text-muted-foreground"
@@ -419,15 +432,21 @@ export default function CircleClassroom() {
 
                     // Root page
                     const isActive = item.id === selectedLessonId;
+                    const prog = progressMap[item.id];
                     return (
                       <div
                         key={item.id}
-                        onClick={() => setSelectedLessonId(item.id)}
+                        onClick={() => { setSelectedLessonId(item.id); markStarted.mutate(item.id); }}
                         className={cn(
                           "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group/page",
                           isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
                         )}
                       >
+                        {prog?.completed ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                        )}
                         <span className={cn(
                           "text-[13px] flex-1 truncate",
                           isActive ? "font-medium text-foreground" : "text-muted-foreground"
@@ -478,6 +497,11 @@ export default function CircleClassroom() {
                   lesson={activeLesson}
                   isAdmin={isAdmin}
                   courseId={selectedCourseId}
+                  memberId={member?.id}
+                  onMarkCompleted={(lessonId) =>
+                    markCompleted.mutate({ lessonId })
+                  }
+                  isCompleted={!!progressMap[activeLesson.id]?.completed}
                 />
               ) : isMockCourse ? (
                 <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -628,6 +652,7 @@ export default function CircleClassroom() {
               </div>
               <div className="mt-auto px-4 mb-4 pt-3">
                 <Progress value={0} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+                <p className="text-[10px] text-muted-foreground mt-1">0% concluído</p>
               </div>
             </div>
           );

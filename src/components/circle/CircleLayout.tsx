@@ -25,6 +25,7 @@ import {
   Eye,
   Lock,
   Mail,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -466,6 +467,15 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 communityId={community.id}
                 unreadCount={unreadCount ?? 0}
               />
+            )}
+            {member && (
+              <Link
+                to="/circle/settings"
+                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
+                title="Configurações"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Link>
             )}
             {member && (
               <Avatar className="h-8 w-8">

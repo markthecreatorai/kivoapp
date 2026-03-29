@@ -82,6 +82,11 @@ const CircleClassroom = lazy(() => import("./pages/circle/CircleClassroom"));
 const CircleAdmin = lazy(() => import("./pages/circle/CircleAdmin"));
 const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 const CircleMessages = lazy(() => import("./pages/circle/CircleMessages"));
+const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
+
+// Public community pages
+const JoinCommunity = lazy(() => import("./pages/JoinCommunity"));
+const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -227,6 +232,11 @@ const App = () => (
                 <Route path="/circle/admin" element={<ProtectedRoute><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circle/messages" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circle/post/:id" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circle/settings" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
+
+                {/* Public community discovery */}
+                <Route path="/communities" element={<CommunityDiscovery />} />
+                <Route path="/join/:slug" element={<JoinCommunity />} />
 
                 {/* Landing page */}
                 <Route path="/" element={<LandingPage />} />

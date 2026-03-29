@@ -8,21 +8,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, AlertTriangle, Upload } from "lucide-react";
+import { Save, AlertTriangle, Upload, Link2, Copy, Trash2, Plus, Clock } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
+import { useInviteLinks } from "@/hooks/useInviteLinks";
 
 interface Props {
   community: any;
+  member?: any;
 }
 
-export default function AdminSettingsTab({ community }: Props) {
+export default function AdminSettingsTab({ community, member }: Props) {
   const queryClient = useQueryClient();
   const { currentWorkspace } = useWorkspace();
+  const { inviteLinks, createLink, deactivateLink, copyLink } = useInviteLinks(
+    community.id,
+    member?.id || ""
+  );
 
   const [settings, setSettings] = useState({
     name: community.name,
@@ -197,6 +203,86 @@ export default function AdminSettingsTab({ community }: Props) {
       <Button onClick={() => updateSettings.mutate()} disabled={updateSettings.isPending} className="w-full md:w-auto">
         <Save className="h-4 w-4 mr-2" />Salvar configurações
       </Button>
+
+      {/* ─── Invite Links ─── */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Link2 className="h-4 w-4" /> Links de Convite
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Compartilhe links para que novos membros entrem sem precisar de aprovação</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => createLink.mutate({})}
+            disabled={createLink.isPending}
+            id="create-invite-link"
+          >
+            <Plus className="h-4 w-4 mr-1.5" /> Criar link
+          </Button>
+        </div>
+
+        {inviteLinks.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Nenhum link de convite criado ainda.</p>
+        ) : (
+          <div className="space-y-2">
+            {inviteLinks.map((link: any) => (
+              <div
+                key={link.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border ${
+                  link.is_active ? "bg-muted/30 border-border" : "bg-muted/10 border-border/50 opacity-60"
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs font-mono text-foreground bg-muted px-2 py-0.5 rounded">
+                      {`/join/${community.slug}?invite=${link.code}`}
+                    </code>
+                    {!link.is_active && (
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 rounded">Desativado</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {link.uses_count || 0}{link.max_uses ? `/${link.max_uses}` : ""} usos
+                    </span>
+                    {link.expires_at && (
+                      <span>Expira: {new Date(link.expires_at).toLocaleDateString("pt-BR")}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {link.is_active && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => copyLink(link.code, community.slug)}
+                      title="Copiar link"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {link.is_active && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => deactivateLink.mutate(link.id)}
+                      title="Desativar"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Danger zone */}
       <Card className="p-6 border-destructive/30">
