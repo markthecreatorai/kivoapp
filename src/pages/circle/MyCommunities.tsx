@@ -79,9 +79,28 @@ export default function MyCommunities() {
 
   const createCommunity = useMutation({
     mutationFn: async () => {
-      if (!user || !currentWorkspace) throw new Error("Missing");
+      if (!user) throw new Error("Usuário não autenticado");
       const slug = newSlug || slugify(newName);
       if (!slug) throw new Error("Informe um nome válido");
+
+      // Resolve workspace — create one on the fly if user doesn't have one yet
+      let workspaceId = currentWorkspace?.id;
+      if (!workspaceId) {
+        const wsName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Meu Workspace";
+        const wsSlug = slugify(wsName) + "-" + Date.now().toString(36);
+        const { data: ws, error: wsErr } = await supabase
+          .from("workspaces")
+          .insert({ name: wsName, slug: wsSlug, owner_id: user.id })
+          .select()
+          .single();
+        if (wsErr) throw new Error("Erro ao preparar workspace: " + wsErr.message);
+        workspaceId = ws.id;
+        await supabase.from("workspace_members").insert({
+          workspace_id: workspaceId,
+          user_id: user.id,
+          role: "OWNER",
+        });
+      }
 
       // Check slug uniqueness
       const { data: existing } = await supabase
@@ -95,7 +114,7 @@ export default function MyCommunities() {
       const { data: community, error } = await supabase
         .from("communities")
         .insert({
-          workspace_id: currentWorkspace.id,
+          workspace_id: workspaceId,
           name: newName.trim(),
           slug,
           description: newDescription.trim() || null,
@@ -107,7 +126,7 @@ export default function MyCommunities() {
         .single();
       if (error) throw error;
 
-      // Add creator as OWNER
+      // Add creator as OWNER member
       await supabase.from("community_members").insert({
         community_id: community.id,
         user_id: user.id,
@@ -121,12 +140,14 @@ export default function MyCommunities() {
     onSuccess: (community) => {
       toast.success(`Comunidade "${community.name}" criada!`);
       queryClient.invalidateQueries({ queryKey: ["my-communities"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
       setShowCreateModal(false);
       setNewName(""); setNewDescription(""); setNewSlug(""); setSlugEdited(false);
-      navigate(`/c/${community.slug}/admin`);
+      navigate(`/c/${community.slug}/about`);
     },
     onError: (err: any) => toast.error(err.message || "Erro ao criar comunidade"),
   });
+
 
   const handleNameChange = (val: string) => {
     setNewName(val);
