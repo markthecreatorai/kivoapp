@@ -326,7 +326,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border/50">
       {/* ── Header: Logo ── */}
       <SidebarHeader className="border-b border-border/30 bg-sidebar px-4 py-4">
-        <div className={cn(
+        <Link to="/dashboard" className={cn(
           "flex items-center transition-all duration-200",
           collapsed ? "justify-center" : "gap-2"
         )}>
@@ -338,7 +338,7 @@ export function AppSidebar() {
               collapsed ? "h-6 w-6" : "h-7"
             )}
           />
-        </div>
+        </Link>
         {!collapsed && currentWorkspace && (
           <div className="mt-3 px-0">
             <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
