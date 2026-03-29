@@ -28,7 +28,7 @@ export default function AdminAffiliatesTab({ community }: Props) {
     mutationFn: async () => {
       const { error } = await supabase
         .from("communities")
-        .update({ affiliate_commission_pct: selected })
+        .update({ affiliate_commission_pct: selected } as any)
         .eq("id", community.id);
       if (error) throw error;
     },

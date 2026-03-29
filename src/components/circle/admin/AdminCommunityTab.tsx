@@ -44,7 +44,7 @@ export default function AdminCommunityTab({ community }: Props) {
     mutationFn: async () => {
       const { error } = await supabase
         .from("communities")
-        .update({ tabs_config: tabs, community_rules: rules })
+        .update({ tabs_config: tabs, community_rules: rules } as any)
         .eq("id", community.id);
       if (error) throw error;
     },
