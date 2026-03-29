@@ -138,7 +138,7 @@ export default function OnboardingWizard() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
-              <img src="/src/assets/kivo-logo.svg" alt="Kivo" className="h-8" />
+              <img src={kivoLogo} alt="Kivo" className="h-8" />
               <span className="text-xl font-bold text-primary">Kivo</span>
             </div>
             <span className="text-sm text-muted-foreground">
