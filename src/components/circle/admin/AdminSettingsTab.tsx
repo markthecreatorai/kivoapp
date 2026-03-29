@@ -34,6 +34,9 @@ export default function AdminSettingsTab({ community, member }: Props) {
     name: community.name,
     description: community.description || "",
     long_description: community.long_description || "",
+    about_video_url: community.about_video_url || "",
+    price_cents: community.price_cents ?? 0,
+    billing_period: community.billing_period || "monthly",
     access_type: community.access_type,
     linked_product_id: community.linked_product_id || "",
     require_approval: community.require_approval,
@@ -114,6 +117,11 @@ export default function AdminSettingsTab({ community, member }: Props) {
           <Label>Descrição longa</Label>
           <Textarea value={settings.long_description} onChange={(e) => set("long_description", e.target.value)} rows={4} />
         </div>
+        <div>
+          <Label>Vídeo de apresentação (URL)</Label>
+          <Input value={settings.about_video_url} onChange={(e) => set("about_video_url", e.target.value)} placeholder="https://youtube.com/..." />
+          <p className="text-xs text-muted-foreground mt-1">Cole o link do YouTube ou Vimeo para exibir na landing page</p>
+        </div>
 
         {/* Image uploads */}
         <div className="grid grid-cols-2 gap-4">
@@ -155,6 +163,29 @@ export default function AdminSettingsTab({ community, member }: Props) {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Pricing */}
+        {settings.access_type === "PAID_SUBSCRIPTION" && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Preço (centavos)</Label>
+              <Input type="number" value={settings.price_cents} onChange={(e) => set("price_cents", +e.target.value || 0)} placeholder="4990" />
+              <p className="text-xs text-muted-foreground mt-1">Ex: 4990 = R$ 49,90</p>
+            </div>
+            <div>
+              <Label>Período de cobrança</Label>
+              <Select value={settings.billing_period} onValueChange={(v) => set("billing_period", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="quarterly">Trimestral</SelectItem>
+                  <SelectItem value="yearly">Anual</SelectItem>
+                  <SelectItem value="one_time">Pagamento único</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
 
         {(settings.access_type === "FREE_WITH_PRODUCT" || settings.access_type === "PAID_SUBSCRIPTION") && (
           <div>
