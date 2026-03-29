@@ -224,7 +224,7 @@ const App = () => (
 
                 {/* ===== CIRCLE ROUTES (slug-based, Skool-style) ===== */}
                 {/* Hub: all communities the user belongs to */}
-                <Route path="/circles" element={<ProtectedRoute><MyCommunities /></ProtectedRoute>} />
+                <Route path="/circles" element={<ProtectedRoute requireWorkspace={false}><MyCommunities /></ProtectedRoute>} />
 
                 {/* Legacy redirect: /circle → /circles */}
                 <Route path="/circle" element={<Navigate to="/circles" replace />} />
@@ -233,16 +233,16 @@ const App = () => (
                 <Route path="/c/:slug" element={<CommunityLanding />} />
 
                 {/* Authenticated circle pages — all scoped to /c/:slug/* */}
-                <Route path="/c/:slug/feed" element={<ProtectedRoute><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/spaces/:spaceSlug" element={<ProtectedRoute><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/members" element={<ProtectedRoute><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/leaderboard" element={<ProtectedRoute><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/events" element={<ProtectedRoute><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/classroom" element={<ProtectedRoute><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/admin" element={<ProtectedRoute><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/messages" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/post/:id" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/settings" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/feed" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/spaces/:spaceSlug" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/members" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/events" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/classroom" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/admin" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
 
                 {/* Legacy /join/:slug → /c/:slug redirect */}
                 <Route path="/join/:slug" element={<Navigate to="/c/:slug" replace />} />

@@ -240,9 +240,9 @@ export default function PublicStorefront() {
       const { data: sf, error: sfErr } = await supabase
         .from("storefronts")
         .select("id, slug, title, bio, avatar_url, social_links, workspace_id")
-        .eq("slug", slug)
-        .eq("is_published", true)
-        .single();
+        .ilike("slug", slug)
+        .limit(1)
+        .maybeSingle();
 
       if (sfErr || !sf) {
         setNotFound(true);

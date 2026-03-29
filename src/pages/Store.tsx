@@ -55,7 +55,7 @@ export default function Store() {
   });
 
   const storeUrl = storefront?.slug
-    ? `${window.location.origin}/s/${storefront.slug}`
+    ? `${window.location.origin}/${storefront.slug}`
     : null;
 
   const copyLink = () => {

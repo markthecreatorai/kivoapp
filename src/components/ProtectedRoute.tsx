@@ -15,7 +15,7 @@ export default function ProtectedRoute({
   requireEmailVerification = true,
 }: ProtectedRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
+  const { currentWorkspace, loading: workspaceLoading, fetchError } = useWorkspace();
   const location = useLocation();
 
   // While auth/workspace loads, render nothing — the persistent layout
@@ -35,8 +35,12 @@ export default function ProtectedRoute({
     return <Navigate to="/verify-email" replace />;
   }
 
-  // Redirect to onboarding if user doesn't have a workspace and workspace is required
-  if (requireWorkspace && !currentWorkspace) {
+  // Only redirect to onboarding if:
+  // 1. A workspace IS required for this route
+  // 2. Workspace finished loading (not still fetching)
+  // 3. No fetch error occurred (avoid false redirect when RLS blocks the query)
+  // 4. There's genuinely no workspace
+  if (requireWorkspace && !workspaceLoading && !fetchError && !currentWorkspace) {
     return <Navigate to="/onboarding" replace />;
   }
 

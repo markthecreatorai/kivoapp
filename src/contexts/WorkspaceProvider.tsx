@@ -27,6 +27,7 @@ interface WorkspaceContextType {
   userWorkspaces: Workspace[];
   workspaceMembership: WorkspaceMember | null;
   loading: boolean;
+  fetchError: boolean;
   switchWorkspace: (workspaceId: string) => Promise<void>;
   refreshWorkspaces: () => Promise<void>;
   createWorkspace: (name: string) => Promise<Workspace | null>;
@@ -43,6 +44,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [userWorkspaces, setUserWorkspaces] = useState<Workspace[]>([]);
   const [workspaceMembership, setWorkspaceMembership] = useState<WorkspaceMember | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const { user, session, loading: authLoading } = useAuth();
   // Keep a ref to workspaces so switchWorkspace always sees the latest value
   const workspacesRef = useRef<Workspace[]>([]);
@@ -68,11 +70,13 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
       if (error) {
         console.error("Error fetching workspaces:", error);
+        setFetchError(true);
         setUserWorkspaces([]);
         workspacesRef.current = [];
         setCurrentWorkspace(null);
         setWorkspaceMembership(null);
       } else if (memberships && memberships.length > 0) {
+        setFetchError(false);
         const workspaces = memberships.map(m => m.workspaces).filter(Boolean);
         setUserWorkspaces(workspaces);
         workspacesRef.current = workspaces;
@@ -205,6 +209,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       userWorkspaces,
       workspaceMembership,
       loading,
+      fetchError,
       switchWorkspace,
       refreshWorkspaces,
       createWorkspace,
