@@ -1111,7 +1111,9 @@ export type Database = {
       }
       circle_courses: {
         Row: {
+          access_rule: string
           access_type: string
+          billing_period: string
           community_id: string
           cover_url: string | null
           created_at: string
@@ -1120,10 +1122,13 @@ export type Database = {
           is_published: boolean
           name: string
           position: number
+          price_cents: number
           updated_at: string
         }
         Insert: {
+          access_rule?: string
           access_type?: string
+          billing_period?: string
           community_id: string
           cover_url?: string | null
           created_at?: string
@@ -1132,10 +1137,13 @@ export type Database = {
           is_published?: boolean
           name: string
           position?: number
+          price_cents?: number
           updated_at?: string
         }
         Update: {
+          access_rule?: string
           access_type?: string
+          billing_period?: string
           community_id?: string
           cover_url?: string | null
           created_at?: string
@@ -1144,6 +1152,7 @@ export type Database = {
           is_published?: boolean
           name?: string
           position?: number
+          price_cents?: number
           updated_at?: string
         }
         Relationships: [
