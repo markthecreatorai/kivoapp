@@ -66,7 +66,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
       }
 
       // 3. Add to community_members
-      const { error: memberError } = await supabase.from("community_members").insert({
+      const { error: memberError } = await (supabase as any).from("community_members").insert({
         community_id: community.id,
         user_id: authData.user.id,
         role: "MEMBER",
