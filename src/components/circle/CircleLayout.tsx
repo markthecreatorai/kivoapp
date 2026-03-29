@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
+import CircleAdminModal from "@/components/circle/admin/CircleAdminModal";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,6 +82,8 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   const { currentWorkspace } = useWorkspace();
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   const tabItems = slug ? getTabItems(slug) : [];
 
@@ -524,18 +527,18 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
             );
           })}
           {isAdmin && (
-            <Link
-              to={`/c/${slug}/admin`}
+            <button
+              onClick={() => setShowAdminModal(true)}
               className={cn(
                 "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ml-auto",
-                isActive(`/c/${slug}/admin`)
+                showAdminModal
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
               )}
             >
               <ShieldX className="h-4 w-4" />
               Admin
-            </Link>
+            </button>
           )}
         </nav>
       </header>
@@ -551,7 +554,11 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
           {!location.pathname.startsWith("/circle/classroom") && (
             <div className="hidden lg:block w-[340px] shrink-0">
               <div className="sticky top-[108px]">
-                <CircleRightSidebarSkool community={community} member={member} />
+                <CircleRightSidebarSkool
+                community={community}
+                member={member}
+                onOpenAdmin={() => setShowAdminModal(true)}
+              />
               </div>
             </div>
           )}
@@ -585,6 +592,15 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
           })}
         </nav>
       </div>
+
+      {/* ── Admin Modal ── */}
+      {showAdminModal && community && member && (
+        <CircleAdminModal
+          community={community}
+          member={member}
+          onClose={() => setShowAdminModal(false)}
+        />
+      )}
     </div>
   );
 }

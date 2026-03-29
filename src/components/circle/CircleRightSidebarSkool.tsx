@@ -11,9 +11,10 @@ import { toast } from "sonner";
 interface Props {
   community: any;
   member: any;
+  onOpenAdmin?: () => void;
 }
 
-export default function CircleRightSidebarSkool({ community, member }: Props) {
+export default function CircleRightSidebarSkool({ community, member, onOpenAdmin }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
@@ -195,7 +196,7 @@ export default function CircleRightSidebarSkool({ community, member }: Props) {
             /* Admin: Settings + Invite */
             <div className="space-y-2">
               <button
-                onClick={() => navigate(`/c/${slug}/admin`)}
+                onClick={() => onOpenAdmin ? onOpenAdmin() : navigate(`/c/${slug}/admin`)}
                 className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-semibold text-sm border border-border bg-card hover:bg-muted transition-colors text-foreground"
                 id="sidebar-settings-btn"
               >
