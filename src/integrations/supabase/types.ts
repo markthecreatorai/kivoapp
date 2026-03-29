@@ -1492,9 +1492,11 @@ export type Database = {
       }
       communities: {
         Row: {
+          about_video_url: string | null
           access_type: Database["public"]["Enums"]["community_access_type"]
           allow_member_events: boolean
           allow_member_posts: boolean
+          billing_period: string
           category: string | null
           cover_image_url: string | null
           created_at: string
@@ -1513,15 +1515,18 @@ export type Database = {
           points_per_like_received: number
           points_per_post: number
           post_count: number
+          price_cents: number
           require_approval: boolean
           slug: string
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          about_video_url?: string | null
           access_type?: Database["public"]["Enums"]["community_access_type"]
           allow_member_events?: boolean
           allow_member_posts?: boolean
+          billing_period?: string
           category?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -1540,15 +1545,18 @@ export type Database = {
           points_per_like_received?: number
           points_per_post?: number
           post_count?: number
+          price_cents?: number
           require_approval?: boolean
           slug: string
           updated_at?: string
           workspace_id: string
         }
         Update: {
+          about_video_url?: string | null
           access_type?: Database["public"]["Enums"]["community_access_type"]
           allow_member_events?: boolean
           allow_member_posts?: boolean
+          billing_period?: string
           category?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -1567,6 +1575,7 @@ export type Database = {
           points_per_like_received?: number
           points_per_post?: number
           post_count?: number
+          price_cents?: number
           require_approval?: boolean
           slug?: string
           updated_at?: string
