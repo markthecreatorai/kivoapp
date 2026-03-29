@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Users, MessageSquare, Trophy, BookOpen, Calendar,
-  Loader2, Lock, Eye, EyeOff, ArrowRight, CheckCircle,
-  CreditCard, Globe, Shield, Sparkles, Play, X,
-  UserCheck, MapPin, BarChart3,
+  Loader2, Lock, Eye, EyeOff, ArrowRight,
+  CreditCard, Globe, Shield, Sparkles, Play,
+  UserCheck, CheckCircle, Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -22,25 +22,24 @@ function formatPrice(price: number, period?: string) {
   return period === "annual" ? `${fmt}/ano` : `${fmt}/mês`;
 }
 
-// Detect YouTube/Vimeo URL and return embed URL
 function getEmbedUrl(url: string): string | null {
   if (!url) return null;
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=0&rel=0`;
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  return url; // raw iframe src
+  return url;
 }
 
 type TabKey = "about" | "community" | "classroom" | "events" | "members" | "leaderboard";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "community", label: "Comunidade" },
-  { key: "classroom", label: "Classroom" },
-  { key: "events", label: "Calendário" },
-  { key: "members", label: "Membros" },
-  { key: "leaderboard", label: "Leaderboard" },
-  { key: "about", label: "Sobre" },
+const TABS: { key: TabKey; label: string; icon: React.ReactNode; locked: boolean }[] = [
+  { key: "about", label: "Sobre", icon: <Star className="h-3.5 w-3.5" />, locked: false },
+  { key: "community", label: "Comunidade", icon: <MessageSquare className="h-3.5 w-3.5" />, locked: true },
+  { key: "classroom", label: "Classroom", icon: <BookOpen className="h-3.5 w-3.5" />, locked: true },
+  { key: "events", label: "Eventos", icon: <Calendar className="h-3.5 w-3.5" />, locked: true },
+  { key: "members", label: "Membros", icon: <Users className="h-3.5 w-3.5" />, locked: true },
+  { key: "leaderboard", label: "Ranking", icon: <Trophy className="h-3.5 w-3.5" />, locked: true },
 ];
 
 export default function CommunityLanding() {
@@ -61,14 +60,12 @@ export default function CommunityLanding() {
     inviteCode
   );
 
-  // Fetch community
   const { data: community, isLoading: communityLoading, error } = useQuery({
     queryKey: ["public-community", slug],
     queryFn: fetchCommunity,
     enabled: !!slug,
   });
 
-  // Recent members (avatars)
   const { data: recentMembers = [] } = useQuery({
     queryKey: ["public-recent-members", community?.id],
     queryFn: async () => {
@@ -84,7 +81,6 @@ export default function CommunityLanding() {
     enabled: !!community?.id,
   });
 
-  // Admin count
   const { data: adminCount = 0 } = useQuery({
     queryKey: ["public-admin-count", community?.id],
     queryFn: async () => {
@@ -99,7 +95,6 @@ export default function CommunityLanding() {
     enabled: !!community?.id,
   });
 
-  // Check if already a member
   const { data: existingMember } = useQuery({
     queryKey: ["member-exists", community?.id, user?.id],
     queryFn: async () => {
@@ -115,7 +110,7 @@ export default function CommunityLanding() {
     enabled: !!user && !!community,
   });
 
-  // Already active member → go to feed
+  // Already active member → go directly to feed
   useEffect(() => {
     if (existingMember?.status === "ACTIVE" && community?.slug) {
       navigate(`/c/${community.slug}/feed`, { replace: true });
@@ -135,7 +130,6 @@ export default function CommunityLanding() {
   const handleLoggedUserJoin = async () => {
     if (!user || !community) return;
     if (isPaid && !inviteCode) {
-      // TODO: redirect to community-specific checkout
       toast.info("Checkout em breve disponível.");
       return;
     }
@@ -143,10 +137,18 @@ export default function CommunityLanding() {
     setShowJoinModal(false);
   };
 
+  const handleJoinClick = () => {
+    if (existingMember) {
+      navigate(`/c/${slug}/feed`);
+      return;
+    }
+    setShowJoinModal(true);
+  };
+
   if (communityLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -173,6 +175,7 @@ export default function CommunityLanding() {
   const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null;
   const requireApproval = community.require_approval && !inviteCode;
   const isAlreadyMember = existingMember != null;
+  const memberCount = community.member_count || 0;
 
   const joinBtnLabel = isAlreadyMember
     ? "Ir para a Comunidade"
@@ -182,21 +185,14 @@ export default function CommunityLanding() {
         ? "Solicitar Entrada"
         : "Entrar na Comunidade";
 
-  const handleJoinClick = () => {
-    if (isAlreadyMember) {
-      navigate(`/c/${slug}/feed`);
-      return;
-    }
-    setShowJoinModal(true);
-  };
-
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))]">
-      {/* ── Top Navbar ─────────────────────────────── */}
-      <div className="sticky top-0 z-40 bg-background border-b border-border/60">
+    <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#0f0f0f]">
+
+      {/* ── Top Navbar (Skool-style: thin, clean) ── */}
+      <div className="sticky top-0 z-40 bg-white dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-4">
           {/* Brand row */}
-          <div className="flex items-center justify-between h-14">
+          <div className="flex items-center justify-between h-13 py-2">
             <div className="flex items-center gap-2.5">
               {community.icon_url ? (
                 <img src={community.icon_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
@@ -205,188 +201,241 @@ export default function CommunityLanding() {
                   <MessageSquare className="h-4 w-4 text-primary" />
                 </div>
               )}
-              <span className="font-bold text-sm text-foreground truncate max-w-[160px] sm:max-w-none">
+              <span className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate max-w-[160px] sm:max-w-xs">
                 {community.name}
               </span>
             </div>
+
             <div className="flex items-center gap-2">
-              {user ? (
-                <Button size="sm" onClick={handleJoinClick} className="h-8 px-4 text-xs font-semibold" id="join-btn-topbar">
-                  {joinBtnLabel}
+              {!user && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-3 text-xs text-gray-600 dark:text-gray-400"
+                  onClick={() => navigate(`/login?redirect=/c/${slug}`)}
+                >
+                  Entrar
                 </Button>
-              ) : (
-                <>
-                  <Button size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => navigate(`/member/login?redirect=/c/${slug}`)}>
-                    Entrar
-                  </Button>
-                  <Button size="sm" className="h-8 px-4 text-xs font-semibold" onClick={() => setShowJoinModal(true)} id="join-btn-topbar">
-                    {isPaid ? `Assinar` : "Participar Grátis"}
-                  </Button>
-                </>
               )}
+              <Button
+                size="sm"
+                className="h-8 px-4 text-xs font-semibold bg-[#f5c518] hover:bg-[#e6b800] text-black border-0"
+                onClick={handleJoinClick}
+                id="join-btn-topbar"
+              >
+                {isAlreadyMember ? "Ir para Comunidade" : isPaid ? `Assinar` : "Participar Grátis"}
+              </Button>
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Tab navigation */}
           <nav className="flex items-center gap-0 overflow-x-auto scrollbar-none -mb-px">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0",
+                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0",
                   activeTab === tab.key
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+                    ? "border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 )}
               >
+                {tab.icon}
                 {tab.label}
+                {tab.locked && !isAlreadyMember && (
+                  <Lock className="h-3 w-3 text-gray-400 ml-0.5" />
+                )}
               </button>
             ))}
           </nav>
         </div>
       </div>
 
-      {/* ── Main Layout ─────────────────────────────── */}
+      {/* ── Main Layout ── */}
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="grid md:grid-cols-[1fr_300px] gap-6 items-start">
 
-          {/* ── Left: Content area ── */}
+          {/* ── Left Content ── */}
           <div className="space-y-5">
-            {/* Community name heading (mobile only) */}
-            <h1 className="text-xl font-bold text-foreground md:hidden">{community.name}</h1>
 
-            {/* Video / Cover media */}
-            {embedUrl ? (
-              <div className="rounded-xl overflow-hidden bg-black aspect-video shadow">
-                {videoPlaying ? (
-                  <iframe
-                    src={embedUrl + "&autoplay=1"}
-                    className="w-full h-full"
-                    allowFullScreen
-                    allow="autoplay; fullscreen"
-                    title={community.name}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setVideoPlaying(true)}
-                    className="relative w-full h-full group"
-                  >
-                    {community.cover_image_url ? (
-                      <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
+            {/* About tab content */}
+            {activeTab === "about" && (
+              <>
+                {/* Video / Cover media */}
+                {embedUrl ? (
+                  <div className="rounded-xl overflow-hidden bg-black aspect-video shadow-sm">
+                    {videoPlaying ? (
+                      <iframe
+                        src={embedUrl + "&autoplay=1"}
+                        className="w-full h-full"
+                        allowFullScreen
+                        allow="autoplay; fullscreen"
+                        title={community.name}
+                      />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-primary/40 to-muted flex items-center justify-center">
-                        <MessageSquare className="h-16 w-16 text-primary/30" />
-                      </div>
+                      <button
+                        onClick={() => setVideoPlaying(true)}
+                        className="relative w-full h-full group"
+                      >
+                        {community.cover_image_url ? (
+                          <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                            <MessageSquare className="h-16 w-16 text-white/20" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/25 flex items-center justify-center group-hover:bg-black/35 transition-colors">
+                          <div className="h-16 w-16 rounded-full bg-white/95 flex items-center justify-center shadow-2xl group-hover:scale-105 transition-transform">
+                            <Play className="h-7 w-7 text-gray-900 fill-gray-900 ml-1" />
+                          </div>
+                        </div>
+                      </button>
                     )}
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                      <div className="h-16 w-16 rounded-full bg-white/90 flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform">
-                        <Play className="h-7 w-7 text-foreground fill-foreground ml-1" />
-                      </div>
-                    </div>
-                  </button>
-                )}
-              </div>
-            ) : community.cover_image_url ? (
-              <div className="rounded-xl overflow-hidden aspect-video shadow">
-                <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
-              </div>
-            ) : null}
+                  </div>
+                ) : community.cover_image_url ? (
+                  <div className="rounded-xl overflow-hidden aspect-video shadow-sm">
+                    <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
+                  </div>
+                ) : null}
 
-            {/* Stats row */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Globe className="h-4 w-4" />
-                {community.access_type === "OPEN" ? "Público" : "Privado"}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                {(community.member_count || 0).toLocaleString("pt-BR")} membros
-              </span>
-              <span className="flex items-center gap-1.5">
-                {isPaid ? (
-                  <><CreditCard className="h-4 w-4 text-amber-500" /><span className="text-amber-600 font-medium">{formatPrice(price!, billingPeriod)}</span></>
-                ) : (
-                  <><CheckCircle className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600 font-medium">Gratuito</span></>
-                )}
-              </span>
-            </div>
+                {/* Stats row */}
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1.5">
+                    <Globe className="h-4 w-4" />
+                    {community.access_type === "OPEN" ? "Público" : "Privado"}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4" />
+                    {memberCount.toLocaleString("pt-BR")} membros
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    {isPaid ? (
+                      <><CreditCard className="h-4 w-4 text-amber-500" /><span className="text-amber-600 font-medium">{formatPrice(price!, billingPeriod)}</span></>
+                    ) : (
+                      <><CheckCircle className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600 font-medium">Gratuito</span></>
+                    )}
+                  </span>
+                  {(community as any).owner_name && (
+                    <span className="flex items-center gap-1.5">
+                      <UserCheck className="h-4 w-4" />
+                      Por {(community as any).owner_name}
+                    </span>
+                  )}
+                </div>
 
-            {/* Description / About content */}
-            {community.description && (
-              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed whitespace-pre-line">
-                {community.description}
-              </div>
+                {/* Description */}
+                {community.description && (
+                  <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-800">
+                    <p className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line text-sm">
+                      {community.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* CTA Block (mobile) */}
+                <div className="md:hidden bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+                  <Button
+                    size="lg"
+                    className="w-full font-bold text-sm h-11 bg-[#f5c518] hover:bg-[#e6b800] text-black border-0"
+                    onClick={handleJoinClick}
+                    id="join-btn-mobile"
+                  >
+                    {joinBtnLabel}
+                  </Button>
+                  <div className="flex items-center justify-center gap-4 mt-2.5 text-[11px] text-gray-400">
+                    <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-emerald-500" />Seguro</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-emerald-500" />Sem compromisso</span>
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* Tabs that are locked — previews */}
+            {/* Locked tabs */}
             {activeTab !== "about" && (
-              <div className="rounded-xl border border-border bg-card p-8 text-center space-y-4">
-                <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center mx-auto">
-                  <Lock className="h-6 w-6 text-muted-foreground/50" />
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-gray-800 p-10 text-center space-y-4">
+                <div className="h-14 w-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto">
+                  <Lock className="h-6 w-6 text-gray-400" />
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">Conteúdo exclusivo para membros</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Entre na comunidade para acessar o {TABS.find(t => t.key === activeTab)?.label}.
+                  <p className="font-semibold text-gray-900 dark:text-gray-100">Conteúdo exclusivo para membros</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Entre na comunidade para acessar{" "}
+                    <span className="font-medium">{TABS.find(t => t.key === activeTab)?.label}</span>.
                   </p>
                 </div>
-                <Button onClick={() => setShowJoinModal(true)} className="gap-2">
-                  <UserCheck className="h-4 w-4" /> {isPaid ? "Assinar Comunidade" : "Entrar Gratuitamente"}
+                <Button
+                  onClick={handleJoinClick}
+                  className="bg-[#f5c518] hover:bg-[#e6b800] text-black border-0 font-semibold gap-2"
+                >
+                  <UserCheck className="h-4 w-4" />
+                  {isPaid ? "Assinar Comunidade" : "Entrar Gratuitamente"}
                 </Button>
               </div>
             )}
           </div>
 
-          {/* ── Right Sidebar ── */}
-          <div className="space-y-4 md:sticky md:top-[105px]">
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-              {/* Community header in card */}
+          {/* ── Right Sidebar (Skool-style card) ── */}
+          <div className="space-y-4 md:sticky md:top-[106px]">
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+
+              {/* Cover banner */}
+              {community.cover_image_url && !embedUrl && (
+                <div className="h-24 bg-gradient-to-br from-primary/30 to-primary/10 overflow-hidden">
+                  <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+              {!community.cover_image_url && (
+                <div className="h-20 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/5" />
+              )}
+
+              {/* Community info */}
               <div className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   {community.icon_url ? (
-                    <img src={community.icon_url} alt="" className="h-14 w-14 rounded-xl object-cover shrink-0" />
+                    <img src={community.icon_url} alt="" className="h-14 w-14 rounded-xl object-cover shrink-0 -mt-8 ring-4 ring-white dark:ring-[#1a1a1a] shadow" />
                   ) : (
-                    <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <MessageSquare className="h-7 w-7 text-primary" />
+                    <div className="h-14 w-14 rounded-xl bg-primary flex items-center justify-center shrink-0 -mt-8 ring-4 ring-white dark:ring-[#1a1a1a] shadow">
+                      <MessageSquare className="h-7 w-7 text-white" />
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <p className="font-bold text-sm text-foreground">{community.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">kivo.com/c/{community.slug}</p>
-                  </div>
+                </div>
+
+                <div>
+                  <p className="font-bold text-gray-900 dark:text-gray-100">{community.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">kivo.com/c/{community.slug}</p>
                 </div>
 
                 {community.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-3 leading-relaxed">
                     {community.description}
                   </p>
                 )}
               </div>
 
               {/* Stats */}
-              <div className="border-t border-border px-4 py-3 grid grid-cols-3 gap-2 text-center">
+              <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-sm font-bold text-foreground">{(community.member_count || 0).toLocaleString("pt-BR")}</p>
-                  <p className="text-[10px] text-muted-foreground">Membros</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{memberCount.toLocaleString("pt-BR")}</p>
+                  <p className="text-[10px] text-gray-400">Membros</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{(community as any).online_count || "—"}</p>
-                  <p className="text-[10px] text-muted-foreground">Online</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{(community as any).online_count ?? "—"}</p>
+                  <p className="text-[10px] text-gray-400">Online</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{adminCount}</p>
-                  <p className="text-[10px] text-muted-foreground">Admins</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{adminCount}</p>
+                  <p className="text-[10px] text-gray-400">Admins</p>
                 </div>
               </div>
 
               {/* Recent member avatars */}
               {recentMembers.length > 0 && (
-                <div className="px-4 pb-3 flex items-center gap-1">
+                <div className="px-4 pb-3 flex items-center gap-1 flex-wrap">
                   {recentMembers.slice(0, 7).map((m: any, i: number) => (
                     <div
                       key={i}
-                      className="h-7 w-7 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary -ml-1 first:ml-0 shrink-0"
+                      className="h-7 w-7 rounded-full bg-primary/10 border-2 border-white dark:border-[#1a1a1a] flex items-center justify-center text-[10px] font-bold text-primary -ml-1.5 first:ml-0 shrink-0 shadow-sm"
                       style={{ zIndex: 7 - i }}
                     >
                       {m.avatar_url ? (
@@ -396,9 +445,9 @@ export default function CommunityLanding() {
                       )}
                     </div>
                   ))}
-                  {(community.member_count || 0) > 7 && (
-                    <span className="text-[10px] text-muted-foreground ml-1">
-                      +{((community.member_count || 0) - 7).toLocaleString("pt-BR")}
+                  {memberCount > 7 && (
+                    <span className="text-[10px] text-gray-400 ml-1">
+                      +{(memberCount - 7).toLocaleString("pt-BR")}
                     </span>
                   )}
                 </div>
@@ -415,8 +464,8 @@ export default function CommunityLanding() {
               {/* Price block */}
               {isPaid && !inviteCode && (
                 <div className="mx-4 mb-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
-                  <p className="text-xl font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Cancele a qualquer momento</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{formatPrice(price!, billingPeriod)}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Cancele a qualquer momento</p>
                 </div>
               )}
 
@@ -424,7 +473,7 @@ export default function CommunityLanding() {
               <div className="px-4 pb-4">
                 <Button
                   size="lg"
-                  className="w-full font-bold text-sm h-11 gap-2"
+                  className="w-full font-bold text-sm h-11 gap-2 bg-[#f5c518] hover:bg-[#e6b800] text-black border-0"
                   onClick={handleJoinClick}
                   id="join-btn-sidebar"
                 >
@@ -435,23 +484,23 @@ export default function CommunityLanding() {
                       : <><UserCheck className="h-4 w-4" /> Entrar na Comunidade</>
                   }
                 </Button>
-                <div className="flex items-center justify-center gap-3 mt-2 text-[10px] text-muted-foreground">
+                <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-gray-400">
                   <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-emerald-500" />Seguro</span>
                   <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-emerald-500" />Sem compromisso</span>
                 </div>
               </div>
 
               {/* Powered by */}
-              <div className="border-t border-border px-4 py-2.5 flex items-center justify-center gap-1.5">
-                <span className="text-[10px] text-muted-foreground">Desenvolvido por</span>
-                <span className="text-[10px] font-bold text-foreground">Kivo</span>
+              <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2.5 flex items-center justify-center gap-1.5">
+                <span className="text-[10px] text-gray-400">Desenvolvido por</span>
+                <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Kivo</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── JOIN MODAL ─────────────────────────────── */}
+      {/* ── JOIN MODAL ── */}
       <Dialog open={showJoinModal} onOpenChange={setShowJoinModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -479,7 +528,7 @@ export default function CommunityLanding() {
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Não é você?{" "}
-                <button onClick={() => { setShowJoinModal(false); navigate(`/member/login?redirect=/c/${slug}`); }} className="text-primary hover:underline">
+                <button onClick={() => { setShowJoinModal(false); navigate(`/login?redirect=/c/${slug}`); }} className="text-primary hover:underline">
                   Trocar conta
                 </button>
               </p>
@@ -532,7 +581,7 @@ export default function CommunityLanding() {
 
               <p className="text-center text-xs text-muted-foreground">
                 Já tem conta?{" "}
-                <button type="button" onClick={() => { setShowJoinModal(false); navigate(`/member/login?redirect=/c/${slug}`); }}
+                <button type="button" onClick={() => { setShowJoinModal(false); navigate(`/login?redirect=/c/${slug}`); }}
                   className="text-primary hover:underline">
                   Fazer login
                 </button>
