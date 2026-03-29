@@ -84,6 +84,7 @@ const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 const CircleMessages = lazy(() => import("./pages/circle/CircleMessages"));
 const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
 const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
+const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
 
 // Public community pages
 const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
@@ -243,6 +244,7 @@ const App = () => (
                 <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/about" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleAbout /></CircleLayout></ProtectedRoute>} />
 
                 {/* Legacy /join/:slug → /c/:slug redirect */}
                 <Route path="/join/:slug" element={<Navigate to="/c/:slug" replace />} />

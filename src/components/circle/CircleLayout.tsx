@@ -26,6 +26,7 @@ import {
   Mail,
   SlidersHorizontal,
   LayoutGrid,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -69,6 +70,7 @@ function getTabItems(slug: string) {
     { label: "Membros", icon: Users, path: `/c/${slug}/members` },
     { label: "Ranking", icon: Trophy, path: `/c/${slug}/leaderboard` },
     { label: "Mensagens", icon: Mail, path: `/c/${slug}/messages` },
+    { label: "Sobre", icon: Star, path: `/c/${slug}/about` },
   ];
 }
 
