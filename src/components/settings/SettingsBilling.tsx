@@ -37,7 +37,7 @@ export function SettingsBilling() {
               Cancelar Assinatura
             </Button>
             <Button asChild>
-              <a href={`/#pricing?source_ui=settings_billing&plan=creator`} rel="nofollow">
+              <a href={`/billing/upgrade-flow?source_ui=settings_billing&plan=creator`} rel="nofollow">
                 Trocar Plano
               </a>
             </Button>

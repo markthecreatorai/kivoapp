@@ -22,7 +22,7 @@ export function UpgradeModal({ open, onOpenChange, currentPlan, feature }: Upgra
 
   if (!upgradeTo) return null;
 
-  const upgradeUrl = `/#pricing?source_ui=locked_features_modal&plan=${PLAN_TO_CODE[upgradeTo]}&feature=${encodeURIComponent(feature)}`;
+  const upgradeUrl = `/billing/upgrade-flow?source_ui=locked_features_modal&plan=${PLAN_TO_CODE[upgradeTo]}&feature=${encodeURIComponent(feature)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
