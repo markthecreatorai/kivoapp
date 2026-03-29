@@ -83,9 +83,10 @@ const CircleAdmin = lazy(() => import("./pages/circle/CircleAdmin"));
 const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 const CircleMessages = lazy(() => import("./pages/circle/CircleMessages"));
 const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
+const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
 
 // Public community pages
-const JoinCommunity = lazy(() => import("./pages/JoinCommunity"));
+const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 
 const queryClient = new QueryClient({
@@ -221,22 +222,33 @@ const App = () => (
                 <Route path="/products/:id/course-builder" element={<ProtectedRoute><CourseBuilder /></ProtectedRoute>} />
                 <Route path="/store/editor" element={<ProtectedRoute><StorefrontEditor /></ProtectedRoute>} />
 
-                {/* Circle routes */}
-                <Route path="/circle" element={<ProtectedRoute><CircleLayout><Navigate to="/circle/feed" replace /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/feed" element={<ProtectedRoute><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/spaces/:slug" element={<ProtectedRoute><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/members" element={<ProtectedRoute><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/leaderboard" element={<ProtectedRoute><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/events" element={<ProtectedRoute><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/classroom" element={<ProtectedRoute><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/admin" element={<ProtectedRoute><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/messages" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/post/:id" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circle/settings" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
+                {/* ===== CIRCLE ROUTES (slug-based, Skool-style) ===== */}
+                {/* Hub: all communities the user belongs to */}
+                <Route path="/circles" element={<ProtectedRoute><MyCommunities /></ProtectedRoute>} />
+
+                {/* Legacy redirect: /circle → /circles */}
+                <Route path="/circle" element={<Navigate to="/circles" replace />} />
+
+                {/* Public community landing (no auth required) */}
+                <Route path="/c/:slug" element={<CommunityLanding />} />
+
+                {/* Authenticated circle pages — all scoped to /c/:slug/* */}
+                <Route path="/c/:slug/feed" element={<ProtectedRoute><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/spaces/:spaceSlug" element={<ProtectedRoute><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/members" element={<ProtectedRoute><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/leaderboard" element={<ProtectedRoute><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/events" element={<ProtectedRoute><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/classroom" element={<ProtectedRoute><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/admin" element={<ProtectedRoute><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/messages" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/post/:id" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CirclePostDetail /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/settings" element={<ProtectedRoute><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
+
+                {/* Legacy /join/:slug → /c/:slug redirect */}
+                <Route path="/join/:slug" element={<Navigate to="/c/:slug" replace />} />
 
                 {/* Public community discovery */}
                 <Route path="/communities" element={<CommunityDiscovery />} />
-                <Route path="/join/:slug" element={<JoinCommunity />} />
 
                 {/* Landing page */}
                 <Route path="/" element={<LandingPage />} />

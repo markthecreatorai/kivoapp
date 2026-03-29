@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -14,7 +14,6 @@ import {
   Trophy,
   Calendar,
   BookOpen,
-  Settings,
   Bell,
   ChevronLeft,
   LogIn,
@@ -26,6 +25,7 @@ import {
   Lock,
   Mail,
   SlidersHorizontal,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -61,34 +61,41 @@ interface CircleLayoutProps {
   showRightSidebar?: boolean;
 }
 
-const tabItems = [
-  { label: "Comunidade", icon: MessageSquare, path: "/circle/feed" },
-  { label: "Classroom", icon: BookOpen, path: "/circle/classroom" },
-  { label: "Calendário", icon: Calendar, path: "/circle/events" },
-  { label: "Membros", icon: Users, path: "/circle/members" },
-  { label: "Ranking", icon: Trophy, path: "/circle/leaderboard" },
-  { label: "Mensagens", icon: Mail, path: "/circle/messages" },
-];
+function getTabItems(slug: string) {
+  return [
+    { label: "Comunidade", icon: MessageSquare, path: `/c/${slug}/feed` },
+    { label: "Classroom", icon: BookOpen, path: `/c/${slug}/classroom` },
+    { label: "Calendário", icon: Calendar, path: `/c/${slug}/events` },
+    { label: "Membros", icon: Users, path: `/c/${slug}/members` },
+    { label: "Ranking", icon: Trophy, path: `/c/${slug}/leaderboard` },
+    { label: "Mensagens", icon: Mail, path: `/c/${slug}/messages` },
+  ];
+}
 
 export default function CircleLayout({ children }: CircleLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
   const { currentWorkspace } = useWorkspace();
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
+  const tabItems = slug ? getTabItems(slug) : [];
+
+  // Load community by slug from URL
   const { data: community, isLoading: communityLoading } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
+      if (!slug) return null;
       const { data } = await supabase
         .from("communities")
         .select("*")
-        .eq("workspace_id", currentWorkspace.id)
+        .eq("slug", slug)
+        .eq("is_active", true)
         .maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   const { data: member, isLoading: memberLoading } = useQuery({
@@ -248,8 +255,11 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
   const isActive = (path: string) => {
-    if (path === "/circle/feed") {
-      return location.pathname === "/circle/feed" || location.pathname === "/circle" || location.pathname.startsWith("/circle/spaces/") || location.pathname.startsWith("/circle/post/");
+    if (path === `/c/${slug}/feed`) {
+      return location.pathname === `/c/${slug}/feed` ||
+        location.pathname === `/c/${slug}` ||
+        location.pathname.startsWith(`/c/${slug}/spaces/`) ||
+        location.pathname.startsWith(`/c/${slug}/post/`);
     }
     return location.pathname === path || location.pathname.startsWith(path + "/");
   };
@@ -265,20 +275,10 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
     );
   }
 
-  // Not logged in
+  // Not logged in — redirect to community landing
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="max-w-md p-8 text-center space-y-4">
-          <LogIn className="h-12 w-12 text-primary mx-auto" />
-          <h1 className="text-xl font-bold text-foreground">Faça login para acessar</h1>
-          <p className="text-sm text-muted-foreground">Você precisa estar logado para acessar a comunidade.</p>
-          <Button onClick={() => navigate("/member/login?redirect=/circle")} className="w-full">
-            <LogIn className="h-4 w-4 mr-2" />Fazer Login
-          </Button>
-        </Card>
-      </div>
-    );
+    navigate(`/c/${slug}`, { replace: true });
+    return null;
   }
 
   // No community
@@ -523,15 +523,15 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
           })}
           {isAdmin && (
             <Link
-              to="/circle/admin"
+              to={`/c/${slug}/admin`}
               className={cn(
                 "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ml-auto",
-                isActive("/circle/admin")
+                isActive(`/c/${slug}/admin`)
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
               )}
             >
-              <Settings className="h-4 w-4" />
+              <ShieldX className="h-4 w-4" />
               Admin
             </Link>
           )}
