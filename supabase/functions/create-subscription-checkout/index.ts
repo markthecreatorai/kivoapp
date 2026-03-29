@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
 
     // Build subscription payload
     const nextDueDate = new Date();
-    nextDueDate.setDate(nextDueDate.getDate() + 1);
+    // Do not add +1 day so that Asaas charges the credit card immediately today
     const dueDateStr = nextDueDate.toISOString().split("T")[0];
 
     const billingType = payment_method === "card" ? "CREDIT_CARD" : "PIX";
