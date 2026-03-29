@@ -37,13 +37,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     );
 
-    // 2. Then get initial session
+    // 2. Get initial session, then immediately refresh the JWT so it
+    // doesn't expire mid-operation (avoids "JWT expired" on first action)
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error("Error getting session:", error);
       }
-      setSession(prev => prev ?? session);
-      setUser(prev => prev ?? session?.user ?? null);
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        // Silently refresh to keep token fresh
+        supabase.auth.refreshSession().catch(() => {/* ignore if offline */});
+      }
       setLoading(false);
     });
 

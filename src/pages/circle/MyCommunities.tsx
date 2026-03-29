@@ -83,6 +83,10 @@ export default function MyCommunities() {
       const slug = newSlug || slugify(newName);
       if (!slug) throw new Error("Informe um nome válido");
 
+      // Ensure the session is fresh before any Supabase DB calls
+      const { error: sessionErr } = await supabase.auth.refreshSession();
+      if (sessionErr) throw new Error("Sessão expirada. Faça login novamente.");
+
       // Resolve workspace — create one on the fly if user doesn't have one yet
       let workspaceId = currentWorkspace?.id;
       if (!workspaceId) {
