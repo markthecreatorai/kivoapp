@@ -139,7 +139,6 @@ export default function OnboardingWizard() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
               <img src={kivoLogo} alt="Kivo" className="h-8" />
-              <span className="text-xl font-bold text-primary">Kivo</span>
             </div>
             <span className="text-sm text-muted-foreground">
               Etapa {currentStep} de {STEPS.length}
