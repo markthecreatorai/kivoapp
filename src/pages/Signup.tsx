@@ -76,6 +76,7 @@ export default function Signup() {
         options: {
           data: {
             full_name: fullName,
+            is_creator: true,
             creator_type: creatorType,
             utm_source: utmData.utm_source || searchParams.get("utm_source") || "",
             utm_medium: utmData.utm_medium || searchParams.get("utm_medium") || "",
