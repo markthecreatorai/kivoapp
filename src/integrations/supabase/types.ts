@@ -1156,6 +1156,51 @@ export type Database = {
           },
         ]
       }
+      circle_lesson_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          lesson_id: string
+          member_id: string
+          progress_pct: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson_id: string
+          member_id: string
+          progress_pct?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          member_id?: string
+          progress_pct?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "circle_lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_lesson_progress_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_lessons: {
         Row: {
           content: string | null
@@ -1441,12 +1486,14 @@ export type Database = {
           access_type: Database["public"]["Enums"]["community_access_type"]
           allow_member_events: boolean
           allow_member_posts: boolean
+          category: string | null
           cover_image_url: string | null
           created_at: string
           description: string | null
           icon_url: string | null
           id: string
           is_active: boolean
+          is_listed: boolean
           linked_product_id: string | null
           long_description: string | null
           member_count: number
@@ -1466,12 +1513,14 @@ export type Database = {
           access_type?: Database["public"]["Enums"]["community_access_type"]
           allow_member_events?: boolean
           allow_member_posts?: boolean
+          category?: string | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
           icon_url?: string | null
           id?: string
           is_active?: boolean
+          is_listed?: boolean
           linked_product_id?: string | null
           long_description?: string | null
           member_count?: number
@@ -1491,12 +1540,14 @@ export type Database = {
           access_type?: Database["public"]["Enums"]["community_access_type"]
           allow_member_events?: boolean
           allow_member_posts?: boolean
+          category?: string | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
           icon_url?: string | null
           id?: string
           is_active?: boolean
+          is_listed?: boolean
           linked_product_id?: string | null
           long_description?: string | null
           member_count?: number
@@ -1790,6 +1841,57 @@ export type Database = {
           },
         ]
       }
+      community_invite_links: {
+        Row: {
+          code: string
+          community_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          uses_count: number
+        }
+        Insert: {
+          code?: string
+          community_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses_count?: number
+        }
+        Update: {
+          code?: string
+          community_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_invite_links_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_invite_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_members: {
         Row: {
           avatar_url: string | null
@@ -1808,6 +1910,7 @@ export type Database = {
           longest_streak: number
           muted_at: string | null
           muted_until: string | null
+          notification_preferences: Json
           role: Database["public"]["Enums"]["community_member_role"]
           status: Database["public"]["Enums"]["community_member_status"]
           total_points: number
@@ -1831,6 +1934,7 @@ export type Database = {
           longest_streak?: number
           muted_at?: string | null
           muted_until?: string | null
+          notification_preferences?: Json
           role?: Database["public"]["Enums"]["community_member_role"]
           status?: Database["public"]["Enums"]["community_member_status"]
           total_points?: number
@@ -1854,6 +1958,7 @@ export type Database = {
           longest_streak?: number
           muted_at?: string | null
           muted_until?: string | null
+          notification_preferences?: Json
           role?: Database["public"]["Enums"]["community_member_role"]
           status?: Database["public"]["Enums"]["community_member_status"]
           total_points?: number
