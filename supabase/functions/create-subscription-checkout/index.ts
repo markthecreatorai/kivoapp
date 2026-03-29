@@ -166,9 +166,9 @@ Deno.serve(async (req) => {
         name: credit_card.holderName,
         email: userEmail,
         cpfCnpj: customerCpf,
-        postalCode: credit_card.postalCode || "00000000",
-        addressNumber: credit_card.addressNumber || "0",
-        phone: credit_card.phone || "",
+        postalCode: "01001000", // Generic valid CEP
+        addressNumber: "0",
+        phone: "11999999999", // Generic valid phone
       };
     }
 

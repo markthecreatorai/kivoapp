@@ -260,7 +260,6 @@ export default function UpgradeFlow() {
   const [cardHolder, setCardHolder] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
-  const [cardPhone, setCardPhone] = useState("");
   const [cardError, setCardError] = useState("");
 
   // PIX state
@@ -353,8 +352,7 @@ export default function UpgradeFlow() {
       parts.length === 2 &&
       parts[0].length === 2 &&
       parts[1].length === 2 &&
-      cardCvv.length >= 3 &&
-      cardPhone.replace(/\D/g, "").length >= 10
+      cardCvv.length >= 3
     );
   };
 
@@ -390,7 +388,6 @@ export default function UpgradeFlow() {
           expiryMonth: parts[0],
           expiryYear: `20${parts[1]}`,
           ccv: cardCvv,
-          phone: cardPhone.replace(/\D/g, ""),
         },
       });
 
@@ -647,18 +644,6 @@ export default function UpgradeFlow() {
                       value={cardHolder}
                       onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
                       autoComplete="cc-name"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="card-phone" className="text-sm">Telefone da Fatura (com DDD)</Label>
-                    <Input
-                      id="card-phone"
-                      placeholder="(11) 90000-0000"
-                      value={cardPhone}
-                      onChange={(e) => setCardPhone(formatPhone(e.target.value))}
-                      maxLength={15}
-                      autoComplete="tel"
                       disabled={loading}
                     />
                   </div>
