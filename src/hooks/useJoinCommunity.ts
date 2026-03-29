@@ -116,7 +116,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
       let status = "ACTIVE";
       if (community.require_approval && !inviteCode) status = "PENDING";
 
-      const { error } = await supabase.from("community_members").insert({
+      const { error } = await (supabase as any).from("community_members").insert({
         community_id: community.id,
         user_id: userId,
         role: "MEMBER",
