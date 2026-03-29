@@ -117,6 +117,11 @@ export default function AdminSettingsTab({ community, member }: Props) {
           <Label>Descrição longa</Label>
           <Textarea value={settings.long_description} onChange={(e) => set("long_description", e.target.value)} rows={4} />
         </div>
+        <div>
+          <Label>Vídeo de apresentação (URL)</Label>
+          <Input value={settings.about_video_url} onChange={(e) => set("about_video_url", e.target.value)} placeholder="https://youtube.com/..." />
+          <p className="text-xs text-muted-foreground mt-1">Cole o link do YouTube ou Vimeo para exibir na landing page</p>
+        </div>
 
         {/* Image uploads */}
         <div className="grid grid-cols-2 gap-4">
