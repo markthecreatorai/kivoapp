@@ -1,4 +1,5 @@
 import { useState } from "react";
+import kivoLogo from "@/assets/kivo-logo.svg";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
