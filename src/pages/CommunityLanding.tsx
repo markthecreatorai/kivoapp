@@ -94,7 +94,7 @@ export default function CommunityLanding() {
 
     // Paid community — signup then redirect to community checkout
     if (community.access_type === "PAID_SUBSCRIPTION" && (community as any).price && !inviteCode) {
-      await signupAndJoin(formData, community, true);
+      await signupAndJoin(formData, community);
       return;
     }
     await signupAndJoin(formData, community);
