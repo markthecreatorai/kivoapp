@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import CollectEmailsFlow from "./editor/CollectEmailsFlow";
 import DigitalProductFlow from "./editor/DigitalProductFlow";
 import CustomProductFlow from "./editor/CustomProductFlow";
+import UrlMediaFlow from "./editor/UrlMediaFlow";
 
 export default function ProductEditor() {
   const { id } = useParams<{ id: string }>();
@@ -71,6 +72,10 @@ export default function ProductEditor() {
       case "custom_product":
       case "service":
         return <CustomProductFlow initialProduct={product} setSaving={setSaving} />;
+      case "url_media":
+      case "affiliate":
+      case "referral_link":
+        return <UrlMediaFlow initialProduct={product} setSaving={setSaving} />;
       default:
         // Fallback pro "em breve" ou placeholder
         return (
