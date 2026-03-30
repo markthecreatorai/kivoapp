@@ -115,7 +115,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
         if (!product) return null;
         return (
           <div 
-            className="w-full overflow-visible border"
+            className="w-full overflow-visible border pb-3"
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             {product.thumbnail_url && (
