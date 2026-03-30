@@ -255,7 +255,6 @@ function ProductListItem({
         >
           {product.status === "PUBLISHED" ? "Ativo" : "Rascunho"}
         </Badge>
-        </Badge>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
