@@ -271,6 +271,13 @@ function ProductListItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onClick={onTogglePublish}>
+              {product.status === "PUBLISHED" ? (
+                <><EyeOff className="h-4 w-4 mr-2" /> Despublicar</>
+              ) : (
+                <><Eye className="h-4 w-4 mr-2" /> Publicar</>
+              )}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onDuplicate}>
               <Copy className="h-4 w-4 mr-2" /> Duplicar
             </DropdownMenuItem>
