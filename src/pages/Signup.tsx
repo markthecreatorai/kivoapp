@@ -137,9 +137,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Signup form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+    <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-6">
           {/* Logo/Brand */}
           <div className="text-center">
