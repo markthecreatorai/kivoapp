@@ -459,19 +459,14 @@ function AbaLoja({
 
         {/* Add Product CTA */}
         {products.length > 0 && (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4">
             <button
               onClick={() => navigate("/products/new")}
-              className="w-full flex items-center justify-center gap-2.5 py-4 rounded-[16px] border-2 border-dashed border-primary/40 bg-primary/5 text-[14px] font-bold text-primary hover:bg-primary/10 hover:border-primary/60 transition-all"
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-[12px] bg-[#ff4e00] text-white text-[14px] font-bold hover:bg-[#e64500] transition-all shadow-sm"
             >
               <Plus className="h-5 w-5" />
               Adicionar Produto
             </button>
-            <div className="text-center">
-              <button className="text-[13px] font-semibold text-[#6b7280] hover:text-[#111827] transition-colors">
-                Adicionar Seção
-              </button>
-            </div>
           </div>
         )}
       </div>
