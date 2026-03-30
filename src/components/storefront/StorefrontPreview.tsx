@@ -49,7 +49,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
       if (productIds.length === 0) return [];
       const { data } = await supabase
         .from('products')
-        .select('id, name, thumbnail_url, short_description')
+        .select('id, name, thumbnail_url, short_description, listing_button_text')
         .in('id', productIds);
       return data || [];
     },
@@ -117,7 +117,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
                 className={cn("w-full mt-3 py-2 text-sm font-medium text-white", getButtonClass())}
                 style={{ backgroundColor: currentTheme.primary_color }}
               >
-                Ver produto
+                {product.listing_button_text || 'Ver produto'}
               </button>
             </div>
           </div>

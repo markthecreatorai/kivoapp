@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,7 @@ export default function CoachingCallFlow({
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("thumbnail");
+  const themeTokens = useStorefrontTheme();
   const meta = (initialProduct.metadata as any) || {};
   const initialPriceConfig = initialProduct.prices?.[0] || { amount: 0, compare_at_amount: null };
 
@@ -229,47 +231,59 @@ export default function CoachingCallFlow({
   // ── Mobile Preview ────────────────────────────────────────────
   const MobilePreview = () => (
     <div className="hidden lg:block w-[300px] shrink-0 sticky top-24">
-      <p className="text-xs font-medium text-green-600/70 mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1">
+      <p className="text-xs font-medium mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1" style={{ color: themeTokens.primaryColor }}>
         <Video className="w-3 h-3" /> Preview de Agendamento
       </p>
       <div className="w-[300px] h-[580px] bg-black rounded-[40px] p-2 shadow-xl">
-        <div className="w-full h-full rounded-[32px] overflow-hidden bg-[#F5F5F5] dark:bg-zinc-950 flex flex-col relative overflow-y-auto">
+        <div 
+          className="w-full h-full rounded-[32px] overflow-hidden flex flex-col relative overflow-y-auto"
+          style={{ backgroundColor: themeTokens.backgroundColor }}
+        >
           <div className="w-28 h-5 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20" />
 
           {tab === "thumbnail" && (
             <div className="p-4 pt-10 flex items-center h-full">
               {form.cardStyle === "button" && (
-                <div className="w-full py-4 px-5 rounded-2xl border-2 border-green-600 bg-white dark:bg-zinc-900 text-center text-sm font-bold truncate">
+                <div 
+                  className="w-full py-4 px-5 rounded-2xl border-2 text-center text-sm font-bold truncate" 
+                  style={{ borderColor: themeTokens.primaryColor, color: themeTokens.textColor, backgroundColor: themeTokens.backgroundColor }}
+                >
                   {form.name || "Nome da Call"}
                 </div>
               )}
               {form.cardStyle === "callout" && (
-                <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
+                <div 
+                  className="w-full rounded-2xl border p-4 shadow-sm"
+                  style={{ borderColor: themeTokens.primaryColor + '40', backgroundColor: themeTokens.backgroundColor }}
+                >
                   {form.thumbnailUrl ? (
                     <div className="h-28 rounded-xl mb-3 overflow-hidden">
                       <img src={form.thumbnailUrl} className="w-full h-full object-cover" />
                     </div>
                   ) : null}
-                  <p className="font-bold text-lg leading-snug">{form.name || "Título da Call"}</p>
-                  {form.shortDescription && <p className="text-sm text-zinc-500 mt-1 line-clamp-2">{form.shortDescription}</p>}
-                  <div className="mt-4 py-3 rounded-xl bg-green-600 text-white text-sm font-medium text-center">
+                  <p className="font-bold text-lg leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Título da Call"}</p>
+                  {form.shortDescription && <p className="text-sm mt-1 line-clamp-2" style={{ color: themeTokens.textColor, opacity: 0.7 }}>{form.shortDescription}</p>}
+                  <div className="mt-4 py-3 rounded-xl text-white text-sm font-medium text-center" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}>
                     {form.ctaText || "Agendar Call"}
                   </div>
                 </div>
               )}
               {form.cardStyle === "preview" && (
-                <div className="w-full rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
-                  <div className="h-40 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                <div 
+                  className="w-full rounded-3xl border overflow-hidden shadow-sm"
+                  style={{ borderColor: themeTokens.primaryColor + '40', backgroundColor: themeTokens.backgroundColor }}
+                >
+                  <div className="h-40 flex items-center justify-center overflow-hidden" style={{ backgroundColor: themeTokens.textColor + '10' }}>
                     {form.thumbnailUrl ? (
                       <img src={form.thumbnailUrl} className="w-full h-full object-cover" />
-                    ) : <ImageIcon className="h-8 w-8 text-zinc-300" />}
+                    ) : <ImageIcon className="h-8 w-8" style={{ color: themeTokens.textColor, opacity: 0.3 }} />}
                   </div>
                   <div className="p-4">
-                    <p className="font-bold text-lg leading-snug">{form.name || "Call / Consultoria"}</p>
-                    {form.shortDescription && <p className="text-sm text-zinc-500 mt-1 line-clamp-2">{form.shortDescription}</p>}
+                    <p className="font-bold text-lg leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Call / Consultoria"}</p>
+                    {form.shortDescription && <p className="text-sm mt-1 line-clamp-2" style={{ color: themeTokens.textColor, opacity: 0.7 }}>{form.shortDescription}</p>}
                     <div className="mt-3 flex items-center justify-between">
-                      <span className="font-bold">{form.isFree ? "Gratuito" : `R$ ${(form.price || 0).toFixed(2).replace(".", ",")}`}</span>
-                      <div className="py-2 px-4 bg-green-600 text-white rounded-xl text-sm font-medium">{form.ctaText || "Agendar"}</div>
+                      <span className="font-bold" style={{ color: themeTokens.textColor }}>{form.isFree ? "Gratuito" : `R$ ${(form.price || 0).toFixed(2).replace(".", ",")}`}</span>
+                      <div className="py-2 px-4 text-white rounded-xl text-sm font-medium" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}>{form.ctaText || "Agendar"}</div>
                     </div>
                   </div>
                 </div>
@@ -278,29 +292,29 @@ export default function CoachingCallFlow({
           )}
 
           {(tab === "checkout" || tab === "disponibilidade" || tab === "opcoes") && (
-            <div className="bg-white dark:bg-zinc-900 min-h-full">
+            <div className="min-h-full" style={{ backgroundColor: themeTokens.backgroundColor }}>
               {form.checkoutImage && (
                 <div className="h-40 overflow-hidden">
                   <img src={form.checkoutImage} className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="p-4 space-y-3 pt-10">
-                <p className="font-bold text-lg">{form.name || "Call / Consultoria"}</p>
+                <p className="font-bold text-lg" style={{ color: themeTokens.textColor }}>{form.name || "Call / Consultoria"}</p>
                 {!form.isFree && form.price > 0 && (
-                  <span className="text-2xl font-bold text-green-600">
+                  <span className="text-2xl font-bold" style={{ color: themeTokens.primaryColor }}>
                     R$ {form.price.toFixed(2).replace(".", ",")}
                   </span>
                 )}
-                {form.isFree && <span className="text-xl font-bold text-green-600">Agendamento Gratuito</span>}
+                {form.isFree && <span className="text-xl font-bold" style={{ color: themeTokens.primaryColor }}>Agendamento Gratuito</span>}
 
                 {/* Fake calendar grid */}
-                <div className="border border-green-200 rounded-xl p-3 bg-green-50/40">
-                  <p className="text-xs font-bold text-green-700 mb-2 flex items-center gap-1">
+                <div className="border rounded-xl p-3" style={{ borderColor: `${themeTokens.primaryColor}30`, backgroundColor: `${themeTokens.primaryColor}10` }}>
+                  <p className="text-xs font-bold mb-2 flex items-center gap-1" style={{ color: themeTokens.primaryColor }}>
                     <Calendar className="w-3 h-3" /> Escolha um horário disponível
                   </p>
                   <div className="grid grid-cols-3 gap-1">
                     {["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"].map(t => (
-                      <div key={t} className="text-center text-[10px] font-semibold py-1.5 rounded-lg bg-white border border-green-200 text-green-700 cursor-pointer hover:bg-green-100">
+                      <div key={t} className="text-center text-[10px] font-semibold py-1.5 rounded-lg border cursor-pointer hover:opacity-80" style={{ borderColor: `${themeTokens.primaryColor}30`, color: themeTokens.primaryColor, backgroundColor: themeTokens.backgroundColor }}>
                         {t}
                       </div>
                     ))}
@@ -308,7 +322,7 @@ export default function CoachingCallFlow({
                 </div>
 
                 <div className="pt-2">
-                  <div className="w-full py-3.5 rounded-xl bg-green-600 text-white font-medium text-center text-sm shadow-lg shadow-green-600/20">
+                  <div className="w-full py-3.5 rounded-xl text-white font-medium text-center text-sm" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}>
                     {form.ctaText || "Confirmar Agendamento"}
                   </div>
                 </div>
@@ -338,7 +352,7 @@ export default function CoachingCallFlow({
             <TabsContent value="thumbnail" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Video className="w-5 h-5 text-green-600" /> Call / Consultoria
+                  <Video className="w-5 h-5" style={{ color: themeTokens.primaryColor }} /> Call / Consultoria
                 </h2>
                 <p className="text-sm text-muted-foreground">Configure como sua sessão aparece na vitrine da loja.</p>
               </div>
@@ -354,7 +368,7 @@ export default function CoachingCallFlow({
                       className={cn(
                         "flex-1 p-3 rounded-xl border-2 text-center transition-all",
                         form.cardStyle === key
-                          ? "border-green-600 bg-green-600/5 text-green-700"
+                          ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/5"
                           : "border-border bg-card hover:border-border/80"
                       )}
                     >
@@ -446,7 +460,7 @@ export default function CoachingCallFlow({
             <TabsContent value="disponibilidade" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-green-600" /> Disponibilidade
+                  <Clock className="w-5 h-5" style={{ color: themeTokens.primaryColor }} /> Disponibilidade
                 </h2>
                 <p className="text-sm text-muted-foreground">Configure quando e como os clientes podem agendar.</p>
               </div>

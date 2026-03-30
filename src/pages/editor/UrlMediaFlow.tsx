@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useNavigate } from "react-router-dom";
+import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ export default function UrlMediaFlow({
   const isReferralLink = formatId === "referral_link";
   const { user } = useAuth();
   const navigate = useNavigate();
+  const themeTokens = useStorefrontTheme();
 
   const { data: referralProfile, isLoading: isReferralLoading } = useQuery({
     queryKey: ["referralProfile", user?.id],
@@ -117,59 +119,71 @@ export default function UrlMediaFlow({
   const MobilePreview = () => {
     return (
       <div className="hidden lg:block w-[320px] shrink-0 sticky top-24">
-        <p className="text-xs font-medium text-red-600/60 dark:text-red-500/50 mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1">
-          <Link2 className="w-3 h-3" /> Preview de Mídia
+        <p className="text-xs font-medium mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1" style={{ color: themeTokens.primaryColor }}>
+          <Link2 className="w-3 h-3" /> Preview de {isReferralLink ? "Afiliado" : isAffiliate ? "Link" : "URL"}
         </p>
 
         {/* Fake Phone */}
         <div className="w-[320px] h-[600px] bg-black rounded-[40px] p-2 shadow-xl flex flex-col justify-start">
-          <div className="w-full h-full rounded-[32px] overflow-hidden bg-[#F5F5F5] dark:bg-zinc-950 flex flex-col relative overflow-y-auto">
+          <div 
+            className="w-full h-full rounded-[32px] overflow-hidden flex flex-col relative overflow-y-auto"
+            style={{ backgroundColor: themeTokens.backgroundColor }}
+          >
             {/* Notch */}
             <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20"></div>
 
             <div className="p-4 pt-10 flex flex-col items-center h-full">
               {/* Button Style */}
               {form.cardStyle === "button" && (
-                <div className="w-full py-4 px-6 rounded-2xl border-2 border-red-500 bg-white dark:bg-zinc-900 text-center text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm truncate">
-                  {form.name || "Acesso Rápido Exibir Texto"}
+                <div 
+                  className="w-full py-4 px-6 rounded-2xl border-2 text-center text-sm font-bold shadow-sm truncate" 
+                  style={{ borderColor: themeTokens.primaryColor, color: themeTokens.textColor, backgroundColor: themeTokens.backgroundColor }}
+                >
+                  {form.name || "Link Externo"}
                 </div>
               )}
 
               {/* Callout Style */}
               {form.cardStyle === "callout" && (
-                <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
+                <div 
+                  className="w-full rounded-2xl border p-4 shadow-sm"
+                  style={{ borderColor: themeTokens.primaryColor + '40', backgroundColor: themeTokens.backgroundColor }}
+                >
                   {form.thumbnailUrl && (
-                      <div className="h-32 bg-zinc-100 dark:bg-zinc-800 overflow-hidden rounded-xl mb-4">
+                      <div className="h-32 overflow-hidden rounded-xl mb-4" style={{ backgroundColor: themeTokens.textColor + '10' }}>
                           <img src={form.thumbnailUrl} className="w-full h-full object-cover" />
                       </div>
                   )}
-                  <p className="font-bold text-zinc-900 dark:text-zinc-100 text-base leading-snug">{form.name || "Título Destaque"}</p>
+                  <p className="font-bold text-base leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Título Destaque"}</p>
                   {form.shortDescription && (
-                    <p className="text-sm text-zinc-500 mt-2 line-clamp-2">{form.shortDescription}</p>
+                    <p className="text-sm mt-2 line-clamp-2" style={{ color: themeTokens.textColor, opacity: 0.7 }}>{form.shortDescription}</p>
                   )}
-                  <div className="mt-4 py-3 rounded-xl bg-red-500 text-white text-sm font-medium text-center">
-                    {form.ctaText || "Acessar"}
+                  <div className="mt-4 py-3 rounded-xl text-white text-sm font-medium text-center" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}>
+                    {form.ctaText || "Acessar Agora"}
                   </div>
                 </div>
               )}
 
               {/* Preview Style */}
               {form.cardStyle === "preview" && (
-                <div className="w-full rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
-                  <div className="h-44 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                <div 
+                  className="w-full rounded-3xl border overflow-hidden shadow-sm"
+                  style={{ borderColor: themeTokens.primaryColor + '40', backgroundColor: themeTokens.backgroundColor }}
+                >
+                  <div className="h-44 flex items-center justify-center overflow-hidden" style={{ backgroundColor: themeTokens.textColor + '10' }}>
                     {form.thumbnailUrl ? (
                       <img src={form.thumbnailUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <ImageIcon className="h-10 w-10 text-zinc-300 dark:text-zinc-600" />
+                      <ImageIcon className="h-10 w-10" style={{ color: themeTokens.textColor, opacity: 0.3 }} />
                     )}
                   </div>
                   <div className="p-5">
-                    <p className="font-bold text-zinc-900 dark:text-zinc-100 text-lg leading-snug">{form.name || "Título do produto"}</p>
+                    <p className="font-bold text-lg leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Título do produto"}</p>
                     {form.shortDescription && (
-                      <p className="text-sm text-zinc-500 mt-2 line-clamp-2">{form.shortDescription}</p>
+                      <p className="text-sm mt-2 line-clamp-2" style={{ color: themeTokens.textColor, opacity: 0.7 }}>{form.shortDescription}</p>
                     )}
                     <div className="mt-4 flex items-center justify-center">
-                       <div className="w-full py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium text-center">
+                       <div className="w-full py-2.5 text-white rounded-xl text-sm font-medium text-center" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}>
                          {form.ctaText || "Acessar Mídia"}
                        </div>
                     </div>
@@ -263,32 +277,53 @@ export default function UrlMediaFlow({
           <div className="space-y-8 animate-in fade-in pb-10">
             <div className="space-y-2">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                 <Link2 className={isReferralLink ? "w-6 h-6 text-purple-500" : "w-6 h-6 text-red-500"} />
-                 {isReferralLink ? "Sua Indicação Kivo" : isAffiliate ? "Link de Afiliado Rastreável" : "URL, Mídia ou Link Externo"}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {isReferralLink 
-                  ? "Recomende a Kivo para sua audiência e ganhe 20% de comissão recorrente lifetime de cada assinatura gerada por você."
-                  : isAffiliate 
-                  ? "Crie uma vitrine em sua loja que dispara a audiência para a sua comissão de afiliado com One-Click."
-                  : "Não quer complicar? Adicione uma URL rápida, direcione para seu site principal, ou faça sua vitrine rodar um vídeo do Youtube/Spotify direto nela."}
-              </p>
-            </div>
+                  <Link2 className={isReferralLink ? "w-6 h-6" : "w-6 h-6"} style={{ color: isReferralLink ? themeTokens.primaryColor : themeTokens.primaryColor }} />
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Link2 className="w-5 h-5" style={{ color: themeTokens.primaryColor }} /> {isReferralLink ? "Link de Afiliado" : isAffiliate ? "Link Externo" : "URL / Mídia"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Coloque um link externo, vídeo do YouTube ou embed.</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Estilo do Card na Loja</Label>
+                  <div className="flex gap-3">
+                    {CARD_STYLES.map(({ key, label, desc }) => (
+                      <button
+                        key={key}
+                        onClick={() => setForm(p => ({ ...p, cardStyle: key }))}
+                        className={cn(
+                          "flex-1 p-3 rounded-xl border-2 text-center transition-all",
+                          form.cardStyle === key
+                            ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/5"
+                            : "border-border bg-card hover:border-border/80 text-foreground"
+                        )}
+                      >
+                        <p className="text-sm font-semibold">{label}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 hidden sm:block">{desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Nome do Link/Mídia *</Label>
+                  <Input placeholder="Ex: meu Video-aula, meu Podcast..." value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} />
+                </div>
 
             {/* URL Destino */}
-            <div className={`space-y-4 p-5 rounded-2xl border-2 shadow-sm ${isReferralLink ? 'border-purple-500/30 bg-purple-50/20' : 'border-red-500/30 bg-red-50/20'} dark:bg-card`}>
+            <div className={`space-y-4 p-5 rounded-2xl border-2 shadow-sm bg-card`} style={{ borderColor: isReferralLink ? `${themeTokens.primaryColor}30` : `${themeTokens.primaryColor}30` }}>
                <div className="space-y-2">
                  <Label className="text-sm font-semibold">{isReferralLink ? "Link Seguro Kivo" : isAffiliate ? "Seu Link de Afiliado (URL Completa)*" : "Link de Destino / URL do Vídeo *"}</Label>
                  <Input 
                    placeholder="https://..." 
-                   className={`text-lg font-mono ${isReferralLink ? 'border-purple-500 focus-visible:ring-purple-500 bg-purple-50/50 text-purple-700' : 'border-red-500 focus-visible:ring-red-500'} `}
+                   className="text-lg font-mono bg-card"
                    value={form.targetUrl} onChange={e => updateForm({targetUrl: e.target.value})}
                    readOnly={isReferralLink}
                  />
-                 {embedType === "youtube" && <p className="text-[11px] text-green-600 font-medium">✨ Vídeo do YouTube detectado automagicamente!</p>}
-                 {embedType === "spotify" && <p className="text-[11px] text-green-600 font-medium">✨ Playlist do Spotify detectada automagicamente!</p>}
-                 {embedType === "calendly" && <p className="text-[11px] text-green-600 font-medium">✨ Agenda do Calendly detectada automagicamente!</p>}
-                 {embedType === "notion" && <p className="text-[11px] text-green-600 font-medium">✨ Página do Notion detectada automagicamente!</p>}
+                 {embedType === "youtube" && <p className="text-[11px] font-medium" style={{ color: themeTokens.primaryColor }}>✨ Vídeo do YouTube detectado automagicamente!</p>}
+                 {embedType === "spotify" && <p className="text-[11px] font-medium" style={{ color: themeTokens.primaryColor }}>✨ Playlist do Spotify detectada automagicamente!</p>}
+                 {embedType === "calendly" && <p className="text-[11px] font-medium" style={{ color: themeTokens.primaryColor }}>✨ Agenda do Calendly detectada automagicamente!</p>}
+                 {embedType === "notion" && <p className="text-[11px] font-medium" style={{ color: themeTokens.primaryColor }}>✨ Página do Notion detectada automagicamente!</p>}
                </div>
             </div>
 
@@ -304,7 +339,7 @@ export default function UrlMediaFlow({
                       className={cn(
                         "flex flex-col items-center justify-center p-3 rounded-xl border-2 text-center transition-all",
                         form.cardStyle === key
-                          ? "border-red-500 bg-red-500/5 text-red-600"
+                          ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/5"
                           : "border-border bg-card hover:border-border/80 text-foreground"
                       )}
                     >
@@ -368,7 +403,7 @@ export default function UrlMediaFlow({
               <Button variant="outline" onClick={() => saveMutation.mutate("DRAFT")}>
                 <Save className="h-4 w-4 mr-2" /> Salvar Rascunho
               </Button>
-              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="bg-red-500 hover:bg-red-600 text-white shadow-xl shadow-red-500/20 w-fit sm:w-[250px] transition-transform active:scale-95">
+              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="text-white shadow-xl w-fit sm:w-[250px] transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 10px 15px -3px ${themeTokens.primaryColor}40` }}>
                 <Rocket className="h-4 w-4 mr-2" /> Publicar na Loja
               </Button>
             </div>

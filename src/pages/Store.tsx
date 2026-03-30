@@ -1,27 +1,19 @@
 import { useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import {
   Store as StoreIcon,
   ExternalLink,
   Copy,
   Package,
-  Globe,
   Plus,
   MoreVertical,
   Pencil,
@@ -41,6 +33,7 @@ import {
   User,
   FileText,
   GripVertical,
+  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -54,8 +47,6 @@ import { ThemeSection } from "@/components/storefront/ThemeSection";
 import { StorefrontPreview } from "@/components/storefront/StorefrontPreview";
 import type { StorefrontData, StorefrontTheme, StorefrontBlock } from "@/pages/StorefrontEditor";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
 type ProductStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 type StoreTab = "loja" | "landing-pages" | "design";
 
@@ -67,19 +58,11 @@ const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType }> = 
   PHYSICAL:    { label: "Físico",       icon: Package },
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  PUBLISHED: "bg-accent/15 text-accent border-accent/30",
-  DRAFT:     "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700/40",
-  ARCHIVED:  "bg-muted text-muted-foreground border-border",
-};
-
 const STATUS_LABELS: Record<string, string> = {
   PUBLISHED: "Ativo",
   DRAFT:     "Rascunho",
   ARCHIVED:  "Arquivado",
 };
-
-// ─── Social icon helper ──────────────────────────────────────────────────────
 
 function SocialIcon({ platform }: { platform: string }) {
   const icons: Record<string, React.ElementType> = {
@@ -91,9 +74,13 @@ function SocialIcon({ platform }: { platform: string }) {
   return <Icon className="h-4 w-4" />;
 }
 
-// ─── Store profile card ──────────────────────────────────────────────────────
-
-function StoreProfileCard({ storefront, storeUrl, onCopy, onOpen }: {
+// ─── Store Profile Card (Stan-style horizontal) ──────────────────────────────
+function StoreProfileCard({ 
+  storefront, 
+  storeUrl, 
+  onCopy, 
+  onOpen 
+}: {
   storefront: any;
   storeUrl: string | null;
   onCopy: () => void;
@@ -103,75 +90,81 @@ function StoreProfileCard({ storefront, storeUrl, onCopy, onOpen }: {
   const socialEntries = Object.entries(socialLinks).filter(([, v]) => !!v);
 
   return (
-    <div className="flex items-center gap-5 p-6 rounded-[20px] bg-card border border-[#ececec] shadow-sm">
+    <div className="flex items-center gap-6 p-7 rounded-[20px] bg-white border border-[#ececec] shadow-sm">
       {/* Avatar */}
-      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border shadow-sm">
+      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-border/30">
         {storefront.avatar_url ? (
           <img src={storefront.avatar_url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <StoreIcon className="h-6 w-6 text-muted-foreground" />
+          <User className="h-7 w-7 text-muted-foreground" />
         )}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h2 className="text-lg font-bold text-[#111827] truncate leading-tight">
+        <div className="flex items-center gap-2.5 flex-wrap mb-1">
+          <h2 className="text-[17px] font-bold text-[#111827] truncate leading-tight">
             {storefront.title || "Minha Loja"}
           </h2>
           {storefront.is_published && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 text-[10px] font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               Online
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3 mt-1.5">
+        {storefront.bio && (
+          <p className="text-[13px] text-[#6b7280] line-clamp-1 mb-2">{storefront.bio}</p>
+        )}
+        <div className="flex items-center gap-3">
           {storeUrl && (
-            <p className="text-[13px] text-[#6b7280] font-medium truncate max-w-[200px]">{storeUrl.replace(/https?:\/\//, '')}</p>
+            <p className="text-[13px] text-[#6b7280] font-medium truncate">
+              {storeUrl.replace(/https?:\/\//, '')}
+            </p>
           )}
           {socialEntries.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-              {socialEntries.map(([platform]) => (
-                <span key={platform} className="text-[#6b7280] hover:text-foreground transition-colors">
-                  <SocialIcon platform={platform} />
-                </span>
-              ))}
-            </div>
+            <>
+              <span className="w-1 h-1 rounded-full bg-[#6b7280]/30" />
+              <div className="flex items-center gap-2">
+                {socialEntries.slice(0, 3).map(([platform]) => (
+                  <span key={platform} className="text-[#6b7280]">
+                    <SocialIcon platform={platform} />
+                  </span>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         {storeUrl && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-[#6b7280] hover:bg-muted" onClick={onCopy}>
-                <Copy className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Copiar link</TooltipContent>
-          </Tooltip>
-        )}
-        {storeUrl && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-[#6b7280] hover:bg-muted" onClick={onOpen}>
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Ver loja</TooltipContent>
-          </Tooltip>
+          <>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-9 w-9 rounded-full text-[#6b7280] hover:bg-muted hover:text-foreground" 
+              onClick={onCopy}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-9 w-9 rounded-full text-[#6b7280] hover:bg-muted hover:text-foreground" 
+              onClick={onOpen}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-// ─── Draggable Product list item ─────────────────────────────────────────────
-
+// ─── Product List Item (Stan-style compact horizontal) ───────────────────────
 function ProductListItem({
   product,
   onEdit,
@@ -205,50 +198,61 @@ function ProductListItem({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       className={cn(
-        "flex items-center gap-3 px-2 py-2 rounded-2xl bg-white transition-colors group cursor-pointer select-none",
+        "flex items-center gap-3 px-3 py-3 rounded-[14px] bg-white transition-all group cursor-pointer select-none",
         dragging
-          ? "opacity-50 scale-[0.98] ring-1 ring-primary/40 shadow-sm"
-          : "border border-[#ececec] hover:bg-[#fafafa] hover:border-border"
+          ? "opacity-50 scale-[0.98] ring-2 ring-primary/40"
+          : "border border-[#ececec] hover:bg-[#fafafa] hover:border-[#d4d4d4]"
       )}
       onClick={onEdit}
     >
       {/* Drag handle */}
       <div
-        className="flex-shrink-0 cursor-grab active:cursor-grabbing px-2 text-muted-foreground/30 group-hover:text-muted-foreground/80 transition-colors"
+        className="flex-shrink-0 cursor-grab active:cursor-grabbing text-[#d4d4d4] group-hover:text-[#9ca3af] transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="h-4 w-4" />
       </div>
 
       {/* Thumbnail */}
-      <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex items-center justify-center shrink-0 border border-border/50">
+      <div className="h-12 w-12 rounded-[10px] overflow-hidden bg-muted flex items-center justify-center shrink-0 border border-border/40">
         {product.thumbnail_url ? (
           <img src={product.thumbnail_url} alt={product.name} className="h-full w-full object-cover" />
         ) : (
-          <TypeIcon className="h-5 w-5 text-[#6b7280]/60" />
+          <TypeIcon className="h-5 w-5 text-[#9ca3af]" />
         )}
       </div>
 
       {/* Info */}
-      <div className="flex-1 min-w-0 pr-2">
-        <p className="text-[14px] font-semibold text-[#111827] truncate">{product.name}</p>
-        <div className="flex items-center gap-1.5 mt-0.5">
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold text-[#111827] truncate leading-tight">
+          {product.name}
+        </p>
+        <div className="flex items-center gap-1.5 mt-1">
           <span className="text-[12px] text-[#6b7280] font-medium">{typeInfo.label}</span>
           {price && (
             <>
-              <span className="text-muted-foreground/30 text-[10px]">·</span>
-              <span className="text-[12px] font-medium text-[#6b7280]">{formatCurrency(price.amount)}</span>
+              <span className="text-[#d4d4d4] text-[10px]">·</span>
+              <span className="text-[12px] font-semibold text-[#6b7280]">
+                {formatCurrency(price.amount)}
+              </span>
             </>
           )}
         </div>
       </div>
 
       {/* Status & Actions */}
-      <div className="flex items-center gap-2 pr-1">
-        <Badge variant="outline" className={cn("text-[10px] font-bold px-2 py-0 border-transparent", 
-          product.status === "PUBLISHED" ? "bg-green-50 text-green-700" :
-          product.status === "DRAFT" ? "bg-muted text-muted-foreground" : "bg-muted/50 text-muted-foreground/50"
-        )}>
+      <div className="flex items-center gap-2.5">
+        <Badge 
+          variant="outline" 
+          className={cn(
+            "text-[11px] font-semibold px-2.5 py-0.5 border",
+            product.status === "PUBLISHED" 
+              ? "bg-green-50 text-green-700 border-green-200" 
+              : product.status === "DRAFT"
+              ? "bg-[#f3f4f6] text-[#6b7280] border-[#e5e7eb]"
+              : "bg-muted/50 text-muted-foreground border-border"
+          )}
+        >
           {STATUS_LABELS[product.status ?? "DRAFT"]}
         </Badge>
         
@@ -257,19 +261,19 @@ function ProductListItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-[#6b7280] hover:bg-muted/60 flex-shrink-0 hover:text-foreground"
+              className="h-8 w-8 text-[#9ca3af] hover:bg-muted hover:text-foreground"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={onEdit} className="text-sm font-medium">
-              <Pencil className="h-4 w-4 mr-2 text-muted-foreground" /> Editar
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="h-4 w-4 mr-2" /> Editar
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onArchive} className="text-sm font-medium">
-              <Archive className="h-4 w-4 mr-2 text-muted-foreground" /> Arquivar
+            <DropdownMenuItem onClick={onArchive}>
+              <Archive className="h-4 w-4 mr-2" /> Arquivar
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive font-medium text-sm" onClick={onDelete}>
+            <DropdownMenuItem className="text-destructive" onClick={onDelete}>
               <Trash2 className="h-4 w-4 mr-2" /> Excluir
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -279,122 +283,76 @@ function ProductListItem({
   );
 }
 
-// ─── Mini store preview (simplified, shows products list) ────────────────────
-
-function MiniStorePreview({
+// ─── Premium Phone Preview (Stan-style) ──────────────────────────────────────
+function PremiumPhonePreview({
   storefront,
   theme,
-  products,
+  blocks,
 }: {
   storefront: any;
   theme: StorefrontTheme | null | undefined;
-  products: any[];
+  blocks: StorefrontBlock[];
 }) {
-  const bg = theme?.background_color || "#ffffff";
-  const txt = theme?.text_color || "#1a1a1a";
-  const primary = theme?.primary_color || "#F9423A";
-  const btnRadius =
-    theme?.button_style === "pill" ? "9999px" :
-    theme?.button_style === "square" ? "0px" : "8px";
-
-  const publishedProducts = products.filter((p) => p.status === "PUBLISHED");
-
   return (
-    <div className="w-[220px] flex-shrink-0">
-      <p className="text-[10px] font-medium text-muted-foreground mb-2 text-center">Preview da loja</p>
-      {/* Phone shell */}
-      <div className="w-[220px] h-[420px] bg-black rounded-[32px] p-2 shadow-xl">
-        <div
-          className="w-full h-full rounded-[26px] overflow-hidden flex flex-col"
-          style={{ backgroundColor: bg, fontFamily: theme?.font_body || "Inter" }}
-        >
-          {/* Notch */}
-          <div className="flex justify-center pt-1 pb-1 flex-shrink-0">
-            <div className="w-14 h-1.5 bg-black/80 rounded-full" />
+    <div className="w-full flex flex-col items-center">
+      {/* Label */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-[11px] font-bold text-[#6b7280] uppercase tracking-wider">
+          Preview da loja
+        </span>
+        {storefront?.is_published && (
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+        )}
+      </div>
+
+      {/* Phone Shell */}
+      <div className="relative" style={{ width: 340, height: 680 }}>
+        {/* Ambient glow */}
+        <div className="absolute inset-0 rounded-[48px] bg-primary/5 blur-3xl scale-110 pointer-events-none" />
+
+        {/* Phone frame */}
+        <div className="relative w-full h-full bg-[#0d0d0d] rounded-[46px] border-[11px] border-[#1a1a1a] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.06)] overflow-hidden flex flex-col">
+          
+          {/* Glass reflection */}
+          <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 rounded-t-[36px]" />
+
+          {/* Dynamic Island */}
+          <div className="absolute top-0 inset-x-0 h-9 flex justify-center items-start z-20 pt-2">
+            <div className="w-[100px] h-[24px] bg-[#0d0d0d] rounded-b-[16px] shadow-xl border-t border-white/5" />
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-3 pb-3">
-            {/* Profile */}
-            <div className="flex flex-col items-center text-center pt-2 pb-3">
-              <div
-                className="h-12 w-12 rounded-full mb-2 flex items-center justify-center overflow-hidden"
-                style={{ backgroundColor: primary + "20" }}
-              >
-                {storefront?.avatar_url ? (
-                  <img src={storefront.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-lg font-bold" style={{ color: primary }}>
-                    {storefront?.title?.charAt(0)?.toUpperCase() || "K"}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] font-bold leading-tight" style={{ color: txt }}>
-                {storefront?.title || "Minha Loja"}
-              </p>
-              {storefront?.bio && (
-                <p className="text-[9px] mt-0.5 opacity-70 line-clamp-2" style={{ color: txt }}>
-                  {storefront.bio}
-                </p>
-              )}
-            </div>
+          {/* Screen Content */}
+          <div className="flex-1 w-full h-full relative pt-9">
+            <StorefrontPreview
+              storefront={storefront}
+              theme={theme ?? undefined}
+              blocks={blocks}
+            />
+          </div>
 
-            {/* Products */}
-            <div className="space-y-2">
-              {publishedProducts.length === 0 ? (
-                <div
-                  className="rounded-lg border border-dashed py-4 text-center"
-                  style={{ borderColor: txt + "30" }}
-                >
-                  <p className="text-[9px] opacity-40" style={{ color: txt }}>
-                    Nenhum produto publicado
-                  </p>
-                </div>
-              ) : (
-                publishedProducts.slice(0, 5).map((p) => (
-                  <div
-                    key={p.id}
-                    className="rounded-lg overflow-hidden border"
-                    style={{ borderColor: primary + "30" }}
-                  >
-                    {p.thumbnail_url && (
-                      <img
-                        src={p.thumbnail_url}
-                        alt={p.name}
-                        className="w-full h-14 object-cover"
-                      />
-                    )}
-                    <div className="p-1.5">
-                      <p className="text-[9px] font-semibold truncate" style={{ color: txt }}>
-                        {p.name}
-                      </p>
-                      <button
-                        className="mt-1 w-full py-0.5 text-[8px] font-medium text-white"
-                        style={{ backgroundColor: primary, borderRadius: btnRadius }}
-                      >
-                        Ver produto
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+          {/* Home indicator */}
+          <div className="flex-shrink-0 h-8 flex items-center justify-center bg-gradient-to-t from-black/20">
+            <div className="w-28 h-1 bg-white/30 rounded-full" />
           </div>
         </div>
+
+        {/* Side buttons */}
+        <div className="absolute right-[-3px] top-28 w-[3px] h-12 bg-[#1a1a1a] rounded-r-sm shadow-inner" />
+        <div className="absolute left-[-3px] top-24 w-[3px] h-8 bg-[#1a1a1a] rounded-l-sm shadow-inner" />
+        <div className="absolute left-[-3px] top-36 w-[3px] h-8 bg-[#1a1a1a] rounded-l-sm shadow-inner" />
+        <div className="absolute left-[-3px] top-48 w-[3px] h-14 bg-[#1a1a1a] rounded-l-sm shadow-inner" />
       </div>
     </div>
   );
 }
 
-// ─── Aba Loja ────────────────────────────────────────────────────────────────
-
+// ─── Aba Loja (Store Tab) ────────────────────────────────────────────────────
 function AbaLoja({
   storefront,
   storeUrl,
   products,
   setProducts,
   productsLoading,
-  theme,
   onCopy,
   onOpen,
   navigate,
@@ -406,7 +364,6 @@ function AbaLoja({
   products: any[];
   setProducts: (p: any[]) => void;
   productsLoading: boolean;
-  theme: StorefrontTheme | null | undefined;
   onCopy: () => void;
   onOpen: () => void;
   navigate: (path: string) => void;
@@ -439,83 +396,92 @@ function AbaLoja({
   };
 
   return (
-    <div className="flex gap-6">
-      {/* ── Left column ── */}
-      <div className="flex-1 min-w-0 space-y-6">
-        {/* Perfil da loja */}
-        {storefront && (
-          <StoreProfileCard
-            storefront={storefront}
-            storeUrl={storeUrl}
-            onCopy={onCopy}
-            onOpen={onOpen}
-          />
+    <div className="space-y-6">
+      {/* Profile Card */}
+      {storefront && (
+        <StoreProfileCard
+          storefront={storefront}
+          storeUrl={storeUrl}
+          onCopy={onCopy}
+          onOpen={onOpen}
+        />
+      )}
+
+      {/* Products Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[15px] font-bold text-[#111827]">Listings</h3>
+          <span className="text-[12px] text-[#6b7280] font-medium">
+            {products.length} {products.length === 1 ? "item" : "items"}
+          </span>
+        </div>
+
+        {productsLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[68px] rounded-[14px]" />
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center rounded-[20px] border-2 border-dashed border-[#e5e7eb] bg-[#fafafa]/50">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Package className="h-8 w-8 text-primary" />
+            </div>
+            <p className="text-[16px] font-bold text-[#111827] mb-2">
+              Nenhum produto ainda
+            </p>
+            <p className="text-[14px] text-[#6b7280] mb-6 max-w-[280px]">
+              Crie seu primeiro produto para começar a vender
+            </p>
+            <Button 
+              onClick={() => navigate("/products/new")} 
+              className="gap-2 rounded-[12px] h-11 px-6 font-bold shadow-lg shadow-primary/25"
+            >
+              <Plus className="h-4 w-4" /> Criar produto
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {products.map((product: any, index: number) => (
+              <ProductListItem
+                key={product.id}
+                product={product}
+                onEdit={() => navigate(`/products/${product.id}/edit`)}
+                onArchive={() => onArchive(product.id)}
+                onDelete={() => onDelete(product.id)}
+                dragging={dragIndexRef.current === index}
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </div>
         )}
 
-        {/* Lista de produtos */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[15px] font-bold text-foreground">Listings</h2>
-            <span className="text-xs text-muted-foreground font-medium">{products.length} item{products.length !== 1 ? "s" : ""}</span>
-          </div>
-
-          {productsLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[72px] rounded-2xl" />)}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-border/80 bg-muted/10">
-              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Package className="h-7 w-7 text-primary" />
-              </div>
-              <p className="text-[15px] font-bold text-foreground mb-1.5">Nenhum produto ainda</p>
-              <p className="text-[13px] text-muted-foreground mb-6 max-w-[260px]">
-                Crie seu primeiro produto para começar a vender.
-              </p>
-              <Button onClick={() => navigate("/products/new")} className="gap-2 rounded-xl h-11 px-6 font-semibold">
-                <Plus className="h-4 w-4" /> Criar produto
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {products.map((product: any, index: number) => (
-                <ProductListItem
-                  key={product.id}
-                  product={product}
-                  onEdit={() => navigate(`/products/${product.id}/edit`)}
-                  onArchive={() => onArchive(product.id)}
-                  onDelete={() => onDelete(product.id)}
-                  dragging={dragIndexRef.current === index ? true : false}
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={handleDrop}
-                  onDragEnd={handleDragEnd}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* CTAs */}
-          <div className="mt-4 flex flex-col items-center gap-3">
+        {/* Add Product CTA */}
+        {products.length > 0 && (
+          <div className="mt-4 space-y-3">
             <button
               onClick={() => navigate("/products/new")}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-[14px] font-bold text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
+              className="w-full flex items-center justify-center gap-2.5 py-4 rounded-[16px] border-2 border-dashed border-primary/40 bg-primary/5 text-[14px] font-bold text-primary hover:bg-primary/10 hover:border-primary/60 transition-all"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
               Adicionar Produto
             </button>
-            <button className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors py-2">
-              Adicionar Seção
-            </button>
+            <div className="text-center">
+              <button className="text-[13px] font-semibold text-[#6b7280] hover:text-[#111827] transition-colors">
+                Adicionar Seção
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ─── Aba Landing Pages ───────────────────────────────────────────────────────
-
 function AbaLandingPages({
   products,
   loading,
@@ -530,30 +496,36 @@ function AbaLandingPages({
   );
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+    <div className="space-y-5">
+      <p className="text-[14px] text-[#6b7280]">
         Páginas e ofertas dedicadas com checkout ou captura de leads.
       </p>
 
       {loading ? (
-        <div className="space-y-2">
-          {[1, 2].map((i) => <Skeleton key={i} className="h-[62px] rounded-lg" />)}
+        <div className="space-y-3">
+          {[1, 2].map((i) => <Skeleton key={i} className="h-[68px] rounded-[14px]" />)}
         </div>
       ) : landingPages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-14 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-            <FileText className="h-6 w-6 text-primary" />
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-[20px] border-2 border-dashed border-[#e5e7eb] bg-[#fafafa]/50">
+          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <FileText className="h-7 w-7 text-primary" />
           </div>
-          <p className="text-sm font-medium text-foreground mb-1">Nenhuma landing page ainda</p>
-          <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-            Crie uma página de captura, serviço ou produto digital para começar.
+          <p className="text-[15px] font-bold text-[#111827] mb-2">
+            Nenhuma landing page ainda
           </p>
-          <Button size="sm" onClick={() => navigate("/products/new")} className="gap-2">
+          <p className="text-[13px] text-[#6b7280] mb-5 max-w-xs">
+            Crie uma página de captura, serviço ou produto digital
+          </p>
+          <Button 
+            size="sm" 
+            onClick={() => navigate("/products/new")} 
+            className="gap-2 rounded-[12px] font-bold"
+          >
             <Plus className="h-4 w-4" /> Criar landing page
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {landingPages.map((product: any) => {
             const typeInfo = TYPE_LABELS[product.type] ?? TYPE_LABELS.DIGITAL;
             const TypeIcon = typeInfo.icon;
@@ -562,29 +534,39 @@ function AbaLandingPages({
             return (
               <div
                 key={product.id}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border/50 bg-card hover:border-border hover:shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-[14px] border border-[#ececec] bg-white hover:border-[#d4d4d4] hover:bg-[#fafafa] transition-all cursor-pointer"
                 onClick={() => navigate(`/products/${product.id}/edit`)}
               >
-                <div className="h-11 w-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                <div className="h-12 w-12 rounded-[10px] overflow-hidden bg-muted flex items-center justify-center shrink-0">
                   {product.thumbnail_url ? (
                     <img src={product.thumbnail_url} alt={product.name} className="h-full w-full object-cover" />
                   ) : (
-                    <TypeIcon className="h-5 w-5 text-muted-foreground/50" />
+                    <TypeIcon className="h-5 w-5 text-[#9ca3af]" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-muted-foreground">{typeInfo.label}</span>
+                  <p className="text-[14px] font-semibold text-[#111827] truncate">{product.name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[12px] text-[#6b7280]">{typeInfo.label}</span>
                     {price && (
                       <>
-                        <span className="text-muted-foreground/30 text-xs">·</span>
-                        <span className="text-xs text-muted-foreground">{formatCurrency(price.amount)}</span>
+                        <span className="text-[#d4d4d4] text-[10px]">·</span>
+                        <span className="text-[12px] font-semibold text-[#6b7280]">
+                          {formatCurrency(price.amount)}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
-                <Badge variant="outline" className={cn("text-xs shrink-0", STATUS_STYLES[product.status ?? "DRAFT"])}>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-[11px] font-semibold shrink-0",
+                    product.status === "PUBLISHED" 
+                      ? "bg-green-50 text-green-700 border-green-200" 
+                      : "bg-[#f3f4f6] text-[#6b7280] border-[#e5e7eb]"
+                  )}
+                >
                   {STATUS_LABELS[product.status ?? "DRAFT"]}
                 </Badge>
               </div>
@@ -595,17 +577,16 @@ function AbaLandingPages({
 
       <button
         onClick={() => navigate("/products/new")}
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-[14px] font-bold text-primary hover:bg-primary/10 hover:border-primary/50 transition-all mt-4"
+        className="w-full flex items-center justify-center gap-2.5 py-4 rounded-[16px] border-2 border-dashed border-primary/40 bg-primary/5 text-[14px] font-bold text-primary hover:bg-primary/10 hover:border-primary/60 transition-all mt-5"
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="h-5 w-5" />
         Adicionar Landing Page
       </button>
     </div>
   );
 }
 
-// ─── Aba Editar Design (inline editor) ──────────────────────────────────────
-
+// ─── Aba Design (Edit Design) ────────────────────────────────────────────────
 function AbaDesign({
   storefront,
   theme,
@@ -623,13 +604,13 @@ function AbaDesign({
   onUpdateTheme: (data: Partial<StorefrontTheme>) => void;
   onBlocksChange: () => void;
 }) {
-  const [activePanel, setActivePanel] = useState<"profile" | "blocks" | "theme">("theme");
+  const [activePanel, setActivePanel] = useState<"theme" | "profile" | "blocks">("theme");
 
   return (
-    <div className="flex flex-col w-full border border-border/40 rounded-2xl bg-card shadow-sm min-h-[700px] relative overflow-hidden">
-
-      {/* ── Compact pill tabs ── */}
-      <div className="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-border/30">
+    <div className="flex flex-col w-full border border-[#ececec] rounded-[20px] bg-white shadow-sm min-h-[700px] relative overflow-hidden">
+      
+      {/* Compact tabs */}
+      <div className="flex items-center gap-2 px-5 pt-5 pb-4 border-b border-[#ececec]">
         {[
           { key: "theme",   label: "Tema",    icon: Palette },
           { key: "profile", label: "Perfil",  icon: User },
@@ -639,19 +620,19 @@ function AbaDesign({
             key={key}
             onClick={() => setActivePanel(key as any)}
             className={cn(
-              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all",
+              "flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[13px] font-bold transition-all",
               activePanel === key
-                ? "bg-primary/10 text-primary shadow-sm"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                ? "bg-primary/10 text-primary"
+                : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]"
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="h-4 w-4" />
             {label}
           </button>
         ))}
       </div>
 
-      {/* ── Panel content ── */}
+      {/* Panel content */}
       <div className="flex-1 p-6 overflow-y-auto">
         {activePanel === "theme" && (
           <ThemeSection
@@ -675,41 +656,42 @@ function AbaDesign({
         )}
       </div>
 
-      {/* ── Footer sticky ── */}
-      <div className="sticky bottom-0 left-0 right-0 px-5 py-3.5 bg-card/95 backdrop-blur-xl border-t border-border/50 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[12px] font-medium">
+      {/* Footer */}
+      <div className="sticky bottom-0 left-0 right-0 px-6 py-4 bg-white/95 backdrop-blur-xl border-t border-[#ececec] flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[12px] font-semibold">
           {saveStatus === "saving" && (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-            <span className="text-muted-foreground">Salvando...</span></>
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-[#6b7280]" />
+              <span className="text-[#6b7280]">Salvando...</span>
+            </>
           )}
           {saveStatus === "saved" && (
-            <><Check className="h-3.5 w-3.5 text-green-500" />
-            <span className="text-green-600">Tudo salvo</span></>
+            <>
+              <Check className="h-4 w-4 text-green-500" />
+              <span className="text-green-600">Tudo salvo</span>
+            </>
           )}
           {saveStatus === "unsaved" && (
-            <span className="text-amber-500 font-semibold">Alterações não salvas</span>
+            <span className="text-amber-600">Alterações não salvas</span>
           )}
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
-            className="h-9 px-4 rounded-xl text-[13px] font-semibold text-muted-foreground hover:text-foreground"
+            className="h-10 px-5 rounded-[12px] text-[13px] font-bold text-[#6b7280] hover:text-[#111827]"
           >
             Cancelar
           </Button>
-          <Button className="h-9 px-7 rounded-xl text-[13px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25">
+          <Button className="h-10 px-7 rounded-[12px] text-[13px] font-bold shadow-lg shadow-primary/25">
             Salvar
           </Button>
         </div>
       </div>
-
     </div>
   );
 }
 
-
-// ─── Componente principal ────────────────────────────────────────────────────
-
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Store() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -720,10 +702,9 @@ export default function Store() {
   const setTab = (t: StoreTab) => setSearchParams({ tab: t }, { replace: true });
 
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
-  // Local products state for drag & drop
   const [localProducts, setLocalProducts] = useState<any[] | null>(null);
 
-  // ── Storefront ──
+  // Fetch storefront
   const { data: storefront, isLoading: storefrontLoading } = useQuery({
     queryKey: ["storefront", currentWorkspace?.id],
     queryFn: async () => {
@@ -734,12 +715,15 @@ export default function Store() {
         .eq("workspace_id", currentWorkspace.id)
         .single();
       if (error) throw error;
-      return { ...data, social_links: (data.social_links as Record<string, string>) || {} } as StorefrontData;
+      return { 
+        ...data, 
+        social_links: (data.social_links as Record<string, string>) || {} 
+      } as StorefrontData;
     },
     enabled: !!currentWorkspace?.id,
   });
 
-  // ── Theme ──
+  // Fetch theme
   const { data: theme } = useQuery({
     queryKey: ["storefront-theme", storefront?.id],
     queryFn: async () => {
@@ -755,7 +739,7 @@ export default function Store() {
     enabled: !!storefront?.id,
   });
 
-  // ── Blocks ──
+  // Fetch blocks
   const { data: blocks = [] } = useQuery({
     queryKey: ["storefront-blocks", storefront?.id],
     queryFn: async () => {
@@ -771,7 +755,7 @@ export default function Store() {
     enabled: !!storefront?.id,
   });
 
-  // ── All products ──
+  // Fetch products
   const { data: fetchedProducts = [], isLoading: productsLoading } = useQuery({
     queryKey: ["all-products", currentWorkspace?.id],
     queryFn: async () => {
@@ -786,28 +770,18 @@ export default function Store() {
       return data;
     },
     enabled: !!currentWorkspace?.id,
-    onSuccess: (data: any[]) => {
-      // Sync local state when remote data arrives (but preserve drag order)
-      setLocalProducts((prev) => {
-        if (!prev) return data;
-        // Map to preserve any local reordering, adding new items
-        const existingIds = new Set(prev.map((p) => p.id));
-        const newItems = data.filter((p) => !existingIds.has(p.id));
-        const updatedPrev = prev
-          .map((lp) => data.find((dp: any) => dp.id === lp.id) ?? lp)
-          .filter((lp) => data.some((dp: any) => dp.id === lp.id));
-        return [...updatedPrev, ...newItems];
-      });
-    },
-  } as any);
+  });
 
   const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
   const setProducts = setLocalProducts;
 
-  // ── Mutations ──
+  // Mutations
   const archiveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("products").update({ status: "ARCHIVED" as ProductStatus }).eq("id", id);
+      const { error } = await supabase
+        .from("products")
+        .update({ status: "ARCHIVED" as ProductStatus })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -818,7 +792,10 @@ export default function Store() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("products").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await supabase
+        .from("products")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -831,19 +808,25 @@ export default function Store() {
     mutationFn: async (data: Partial<StorefrontData>) => {
       if (!storefront?.id) throw new Error("No storefront");
       setSaveStatus("saving");
-      const { error } = await supabase.from("storefronts").update({
-        title: data.title,
-        bio: data.bio,
-        avatar_url: data.avatar_url,
-        social_links: data.social_links,
-      }).eq("id", storefront.id);
+      const { error } = await supabase
+        .from("storefronts")
+        .update({
+          title: data.title,
+          bio: data.bio,
+          avatar_url: data.avatar_url,
+          social_links: data.social_links,
+        })
+        .eq("id", storefront.id);
       if (error) throw error;
     },
     onSuccess: () => {
       setSaveStatus("saved");
       queryClient.invalidateQueries({ queryKey: ["storefront"] });
     },
-    onError: () => { setSaveStatus("unsaved"); toast.error("Erro ao salvar."); },
+    onError: () => {
+      setSaveStatus("unsaved");
+      toast.error("Erro ao salvar.");
+    },
   });
 
   const saveThemeMutation = useMutation({
@@ -851,20 +834,25 @@ export default function Store() {
       if (!storefront?.id) throw new Error("No storefront");
       setSaveStatus("saving");
       if (theme?.id) {
-        const { error } = await supabase.from("storefront_themes").update(data).eq("id", theme.id);
+        const { error } = await supabase
+          .from("storefront_themes")
+          .update(data)
+          .eq("id", theme.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("storefront_themes").insert({
-          storefront_id: storefront.id,
-          template_key: data.template_key || "minimal",
-          primary_color: data.primary_color || "#F9423A",
-          secondary_color: data.secondary_color || "#1a1a1a",
-          background_color: data.background_color || "#ffffff",
-          text_color: data.text_color || "#1a1a1a",
-          font_heading: data.font_heading || "Inter",
-          font_body: data.font_body || "Inter",
-          button_style: data.button_style || "rounded",
-        });
+        const { error } = await supabase
+          .from("storefront_themes")
+          .insert({
+            storefront_id: storefront.id,
+            template_key: data.template_key || "minimal",
+            primary_color: data.primary_color || "#F9423A",
+            secondary_color: data.secondary_color || "#1a1a1a",
+            background_color: data.background_color || "#ffffff",
+            text_color: data.text_color || "#1a1a1a",
+            font_heading: data.font_heading || "Inter",
+            font_body: data.font_body || "Inter",
+            button_style: data.button_style || "rounded",
+          });
         if (error) throw error;
       }
     },
@@ -872,118 +860,174 @@ export default function Store() {
       setSaveStatus("saved");
       queryClient.invalidateQueries({ queryKey: ["storefront-theme"] });
     },
-    onError: () => { setSaveStatus("unsaved"); toast.error("Erro ao salvar tema."); },
+    onError: () => {
+      setSaveStatus("unsaved");
+      toast.error("Erro ao salvar tema.");
+    },
   });
 
-  // ── Debounced saves ──
-  const debouncedSaveStorefront = useCallback((data: Partial<StorefrontData>) => {
-    setSaveStatus("unsaved");
-    const t = setTimeout(() => saveStorefrontMutation.mutate(data), 1500);
-    return () => clearTimeout(t);
-  }, [saveStorefrontMutation]);
+  // Debounced saves
+  const debouncedSaveStorefront = useCallback(
+    (data: Partial<StorefrontData>) => {
+      setSaveStatus("unsaved");
+      const t = setTimeout(() => saveStorefrontMutation.mutate(data), 1500);
+      return () => clearTimeout(t);
+    },
+    [saveStorefrontMutation]
+  );
 
-  const debouncedSaveTheme = useCallback((data: Partial<StorefrontTheme>) => {
-    setSaveStatus("unsaved");
-    const t = setTimeout(() => saveThemeMutation.mutate(data), 1500);
-    return () => clearTimeout(t);
-  }, [saveThemeMutation]);
+  const debouncedSaveTheme = useCallback(
+    (data: Partial<StorefrontTheme>) => {
+      setSaveStatus("unsaved");
+      const t = setTimeout(() => saveThemeMutation.mutate(data), 1500);
+      return () => clearTimeout(t);
+    },
+    [saveThemeMutation]
+  );
 
-  // ── Storefront URL ──
-  const storeUrl = storefront?.slug ? `${window.location.origin}/${storefront.slug}` : null;
+  // Store URL
+  const storeUrl = storefront?.slug 
+    ? `${window.location.origin}/${storefront.slug}` 
+    : null;
 
   const copyLink = () => {
-    if (storeUrl) { navigator.clipboard.writeText(storeUrl); toast.success("Link copiado!"); }
+    if (storeUrl) {
+      navigator.clipboard.writeText(storeUrl);
+      toast.success("Link copiado!");
+    }
   };
-  const openStore = () => { if (storeUrl) window.open(storeUrl, "_blank"); };
 
-  // ── Loading ──
+  const openStore = () => {
+    if (storeUrl) window.open(storeUrl, "_blank");
+  };
+
+  // Loading state
   if (storefrontLoading) {
     return (
-      <div className="p-4 md:p-6 space-y-4">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-10 w-72" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-        <div className="space-y-2">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-[62px] rounded-lg" />)}
+      <div className="p-8 space-y-5">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-24 w-full rounded-[20px]" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[68px] rounded-[14px]" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-8 md:px-8 max-w-[1400px] mx-auto w-full">
+    <div className="px-6 py-8 md:px-10 max-w-[1600px] mx-auto w-full">
       
-      {/* ── Header and Top Warning ── */}
+      {/* Warning Banner */}
       {storefront && !storefront.is_published && (
-        <div className="mb-6 rounded-xl bg-[#fffbeb] px-4 py-3 border border-[#fef3c7] text-center">
+        <div className="mb-7 rounded-[16px] bg-[#fffbeb] px-5 py-4 border border-[#fef3c7] flex items-center justify-center gap-2">
+          <AlertCircle className="h-4 w-4 text-[#b45309]" />
           <p className="text-[13px] font-semibold text-[#b45309]">
-            Your store isn't live yet. No worries! You can <button className="text-[#0284c7] hover:underline">publish it here</button>.
+            Sua loja ainda não está publicada. Você pode{" "}
+            <button className="text-[#0284c7] hover:underline font-bold">
+              publicá-la aqui
+            </button>
+            .
           </p>
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4 mb-8">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-[28px] font-bold text-[#111827] tracking-tight">My Store</h1>
+          <h1 className="text-[36px] font-bold text-[#111827] tracking-tight leading-none mb-2">
+            Minha Loja
+          </h1>
+          {storeUrl && (
+            <div className="flex items-center gap-2.5">
+              <a
+                href={storeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[14px] font-medium text-[#6b7280] hover:text-primary transition-colors"
+              >
+                {storeUrl.replace(/https?:\/\//, "")}
+              </a>
+              <button
+                onClick={copyLink}
+                className="text-[#9ca3af] hover:text-primary p-1 rounded-md hover:bg-primary/10 transition-colors"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Top right link */}
-        {storeUrl && (
-          <div className="flex items-center gap-2">
-            <a 
-              href={storeUrl} 
-              target="_blank" 
-              rel="noreferrer" 
-              className="text-[14px] font-semibold text-[#8b5cf6] hover:text-[#7c3aed] transition-colors"
+        <div className="flex items-center gap-3">
+          {storeUrl && (
+            <Button
+              variant="outline"
+              onClick={openStore}
+              className="gap-2 rounded-[12px] h-11 px-5 font-bold border-[#ececec] hover:border-[#d4d4d4]"
             >
-              {storeUrl.replace(/https?:\/\//, '')}
-            </a>
-            <button onClick={copyLink} className="text-[#8b5cf6] hover:text-[#7c3aed] p-1 rounded-md hover:bg-[#8b5cf6]/10 transition-colors">
-               <Copy className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+              <ExternalLink className="h-4 w-4" />
+              Abrir loja
+            </Button>
+          )}
+          <Button
+            onClick={() => navigate("/products/new")}
+            className="gap-2 rounded-[12px] h-11 px-6 font-bold shadow-lg shadow-primary/25"
+          >
+            <Plus className="h-4 w-4" />
+            Novo produto
+          </Button>
+        </div>
       </div>
 
-      {/* ── Main Layout: 65/35 Split ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-10 items-start">
+      {/* Main Layout: 65/35 Split */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-12 items-start">
         
-        {/* Left Column: Editor Tabs */}
+        {/* Left Column: Editor */}
         <div className="w-full min-w-0">
           <Tabs value={tab} onValueChange={(v) => setTab(v as StoreTab)}>
-            <TabsList className="bg-transparent h-12 p-0 gap-3 mb-6 flex-wrap justify-start border-none">
-              <TabsTrigger 
-                value="loja" 
+            
+            {/* Tabs */}
+            <TabsList className="bg-transparent h-auto p-0 gap-2.5 mb-7 flex-wrap justify-start border-none">
+              <TabsTrigger
+                value="loja"
                 className={cn(
-                  "gap-2 text-[14px] font-bold px-5 py-2.5 rounded-full border border-transparent transition-all",
-                  tab === "loja" ? "bg-white border-[#ececec] shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  "gap-2 text-[14px] font-bold px-5 py-3 rounded-[14px] border transition-all data-[state=active]:shadow-sm",
+                  tab === "loja"
+                    ? "bg-white border-[#ececec] text-[#111827]"
+                    : "border-transparent text-[#6b7280] hover:text-[#111827] hover:bg-[#fafafa]"
                 )}
               >
                 <StoreIcon className="h-4 w-4" />
-                Store
+                Loja
               </TabsTrigger>
-              <TabsTrigger 
-                value="landing-pages" 
+              <TabsTrigger
+                value="landing-pages"
                 className={cn(
-                  "gap-2 text-[14px] font-bold px-5 py-2.5 rounded-full border border-transparent transition-all",
-                  tab === "landing-pages" ? "bg-white border-[#ececec] shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  "gap-2 text-[14px] font-bold px-5 py-3 rounded-[14px] border transition-all data-[state=active]:shadow-sm",
+                  tab === "landing-pages"
+                    ? "bg-white border-[#ececec] text-[#111827]"
+                    : "border-transparent text-[#6b7280] hover:text-[#111827] hover:bg-[#fafafa]"
                 )}
               >
                 <FileText className="h-4 w-4" />
                 Landing Pages
               </TabsTrigger>
-              <TabsTrigger 
-                value="design" 
+              <TabsTrigger
+                value="design"
                 className={cn(
-                  "gap-2 text-[14px] font-bold px-5 py-2.5 rounded-full border border-transparent transition-all",
-                  tab === "design" ? "bg-white border-primary/20 text-primary ring-1 ring-primary shadow-sm" : "text-primary/70 border-primary/20 hover:text-primary"
+                  "gap-2 text-[14px] font-bold px-5 py-3 rounded-[14px] border transition-all",
+                  tab === "design"
+                    ? "bg-primary/10 border-primary/30 text-primary ring-1 ring-primary/20"
+                    : "border-primary/20 text-primary/70 hover:text-primary hover:bg-primary/5"
                 )}
               >
                 <Palette className="h-4 w-4" />
-                Edit Design
+                Editar Design
               </TabsTrigger>
             </TabsList>
 
+            {/* Tab Contents */}
             <TabsContent value="loja" className="mt-0 outline-none">
               <AbaLoja
                 storefront={storefront}
@@ -991,7 +1035,6 @@ export default function Store() {
                 products={products}
                 setProducts={setProducts}
                 productsLoading={productsLoading}
-                theme={theme}
                 onCopy={copyLink}
                 onOpen={openStore}
                 navigate={navigate}
@@ -1017,64 +1060,27 @@ export default function Store() {
                   saveStatus={saveStatus}
                   onUpdateStorefront={debouncedSaveStorefront}
                   onUpdateTheme={debouncedSaveTheme}
-                  onBlocksChange={() => queryClient.invalidateQueries({ queryKey: ["storefront-blocks"] })}
+                  onBlocksChange={() =>
+                    queryClient.invalidateQueries({ queryKey: ["storefront-blocks"] })
+                  }
                 />
               ) : (
-                <div className="py-12 text-center text-muted-foreground text-sm">Storefront não encontrada.</div>
+                <div className="py-16 text-center text-[#6b7280] text-[14px]">
+                  Storefront não encontrada.
+                </div>
               )}
             </TabsContent>
           </Tabs>
         </div>
 
-        {/* Right Column: Sticky Mobile Preview */}
-        <div className="sticky top-8 hidden lg:flex lg:flex-col lg:items-center w-full">
-
-          {/* Label */}
-          <div className="flex items-center gap-1.5 mb-4">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Preview da loja</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          </div>
-
-          {/* Phone wrapper */}
-          <div className="relative" style={{ width: 320, height: 660 }}>
-            {/* Outer ambient glow */}
-            <div className="absolute inset-0 rounded-[46px] bg-primary/5 blur-2xl scale-110 pointer-events-none" />
-
-            {/* Phone frame */}
-            <div className="relative w-full h-full bg-[#0d0d0d] rounded-[44px] border-[10px] border-[#161616] shadow-[0_40px_80px_-10px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.05)] overflow-hidden flex flex-col">
-
-              {/* Top glass reflection */}
-              <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-white/8 to-transparent pointer-events-none z-10 rounded-t-[36px]" />
-
-              {/* Dynamic Island */}
-              <div className="absolute top-0 inset-x-0 h-8 flex justify-center items-start z-20 pt-1.5">
-                <div className="w-[90px] h-[22px] bg-[#0d0d0d] rounded-b-[14px] shadow-lg" />
-              </div>
-
-              {/* Store Preview */}
-              <div className="flex-1 w-full h-full relative pt-8">
-                <StorefrontPreview
-                  storefront={storefront}
-                  theme={theme ?? undefined}
-                  blocks={blocks}
-                />
-              </div>
-
-              {/* Home indicator */}
-              <div className="flex-shrink-0 h-7 flex items-center justify-center">
-                <div className="w-24 h-1 bg-white/25 rounded-full" />
-              </div>
-            </div>
-
-            {/* Side buttons */}
-            <div className="absolute right-[-2px] top-24 w-[3px] h-10 bg-[#1a1a1a] rounded-r-sm" />
-            <div className="absolute left-[-2px] top-20 w-[3px] h-7 bg-[#1a1a1a] rounded-l-sm" />
-            <div className="absolute left-[-2px] top-32 w-[3px] h-7 bg-[#1a1a1a] rounded-l-sm" />
-            <div className="absolute left-[-2px] top-44 w-[3px] h-12 bg-[#1a1a1a] rounded-l-sm" />
-          </div>
-
+        {/* Right Column: Sticky Preview */}
+        <div className="sticky top-8 hidden lg:block">
+          <PremiumPhonePreview
+            storefront={storefront}
+            theme={theme}
+            blocks={blocks}
+          />
         </div>
-
       </div>
     </div>
   );

@@ -136,23 +136,32 @@ export default function DigitalProductFlow({
 
         {/* Fake Phone */}
         <div className="w-[320px] h-[600px] bg-black rounded-[40px] p-2 shadow-xl flex flex-col justify-start">
-          <div className="w-full h-full rounded-[32px] overflow-hidden bg-[#F5F5F5] dark:bg-zinc-950 flex flex-col relative overflow-y-auto">
+          <div 
+            className="w-full h-full rounded-[32px] overflow-hidden flex flex-col relative overflow-y-auto"
+            style={{ backgroundColor: themeTokens.backgroundColor }}
+          >
             {/* Notch */}
             <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20"></div>
 
             {/* Thumbnail Preview */}
-            {tab === "thumbnail" && (
+              {tab === "thumbnail" && (
               <div className="p-4 pt-10 flex items-center h-full">
                 {form.cardStyle === "button" && (
-                  <div className="w-full py-4 px-6 rounded-2xl border-2 border-indigo-600 bg-white dark:bg-zinc-900 text-center text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm truncate">
+                  <div 
+                    className="w-full py-4 px-6 rounded-2xl border-2 text-center text-sm font-bold shadow-sm truncate"
+                    style={{ borderColor: themeTokens.primaryColor, color: themeTokens.textColor, backgroundColor: themeTokens.backgroundColor }}
+                  >
                     {form.name || "Título do Produto"}
                   </div>
                 )}
                 {form.cardStyle === "callout" && (
-                  <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
-                    <p className="font-bold text-zinc-900 dark:text-zinc-100 text-lg leading-snug">{form.name || "Título do produto"}</p>
+                  <div 
+                    className="w-full rounded-2xl border p-5 shadow-sm"
+                    style={{ borderColor: themeTokens.primaryColor + '40', backgroundColor: themeTokens.backgroundColor }}
+                  >
+                    <p className="font-bold text-lg leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Título do produto"}</p>
                     {form.shortDescription && (
-                      <p className="text-sm text-zinc-500 mt-2 line-clamp-2">{form.shortDescription}</p>
+                      <p className="text-sm mt-2 line-clamp-2" style={{ color: themeTokens.textColor, opacity: 0.7 }}>{form.shortDescription}</p>
                     )}
                     <div
                       className="mt-5 py-3 text-white text-sm font-medium text-center"
@@ -163,31 +172,34 @@ export default function DigitalProductFlow({
                   </div>
                 )}
                 {form.cardStyle === "preview" && (
-                  <div className="w-full rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
-                    <div className="h-44 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                  <div 
+                    className="w-full rounded-3xl border overflow-hidden shadow-sm"
+                    style={{ borderColor: themeTokens.primaryColor + '40', backgroundColor: themeTokens.backgroundColor }}
+                  >
+                    <div className="h-44 flex items-center justify-center overflow-hidden" style={{ backgroundColor: themeTokens.textColor + '10' }}>
                       {form.thumbnailUrl ? (
                         <img src={form.thumbnailUrl} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <ImageIcon className="h-10 w-10 text-zinc-300 dark:text-zinc-600" />
+                        <ImageIcon className="h-10 w-10" style={{ color: themeTokens.textColor, opacity: 0.3 }} />
                       )}
                     </div>
                     <div className="p-5">
-                      <p className="font-bold text-zinc-900 dark:text-zinc-100 text-lg leading-snug">{form.name || "Título do produto"}</p>
+                      <p className="font-bold text-lg leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Título do produto"}</p>
                       {form.shortDescription && (
-                        <p className="text-sm text-zinc-500 mt-2 line-clamp-2">{form.shortDescription}</p>
+                        <p className="text-sm mt-2 line-clamp-2" style={{ color: themeTokens.textColor, opacity: 0.7 }}>{form.shortDescription}</p>
                       )}
                       
-                      <div className="mt-4 flex items-center justify-between">
-                         <span className="font-bold text-foreground">
-                            {form.isFree ? "Gratuito" : `R$ ${form.price.toFixed(2).replace(".", ",")}`}
-                         </span>
-                         <div
-                           className="py-2.5 px-5 text-white rounded-xl text-sm font-medium"
-                           style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}
-                         >
-                           {form.ctaText || "Comprar"}
-                         </div>
-                      </div>
+                       <div className="mt-4 flex items-center justify-between">
+                          <span className="font-bold" style={{ color: themeTokens.textColor }}>
+                             {form.isFree ? "Gratuito" : `R$ ${form.price.toFixed(2).replace(".", ",")}`}
+                          </span>
+                          <div
+                            className="py-2.5 px-5 text-white rounded-xl text-sm font-medium"
+                            style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}
+                          >
+                            {form.ctaText || "Comprar"}
+                          </div>
+                       </div>
                     </div>
                   </div>
                 )}
@@ -196,14 +208,14 @@ export default function DigitalProductFlow({
 
             {/* Checkout / Opções Preview */}
             {(tab === "checkout" || tab === "opcoes") && (
-              <div className="bg-white dark:bg-zinc-900 min-h-full">
+              <div className="min-h-full" style={{ backgroundColor: themeTokens.backgroundColor }}>
                 {form.checkoutImage && (
                   <div className="h-48 bg-zinc-100 overflow-hidden">
                     <img src={form.checkoutImage} className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className="p-5 space-y-4 pt-10">
-                  <p className="font-bold text-xl text-zinc-900 dark:text-zinc-100 leading-snug">{form.name || "Título do Produto"}</p>
+                  <p className="font-bold text-xl leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Título do Produto"}</p>
                   
                   <div className="flex items-center gap-2">
                     {!form.isFree && form.price > 0 && (
@@ -212,27 +224,27 @@ export default function DigitalProductFlow({
                       </span>
                     )}
                     {!form.isFree && form.compareAtPrice && (
-                      <span className="text-sm text-zinc-400 line-through">
+                      <span className="text-sm line-through" style={{ color: themeTokens.textColor, opacity: 0.5 }}>
                         R$ {form.compareAtPrice.toFixed(2).replace(".", ",")}
                       </span>
                     )}
-                    {form.isFree && <span className="text-xl font-bold text-green-600">Download Grátis</span>}
+                    {form.isFree && <span className="text-xl font-bold" style={{ color: themeTokens.primaryColor }}>Download Grátis</span>}
                   </div>
 
                   {form.description && (
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-5 mt-4">
+                    <p className="text-sm line-clamp-5 mt-4" style={{ color: themeTokens.textColor, opacity: 0.8 }}>
                       {form.description}
                     </p>
                   )}
 
                   <div className="pt-6 space-y-3">
                      <div className="space-y-1">
-                       <p className="text-xs font-medium text-zinc-700">Nome completo</p>
-                       <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700" />
+                       <p className="text-xs font-medium" style={{ color: themeTokens.textColor }}>Nome completo</p>
+                       <div className="h-10 border rounded-lg" style={{ backgroundColor: themeTokens.textColor + '10', borderColor: themeTokens.textColor + '30' }} />
                      </div>
                      <div className="space-y-1">
-                       <p className="text-xs font-medium text-zinc-700">E-mail de acesso</p>
-                       <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700" />
+                       <p className="text-xs font-medium" style={{ color: themeTokens.textColor }}>E-mail de acesso</p>
+                       <div className="h-10 border rounded-lg" style={{ backgroundColor: themeTokens.textColor + '10', borderColor: themeTokens.textColor + '30' }} />
                      </div>
                      <div className="pt-2">
                         <div
@@ -240,7 +252,7 @@ export default function DigitalProductFlow({
                            style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}
                          >
                            {form.ctaText || "Finalizar Compra"}
-                         </div>
+                       </div>
                      </div>
                   </div>
                 </div>
