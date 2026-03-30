@@ -400,10 +400,8 @@ function AbaLoja({
         />
       )}
 
-      {/* Blocks section removed — only Listings remain */}
-
       {/* Products Section */}
-      <div className="pt-6">
+      <div className="pt-2">
 
         {productsLoading ? (
           <div className="space-y-3">
