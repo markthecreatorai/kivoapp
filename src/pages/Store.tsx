@@ -612,14 +612,28 @@ function AbaDesign({
   saveStatus,
   onUpdateStorefront,
   onUpdateTheme,
+  setLocalStorefront,
+  setLocalTheme,
 }: {
   storefront: StorefrontData;
   theme: StorefrontTheme | null | undefined;
   saveStatus: "saved" | "saving" | "unsaved";
   onUpdateStorefront: (data: Partial<StorefrontData>) => void;
   onUpdateTheme: (data: Partial<StorefrontTheme>) => void;
+  setLocalStorefront: (data: Partial<StorefrontData>) => void;
+  setLocalTheme: (data: Partial<StorefrontTheme>) => void;
 }) {
   const [activePanel, setActivePanel] = useState<"theme" | "profile">("theme");
+
+  const handleStorefrontUpdate = (data: Partial<StorefrontData>) => {
+    setLocalStorefront(data);
+    onUpdateStorefront(data);
+  };
+
+  const handleThemeUpdate = (data: Partial<StorefrontTheme>) => {
+    setLocalTheme(data);
+    onUpdateTheme(data);
+  };
 
   return (
     <div className="flex flex-col w-full min-h-[700px] relative">
@@ -652,13 +666,13 @@ function AbaDesign({
           <ThemeSection
             theme={theme ?? undefined}
             storefrontId={storefront.id}
-            onUpdate={onUpdateTheme}
+            onUpdate={handleThemeUpdate}
           />
         )}
         {activePanel === "profile" && (
           <ProfileSection
             storefront={storefront}
-            onUpdate={onUpdateStorefront}
+            onUpdate={handleStorefrontUpdate}
           />
         )}
       </div>
@@ -710,6 +724,19 @@ export default function Store() {
 
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [localProducts, setLocalProducts] = useState<any[] | null>(null);
+
+  // Local state for real-time preview updates
+  const [localStorefront, setLocalStorefront] = useState<StorefrontData | null>(null);
+  const [localTheme, setLocalTheme] = useState<StorefrontTheme | null | undefined>(undefined);
+
+  // Sync local state with fetched data
+  useEffect(() => {
+    if (storefront) setLocalStorefront(storefront);
+  }, [storefront]);
+
+  useEffect(() => {
+    setLocalTheme(theme);
+  }, [theme]);
 
   // Fetch storefront
   const { data: storefront, isLoading: storefrontLoading } = useQuery({
@@ -1095,11 +1122,13 @@ export default function Store() {
             <TabsContent value="design" className="mt-0 outline-none">
               {storefront ? (
                   <AbaDesign
-                  storefront={storefront}
-                  theme={theme}
+                  storefront={localStorefront ?? storefront}
+                  theme={localTheme ?? theme}
                   saveStatus={saveStatus}
                   onUpdateStorefront={debouncedSaveStorefront}
                   onUpdateTheme={debouncedSaveTheme}
+                  setLocalStorefront={setLocalStorefront}
+                  setLocalTheme={setLocalTheme}
                 />
               ) : (
                 <div className="py-16 text-center text-[#6b7280] text-[14px]">
@@ -1113,8 +1142,8 @@ export default function Store() {
         {/* Right Column: Sticky Preview */}
         <div className="sticky top-8 hidden lg:block">
           <PremiumPhonePreview
-            storefront={storefront}
-            theme={theme}
+            storefront={localStorefront ?? storefront}
+            theme={localTheme ?? theme}
             blocks={blocks}
           />
         </div>
