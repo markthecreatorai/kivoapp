@@ -324,7 +324,7 @@ export function BlocksSection({ storefrontId, blocks, onBlocksChange }: BlocksSe
           type: block.type,
           position: maxPosition + 1,
           is_visible: block.is_visible,
-          config: block.config
+          config: block.config as any
         }]);
       
       if (error) throw error;

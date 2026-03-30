@@ -68,7 +68,7 @@ export default function CommunityFlow({
     queryKey: ["workspace_circles", currentWorkspace?.id],
     queryFn: async () => {
       if (!currentWorkspace?.id) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("circles")
         .select("*")
         .eq("workspace_id", currentWorkspace.id);

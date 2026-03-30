@@ -110,7 +110,7 @@ export function FormFieldsBuilder({ productId }: { productId: string }) {
       if (deleteError) throw deleteError;
 
       if (upsertData.length > 0) {
-        const { error: insertError } = await supabase
+        const { error: insertError } = await (supabase as any)
           .from("product_form_fields")
           .insert(upsertData.map(d => {
              // Removing undefined/mock ids for insert
