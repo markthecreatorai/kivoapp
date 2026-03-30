@@ -11,6 +11,7 @@ import CollectEmailsFlow from "./editor/CollectEmailsFlow";
 import DigitalProductFlow from "./editor/DigitalProductFlow";
 import CustomProductFlow from "./editor/CustomProductFlow";
 import UrlMediaFlow from "./editor/UrlMediaFlow";
+import RecurringProductFlow from "./editor/RecurringProductFlow";
 
 export default function ProductEditor() {
   const { id } = useParams<{ id: string }>();
@@ -66,9 +67,11 @@ export default function ProductEditor() {
       case "lead_magnet":
         return <CollectEmailsFlow initialProduct={product} setSaving={setSaving} />;
       case "digital_product":
-      case "recurring": // To be upgraded later, but shares same base UI for now
       case "digital":
         return <DigitalProductFlow initialProduct={product} setSaving={setSaving} />;
+      case "recurring":
+      case "recurring_membership":
+        return <RecurringProductFlow initialProduct={product} setSaving={setSaving} />;
       case "custom_product":
       case "service":
         return <CustomProductFlow initialProduct={product} setSaving={setSaving} />;
