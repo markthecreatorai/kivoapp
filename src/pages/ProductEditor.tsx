@@ -59,7 +59,7 @@ export default function ProductEditor() {
 
   // O Flow escolhido é derivado pelo metadata.format_id (Ex: 'collect_emails')
   // Se não existir (legados), recai pro DB 'type'
-  const formatId = (product.metadata as any)?.format_id || product.type.toLowerCase();
+  const formatId = (product as any)?.metadata?.format_id || product.type.toLowerCase();
 
   // Dependendo do config type, renderiza o Componente Main Handler apropriado
   const renderFlow = () => {
