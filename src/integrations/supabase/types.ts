@@ -4795,6 +4795,7 @@ export type Database = {
       }
       products: {
         Row: {
+          checkout_description: string | null
           created_at: string | null
           deleted_at: string | null
           description: string | null
@@ -4814,6 +4815,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          checkout_description?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
@@ -4833,6 +4835,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          checkout_description?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
