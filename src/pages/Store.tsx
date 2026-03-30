@@ -611,12 +611,12 @@ function AbaDesign({
   const [activePanel, setActivePanel] = useState<"theme" | "profile">("theme");
 
   const handleStorefrontUpdate = (data: Partial<StorefrontData>) => {
-    setLocalStorefront(data);
+    setLocalStorefront(prev => prev ? { ...prev, ...data } : null);
     onUpdateStorefront(data);
   };
 
   const handleThemeUpdate = (data: Partial<StorefrontTheme>) => {
-    setLocalTheme(data);
+    setLocalTheme(prev => prev ? { ...prev, ...data } : undefined);
     onUpdateTheme(data);
   };
 
