@@ -19,6 +19,8 @@ import {
   Pencil,
   Archive,
   Trash2,
+  Eye,
+  EyeOff,
   Megaphone,
   Calendar,
   GraduationCap,
@@ -169,6 +171,7 @@ function ProductListItem({
   product,
   onEdit,
   onArchive,
+  onTogglePublish,
   onDelete,
   onDuplicate,
   dragging,
@@ -180,6 +183,7 @@ function ProductListItem({
   product: any;
   onEdit: () => void;
   onArchive: () => void;
+  onTogglePublish: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
   dragging: boolean;
@@ -267,6 +271,13 @@ function ProductListItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onClick={onTogglePublish}>
+              {product.status === "PUBLISHED" ? (
+                <><EyeOff className="h-4 w-4 mr-2" /> Despublicar</>
+              ) : (
+                <><Eye className="h-4 w-4 mr-2" /> Publicar</>
+              )}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onDuplicate}>
               <Copy className="h-4 w-4 mr-2" /> Duplicar
             </DropdownMenuItem>
@@ -346,6 +357,7 @@ function AbaLoja({
   onOpen,
   navigate,
   onArchive,
+  onTogglePublish,
   onDelete,
   onDuplicate,
 }: {
@@ -360,6 +372,7 @@ function AbaLoja({
   onOpen: () => void;
   navigate: (path: string) => void;
   onArchive: (id: string) => void;
+  onTogglePublish: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
 }) {
@@ -435,6 +448,7 @@ function AbaLoja({
                 product={product}
                 onEdit={() => navigate(`/products/${product.id}/edit`)}
                 onArchive={() => onArchive(product.id)}
+                onTogglePublish={() => onTogglePublish(product.id)}
                 onDelete={() => onDelete(product.id)}
                 onDuplicate={() => onDuplicate(product.id)}
                 dragging={dragIndexRef.current === index}
@@ -790,6 +804,22 @@ export default function Store() {
     },
   });
 
+  const togglePublishMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const product = products.find((p: any) => p.id === id);
+      const newStatus = product?.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
+      const { error } = await supabase
+        .from("products")
+        .update({ status: newStatus as ProductStatus })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-products"] });
+      toast.success("Status do produto atualizado.");
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -1072,6 +1102,7 @@ export default function Store() {
                 onOpen={openStore}
                 navigate={navigate}
                 onArchive={(id) => archiveMutation.mutate(id)}
+                onTogglePublish={(id) => togglePublishMutation.mutate(id)}
                 onDelete={(id) => deleteMutation.mutate(id)}
                 onDuplicate={(id) => duplicateProductMutation.mutate(products.find((p: any) => p.id === id))}
               />
