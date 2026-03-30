@@ -171,6 +171,7 @@ function ProductListItem({
   product,
   onEdit,
   onArchive,
+  onTogglePublish,
   onDelete,
   onDuplicate,
   dragging,
