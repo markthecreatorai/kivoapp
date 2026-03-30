@@ -830,16 +830,15 @@ export default function Store() {
       // Deep copy product, create new one with " - Cópia" suffix
       const { data, error } = await supabase
         .from("products")
-        .insert({
+        .insert([{
           workspace_id: product.workspace_id,
           name: `${product.name} - Cópia`,
           type: product.type,
-          status: "DRAFT", // Always duplicate as draft
+          status: "DRAFT" as const,
           description: product.description,
           short_description: product.short_description,
           thumbnail_url: product.thumbnail_url,
-          // Note: We don't copy prices/attachments for now to avoid complexity
-        })
+        }])
         .select()
         .single();
       
