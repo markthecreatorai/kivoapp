@@ -8,6 +8,8 @@ import { ArrowLeft, Save, Rocket, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import CollectEmailsFlow from "./editor/CollectEmailsFlow";
+import DigitalProductFlow from "./editor/DigitalProductFlow";
+import CustomProductFlow from "./editor/CustomProductFlow";
 
 export default function ProductEditor() {
   const { id } = useParams<{ id: string }>();
@@ -62,6 +64,13 @@ export default function ProductEditor() {
       case "collect_emails":
       case "lead_magnet":
         return <CollectEmailsFlow initialProduct={product} setSaving={setSaving} />;
+      case "digital_product":
+      case "recurring": // To be upgraded later, but shares same base UI for now
+      case "digital":
+        return <DigitalProductFlow initialProduct={product} setSaving={setSaving} />;
+      case "custom_product":
+      case "service":
+        return <CustomProductFlow initialProduct={product} setSaving={setSaving} />;
       default:
         // Fallback pro "em breve" ou placeholder
         return (
