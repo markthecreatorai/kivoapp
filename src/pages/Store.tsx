@@ -804,7 +804,22 @@ export default function Store() {
     },
   });
 
-  const deleteMutation = useMutation({
+  const togglePublishMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const product = products.find((p: any) => p.id === id);
+      const newStatus = product?.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
+      const { error } = await supabase
+        .from("products")
+        .update({ status: newStatus as ProductStatus })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-products"] });
+      toast.success("Status do produto atualizado.");
+    },
+  });
+
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("products")
