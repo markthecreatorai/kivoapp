@@ -448,6 +448,7 @@ function AbaLoja({
                 product={product}
                 onEdit={() => navigate(`/products/${product.id}/edit`)}
                 onArchive={() => onArchive(product.id)}
+                onTogglePublish={() => onTogglePublish(product.id)}
                 onDelete={() => onDelete(product.id)}
                 onDuplicate={() => onDuplicate(product.id)}
                 dragging={dragIndexRef.current === index}
