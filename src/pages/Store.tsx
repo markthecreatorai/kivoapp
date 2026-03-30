@@ -784,6 +784,15 @@ export default function Store() {
     enabled: !!currentWorkspace?.id,
   });
 
+  // Sync local state with fetched data
+  useEffect(() => {
+    if (storefront) setLocalStorefront(storefront);
+  }, [storefront]);
+
+  useEffect(() => {
+    setLocalTheme(theme);
+  }, [theme]);
+
   const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
   const setProducts = setLocalProducts;
 
