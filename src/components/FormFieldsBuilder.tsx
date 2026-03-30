@@ -44,7 +44,7 @@ export function FormFieldsBuilder({ productId }: { productId: string }) {
   const { data: dbFields, isLoading } = useQuery({
     queryKey: ["productFormFields", productId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("product_form_fields")
         .select("*")
         .eq("product_id", productId)
