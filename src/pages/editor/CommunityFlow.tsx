@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
 import { ReviewsBuilder } from "@/components/ReviewsBuilder";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 
 export default function CommunityFlow({
@@ -357,11 +358,11 @@ export default function CommunityFlow({
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-foreground">Apresentação da Oferta</Label>
-                <Textarea 
-                  placeholder="Descreva as vantagens de se juntar. Salas, networking, etc." 
-                  value={form.description} onChange={e => updateForm({description: e.target.value})}
-                  rows={4}
-                  className="resize-none"
+                <RichTextEditor
+                  placeholder="Descreva as vantagens de se juntar. Salas, networking, etc."
+                  value={form.description}
+                  onChange={v => updateForm({description: v})}
+                  minHeight="120px"
                 />
               </div>
 
@@ -560,11 +561,16 @@ export default function CommunityFlow({
                          </div>
                          <div className="space-y-2">
                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Corpo da Mensagem (Suporte Dynamic Tags)</Label>
-                           <Textarea 
-                             value={form.confirmationBody} onChange={e => updateForm({confirmationBody: e.target.value})}
-                             rows={6} className="resize-none font-mono text-xs leading-5 bg-card"
+                           <RichTextEditor
+                             value={form.confirmationBody}
+                             onChange={v => updateForm({confirmationBody: v})}
+                             variables={[
+                               { label: "Nome do Membro", value: "nome" },
+                               { label: "Nome da Comunidade", value: "nome_comunidade" },
+                               { label: "Seu Nome", value: "meu_nome" },
+                             ]}
+                             minHeight="140px"
                            />
-                           <p className="text-[11px] text-muted-foreground text-right">Variáveis aceitas: {'{nome}'}, {'{nome_comunidade}'}</p>
                          </div>
                       </div>
                     )}

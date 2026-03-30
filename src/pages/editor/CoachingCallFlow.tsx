@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
 import { ReviewsBuilder } from "@/components/ReviewsBuilder";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 const DAYS = [
   { key: 0, label: "Domingo" },
@@ -764,10 +765,17 @@ export default function CoachingCallFlow({
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Corpo da mensagem</Label>
-                        <Textarea value={form.confirmationBody} onChange={e => updateForm({ confirmationBody: e.target.value })} rows={6} className="resize-none font-mono text-xs leading-5 bg-card" />
-                        <p className="text-[11px] text-muted-foreground text-right">
-                          {"{nome_cliente}"} {"{data_reuniao}"} {"{hora_reuniao}"} {"{link_reuniao}"}
-                        </p>
+                        <RichTextEditor
+                          value={form.confirmationBody}
+                          onChange={v => updateForm({ confirmationBody: v })}
+                          variables={[
+                            { label: "Nome do Cliente", value: "nome_cliente" },
+                            { label: "Data da Reunião", value: "data_reuniao" },
+                            { label: "Hora da Reunião", value: "hora_reuniao" },
+                            { label: "Link da Reunião", value: "link_reuniao" },
+                          ]}
+                          minHeight="160px"
+                        />
                       </div>
                     </div>
                   )}

@@ -24,6 +24,7 @@ import {
 import type { Database } from "@/integrations/supabase/types";
 import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
 import { ReviewsBuilder } from "@/components/ReviewsBuilder";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 export default function CollectEmailsFlow({
   initialProduct,
@@ -304,14 +305,17 @@ export default function CollectEmailsFlow({
                              />
                            </div>
                            <div className="space-y-2">
-                             <Label className="text-xs font-semibold">Mensagem Personalizada</Label>
-                             <Textarea 
-                               value={form.confirmationBody}
-                               onChange={e => updateForm({confirmationBody: e.target.value})}
-                               rows={6}
-                               className="resize-none font-mono text-sm leading-relaxed"
-                             />
-                             <p className="text-xs text-muted-foreground">Variáveis aceitas: {'{nome_cliente}'}</p>
+                              <Label className="text-xs font-semibold">Mensagem Personalizada</Label>
+                              <RichTextEditor
+                                value={form.confirmationBody}
+                                onChange={v => updateForm({confirmationBody: v})}
+                                variables={[
+                                  { label: "Nome do Cliente", value: "nome_cliente" },
+                                  { label: "Seu Nome", value: "meu_nome" },
+                                  { label: "Nome do Produto", value: "nome_produto" },
+                                ]}
+                                minHeight="140px"
+                              />
                            </div>
                         </div>
                       )}

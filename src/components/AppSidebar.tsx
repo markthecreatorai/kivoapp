@@ -41,9 +41,14 @@ interface NavGroup {
 
 const creatorGroups: NavGroup[] = [
   {
-    label: "Visão Geral",
+    label: "Dashboard",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: Home },
+    ],
+  },
+  {
+    label: "Indicações",
+    items: [
       { title: "Indicações", url: "/referrals", icon: Users },
     ],
   },

@@ -209,9 +209,9 @@ export function ReviewsBuilder({ productId }: { productId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between p-4 rounded-xl border border-indigo-500/30 bg-indigo-50/30 dark:bg-indigo-900/10">
+      <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card shadow-sm">
          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 flex items-center justify-center">
+             <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                  <MessageSquare className="w-5 h-5" />
              </div>
              <div>
@@ -219,7 +219,7 @@ export function ReviewsBuilder({ productId }: { productId: string }) {
                 <p className="text-xs text-muted-foreground">Exibidos abaixo do botão de compra no seu checkout.</p>
              </div>
          </div>
-         <Button onClick={handleOpenNew} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 gap-2">
+         <Button onClick={handleOpenNew} size="sm" className="gap-2">
             <Plus className="w-4 h-4" /> Adicionar Review
          </Button>
       </div>
@@ -247,7 +247,7 @@ export function ReviewsBuilder({ productId }: { productId: string }) {
                            <Switch checked={rev.is_approved} className="scale-75 data-[state=checked]:bg-green-500" />
                        </button>
                        <div className="w-px h-3 bg-border mx-1" />
-                       <button onClick={() => handleEdit(rev)} className="p-1 text-muted-foreground hover:text-indigo-600 transition-colors">
+                       <button onClick={() => handleEdit(rev)} className="p-1 text-muted-foreground hover:text-primary transition-colors">
                            <Edit2 className="w-3.5 h-3.5" />
                        </button>
                        <button onClick={() => handleDelete(rev.id)} className="p-1 text-muted-foreground hover:text-red-500 transition-colors">
@@ -330,7 +330,7 @@ export function ReviewsBuilder({ productId }: { productId: string }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenModal(false)} className="w-full sm:w-auto">Cancelar</Button>
-            <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
               {isSaving ? (
                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Salvando...</>
               ) : (

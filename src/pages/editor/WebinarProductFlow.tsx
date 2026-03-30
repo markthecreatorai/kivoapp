@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
 import { ReviewsBuilder } from "@/components/ReviewsBuilder";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 export default function WebinarProductFlow({
   initialProduct,
@@ -509,13 +510,13 @@ export default function WebinarProductFlow({
                 )}
               </div>
 
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2">
                 <Label className="text-sm font-semibold text-foreground">Apresentação / Landing Page do Evento</Label>
-                <Textarea 
-                  placeholder="Por que as pessoas devem comprar esse evento de X minutos?" 
-                  value={form.description} onChange={e => updateForm({description: e.target.value})}
-                  rows={4}
-                  className="resize-none"
+                <RichTextEditor
+                  placeholder="Por que as pessoas devem comprar esse evento de X minutos?"
+                  value={form.description}
+                  onChange={v => updateForm({description: v})}
+                  minHeight="120px"
                 />
               </div>
 
@@ -590,11 +591,16 @@ export default function WebinarProductFlow({
                          </div>
                          <div className="space-y-2">
                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Corpo da Mensagem</Label>
-                           <Textarea 
-                             value={form.confirmationBody} onChange={e => updateForm({confirmationBody: e.target.value})}
-                             rows={6} className="resize-none font-mono text-xs leading-5 bg-card"
+                           <RichTextEditor
+                             value={form.confirmationBody}
+                             onChange={v => updateForm({confirmationBody: v})}
+                             variables={[
+                               { label: "Nome do Cliente", value: "nome_cliente" },
+                               { label: "Nome do Produto", value: "nome_produto" },
+                               { label: "Data e Hora", value: "data_hora" },
+                             ]}
+                             minHeight="140px"
                            />
-                           <p className="text-[11px] text-muted-foreground text-right">{'{nome_cliente}'} - {'{produto}'} - {'{data_hora}'}</p>
                          </div>
                       </div>
                     )}

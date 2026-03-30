@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
 import { ReviewsBuilder } from "@/components/ReviewsBuilder";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 export default function DigitalProductFlow({
   initialProduct,
@@ -354,11 +355,11 @@ export default function DigitalProductFlow({
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-foreground">Apresentação da Oferta</Label>
-                <Textarea 
-                  placeholder="Liste tudo o que o cliente recebe aqui. Pode abusar do formato, este é seu argumento de vendas." 
-                  value={form.description} onChange={e => updateForm({description: e.target.value})}
-                  rows={5}
-                  className="resize-none"
+                <RichTextEditor
+                  placeholder="Liste tudo o que o cliente recebe aqui. Pode abusar do formato."
+                  value={form.description}
+                  onChange={v => updateForm({description: v})}
+                  minHeight="140px"
                 />
               </div>
 
@@ -489,11 +490,17 @@ export default function DigitalProductFlow({
                          </div>
                          <div className="space-y-2">
                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Corpo da Mensagem (E-mail Dinâmico)</Label>
-                           <Textarea 
-                             value={form.confirmationBody} onChange={e => updateForm({confirmationBody: e.target.value})}
-                             rows={6} className="resize-none font-mono text-xs leading-5 bg-card"
+                           <RichTextEditor
+                             value={form.confirmationBody}
+                             onChange={v => updateForm({confirmationBody: v})}
+                             variables={[
+                               { label: "Nome do Cliente", value: "nome_cliente" },
+                               { label: "Seu Nome", value: "meu_nome" },
+                               { label: "Nome do Produto", value: "nome_produto" },
+                               { label: "Link / Arquivos", value: "arquivos_produto" },
+                             ]}
+                             minHeight="160px"
                            />
-                           <p className="text-[11px] text-muted-foreground text-right">{'{nome_cliente}'} - {'{produto}'} - {'{link_acesso}'}</p>
                          </div>
                       </div>
                     )}
