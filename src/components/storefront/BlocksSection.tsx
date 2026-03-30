@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -184,6 +184,11 @@ export function BlocksSection({ storefrontId, blocks, onBlocksChange }: BlocksSe
   const [editingBlock, setEditingBlock] = useState<StorefrontBlock | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [blockConfig, setBlockConfig] = useState<Record<string, unknown>>({});
+  const [localBlocks, setLocalBlocks] = useState<StorefrontBlock[]>(blocks);
+
+  useEffect(() => {
+    setLocalBlocks(blocks);
+  }, [blocks]);
 
   // Fetch products for product card selection
   const { data: products = [] } = useQuery({
@@ -302,10 +307,12 @@ export function BlocksSection({ storefrontId, blocks, onBlocksChange }: BlocksSe
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = blocks.findIndex(b => b.id === active.id);
-    const newIndex = blocks.findIndex(b => b.id === over.id);
-    const reordered = arrayMove(blocks, oldIndex, newIndex);
+    const oldIndex = localBlocks.findIndex(b => b.id === active.id);
+    const newIndex = localBlocks.findIndex(b => b.id === over.id);
+    const reordered = arrayMove(localBlocks, oldIndex, newIndex);
     
+    // Atualização otimista para o dnd-kit não piscar/inativar
+    setLocalBlocks(reordered);
     updatePositionsMutation.mutate(reordered);
   };
 
@@ -533,7 +540,7 @@ export function BlocksSection({ storefrontId, blocks, onBlocksChange }: BlocksSe
         </DialogContent>
       </Dialog>
 
-      {blocks.length === 0 ? (
+      {localBlocks.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <p>Nenhum bloco ainda</p>
           <p className="text-sm">Adicione blocos para personalizar sua página</p>
@@ -544,9 +551,9 @@ export function BlocksSection({ storefrontId, blocks, onBlocksChange }: BlocksSe
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={localBlocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
-              {blocks.map((block) => (
+              {localBlocks.map((block) => (
                 <SortableBlockItem
                   key={block.id}
                   block={block}

@@ -94,7 +94,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
         if (!product) return null;
         return (
           <div 
-            className={cn("w-full overflow-hidden border", getButtonClass())}
+            className="w-full overflow-hidden border rounded-[16px]"
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             {product.thumbnail_url && (
@@ -114,7 +114,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
                 </p>
               )}
               <button
-                className={cn("w-full mt-3 py-2 text-sm font-medium text-white", getButtonClass())}
+                className={cn("w-full mt-3 py-2 text-sm font-medium text-white transition-all hover:opacity-90", getButtonClass())}
                 style={{ backgroundColor: currentTheme.primary_color }}
               >
                 {product.listing_button_text || 'Ver produto'}
@@ -126,7 +126,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
       case 'lead_form':
         return (
           <div 
-            className={cn("w-full p-4 border", getButtonClass())}
+            className="w-full p-4 border rounded-[16px]"
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             <p className="font-medium mb-3" style={{ color: currentTheme.text_color }}>
@@ -135,11 +135,11 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
             <input
               type="email"
               placeholder="Seu melhor email"
-              className={cn("w-full px-3 py-2 border mb-2 text-sm", getButtonClass())}
-              style={{ borderColor: currentTheme.text_color + '30' }}
+              className="w-full px-3 py-2 border mb-3 text-sm rounded-lg"
+              style={{ borderColor: currentTheme.text_color + '30', backgroundColor: 'transparent', color: currentTheme.text_color }}
             />
             <button
-              className={cn("w-full py-2 text-sm font-medium text-white", getButtonClass())}
+              className={cn("w-full py-2.5 text-sm font-medium text-white transition-all hover:opacity-90", getButtonClass())}
               style={{ backgroundColor: currentTheme.primary_color }}
             >
               {config.button_text as string || 'Enviar'}
@@ -156,7 +156,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
           : null;
 
         return (
-          <div className={cn("w-full aspect-video overflow-hidden", getButtonClass())}>
+          <div className="w-full aspect-video overflow-hidden rounded-[16px]">
             {videoId && videoUrl?.includes('youtube') ? (
               <iframe
                 src={`https://www.youtube.com/embed/${videoId}`}
@@ -225,7 +225,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
 
         return (
           <div 
-            className={cn("w-full p-4 text-center", getButtonClass())}
+            className="w-full p-4 text-center rounded-[16px]"
             style={{ backgroundColor: currentTheme.primary_color + '10' }}
           >
             <p className="text-sm mb-2" style={{ color: currentTheme.text_color }}>
@@ -268,7 +268,14 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
         fontFamily: currentTheme.font_body
       }}
     >
-      <div className="w-full h-full overflow-y-auto overflow-x-hidden no-scrollbar">
+      <div 
+        className="w-full h-full overflow-y-auto overflow-x-hidden"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style dangerouslySetInnerHTML={{ __html: `
+          .no-scrollbars::-webkit-scrollbar { display: none; }
+        `}} />
+        <div className="no-scrollbars w-full h-full">
         {/* Profile */}
         <div className="flex flex-col items-center text-center mb-6 pt-6 px-4">
               <Avatar className="h-24 w-24 mb-4 ring-4 ring-white shadow-lg">
@@ -373,6 +380,7 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
             Feito com ❤️ na Kivo
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

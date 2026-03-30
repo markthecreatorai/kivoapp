@@ -343,6 +343,8 @@ function AbaLoja({
   products,
   setProducts,
   productsLoading,
+  blocks,
+  onBlocksChange,
   onCopy,
   onOpen,
   navigate,
@@ -354,6 +356,8 @@ function AbaLoja({
   products: any[];
   setProducts: (p: any[]) => void;
   productsLoading: boolean;
+  blocks: StorefrontBlock[];
+  onBlocksChange: () => void;
   onCopy: () => void;
   onOpen: () => void;
   navigate: (path: string) => void;
@@ -397,8 +401,25 @@ function AbaLoja({
         />
       )}
 
+      {/* Blocks Section */}
+      {storefront && (
+        <div className="pt-2 border-t border-[#e5e7eb]/80">
+          <div className="mb-4">
+            <h3 className="text-[15px] font-bold text-[#111827]">Conteúdo da Loja (Blocos)</h3>
+            <p className="text-[13px] text-[#6b7280]">
+              Construa o layout da sua vitrine adicionando blocos e arrastando-os para reordenar.
+            </p>
+          </div>
+          <BlocksSection
+            storefrontId={storefront.id}
+            blocks={blocks}
+            onBlocksChange={onBlocksChange}
+          />
+        </div>
+      )}
+
       {/* Products Section */}
-      <div>
+      <div className="pt-8 border-t border-[#e5e7eb]/80">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-bold text-[#111827]">Listings</h3>
           <span className="text-[12px] text-[#6b7280] font-medium">
@@ -580,21 +601,17 @@ function AbaLandingPages({
 function AbaDesign({
   storefront,
   theme,
-  blocks,
   saveStatus,
   onUpdateStorefront,
   onUpdateTheme,
-  onBlocksChange,
 }: {
   storefront: StorefrontData;
   theme: StorefrontTheme | null | undefined;
-  blocks: StorefrontBlock[];
   saveStatus: "saved" | "saving" | "unsaved";
   onUpdateStorefront: (data: Partial<StorefrontData>) => void;
   onUpdateTheme: (data: Partial<StorefrontTheme>) => void;
-  onBlocksChange: () => void;
 }) {
-  const [activePanel, setActivePanel] = useState<"theme" | "profile" | "blocks">("theme");
+  const [activePanel, setActivePanel] = useState<"theme" | "profile">("theme");
 
   return (
     <div className="flex flex-col w-full min-h-[700px] relative">
@@ -604,7 +621,6 @@ function AbaDesign({
         {[
           { key: "theme",   label: "Tema",    icon: Palette },
           { key: "profile", label: "Perfil",  icon: User },
-          { key: "blocks",  label: "Blocos",  icon: LayoutGrid },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -635,13 +651,6 @@ function AbaDesign({
           <ProfileSection
             storefront={storefront}
             onUpdate={onUpdateStorefront}
-          />
-        )}
-        {activePanel === "blocks" && (
-          <BlocksSection
-            storefrontId={storefront.id}
-            blocks={blocks}
-            onBlocksChange={onBlocksChange}
           />
         )}
       </div>
@@ -1025,6 +1034,8 @@ export default function Store() {
                 products={products}
                 setProducts={setProducts}
                 productsLoading={productsLoading}
+                blocks={blocks}
+                onBlocksChange={() => queryClient.invalidateQueries({ queryKey: ["storefront-blocks"] })}
                 onCopy={copyLink}
                 onOpen={openStore}
                 navigate={navigate}
@@ -1043,16 +1054,12 @@ export default function Store() {
 
             <TabsContent value="design" className="mt-0 outline-none">
               {storefront ? (
-                <AbaDesign
+                  <AbaDesign
                   storefront={storefront}
                   theme={theme}
-                  blocks={blocks}
                   saveStatus={saveStatus}
                   onUpdateStorefront={debouncedSaveStorefront}
                   onUpdateTheme={debouncedSaveTheme}
-                  onBlocksChange={() =>
-                    queryClient.invalidateQueries({ queryKey: ["storefront-blocks"] })
-                  }
                 />
               ) : (
                 <div className="py-16 text-center text-[#6b7280] text-[14px]">
