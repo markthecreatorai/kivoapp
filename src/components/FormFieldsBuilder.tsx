@@ -44,7 +44,7 @@ export function FormFieldsBuilder({ productId }: { productId: string }) {
   const { data: dbFields, isLoading } = useQuery({
     queryKey: ["productFormFields", productId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("product_form_fields")
         .select("*")
         .eq("product_id", productId)
@@ -101,7 +101,7 @@ export function FormFieldsBuilder({ productId }: { productId: string }) {
       // Better strategy is just upsert, but we need to delete removed ones.
       // So let's do: Delete All -> Insert All. It's safer for this simple editor.
       
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await (supabase as any)
         .from("product_form_fields")
         .delete()
         .eq("product_id", productId)
@@ -110,7 +110,7 @@ export function FormFieldsBuilder({ productId }: { productId: string }) {
       if (deleteError) throw deleteError;
 
       if (upsertData.length > 0) {
-        const { error: insertError } = await supabase
+        const { error: insertError } = await (supabase as any)
           .from("product_form_fields")
           .insert(upsertData.map(d => {
              // Removing undefined/mock ids for insert

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -605,18 +605,18 @@ function AbaDesign({
   saveStatus: "saved" | "saving" | "unsaved";
   onUpdateStorefront: (data: Partial<StorefrontData>) => void;
   onUpdateTheme: (data: Partial<StorefrontTheme>) => void;
-  setLocalStorefront: (data: Partial<StorefrontData>) => void;
-  setLocalTheme: (data: Partial<StorefrontTheme>) => void;
+  setLocalStorefront: React.Dispatch<React.SetStateAction<StorefrontData | null>>;
+  setLocalTheme: React.Dispatch<React.SetStateAction<StorefrontTheme | null | undefined>>;
 }) {
   const [activePanel, setActivePanel] = useState<"theme" | "profile">("theme");
 
   const handleStorefrontUpdate = (data: Partial<StorefrontData>) => {
-    setLocalStorefront(data);
+    setLocalStorefront(prev => prev ? { ...prev, ...data } : null);
     onUpdateStorefront(data);
   };
 
   const handleThemeUpdate = (data: Partial<StorefrontTheme>) => {
-    setLocalTheme(data);
+    setLocalTheme(prev => prev ? { ...prev, ...data } : undefined);
     onUpdateTheme(data);
   };
 
@@ -714,14 +714,7 @@ export default function Store() {
   const [localStorefront, setLocalStorefront] = useState<StorefrontData | null>(null);
   const [localTheme, setLocalTheme] = useState<StorefrontTheme | null | undefined>(undefined);
 
-  // Sync local state with fetched data
-  useEffect(() => {
-    if (storefront) setLocalStorefront(storefront);
-  }, [storefront]);
-
-  useEffect(() => {
-    setLocalTheme(theme);
-  }, [theme]);
+  
 
   // Fetch storefront
   const { data: storefront, isLoading: storefrontLoading } = useQuery({
@@ -791,6 +784,15 @@ export default function Store() {
     enabled: !!currentWorkspace?.id,
   });
 
+  // Sync local state with fetched data
+  useEffect(() => {
+    if (storefront) setLocalStorefront(storefront);
+  }, [storefront]);
+
+  useEffect(() => {
+    setLocalTheme(theme);
+  }, [theme]);
+
   const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
   const setProducts = setLocalProducts;
 
@@ -828,16 +830,16 @@ export default function Store() {
       // Deep copy product, create new one with " - Cópia" suffix
       const { data, error } = await supabase
         .from("products")
-        .insert({
+        .insert([{
           workspace_id: product.workspace_id,
           name: `${product.name} - Cópia`,
+          slug: `${product.slug || 'product'}-copy-${Date.now()}`,
           type: product.type,
-          status: "DRAFT", // Always duplicate as draft
+          status: "DRAFT" as const,
           description: product.description,
           short_description: product.short_description,
           thumbnail_url: product.thumbnail_url,
-          // Note: We don't copy prices/attachments for now to avoid complexity
-        })
+        }])
         .select()
         .single();
       
