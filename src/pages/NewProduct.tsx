@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -19,7 +19,6 @@ import {
   Megaphone,
   Image,
   Type,
-  LayoutTemplate,
   ChevronDown,
   ChevronUp,
   Save,
@@ -31,6 +30,10 @@ import {
   ShoppingCart,
   Link2,
   Upload,
+  RefreshCw,
+  MonitorPlay,
+  Share2,
+  Box,
 } from "lucide-react";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -39,10 +42,113 @@ import type { Database } from "@/integrations/supabase/types";
 
 type ProductType = Database["public"]["Enums"]["product_type"];
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types and Constants ───────────────────────────────────────────────────
+
+interface ProductFormatConfig {
+  id: string;
+  dbType: ProductType;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  iconBg: string; // Tailwind bg color class for the icon
+  iconColor: string; // Tailwind text color class for the icon
+}
+
+const PRODUCT_FORMATS: ProductFormatConfig[] = [
+  {
+    id: "collect_emails",
+    dbType: "LEAD_MAGNET",
+    title: "Coletar Emails / Aplicações",
+    description: "Capture leads com formulário, lead magnet ou aplicação",
+    icon: Megaphone,
+    iconBg: "bg-pink-100 dark:bg-pink-900/30",
+    iconColor: "text-pink-600 dark:text-pink-400",
+  },
+  {
+    id: "digital_product",
+    dbType: "DIGITAL",
+    title: "Produto Digital",
+    description: "PDFs, guias, templates, eBooks, arquivos e conteúdos digitais",
+    icon: Package,
+    iconBg: "bg-blue-100 dark:bg-blue-900/30",
+    iconColor: "text-blue-600 dark:text-blue-400",
+  },
+  {
+    id: "coaching_call",
+    dbType: "SERVICE",
+    title: "Call / Consultoria",
+    description: "Calls estratégicas, consultorias, mentorias e sessões 1:1",
+    icon: Calendar,
+    iconBg: "bg-green-100 dark:bg-green-900/30",
+    iconColor: "text-green-600 dark:text-green-400",
+  },
+  {
+    id: "custom_product",
+    dbType: "SERVICE",
+    title: "Produto Personalizado",
+    description: "Auditorias, análises, pedidos sob demanda, serviço customizado",
+    icon: Box,
+    iconBg: "bg-amber-100 dark:bg-amber-900/30",
+    iconColor: "text-amber-600 dark:text-amber-400",
+  },
+  {
+    id: "course",
+    dbType: "COURSE",
+    title: "Curso Online",
+    description: "Crie, hospede e venda cursos com acesso estruturado",
+    icon: GraduationCap,
+    iconBg: "bg-indigo-100 dark:bg-indigo-900/30",
+    iconColor: "text-indigo-600 dark:text-indigo-400",
+  },
+  {
+    id: "recurring",
+    dbType: "DIGITAL", // Or switch to specific recurring type logic if added to DB
+    title: "Assinatura Recorrente",
+    description: "Cobrança recorrente para acesso a conteúdo, benefícios ou comunidade",
+    icon: RefreshCw,
+    iconBg: "bg-purple-100 dark:bg-purple-900/30",
+    iconColor: "text-purple-600 dark:text-purple-400",
+  },
+  {
+    id: "webinar",
+    dbType: "SERVICE",
+    title: "Webinar / Evento",
+    description: "Venda acesso para aulas ao vivo, workshops e eventos online",
+    icon: MonitorPlay,
+    iconBg: "bg-cyan-100 dark:bg-cyan-900/30",
+    iconColor: "text-cyan-600 dark:text-cyan-400",
+  },
+  {
+    id: "community",
+    dbType: "COURSE", // Community can map to courses with community feature enabled
+    title: "Comunidade",
+    description: "Crie uma comunidade gratuita ou paga com acesso controlado",
+    icon: Users,
+    iconBg: "bg-gray-100 dark:bg-gray-800",
+    iconColor: "text-gray-600 dark:text-gray-400",
+  },
+  {
+    id: "url_media",
+    dbType: "DIGITAL",
+    title: "URL / Mídia",
+    description: "Direcione para site, link externo, vídeo, playlist rápida",
+    icon: Link2,
+    iconBg: "bg-red-100 dark:bg-red-900/30",
+    iconColor: "text-red-600 dark:text-red-400",
+  },
+  {
+    id: "affiliate",
+    dbType: "DIGITAL",
+    title: "Link de Afiliado",
+    description: "Promova um link de afiliado ou oferta externa com rastreamento",
+    icon: Share2,
+    iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+  },
+];
 
 interface ProductForm {
-  // Tipo
+  formatId: string;
   type: ProductType | "";
   // Thumbnail (Etapa 1)
   cardStyle: "button" | "callout" | "preview";
@@ -67,6 +173,7 @@ interface ProductForm {
 }
 
 const INITIAL_FORM: ProductForm = {
+  formatId: "",
   type: "",
   cardStyle: "preview",
   name: "",
@@ -92,15 +199,7 @@ const STEPS = [
   { key: "pagina",     label: "Página / Checkout", number: 2 },
   { key: "opcoes",     label: "Opções",            number: 3 },
 ] as const;
-type StepKey = typeof STEPS[number]["key"];
-
-const PRODUCT_TYPES: { type: ProductType; icon: React.ElementType; title: string; subtitle: string }[] = [
-  { type: "LEAD_MAGNET", icon: Megaphone,     title: "Coletar Emails / Aplicações", subtitle: "Capture leads com um lead magnet" },
-  { type: "DIGITAL",     icon: Package,       title: "Produto Digital",             subtitle: "PDFs, Guias, Templates, eBooks" },
-  { type: "COURSE",      icon: GraduationCap, title: "Curso Online",                subtitle: "Crie e venda cursos com área de membros" },
-  { type: "SERVICE",     icon: Calendar,      title: "Serviço",                     subtitle: "Consultorias, coaching, mentorias" },
-  { type: "PHYSICAL",    icon: Truck,         title: "Produto Físico",              subtitle: "Produtos com entrega física" },
-];
+type StepKey = "format" | typeof STEPS[number]["key"];
 
 const CARD_STYLES: { key: ProductForm["cardStyle"]; label: string; description: string }[] = [
   { key: "preview", label: "Preview",  description: "Card com imagem em destaque" },
@@ -242,7 +341,7 @@ export default function NewProduct() {
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id?: string }>();
   const { currentWorkspace } = useWorkspace();
-  const [step, setStep] = useState<StepKey>("thumbnail");
+  const [step, setStep] = useState<StepKey>("format");
   const [form, setForm] = useState<ProductForm>(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -252,11 +351,14 @@ export default function NewProduct() {
   const updateForm = (updates: Partial<ProductForm>) =>
     setForm((prev) => ({ ...prev, ...updates }));
 
-  const currentStepIndex = STEPS.findIndex((s) => s.key === step);
+  const handleSelectFormat = (format: ProductFormatConfig) => {
+    updateForm({ formatId: format.id, type: format.dbType });
+    setStep("thumbnail");
+  };
 
   const goTo = (key: StepKey) => {
-    // Only allow navigating to steps after type is selected
-    if (!form.type) { toast.error("Escolha o tipo de produto primeiro."); return; }
+    if (key === "format") { setStep("format"); return; }
+    if (!form.formatId) { toast.error("Escolha o tipo de produto primeiro."); return; }
     if (key === "pagina" || key === "opcoes") {
       if (!form.name.trim()) { toast.error("Informe o título do produto."); return; }
     }
@@ -265,7 +367,6 @@ export default function NewProduct() {
 
   const handleNext = () => {
     if (step === "thumbnail") {
-      if (!form.type) { toast.error("Escolha o tipo de produto."); return; }
       if (!form.name.trim()) { toast.error("Informe o título do produto."); return; }
       setStep("pagina");
     } else if (step === "pagina") {
@@ -278,14 +379,15 @@ export default function NewProduct() {
   };
 
   const handleBack = () => {
-    if (step === "pagina") setStep("thumbnail");
+    if (step === "thumbnail") setStep("format");
+    else if (step === "pagina") setStep("thumbnail");
     else if (step === "opcoes") setStep("pagina");
     else navigate("/store?tab=loja");
   };
 
   const saveProduct = async (status: "DRAFT" | "PUBLISHED") => {
     if (!currentWorkspace) { toast.error("Nenhum workspace ativo."); return; }
-    if (!form.type) { toast.error("Escolha o tipo de produto."); setStep("thumbnail"); return; }
+    if (!form.type || !form.formatId) { toast.error("Escolha o tipo de produto."); setStep("format"); return; }
     if (!form.name.trim()) { toast.error("Informe o título do produto."); setStep("thumbnail"); return; }
 
     if (!planInfo.canCreateProduct) {
@@ -339,7 +441,7 @@ export default function NewProduct() {
         }
       }
 
-      trackEvent("product_created", { type: form.type, status }, currentWorkspace.id);
+      trackEvent("product_created", { type: form.type, format: form.formatId, status }, currentWorkspace.id);
       toast.success(status === "PUBLISHED" ? "Produto publicado!" : "Rascunho salvo!");
       navigate("/store?tab=loja");
     } catch (err: any) {
@@ -349,13 +451,70 @@ export default function NewProduct() {
     }
   };
 
+  // ─ Renders ─
+
+  if (step === "format") {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] dark:bg-background">
+        {/* Top bar simplificada */}
+        <div className="bg-background/80 backdrop-blur border-b border-border/50">
+          <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
+            <button
+              onClick={() => navigate("/store?tab=loja")}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar à Loja
+            </button>
+            <div className="flex-1" />
+            <p className="text-sm font-medium text-foreground">Novo Produto</p>
+          </div>
+        </div>
+
+        {/* Content (Step 0) */}
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-12">
+          {/* Header */}
+          <div className="max-w-xl mb-10">
+            <h1 className="text-2xl font-bold text-foreground">Escolha o formato do seu produto</h1>
+            <p className="text-muted-foreground mt-2">
+              Selecione o formato que melhor se adapta ao que você quer oferecer à sua audiência. Você poderá configurar os detalhes no próximo passo.
+            </p>
+          </div>
+
+          {/* Formats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {PRODUCT_FORMATS.map((format) => (
+              <button
+                key={format.id}
+                onClick={() => handleSelectFormat(format)}
+                className="group flex items-start gap-5 p-5 bg-card border border-border/60 hover:border-primary/40 rounded-2xl text-left transition-all hover:shadow-sm"
+              >
+                <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", format.iconBg, format.iconColor)}>
+                  <format.icon className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {format.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {format.description}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 flex items-center gap-4">
           <button
-            onClick={() => navigate("/store?tab=loja")}
+            onClick={() => setStep("format")}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -364,7 +523,7 @@ export default function NewProduct() {
 
           <span className="text-muted-foreground/30">/</span>
           <span className="text-sm font-medium text-foreground">
-            {editId ? "Editar produto" : "Novo produto"}
+            {editId ? "Editar produto" : PRODUCT_FORMATS.find(f => f.id === form.formatId)?.title || "Novo produto"}
           </span>
 
           <div className="flex-1" />
@@ -409,36 +568,6 @@ export default function NewProduct() {
                 <div>
                   <h1 className="text-xl font-bold text-foreground">Thumbnail</h1>
                   <p className="text-sm text-muted-foreground mt-1">Defina como este item aparece na sua loja.</p>
-                </div>
-
-                {/* Tipo de produto */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-semibold">Tipo de produto</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {PRODUCT_TYPES.map(({ type, icon: Icon, title, subtitle }) => (
-                      <button
-                        key={type}
-                        onClick={() => updateForm({ type })}
-                        className={cn(
-                          "flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all hover:border-primary/50 hover:shadow-sm",
-                          form.type === type
-                            ? "border-primary bg-primary/5 shadow-sm"
-                            : "border-border bg-card"
-                        )}
-                      >
-                        <div className={cn(
-                          "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
-                          form.type === type ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-                        )}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground leading-snug">{title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Estilo do card */}
@@ -543,7 +672,7 @@ export default function NewProduct() {
                 </div>
 
                 {/* Preço */}
-                {form.type !== "LEAD_MAGNET" && (
+                {form.type !== "LEAD_MAGNET" && form.formatId !== "collect_emails" && (
                   <div className="space-y-4 p-5 rounded-xl border border-border/60 bg-card">
                     <p className="text-sm font-semibold text-foreground">Preço</p>
 
@@ -586,7 +715,7 @@ export default function NewProduct() {
                 )}
 
                 {/* Entrega */}
-                {(form.type === "DIGITAL" || form.type === "PHYSICAL" || form.type === "COURSE") && (
+                {["DIGITAL", "PHYSICAL", "COURSE"].includes(form.type) && (
                   <div className="space-y-4 p-5 rounded-xl border border-border/60 bg-card">
                     <p className="text-sm font-semibold text-foreground">Entrega</p>
 
@@ -805,7 +934,7 @@ export default function NewProduct() {
                     {form.description && (
                       <p className="text-xs text-muted-foreground/80 line-clamp-4">{form.description}</p>
                     )}
-                    {!form.isFree && form.price > 0 && (
+                    {!form.isFree && form.price > 0 && form.formatId !== "collect_emails" && (
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold text-foreground">
                           R$ {form.price.toFixed(2).replace(".", ",")}
@@ -817,7 +946,7 @@ export default function NewProduct() {
                         )}
                       </div>
                     )}
-                    {form.isFree && <span className="text-sm font-bold text-primary">Gratuito</span>}
+                    {form.isFree && form.formatId !== "collect_emails" && <span className="text-sm font-bold text-primary">Gratuito</span>}
                     <div className="py-2.5 px-4 bg-primary text-primary-foreground rounded-lg text-xs font-medium text-center">
                       {form.ctaText || "Quero agora"}
                     </div>
