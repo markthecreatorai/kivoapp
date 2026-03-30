@@ -19,6 +19,8 @@ import {
   Pencil,
   Archive,
   Trash2,
+  Eye,
+  EyeOff,
   Megaphone,
   Calendar,
   GraduationCap,
