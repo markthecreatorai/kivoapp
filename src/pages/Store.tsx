@@ -295,30 +295,20 @@ function PremiumPhonePreview({
 }) {
   return (
     <div className="w-full flex flex-col items-center">
-      {/* Label */}
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-[11px] font-bold text-[#6b7280] uppercase tracking-wider">
-          Preview da loja
-        </span>
-        {storefront?.is_published && (
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-        )}
-      </div>
-
-      {/* Phone Shell */}
+      {/* Phone Shell — Stan-style: no label, no badge */}
       <div className="relative" style={{ width: 340, height: 680 }}>
         {/* Ambient glow */}
         <div className="absolute inset-0 rounded-[48px] bg-primary/5 blur-3xl scale-110 pointer-events-none" />
 
         {/* Phone frame */}
-        <div className="relative w-full h-full bg-[#0d0d0d] rounded-[46px] border-[11px] border-[#1a1a1a] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.06)] overflow-hidden flex flex-col">
-          
+        <div className="relative w-full h-full bg-[#0d0d0d] rounded-[46px] border-[9px] border-[#1a1a1a] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.06)] overflow-hidden flex flex-col">
+
           {/* Glass reflection */}
-          <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 rounded-t-[36px]" />
+          <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 rounded-t-[38px]" />
 
           {/* Dynamic Island */}
           <div className="absolute top-0 inset-x-0 h-9 flex justify-center items-start z-20 pt-2">
-            <div className="w-[100px] h-[24px] bg-[#0d0d0d] rounded-b-[16px] shadow-xl border-t border-white/5" />
+            <div className="w-[90px] h-[22px] bg-[#0d0d0d] rounded-b-[14px] shadow-xl border-t border-white/5" />
           </div>
 
           {/* Screen Content */}
@@ -336,11 +326,11 @@ function PremiumPhonePreview({
           </div>
         </div>
 
-        {/* Side buttons */}
-        <div className="absolute right-[-3px] top-28 w-[3px] h-12 bg-[#1a1a1a] rounded-r-sm shadow-inner" />
-        <div className="absolute left-[-3px] top-24 w-[3px] h-8 bg-[#1a1a1a] rounded-l-sm shadow-inner" />
-        <div className="absolute left-[-3px] top-36 w-[3px] h-8 bg-[#1a1a1a] rounded-l-sm shadow-inner" />
-        <div className="absolute left-[-3px] top-48 w-[3px] h-14 bg-[#1a1a1a] rounded-l-sm shadow-inner" />
+        {/* Side buttons — subtle */}
+        <div className="absolute right-[-2px] top-28 w-[2px] h-10 bg-[#2a2a2a] rounded-r-sm" />
+        <div className="absolute left-[-2px] top-24 w-[2px] h-7 bg-[#2a2a2a] rounded-l-sm" />
+        <div className="absolute left-[-2px] top-36 w-[2px] h-7 bg-[#2a2a2a] rounded-l-sm" />
+        <div className="absolute left-[-2px] top-48 w-[2px] h-12 bg-[#2a2a2a] rounded-l-sm" />
       </div>
     </div>
   );
@@ -607,10 +597,10 @@ function AbaDesign({
   const [activePanel, setActivePanel] = useState<"theme" | "profile" | "blocks">("theme");
 
   return (
-    <div className="flex flex-col w-full border border-[#ececec] rounded-[20px] bg-white shadow-sm min-h-[700px] relative overflow-hidden">
-      
-      {/* Compact tabs */}
-      <div className="flex items-center gap-2 px-5 pt-5 pb-4 border-b border-[#ececec]">
+    <div className="flex flex-col w-full min-h-[700px] relative">
+
+      {/* Compact pills tabs — Stan-style: no card wrapper */}
+      <div className="flex items-center gap-1.5 pb-5">
         {[
           { key: "theme",   label: "Tema",    icon: Palette },
           { key: "profile", label: "Perfil",  icon: User },
@@ -620,20 +610,20 @@ function AbaDesign({
             key={key}
             onClick={() => setActivePanel(key as any)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[13px] font-bold transition-all",
+              "flex items-center gap-2 px-4 py-2 rounded-[10px] text-[13px] font-bold transition-all",
               activePanel === key
-                ? "bg-primary/10 text-primary"
+                ? "bg-[#111827] text-white shadow-sm"
                 : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]"
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5" />
             {label}
           </button>
         ))}
       </div>
 
-      {/* Panel content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      {/* Panel content — no card, open layout */}
+      <div className="flex-1 overflow-y-auto">
         {activePanel === "theme" && (
           <ThemeSection
             theme={theme ?? undefined}
@@ -656,8 +646,8 @@ function AbaDesign({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="sticky bottom-0 left-0 right-0 px-6 py-4 bg-white/95 backdrop-blur-xl border-t border-[#ececec] flex items-center justify-between">
+      {/* Footer actions — aligned right, Stan-style */}
+      <div className="pt-5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-[12px] font-semibold">
           {saveStatus === "saving" && (
             <>
@@ -668,7 +658,7 @@ function AbaDesign({
           {saveStatus === "saved" && (
             <>
               <Check className="h-4 w-4 text-green-500" />
-              <span className="text-green-600">Tudo salvo</span>
+              <span className="text-green-600]">Tudo salvo</span>
             </>
           )}
           {saveStatus === "unsaved" && (
@@ -677,13 +667,13 @@ function AbaDesign({
         </div>
         <div className="flex items-center gap-3">
           <Button
-            variant="ghost"
-            className="h-10 px-5 rounded-[12px] text-[13px] font-bold text-[#6b7280] hover:text-[#111827]"
+            variant="outline"
+            className="h-10 px-5 rounded-[10px] text-[13px] font-bold border-[#e5e7eb] text-[#374151] hover:text-[#111827] hover:border-[#d1d5db]"
           >
-            Cancelar
+            Cancel
           </Button>
-          <Button className="h-10 px-7 rounded-[12px] text-[13px] font-bold shadow-lg shadow-primary/25">
-            Salvar
+          <Button className="h-10 px-7 rounded-[10px] text-[13px] font-bold shadow-md shadow-primary/20">
+            Save
           </Button>
         </div>
       </div>
