@@ -104,28 +104,32 @@ function MiniPhoneCard({
     <button
       onClick={onClick}
       className={cn(
-        "snap-center flex-shrink-0 rounded-[20px] p-1.5 transition-all duration-300 relative text-left group focus:outline-none",
-        "w-[128px]",
+        "snap-center flex-shrink-0 rounded-[22px] p-2 transition-all duration-300 relative text-left group focus:outline-none",
+        "w-[140px]",
         isSelected
-          ? "bg-primary/8 ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg"
-          : "hover:scale-[1.03] hover:bg-muted/60"
+          ? "bg-primary/8 ring-2 ring-primary ring-offset-2 ring-offset-background shadow-xl scale-[1.02]"
+          : "hover:scale-[1.04] hover:shadow-lg"
       )}
     >
       {/* Mini phone shell */}
       <div
-        className="w-full rounded-[16px] overflow-hidden shadow-md border border-black/8 flex flex-col"
-        style={{ backgroundColor: bg, height: 220 }}
+        className="w-full rounded-[18px] overflow-hidden shadow-lg border-2 flex flex-col"
+        style={{ 
+          backgroundColor: bg, 
+          height: 240,
+          borderColor: isSelected ? 'rgba(249, 66, 58, 0.2)' : 'rgba(0, 0, 0, 0.06)'
+        }}
       >
         {/* Notch */}
-        <div className="flex justify-center pt-1.5 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 bg-black/50 rounded-full" />
+        <div className="flex justify-center pt-2 pb-1.5 flex-shrink-0">
+          <div className="w-12 h-1.5 bg-black/40 rounded-full" />
         </div>
 
         {/* Scrollable area */}
-        <div className="flex-1 flex flex-col items-center px-2 pb-2 overflow-hidden">
+        <div className="flex-1 flex flex-col items-center px-2.5 pb-2.5 overflow-hidden">
           {/* Avatar */}
           <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[10px] font-bold mt-1 mb-1 shrink-0 shadow-sm"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[11px] font-bold mt-1.5 mb-1.5 shrink-0 shadow-md"
             style={{ backgroundColor: primary }}
           >
             K
@@ -133,7 +137,7 @@ function MiniPhoneCard({
 
           {/* Name */}
           <div
-            className="text-[7.5px] font-bold leading-none mb-0.5 truncate w-full text-center"
+            className="text-[8px] font-bold leading-none mb-1 truncate w-full text-center"
             style={{ color: text }}
           >
             Lucas Carrijo
@@ -141,18 +145,18 @@ function MiniPhoneCard({
 
           {/* Bio */}
           <div
-            className="text-[6px] leading-none mb-2 opacity-60 text-center"
+            className="text-[6.5px] leading-tight mb-2.5 opacity-60 text-center line-clamp-1"
             style={{ color: text }}
           >
             Creator & entrepreneur
           </div>
 
           {/* Social icons row */}
-          <div className="flex gap-1 mb-2">
+          <div className="flex gap-1.5 mb-3">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-3.5 h-3.5 rounded-full opacity-40"
+                className="w-4 h-4 rounded-full opacity-30"
                 style={{ backgroundColor: text }}
               />
             ))}
@@ -160,30 +164,30 @@ function MiniPhoneCard({
 
           {/* Product card 1 */}
           <div
-            className="w-full rounded-[5px] mb-1.5 overflow-hidden shadow-sm"
+            className="w-full rounded-[6px] mb-2 overflow-hidden shadow-md"
             style={{ backgroundColor: template.cardBg }}
           >
-            <div className="w-full h-6 opacity-30" style={{ backgroundColor: primary }} />
-            <div className="px-1.5 py-1">
-              <div className="w-10 h-1 rounded-full mb-1" style={{ backgroundColor: text, opacity: 0.6 }} />
+            <div className="w-full h-7 opacity-30" style={{ backgroundColor: primary }} />
+            <div className="px-2 py-1.5">
+              <div className="w-12 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: text, opacity: 0.6 }} />
               <div
-                className="w-full h-3 rounded-[3px] flex items-center justify-center"
+                className="w-full h-4 rounded-[4px] flex items-center justify-center"
                 style={{ backgroundColor: primary }}
               >
-                <span className="text-white text-[4px] font-bold">Comprar</span>
+                <span className="text-white text-[5px] font-bold">Comprar</span>
               </div>
             </div>
           </div>
 
           {/* Product card 2 */}
           <div
-            className="w-full rounded-[5px] overflow-hidden shadow-sm"
+            className="w-full rounded-[6px] overflow-hidden shadow-md"
             style={{ backgroundColor: template.cardBg }}
           >
-            <div className="px-1.5 py-1 flex items-center gap-1">
-              <div className="w-4 h-5 rounded-sm flex-shrink-0" style={{ backgroundColor: primary, opacity: 0.4 }} />
+            <div className="px-2 py-1.5 flex items-center gap-1.5">
+              <div className="w-5 h-6 rounded-sm flex-shrink-0" style={{ backgroundColor: primary, opacity: 0.4 }} />
               <div className="flex-1">
-                <div className="w-8 h-1 rounded-full" style={{ backgroundColor: text, opacity: 0.5 }} />
+                <div className="w-10 h-1 rounded-full" style={{ backgroundColor: text, opacity: 0.5 }} />
               </div>
             </div>
           </div>
@@ -191,18 +195,18 @@ function MiniPhoneCard({
       </div>
 
       {/* Template name label */}
-      <div className="flex items-center justify-between mt-2.5 px-1">
+      <div className="flex items-center justify-between mt-3 px-1">
         <span
           className={cn(
-            "text-[11px] font-semibold",
-            isSelected ? "text-primary" : "text-foreground"
+            "text-[12px] font-bold",
+            isSelected ? "text-primary" : "text-[#111827]"
           )}
         >
           {template.name}
         </span>
         {isSelected && (
-          <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center shadow-sm">
-            <Check className="w-2.5 h-2.5 text-white" />
+          <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-md">
+            <Check className="w-3 h-3 text-white" />
           </div>
         )}
       </div>
@@ -267,23 +271,23 @@ function ColorSwatchPicker({
   };
 
   return (
-    <div className="flex flex-col gap-1.5 relative">
-      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+    <div className="flex flex-col gap-2 relative">
+      <span className="text-[11px] font-bold text-[#6b7280] uppercase tracking-wider">{label}</span>
 
       {/* Swatch button */}
       <button
         ref={anchorRef}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "w-full h-14 rounded-2xl border-2 transition-all shadow-sm hover:scale-[1.04] active:scale-[0.97] focus:outline-none",
-          open ? "border-primary ring-2 ring-primary/30" : "border-transparent hover:border-border"
+          "w-full h-16 rounded-[16px] border-2 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98] focus:outline-none",
+          open ? "border-primary ring-2 ring-primary/30 shadow-md" : "border-transparent hover:border-[#ececec]"
         )}
         style={{ backgroundColor: value }}
         aria-label={`Editar cor ${label}`}
       />
 
       {/* HEX label below */}
-      <span className="text-[10px] font-mono text-muted-foreground text-center">{value.toUpperCase()}</span>
+      <span className="text-[11px] font-mono text-[#9ca3af] text-center font-semibold">{value.toUpperCase()}</span>
 
       {/* Popover */}
       {open && (
@@ -432,24 +436,26 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
 
       {/* ── 1. Template Gallery ── */}
       <section>
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <div>
-            <h3 className="text-[13px] font-bold text-foreground">Escolha um estilo</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Ponto de partida visual da sua loja.
+            <h3 className="text-[14px] font-bold text-[#111827]">Escolha um estilo</h3>
+            <p className="text-[12px] text-[#6b7280] mt-1">
+              Ponto de partida visual da sua loja
             </p>
           </div>
           {/* Gallery navigation */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => scrollGallery('left')}
-              className="w-7 h-7 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              className="w-8 h-8 rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] flex items-center justify-center text-[#6b7280] hover:text-[#111827] transition-all shadow-sm"
+              aria-label="Anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => scrollGallery('right')}
-              className="w-7 h-7 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              className="w-8 h-8 rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] flex items-center justify-center text-[#6b7280] hover:text-[#111827] transition-all shadow-sm"
+              aria-label="Próximo"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -458,7 +464,8 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
 
         <div
           ref={galleryRef}
-          className="flex gap-3 overflow-x-auto pb-3 snap-x pr-2 no-scrollbar scroll-smooth"
+          className="flex gap-4 overflow-x-auto pb-4 snap-x pr-2 no-scrollbar scroll-smooth"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {TEMPLATES.map((template) => (
             <MiniPhoneCard
@@ -473,14 +480,14 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
 
       {/* ── 2. Colors ── */}
       <section>
-        <div className="mb-4">
-          <h3 className="text-[13px] font-bold text-foreground">Cores</h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Clique para personalizar cada cor do tema.
+        <div className="mb-5">
+          <h3 className="text-[14px] font-bold text-[#111827]">Cores</h3>
+          <p className="text-[12px] text-[#6b7280] mt-1">
+            Clique para personalizar cada cor do tema
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-5">
           <ColorSwatchPicker
             label="Fundo"
             value={currentTheme.background_color || '#ffffff'}
@@ -501,42 +508,42 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
 
       {/* ── 3. Typography ── */}
       <section>
-        <div className="mb-4">
-          <h3 className="text-[13px] font-bold text-foreground">Tipografia</h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            A fonte que representa a sua voz.
+        <div className="mb-5">
+          <h3 className="text-[14px] font-bold text-[#111827]">Tipografia</h3>
+          <p className="text-[12px] text-[#6b7280] mt-1">
+            A fonte que representa a sua voz
           </p>
         </div>
 
         <div className="relative">
           <button
-            className="w-full flex items-center justify-between p-4 rounded-2xl border border-border bg-card hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
+            className="w-full flex items-center justify-between p-5 rounded-[18px] border border-[#ececec] bg-white hover:bg-[#fafafa] transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
             onClick={() => setFontDropdownOpen(!fontDropdownOpen)}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0">
-                <Type className="w-4 h-4" />
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-[12px] bg-[#f3f4f6] flex items-center justify-center text-[#6b7280] flex-shrink-0">
+                <Type className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fonte principal</p>
+                <p className="text-[10px] text-[#9ca3af] font-semibold uppercase tracking-wider mb-1">Fonte principal</p>
                 <p
-                  className="text-[18px] font-bold leading-tight"
+                  className="text-[20px] font-bold leading-tight text-[#111827]"
                   style={{ fontFamily: currentTheme.font_body }}
                 >
                   Lucas Carrijo
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground font-medium">{currentTheme.font_body}</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-[12px] text-[#6b7280] font-semibold">{currentTheme.font_body}</span>
               <ChevronDown
-                className={cn("w-4 h-4 text-muted-foreground transition-transform", fontDropdownOpen && "rotate-180")}
+                className={cn("w-4 h-4 text-[#9ca3af] transition-transform", fontDropdownOpen && "rotate-180")}
               />
             </div>
           </button>
 
           {fontDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 p-2 bg-popover border border-border shadow-2xl rounded-2xl z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="absolute top-full left-0 right-0 mt-2 p-2 bg-white border border-[#ececec] shadow-2xl rounded-[18px] z-50 animate-in fade-in slide-in-from-top-2">
               {FONTS.map(font => (
                 <button
                   key={font.value}
@@ -546,27 +553,27 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
                     setFontDropdownOpen(false);
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-muted text-left transition-colors group",
+                    "w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] hover:bg-[#f3f4f6] text-left transition-colors group",
                     currentTheme.font_body === font.value && "bg-primary/5 text-primary"
                   )}
                 >
                   <span
-                    className="text-[20px] font-bold leading-tight"
+                    className="text-[22px] font-bold leading-tight text-[#111827]"
                     style={{ fontFamily: font.value }}
                   >
                     Lucas Carrijo
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <span
                       className={cn(
-                        "text-[11px] font-medium",
-                        currentTheme.font_body === font.value ? "text-primary" : "text-muted-foreground"
+                        "text-[12px] font-semibold",
+                        currentTheme.font_body === font.value ? "text-primary" : "text-[#6b7280]"
                       )}
                     >
                       {font.label}
                     </span>
                     {currentTheme.font_body === font.value && (
-                      <Check className="w-3.5 h-3.5 text-primary" />
+                      <Check className="w-4 h-4 text-primary" />
                     )}
                   </div>
                 </button>
@@ -578,14 +585,14 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
 
       {/* ── 4. Button Styles ── */}
       <section>
-        <div className="mb-4">
-          <h3 className="text-[13px] font-bold text-foreground">Estilo dos Botões</h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            O formato dos seus elementos de ação.
+        <div className="mb-5">
+          <h3 className="text-[14px] font-bold text-[#111827]">Estilo dos Botões</h3>
+          <p className="text-[12px] text-[#6b7280] mt-1">
+            O formato dos seus elementos de ação
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {BUTTON_STYLES.map((style) => {
             const isSelected = currentTheme.button_style === style.value;
             return (
@@ -593,15 +600,15 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
                 key={style.value}
                 onClick={() => handleChange('button_style', style.value)}
                 className={cn(
-                  "p-4 rounded-2xl border-2 bg-card flex flex-col items-center justify-center gap-3 transition-all focus:outline-none",
+                  "p-5 rounded-[18px] border-2 bg-white flex flex-col items-center justify-center gap-4 transition-all focus:outline-none hover:shadow-md",
                   isSelected
                     ? "border-primary shadow-[0_0_0_4px_rgba(249,66,58,0.12)] bg-primary/5"
-                    : "border-border hover:border-border/80 hover:bg-muted/50 hover:shadow-sm"
+                    : "border-[#ececec] hover:border-[#d4d4d4] hover:bg-[#fafafa]"
                 )}
               >
                 {/* Button preview */}
                 <div
-                  className="w-full h-9 flex items-center justify-center text-[11px] font-bold text-white transition-all shadow-sm"
+                  className="w-full h-10 flex items-center justify-center text-[12px] font-bold text-white transition-all shadow-sm"
                   style={{
                     backgroundColor: currentTheme.primary_color || '#F9423A',
                     borderRadius: style.radius
@@ -611,8 +618,8 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
                 </div>
                 <span
                   className={cn(
-                    "text-[11px] font-semibold",
-                    isSelected ? "text-primary" : "text-muted-foreground"
+                    "text-[12px] font-bold",
+                    isSelected ? "text-primary" : "text-[#6b7280]"
                   )}
                 >
                   {style.label}
