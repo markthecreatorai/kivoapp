@@ -714,14 +714,7 @@ export default function Store() {
   const [localStorefront, setLocalStorefront] = useState<StorefrontData | null>(null);
   const [localTheme, setLocalTheme] = useState<StorefrontTheme | null | undefined>(undefined);
 
-  // Sync local state with fetched data
-  useEffect(() => {
-    if (storefront) setLocalStorefront(storefront);
-  }, [storefront]);
-
-  useEffect(() => {
-    setLocalTheme(theme);
-  }, [theme]);
+  // Sync local state with fetched data (declared after queries below)
 
   // Fetch storefront
   const { data: storefront, isLoading: storefrontLoading } = useQuery({
