@@ -249,13 +249,12 @@ function ProductListItem({
           className={cn(
             "text-[11px] font-semibold px-2.5 py-0.5 border",
             product.status === "PUBLISHED" 
-              ? "bg-green-50 text-green-700 border-green-200" 
-              : product.status === "DRAFT"
               ? "bg-[#f3f4f6] text-[#6b7280] border-[#e5e7eb]"
-              : "bg-muted/50 text-muted-foreground border-border"
+              : "bg-amber-50 text-amber-700 border-amber-200"
           )}
         >
-          {STATUS_LABELS[product.status ?? "DRAFT"]}
+          {product.status === "PUBLISHED" ? "Ativo" : "Rascunho"}
+        </Badge>
         </Badge>
         
         <DropdownMenu>
