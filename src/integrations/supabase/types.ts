@@ -4795,63 +4795,99 @@ export type Database = {
       }
       products: {
         Row: {
+          billing_interval: string | null
+          cancel_after_cycles: number | null
+          cancel_after_enabled: boolean | null
           checkout_description: string | null
           checkout_image: string | null
+          confirmation_email_body: string | null
+          confirmation_email_subject: string | null
           created_at: string | null
           deleted_at: string | null
+          delivery_mode: string | null
+          delivery_url: string | null
           description: string | null
           id: string
+          is_embeddable: boolean | null
           is_storefront_visible: boolean | null
+          listing_button_text: string | null
           metadata: Json | null
           name: string
+          provider_type: string | null
           sales_count: number | null
           short_description: string | null
           slug: string
+          source_url: string | null
           status: Database["public"]["Enums"]["product_status"] | null
           stock_limit: number | null
           storefront_order: number | null
+          thumbnail_style: string | null
           thumbnail_url: string | null
           type: Database["public"]["Enums"]["product_type"]
           updated_at: string | null
           workspace_id: string
         }
         Insert: {
+          billing_interval?: string | null
+          cancel_after_cycles?: number | null
+          cancel_after_enabled?: boolean | null
           checkout_description?: string | null
           checkout_image?: string | null
+          confirmation_email_body?: string | null
+          confirmation_email_subject?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          delivery_mode?: string | null
+          delivery_url?: string | null
           description?: string | null
           id?: string
+          is_embeddable?: boolean | null
           is_storefront_visible?: boolean | null
+          listing_button_text?: string | null
           metadata?: Json | null
           name: string
+          provider_type?: string | null
           sales_count?: number | null
           short_description?: string | null
           slug: string
+          source_url?: string | null
           status?: Database["public"]["Enums"]["product_status"] | null
           stock_limit?: number | null
           storefront_order?: number | null
+          thumbnail_style?: string | null
           thumbnail_url?: string | null
           type?: Database["public"]["Enums"]["product_type"]
           updated_at?: string | null
           workspace_id: string
         }
         Update: {
+          billing_interval?: string | null
+          cancel_after_cycles?: number | null
+          cancel_after_enabled?: boolean | null
           checkout_description?: string | null
           checkout_image?: string | null
+          confirmation_email_body?: string | null
+          confirmation_email_subject?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          delivery_mode?: string | null
+          delivery_url?: string | null
           description?: string | null
           id?: string
+          is_embeddable?: boolean | null
           is_storefront_visible?: boolean | null
+          listing_button_text?: string | null
           metadata?: Json | null
           name?: string
+          provider_type?: string | null
           sales_count?: number | null
           short_description?: string | null
           slug?: string
+          source_url?: string | null
           status?: Database["public"]["Enums"]["product_status"] | null
           stock_limit?: number | null
           storefront_order?: number | null
+          thumbnail_style?: string | null
           thumbnail_url?: string | null
           type?: Database["public"]["Enums"]["product_type"]
           updated_at?: string | null
