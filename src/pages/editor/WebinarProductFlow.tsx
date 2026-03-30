@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +39,6 @@ export default function WebinarProductFlow({
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("thumbnail");
-  const themeTokens = useStorefrontTheme();
 
   const initialPriceConfig = initialProduct.prices?.[0] || { amount: 0, compare_at_amount: null };
   const metadata = (initialProduct.metadata as any) || {};
@@ -162,8 +160,8 @@ export default function WebinarProductFlow({
   const MobilePreview = () => {
     return (
       <div className="hidden lg:block w-[320px] shrink-0 sticky top-24">
-        <p className="text-xs font-medium mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1" style={{ color: themeTokens.primaryColor }}>
-          <Video className="w-3 h-3" /> Preview de Webinar
+        <p className="text-xs font-medium text-blue-600/60 dark:text-blue-500/50 mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1">
+          <Calendar className="w-3 h-3" /> Preview de Ingresso
         </p>
 
         {/* Fake Phone */}
@@ -185,8 +183,8 @@ export default function WebinarProductFlow({
                     ) : null}
                     
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80 text-[10px] font-bold" style={{ backgroundColor: `${themeTokens.primaryColor}20`, color: themeTokens.primaryColor }}>EVENTO AO VIVO</span>
-                        {form.limitSeats && <span className="text-[10px] font-bold text-red-500 leading-none">ÚLTIMAS {form.maxSeats || 0} VAGAS</span>}
+                       <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-bold">EVENTO AO VIVO</span>
+                       {form.limitSeats && <span className="text-[10px] font-bold text-red-500 leading-none">ÚLTIMAS {form.maxSeats || 0} VAGAS</span>}
                     </div>
 
                     <p className="font-bold text-zinc-900 dark:text-zinc-100 text-lg leading-snug">{form.name || "Masterclass Ao Vivo"}</p>
@@ -195,10 +193,10 @@ export default function WebinarProductFlow({
                     )}
                     
                     <div className="flex items-center gap-2 mt-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-md p-2 border border-zinc-200 dark:border-zinc-700">
-                       <Calendar className="w-4 h-4" style={{ color: themeTokens.primaryColor }}/> {formatDateLabel(form.eventDate)}
+                       <Calendar className="w-4 h-4 text-blue-600"/> {formatDateLabel(form.eventDate)}
                     </div>
 
-                    <div className="mt-4 py-3 rounded-xl text-white text-sm font-bold text-center" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}>
+                    <div className="mt-4 py-3 rounded-xl bg-blue-600 text-white text-sm font-bold text-center shadow-lg shadow-blue-600/20">
                       {form.ctaText || "Reservar Assento"}
                     </div>
                   </div>
@@ -212,22 +210,22 @@ export default function WebinarProductFlow({
                       ) : (
                         <ImageIcon className="h-10 w-10 text-zinc-300 dark:text-zinc-600" />
                       )}
-                      <div className="absolute top-3 left-3 text-white backdrop-blur text-[10px] px-2 py-1 rounded-sm font-bold uppercase shadow-sm" style={{ backgroundColor: themeTokens.primaryColor }}>
-                          Evento Ao Vivo
-                       </div>
+                      <div className="absolute top-3 left-3 bg-blue-600 text-white backdrop-blur text-[10px] px-2 py-1 rounded-sm font-bold uppercase shadow-sm">
+                         Evento Ao Vivo
+                      </div>
                     </div>
                     <div className="p-5">
                       <p className="font-bold text-zinc-900 dark:text-zinc-100 text-lg leading-snug">{form.name || "Webinar Exclusivo"}</p>
                       
                       <div className="flex items-center gap-2 mt-3 text-xs font-bold text-zinc-600 dark:text-zinc-400">
-                         <Clock className="w-3 h-3" style={{ color: themeTokens.primaryColor }}/> {formatDateLabel(form.eventDate)}
+                         <Clock className="w-3 h-3 text-blue-600"/> {formatDateLabel(form.eventDate)}
                       </div>
 
                       <div className="mt-4 flex items-center justify-between">
                          <span className="font-bold text-foreground">
                             {form.isFree ? "Gratuito" : `R$ ${form.price.toFixed(2).replace(".", ",")}`}
                          </span>
-                         <div className="py-2.5 px-4 text-white rounded-xl text-sm font-bold shadow-md" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}>
+                         <div className="py-2.5 px-4 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-600/20">
                            {form.ctaText || "Participar"}
                          </div>
                       </div>
@@ -240,9 +238,9 @@ export default function WebinarProductFlow({
 
             {/* Checkout / Opções Preview */}
             {(tab === "checkout" || tab === "opcoes") && (
-                <div className="bg-white dark:bg-zinc-900 min-h-full">
+              <div className="bg-white dark:bg-zinc-900 min-h-full">
                 {form.checkoutImage && (
-                  <div className="h-44 overflow-hidden relative" style={{ backgroundColor: `${themeTokens.primaryColor}20` }}>
+                  <div className="h-44 bg-blue-100 overflow-hidden relative">
                     <img src={form.checkoutImage} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/80 to-transparent"></div>
                     <div className="absolute bottom-4 left-4 text-white">
@@ -254,19 +252,19 @@ export default function WebinarProductFlow({
 
                 {!form.checkoutImage && (
                    <div className="pt-10 px-5">
-                      <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80" style={{ backgroundColor: `${themeTokens.primaryColor}20`, color: themeTokens.primaryColor }}>Sala Virtual Privada</span>
+                      <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Sala Virtual Privada</span>
                       <p className="font-bold text-xl text-zinc-900 dark:text-zinc-100 leading-snug mt-3">{form.name || "Evento Ao Vivo"}</p>
                    </div>
                 )}
 
 
                 <div className="p-5 space-y-4">
-                  <div className="flex flex-col p-3 rounded-lg border gap-2" style={{ borderColor: `${themeTokens.primaryColor}30`, backgroundColor: `${themeTokens.primaryColor}10` }}>
+                  <div className="flex flex-col p-3 rounded-lg border border-blue-500/20 bg-blue-50/50 dark:bg-blue-900/10 gap-2">
                      <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                        <Calendar className="w-4 h-4" style={{ color: themeTokens.primaryColor }}/> {formatDateLabel(form.eventDate)}
+                        <Calendar className="w-4 h-4 text-blue-600"/> {formatDateLabel(form.eventDate)}
                      </div>
                      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                        <Clock className="w-4 h-4" style={{ color: themeTokens.primaryColor }}/> Duração aprox: {form.duration} min
+                        <Clock className="w-4 h-4 text-blue-600/60"/> Duração aprox: {form.duration} min
                      </div>
                      {form.limitSeats && (
                        <div className="flex items-center gap-2 text-xs font-bold text-red-500 mt-1 bg-red-50 dark:bg-red-900/10 p-1.5 rounded w-fit">
@@ -277,7 +275,7 @@ export default function WebinarProductFlow({
 
                   <div className="flex items-center gap-2">
                     {!form.isFree && form.price > 0 && (
-                      <span className="text-2xl font-bold" style={{ color: themeTokens.primaryColor }}>
+                      <span className="text-2xl font-bold text-blue-600">
                         R$ {form.price.toFixed(2).replace(".", ",")}
                       </span>
                     )}
@@ -286,7 +284,7 @@ export default function WebinarProductFlow({
                         R$ {form.compareAtPrice.toFixed(2).replace(".", ",")}
                       </span>
                     )}
-                    {form.isFree && <span className="text-xl font-bold" style={{ color: themeTokens.primaryColor }}>Registro 100% Gratuito</span>}
+                    {form.isFree && <span className="text-xl font-bold text-blue-600">Registro 100% Gratuito</span>}
                   </div>
 
                   {form.description && (
@@ -301,8 +299,8 @@ export default function WebinarProductFlow({
                        <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700" />
                      </div>
                      <div className="pt-4">
-                        <div className="w-full py-4 rounded-xl text-white font-bold text-center" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}>
-                          {form.isFree ? "Registrar Gratuitamente" : "Finalizar Compra"}
+                        <div className="w-full py-4 rounded-xl bg-blue-600 text-white font-bold text-center shadow-lg shadow-blue-600/20">
+                          {form.ctaText || "Emitir Acesso"}
                         </div>
                      </div>
                   </div>
@@ -336,7 +334,7 @@ export default function WebinarProductFlow({
             {/* ABA: THUMBNAIL */}
             <TabsContent value="thumbnail" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
-                <h2 className="text-xl font-bold flex items-center gap-2"><Video className="w-5 h-5" style={{ color: themeTokens.primaryColor }}/> Webinars & Masterclasses</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2"><Video className="w-5 h-5 text-blue-600"/> Webinars & Masterclasses</h2>
                 <p className="text-sm text-muted-foreground">Venda (ou atraia leads em massa) com Eventos Ao Vivo, Workshops ou Treinamentos.</p>
               </div>
 
@@ -350,9 +348,9 @@ export default function WebinarProductFlow({
                       onClick={() => updateForm({ cardStyle: key })}
                       className={cn(
                         "flex-1 p-3 rounded-xl border-2 text-center transition-all",
-                          form.cardStyle === key
-                            ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/5"
-                            : "border-border bg-card hover:border-border/80 text-foreground"
+                        form.cardStyle === key
+                          ? "border-blue-600 bg-blue-600/5 text-blue-600"
+                          : "border-border bg-card hover:border-border/80 text-foreground"
                       )}
                     >
                       <p className="text-sm font-semibold">{label}</p>
@@ -414,8 +412,8 @@ export default function WebinarProductFlow({
               </div>
 
               {/* Quando vai acontecer */}
-              <div className="space-y-4 p-5 rounded-2xl border-2 bg-card shadow-sm" style={{ borderColor: `${themeTokens.primaryColor}30` }}>
-                <div className="flex items-center gap-2 border-b pb-3 mb-2 font-bold" style={{ borderColor: `${themeTokens.primaryColor}30`, color: themeTokens.primaryColor }}>
+              <div className="space-y-4 p-5 rounded-2xl border-2 border-blue-500/30 bg-blue-50/20 dark:bg-card shadow-sm">
+                <div className="flex items-center gap-2 border-b border-blue-500/20 pb-3 mb-2 font-bold text-blue-600 dark:text-blue-400">
                   <Clock className="w-5 h-5"/>
                   Agenda Oficial do Evento
                 </div>
@@ -425,7 +423,7 @@ export default function WebinarProductFlow({
                     <Label className="text-xs font-semibold uppercase">Dia e Horário Local *</Label>
                     <Input
                       type="datetime-local"
-                      className="bg-card h-11"
+                      className="border-blue-300 focus:ring-blue-500 bg-card h-11"
                       value={form.eventDate} onChange={(e) => updateForm({ eventDate: e.target.value })}
                     />
                   </div>
@@ -434,7 +432,7 @@ export default function WebinarProductFlow({
                     <Label className="text-xs font-semibold uppercase">Duração (Minutos)</Label>
                     <Input
                       type="number" min={15} step={15} placeholder="60"
-                      className="bg-card h-11"
+                      className="border-blue-300 focus:ring-blue-500 bg-card h-11"
                       value={form.duration || ""} onChange={(e) => updateForm({ duration: Number(e.target.value) })}
                     />
                   </div>
@@ -444,9 +442,9 @@ export default function WebinarProductFlow({
                    <Label className="text-xs font-semibold uppercase">Link da Transmissão / Sala (Zoom, Meet, YouTube) *</Label>
                    <Input 
                       placeholder="https://us02web.zoom.us/j/..." 
-                      className="text-sm bg-card"
+                      className="border-blue-300 focus:ring-blue-500 text-sm bg-card"
                       value={form.broadcastUrl} onChange={(e) => updateForm({ broadcastUrl: e.target.value })}
-                    />
+                   />
                    <p className="text-[10px] text-muted-foreground">O link será mantido em segredo absoluto até 1 hora antes do evento, enviado automaticamente na caixa de entrada do inscrito.</p>
                 </div>
               </div>
@@ -497,7 +495,7 @@ export default function WebinarProductFlow({
                       <Label className="text-xs text-muted-foreground">Valor Cobrado (R$) *</Label>
                       <Input
                         type="number" min={0} step={0.01} placeholder="0,00"
-                        className="text-lg font-mono font-medium bg-card"
+                        className="text-lg font-mono font-medium border-blue-500/50 focus-visible:ring-blue-500"
                         value={form.price || ""} onChange={(e) => updateForm({ price: Number(e.target.value) })}
                       />
                     </div>
@@ -542,16 +540,16 @@ export default function WebinarProductFlow({
 
               <div className="space-y-3">
                  {/* Alarme Auto (Feature nativa para Webinars) */}
-                 <div className="rounded-xl border p-4 transition-all" style={{ borderColor: `${themeTokens.primaryColor}40`, backgroundColor: `${themeTokens.primaryColor}05` }}>
+                 <div className="rounded-xl border border-blue-500/40 bg-blue-50/10 p-4 transition-all">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                           <div className="h-10 w-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: `${themeTokens.primaryColor}20`, color: themeTokens.primaryColor }}>
+                           <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30">
                               <Bell className="h-5 w-5" />
                            </div>
                            <div className="flex-1">
                               <p className="text-sm font-semibold flex gap-2 items-center text-foreground">
                                 Disparos Baseados no Relógio (Drip-Reverse) 
-                                <span className="inline-flex items-center rounded-full border focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80 font-bold text-[10px] py-0 px-2 h-5" style={{ backgroundColor: `${themeTokens.primaryColor}20`, color: themeTokens.primaryColor }}>NOVO</span>
+                                <span className="inline-flex items-center rounded-full border focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80 font-bold bg-blue-600/10 text-blue-600 text-[10px] py-0 px-2 h-5">NOVO</span>
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">Nós enviaremos notificações automáticas para que ele logue na sala.</p>
                            </div>
@@ -559,11 +557,11 @@ export default function WebinarProductFlow({
                         <Switch checked={form.sendReminders} onCheckedChange={(v) => updateForm({sendReminders: v})} />
                     </div>
                     {form.sendReminders && (
-                       <div className="border rounded-lg p-3 bg-card space-y-2" style={{ borderColor: `${themeTokens.primaryColor}30` }}>
-                          <p className="text-[11px] font-bold" style={{ color: themeTokens.primaryColor }}>O Sitema irá liberar automaticamente:</p>
+                       <div className="border border-blue-200 dark:border-blue-900/30 rounded-lg p-3 bg-card space-y-2">
+                          <p className="text-[11px] font-bold text-blue-800 dark:text-blue-300">O Sitema irá liberar automaticamente:</p>
                           <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc font-medium">
                              <li>Um e-mail "Falta 1 Dia!" contendo pautas gerais.</li>
-                             <li>Um e-mail crítico "ESTAMOS AO VIVO" com o Link (<span style={{ color: themeTokens.primaryColor }}>{form.broadcastUrl || "(link não definido)"}</span>) 30 minutos antes.</li>
+                             <li>Um e-mail crítico "ESTAMOS AO VIVO" com o Link (<span className="text-blue-500">{form.broadcastUrl || "(link não definido)"}</span>) 30 minutos antes.</li>
                           </ul>
                        </div>
                     )}
@@ -620,10 +618,11 @@ export default function WebinarProductFlow({
               <Save className="h-4 w-4 mr-2" /> Salvar Rascunho
             </Button>
             {tab !== "opcoes" ? (
-              <Button onClick={handleNext} className="text-white max-w-[200px] w-full shadow-md transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor }}>
-                Continuar
+              <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700 text-white max-w-[200px] w-full shadow-md transition-transform active:scale-95">
+                Continuar a Editar
               </Button>
-              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="text-white shadow-xl w-fit sm:w-[250px] transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 10px 15px -3px ${themeTokens.primaryColor}40` }}>
+            ) : (
+              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-600/20 w-fit sm:w-[250px] transition-transform active:scale-95">
                 <Rocket className="h-4 w-4 mr-2" /> Divulgar Ingresso
               </Button>
             )}
