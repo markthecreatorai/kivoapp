@@ -405,13 +405,7 @@ function AbaLoja({
       {/* Blocks section removed — only Listings remain */}
 
       {/* Products Section */}
-      <div className="pt-8 border-t border-[#e5e7eb]/80">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[15px] font-bold text-[#111827]">Listings</h3>
-          <span className="text-[12px] text-[#6b7280] font-medium">
-            {products.length} {products.length === 1 ? "item" : "items"}
-          </span>
-        </div>
+      <div className="pt-6">
 
         {productsLoading ? (
           <div className="space-y-3">
