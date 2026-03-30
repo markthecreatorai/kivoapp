@@ -408,22 +408,7 @@ function AbaLoja({
         />
       )}
 
-      {/* Blocks Section */}
-      {storefront && (
-        <div className="pt-2 border-t border-[#e5e7eb]/80">
-          <div className="mb-4">
-            <h3 className="text-[15px] font-bold text-[#111827]">Conteúdo da Loja (Blocos)</h3>
-            <p className="text-[13px] text-[#6b7280]">
-              Construa o layout da sua vitrine adicionando blocos e arrastando-os para reordenar.
-            </p>
-          </div>
-          <BlocksSection
-            storefrontId={storefront.id}
-            blocks={blocks}
-            onBlocksChange={onBlocksChange}
-          />
-        </div>
-      )}
+      {/* Blocks section removed — only Listings remain */}
 
       {/* Products Section */}
       <div className="pt-8 border-t border-[#e5e7eb]/80">
