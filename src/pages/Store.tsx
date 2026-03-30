@@ -833,6 +833,7 @@ export default function Store() {
         .insert([{
           workspace_id: product.workspace_id,
           name: `${product.name} - Cópia`,
+          slug: `${product.slug || 'product'}-copy-${Date.now()}`,
           type: product.type,
           status: "DRAFT" as const,
           description: product.description,
