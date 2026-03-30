@@ -372,6 +372,7 @@ function AbaLoja({
   onOpen: () => void;
   navigate: (path: string) => void;
   onArchive: (id: string) => void;
+  onTogglePublish: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
 }) {
