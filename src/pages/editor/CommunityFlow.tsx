@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +30,6 @@ export default function CommunityFlow({
   const queryClient = useQueryClient();
   const { currentWorkspace } = useWorkspace();
   const [tab, setTab] = useState("thumbnail");
-  const themeTokens = useStorefrontTheme();
 
   const initialPriceConfig = initialProduct.prices?.[0] || { amount: 0, compare_at_amount: null, type: "ONE_TIME" };
 
@@ -154,16 +152,13 @@ export default function CommunityFlow({
 
   const MobilePreview = () => (
     <div className="hidden lg:block w-[320px] shrink-0 sticky top-24">
-      <p className="text-xs font-medium mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1" style={{ color: themeTokens.primaryColor }}>
+      <p className="text-xs font-medium text-slate-600/60 dark:text-slate-500/50 mb-3 text-center uppercase tracking-widest font-semibold flex items-center justify-center gap-1">
         <Users className="w-3 h-3" /> Preview de Comunidade
       </p>
 
       {/* Fake Phone */}
       <div className="w-[320px] h-[600px] bg-black rounded-[40px] p-2 shadow-xl flex flex-col justify-start">
-        <div 
-          className="w-full h-full rounded-[32px] overflow-hidden flex flex-col relative overflow-y-auto"
-          style={{ backgroundColor: themeTokens.backgroundColor }}
-        >
+        <div className="w-full h-full rounded-[32px] overflow-hidden bg-[#F5F5F5] dark:bg-zinc-950 flex flex-col relative overflow-y-auto">
           {/* Notch */}
           <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20"></div>
 
@@ -171,37 +166,31 @@ export default function CommunityFlow({
           {tab === "thumbnail" && (
             <div className="p-4 pt-10 flex items-center h-full">
               {form.cardStyle === "button" && (
-                <div 
-                  className="w-full py-4 px-6 rounded-2xl border-2 text-center text-sm font-bold shadow-sm truncate" 
-                  style={{ borderColor: themeTokens.primaryColor, color: themeTokens.textColor, backgroundColor: themeTokens.backgroundColor }}
-                >
+                <div className="w-full py-4 px-6 rounded-2xl border-2 border-slate-700 bg-white dark:bg-zinc-900 text-center text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm truncate">
                   {form.name || "Nome da Comunidade"}
                 </div>
               )}
               {form.cardStyle === "callout" && (
-                <div 
-                  className="w-full rounded-2xl border p-5 shadow-sm"
-                  style={{ borderColor: themeTokens.primaryColor + '40', backgroundColor: themeTokens.backgroundColor }}
-                >
+                <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
                   {form.thumbnailUrl ? (
-                      <div className="h-32 overflow-hidden rounded-xl mb-4" style={{ backgroundColor: themeTokens.textColor + '10' }}>
+                      <div className="h-32 bg-zinc-100 dark:bg-zinc-800 overflow-hidden rounded-xl mb-4">
                           <img src={form.thumbnailUrl} className="w-full h-full object-cover" />
                       </div>
                   ) : (
-                      <div className="h-32 flex items-center justify-center rounded-xl mb-4" style={{ backgroundColor: themeTokens.textColor + '10' }}>
-                         <Users className="w-8 h-8" style={{ color: themeTokens.textColor, opacity: 0.2 }} />
+                      <div className="h-32 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-4 text-zinc-400">
+                         <Users className="w-8 h-8 opacity-20" />
                       </div>
                   )}
                   
                   <div className="flex items-center gap-2 mb-2">
-                     <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80 text-[10px] font-bold" style={{ backgroundColor: `${themeTokens.primaryColor}20`, color: themeTokens.primaryColor }}>COMUNIDADE</span>
+                     <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-secondary/80 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold">COMUNIDADE</span>
                   </div>
 
-                  <p className="font-bold text-lg leading-snug" style={{ color: themeTokens.textColor }}>{form.name || "Comunidade VIP"}</p>
+                  <p className="font-bold text-zinc-900 dark:text-zinc-100 text-lg leading-snug">{form.name || "Comunidade VIP"}</p>
                   {form.shortDescription && (
-                    <p className="text-sm mt-2 line-clamp-2" style={{ color: themeTokens.textColor, opacity: 0.7 }}>{form.shortDescription}</p>
+                    <p className="text-sm text-zinc-500 mt-2 line-clamp-2">{form.shortDescription}</p>
                   )}
-                  <div className="mt-5 py-3 rounded-xl text-white text-sm font-medium text-center" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}>
+                  <div className="mt-5 py-3 rounded-xl bg-slate-800 dark:bg-slate-700 text-white text-sm font-medium text-center">
                     {form.ctaText || "Entrar na Comunidade"}
                   </div>
                 </div>
@@ -232,12 +221,12 @@ export default function CommunityFlow({
                 
                 <div className="flex items-center gap-2">
                   {!form.isFree && form.price > 0 && (
-                    <span className="text-2xl font-bold" style={{ color: themeTokens.primaryColor }}>
+                    <span className="text-2xl font-bold text-slate-800 dark:text-slate-200">
                       R$ {form.price.toFixed(2).replace(".", ",")}
+                      {form.pricingType === "RECURRING" && <span className="text-sm text-zinc-500 font-medium">/{form.billingInterval === "YEARLY" ? "ano" : "mês"}</span>}
                     </span>
-                    {form.pricingType === "RECURRING" && <span className="text-sm text-zinc-500 font-medium">/{form.billingInterval === "YEARLY" ? "ano" : "mês"}</span>}
-                  </div>
-                  {form.isFree && <span className="text-xl font-bold" style={{ color: themeTokens.primaryColor }}>Acesso Gratuito</span>}
+                  )}
+                  {form.isFree && <span className="text-xl font-bold text-slate-800 dark:text-slate-200">Acesso Gratuito</span>}
                 </div>
 
                 {form.description && (
@@ -251,9 +240,9 @@ export default function CommunityFlow({
                      <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700" />
                    </div>
                    <div className="pt-2">
-                       <div className="w-full py-4 rounded-xl text-white font-bold text-center" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}>
-                         {form.ctaText || "Participar Agora"}
-                       </div>
+                      <div className="w-full py-4 rounded-xl bg-slate-900 dark:bg-slate-700 text-white font-bold text-center shadow-lg shadow-slate-900/20">
+                        {form.ctaText || "Participar Agora"}
+                      </div>
                    </div>
                 </div>
               </div>
@@ -281,7 +270,7 @@ export default function CommunityFlow({
             {/* ABA: THUMBNAIL */}
             <TabsContent value="thumbnail" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
-                <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5" style={{ color: themeTokens.primaryColor }}/> Vender Acesso à Comunidades</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5 text-slate-600"/> Vender Acesso à Comunidades</h2>
                 <p className="text-sm text-muted-foreground">Crie assinaturas ou cobre acesso vitalício a grupos da sua área Circle.</p>
               </div>
 
@@ -294,9 +283,9 @@ export default function CommunityFlow({
                       onClick={() => updateForm({ cardStyle: key })}
                       className={cn(
                         "flex-1 p-3 rounded-xl border-2 text-center transition-all",
-                      form.cardStyle === key
-                        ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/5"
-                        : "border-border bg-card hover:border-border/80 text-foreground"
+                        form.cardStyle === key
+                          ? "border-slate-800 dark:border-slate-500 bg-slate-800/5 text-slate-800 dark:text-slate-300"
+                          : "border-border bg-card hover:border-border/80 text-foreground"
                       )}
                     >
                       <p className="text-sm font-semibold">{label}</p>
@@ -599,14 +588,11 @@ export default function CommunityFlow({
               <Save className="h-4 w-4 mr-2" /> Salvar Rascunho
             </Button>
             {tab !== "opcoes" ? (
-              <Button onClick={handleNext} className="text-white max-w-[200px] w-full shadow-md transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor }}>
+              <Button onClick={handleNext} className="bg-slate-800 hover:bg-slate-900 text-white max-w-[200px] w-full shadow-md transition-transform active:scale-95">
                 Continuar
               </Button>
-              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="text-white shadow-xl w-fit sm:w-[250px] transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 10px 15px -3px ${themeTokens.primaryColor}40` }}>
-                <Rocket className="h-4 w-4 mr-2" /> Ativar Comunidade
-              </Button>
             ) : (
-              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="text-white shadow-xl w-fit sm:w-[250px] transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 10px 15px -3px ${themeTokens.primaryColor}40` }}>
+              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="bg-slate-800 hover:bg-slate-900 text-white shadow-xl w-fit sm:w-[250px] transition-transform active:scale-95">
                 <Rocket className="h-4 w-4 mr-2" /> Ativar Plano
               </Button>
             )}
