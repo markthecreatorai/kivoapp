@@ -182,6 +182,7 @@ function ProductListItem({
   product: any;
   onEdit: () => void;
   onArchive: () => void;
+  onTogglePublish: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
   dragging: boolean;
