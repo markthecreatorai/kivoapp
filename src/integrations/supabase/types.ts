@@ -4722,6 +4722,47 @@ export type Database = {
           },
         ]
       }
+      product_reviews: {
+        Row: {
+          author_avatar_url: string | null
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          is_approved: boolean | null
+          product_id: string
+          rating: number
+        }
+        Insert: {
+          author_avatar_url?: string | null
+          author_name: string
+          content: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean | null
+          product_id: string
+          rating: number
+        }
+        Update: {
+          author_avatar_url?: string | null
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean | null
+          product_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_tags: {
         Row: {
           product_id: string
