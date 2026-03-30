@@ -12,6 +12,7 @@ import DigitalProductFlow from "./editor/DigitalProductFlow";
 import CustomProductFlow from "./editor/CustomProductFlow";
 import UrlMediaFlow from "./editor/UrlMediaFlow";
 import RecurringProductFlow from "./editor/RecurringProductFlow";
+import WebinarProductFlow from "./editor/WebinarProductFlow";
 
 export default function ProductEditor() {
   const { id } = useParams<{ id: string }>();
@@ -79,6 +80,9 @@ export default function ProductEditor() {
       case "affiliate":
       case "referral_link":
         return <UrlMediaFlow initialProduct={product} setSaving={setSaving} />;
+      case "webinar":
+      case "event":
+        return <WebinarProductFlow initialProduct={product} setSaving={setSaving} />;
       default:
         // Fallback pro "em breve" ou placeholder
         return (
