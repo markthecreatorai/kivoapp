@@ -4800,6 +4800,7 @@ export type Database = {
           description: string | null
           id: string
           is_storefront_visible: boolean | null
+          metadata: Json | null
           name: string
           sales_count: number | null
           short_description: string | null
@@ -4818,6 +4819,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_storefront_visible?: boolean | null
+          metadata?: Json | null
           name: string
           sales_count?: number | null
           short_description?: string | null
@@ -4836,6 +4838,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_storefront_visible?: boolean | null
+          metadata?: Json | null
           name?: string
           sales_count?: number | null
           short_description?: string | null
