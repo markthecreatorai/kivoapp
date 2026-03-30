@@ -605,8 +605,8 @@ function AbaDesign({
   saveStatus: "saved" | "saving" | "unsaved";
   onUpdateStorefront: (data: Partial<StorefrontData>) => void;
   onUpdateTheme: (data: Partial<StorefrontTheme>) => void;
-  setLocalStorefront: (data: Partial<StorefrontData>) => void;
-  setLocalTheme: (data: Partial<StorefrontTheme>) => void;
+  setLocalStorefront: React.Dispatch<React.SetStateAction<StorefrontData | null>>;
+  setLocalTheme: React.Dispatch<React.SetStateAction<StorefrontTheme | null | undefined>>;
 }) {
   const [activePanel, setActivePanel] = useState<"theme" | "profile">("theme");
 
