@@ -101,7 +101,7 @@ export function FormFieldsBuilder({ productId }: { productId: string }) {
       // Better strategy is just upsert, but we need to delete removed ones.
       // So let's do: Delete All -> Insert All. It's safer for this simple editor.
       
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await (supabase as any)
         .from("product_form_fields")
         .delete()
         .eq("product_id", productId)
