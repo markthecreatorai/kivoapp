@@ -41,70 +41,82 @@ export function OnboardingChecklist() {
 
     const checkOnboardingStatus = async () => {
       try {
-        // Check storefront (profile)
-        const { data: storefront } = await supabase
-          .from("storefronts")
-          .select("is_published, title")
-          .eq("workspace_id", currentWorkspace.id)
-          .single();
+        // ── Step 1: Profile complete ──────────────────────────────────
+        // Consider complete if storefront has a non-empty title set
+        let profileComplete = false;
+        try {
+          const { data: storefront } = await supabase
+            .from("storefronts")
+            .select("title, bio")
+            .eq("workspace_id", currentWorkspace.id)
+            .maybeSingle();
+          profileComplete = !!(storefront?.title?.trim());
+        } catch {}
 
-        const profileComplete = !!(storefront?.title && storefront.title !== currentWorkspace.name);
+        // ── Step 2: Payment connected ─────────────────────────────────
+        let paymentConnected = false;
+        try {
+          const { data: bankAccounts } = await supabase
+            .from("bank_accounts")
+            .select("id")
+            .eq("workspace_id", currentWorkspace.id)
+            .limit(1);
+          paymentConnected = (bankAccounts?.length || 0) > 0;
+        } catch {}
 
-        // Check payment settings
-        const { data: bankAccounts } = await supabase
-          .from("bank_accounts")
-          .select("id")
-          .eq("workspace_id", currentWorkspace.id)
-          .limit(1);
-
-        const paymentConnected = (bankAccounts?.length || 0) > 0;
-
-        // Check products
+        // ── Step 3: Product created (any status, including DRAFT) ─────
         let productCreated = false;
         let productPublished = false;
         try {
           const { data: products } = await supabase
             .from("products")
-            .select("id, is_published")
+            .select("id, status")
             .eq("workspace_id", currentWorkspace.id)
             .is("deleted_at", null)
-            .limit(10);
+            .limit(20);
+
           productCreated = (products?.length || 0) > 0;
-          productPublished = products?.some((p: any) => p.is_published) || false;
+          // status field stores 'PUBLISHED' | 'DRAFT'
+          productPublished = (products || []).some((p: any) => p.status === "PUBLISHED");
         } catch {
-          // RLS error fallback - check onboarding_progress
-          const { data: progress } = await supabase
-            .from("onboarding_progress" as any)
-            .select("step_key, completed_at")
-            .eq("workspace_id", currentWorkspace.id);
-          const steps = (progress || []) as any[];
-          productCreated = steps.some(s => s.step_key === "product_created" && s.completed_at);
-          productPublished = steps.some(s => s.step_key === "product_published" && s.completed_at);
+          // RLS fallback — read from persisted progress table
+          try {
+            const { data: progress } = await supabase
+              .from("onboarding_progress" as any)
+              .select("step_key, completed_at")
+              .eq("workspace_id", currentWorkspace.id);
+            const steps = (progress || []) as any[];
+            productCreated = steps.some(s => s.step_key === "product_created" && s.completed_at);
+            productPublished = steps.some(s => s.step_key === "product_published" && s.completed_at);
+          } catch {}
         }
 
-        // Check first sale
-        const { data: sales } = await supabase
-          .from("orders")
-          .select("id")
-          .eq("workspace_id", currentWorkspace.id)
-          .eq("status", "PAID")
-          .limit(1);
+        // ── Step 4: First sale ────────────────────────────────────────
+        let firstSale = false;
+        try {
+          const { data: sales } = await supabase
+            .from("orders")
+            .select("id")
+            .eq("workspace_id", currentWorkspace.id)
+            .eq("status", "PAID")
+            .limit(1);
+          firstSale = (sales?.length || 0) > 0;
+        } catch {}
 
-        const firstSale = (sales?.length || 0) > 0;
-
-        // Persist completed steps
+        // ── Persist completed steps ───────────────────────────────────
         if (profileComplete) persistStep("profile_complete");
         if (paymentConnected) persistStep("payment_connected");
         if (productCreated) persistStep("product_created");
         if (productPublished) persistStep("product_published");
         if (firstSale) {
           persistStep("first_sale");
-          // Mark workspace as activated
-          await supabase
-            .from("workspaces")
-            .update({ activated_at: new Date().toISOString() })
-            .eq("id", currentWorkspace.id)
-            .is("activated_at", null);
+          try {
+            await supabase
+              .from("workspaces")
+              .update({ activated_at: new Date().toISOString() })
+              .eq("id", currentWorkspace.id)
+              .is("activated_at", null);
+          } catch {}
         }
 
         const items: ChecklistItem[] = [
@@ -138,7 +150,7 @@ export function OnboardingChecklist() {
             description: "Torne seu produto visível para compradores",
             completed: productPublished,
             action: "Ver produtos",
-            href: "/products",
+            href: "/store?tab=loja",
           },
           {
             id: "sale",
