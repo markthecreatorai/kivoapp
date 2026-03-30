@@ -183,7 +183,7 @@ const App = () => (
                   <Route path="/creator-finance" element={<CreatorFinance />} />
                   <Route path="/earnings" element={<Income />} />
                   <Route path="/coupons" element={<Coupons />} />
-                  <Route path="/products" element={<Products />} />
+                  <Route path="/products" element={<Navigate to="/store?tab=loja" replace />} />
                   <Route path="/products/new" element={<CreateProduct />} />
                   <Route path="/store" element={<Store />} />
                   <Route path="/analytics" element={<Analytics />} />
