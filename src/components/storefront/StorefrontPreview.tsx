@@ -115,14 +115,14 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
         if (!product) return null;
         return (
           <div 
-            className="w-full overflow-hidden border rounded-[16px]"
+            className="w-full overflow-visible border rounded-[16px]"
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             {product.thumbnail_url && (
               <img 
                 src={product.thumbnail_url} 
                 alt={product.name}
-                className="w-full h-32 object-cover"
+                className="w-full h-32 object-cover rounded-t-[16px]"
               />
             )}
             <div className="p-3">
