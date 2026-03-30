@@ -22,8 +22,10 @@ import {
   Lock,
   ShoppingCart,
   Users,
-  MessageSquare
+  MessageSquare,
 } from "lucide-react";
+import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
+import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 
 export default function DigitalProductFlow({
   initialProduct,
@@ -438,16 +440,8 @@ export default function DigitalProductFlow({
               </div>
 
               <div className="space-y-3">
-                 {/* Locked - Avaliações */}
-                 <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">
-                     <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-zinc-200 text-zinc-600">
-                        <MessageSquare className="h-5 w-5" />
-                     </div>
-                     <div className="flex-1">
-                        <p className="text-sm font-semibold flex gap-2 items-center text-zinc-900">Prova Social & Depoimentos <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-zinc-800 text-zinc-100 h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
-                        <p className="text-xs text-zinc-500 mt-1">Exiba reviews de 5 estrelas atestando a qualidade do livro/curso no seu checkout automatizadamente.</p>
-                     </div>
-                 </div>
+                  {/* Avaliações / Depoimentos (Prova Social) */}
+                  <ReviewsBuilder productId={initialProduct.id} />
 
                  {/* Locked - Order Bump */}
                  <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">

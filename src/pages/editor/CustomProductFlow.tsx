@@ -24,6 +24,8 @@ import {
   PenTool,
   Plus
 } from "lucide-react";
+import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
+import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 
 export default function CustomProductFlow({
   initialProduct,
@@ -370,18 +372,12 @@ export default function CustomProductFlow({
               </div>
 
               {/* Briefing / Formulário Customizado */}
-              <div className="space-y-4 p-5 rounded-2xl border-2 border-dashed border-border text-left">
-                  <p className="text-base font-semibold text-foreground flex items-center justify-between">
-                     Construtor de Briefing 
-                     <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold bg-amber-600/10 text-amber-600 border-transparent">
-                       EM BREVE
-                     </span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">Campos "Nome" e "Email" são mandatórios e já incluídos. Você poderá adicionar novas perguntas ("Qual o seu link do insta?") abaixo no futuro.</p>
-
-                  <div className="w-full h-12 bg-muted/40 rounded-lg flex items-center justify-center border border-border/60 text-muted-foreground cursor-not-allowed text-sm">
-                      <Plus className="w-4 h-4 mr-2" /> Adicionar Pergunta / Upload no momento da compra
-                  </div>
+              <div className="space-y-4 pt-4 mt-6 border-t border-border/40">
+                   <div className="space-y-1">
+                     <p className="text-base font-semibold text-foreground">Construtor de Briefing / Formulário</p>
+                     <p className="text-sm text-muted-foreground">Quais informações você precisa do cliente na hora que ele comprar?</p>
+                   </div>
+                   <FormFieldsBuilder productId={initialProduct.id} />
               </div>
 
             </TabsContent>
@@ -391,20 +387,11 @@ export default function CustomProductFlow({
               <div className="space-y-2">
                 <h2 className="text-xl font-bold">Mecanismos Pós-Compra</h2>
                 <p className="text-sm text-muted-foreground">Configure os passos após você receber o dinheiro e o briefing do cliente.</p>
+                {/* Avaliações / Depoimentos (Prova Social) */}
+                <ReviewsBuilder productId={initialProduct.id} />
               </div>
 
               <div className="space-y-3">
-                 {/* Locked - Avaliações */}
-                 <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">
-                     <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-zinc-200 text-zinc-600">
-                        <MessageSquare className="h-5 w-5" />
-                     </div>
-                     <div className="flex-1">
-                        <p className="text-sm font-semibold flex gap-2 items-center text-zinc-900">Prova Social & Depoimentos <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-zinc-800 text-zinc-100 h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
-                        <p className="text-xs text-zinc-500 mt-1">Exiba as estrelas dos clientes na sua página de serviços.</p>
-                     </div>
-                 </div>
-
                  {/* Custom - Email de Suporte/Confirmação de recebimento */}
                  <div className={cn("rounded-xl border bg-card transition-all mt-6", openEmail ? "border-amber-500/40 shadow-sm" : "border-border/60 hover:border-border")}>
                     <div className="flex items-center gap-3 p-4 cursor-pointer select-none" onClick={() => setOpenEmail(!openEmail)}>

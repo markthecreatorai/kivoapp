@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthProvider";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,15 +27,36 @@ export default function UrlMediaFlow({
   const queryClient = useQueryClient();
   const formatId = (initialProduct.metadata as any)?.format_id || "url_media";
   const isAffiliate = formatId === "affiliate";
+  const isReferralLink = formatId === "referral_link";
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const { data: referralProfile, isLoading: isReferralLoading } = useQuery({
+    queryKey: ["referralProfile", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase.from("referral_profiles").select("*").eq("user_id", user.id).maybeSingle();
+      return data;
+    },
+    enabled: isReferralLink && !!user
+  });
 
   const [form, setForm] = useState({
-    cardStyle: initialProduct.thumbnail_style || (isAffiliate ? "callout" : "button"), // button | callout | preview | embed
-    name: initialProduct.name || "",
+    cardStyle: initialProduct.thumbnail_style || (isAffiliate || isReferralLink ? "callout" : "button"), // button | callout | preview | embed
+    name: initialProduct.name || (isReferralLink ? "Crie sua Loja Kivo" : ""),
     shortDescription: initialProduct.short_description || "",
-    ctaText: initialProduct.listing_button_text || (isAffiliate ? "Apoiar Canal" : "Acessar Link"),
+    ctaText: initialProduct.listing_button_text || (isAffiliate || isReferralLink ? "Apoiar Canal" : "Acessar Link"),
     thumbnailUrl: initialProduct.thumbnail_url || "",
     targetUrl: initialProduct.delivery_url || "", // we save the target in delivery_url
   });
+
+  // Auto-fill target URL for referral link
+
+  useEffect(() => {
+    if (isReferralLink && referralProfile?.referral_link && !form.targetUrl) {
+      setForm(p => ({ ...p, targetUrl: referralProfile.referral_link }));
+    }
+  }, [isReferralLink, referralProfile]);
 
   const updateForm = (updates: Partial<typeof form>) => setForm((p) => ({ ...p, ...updates }));
 
@@ -41,6 +64,8 @@ export default function UrlMediaFlow({
     if (!url) return null;
     if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
     if (url.includes("spotify.com")) return "spotify";
+    if (url.includes("calendly.com")) return "calendly";
+    if (url.includes("notion.site") || url.includes("notion.so")) return "notion";
     return null;
   };
 
@@ -176,6 +201,14 @@ export default function UrlMediaFlow({
                         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
                         loading="lazy">
                       </iframe>
+                    ) : embedType === "calendly" || embedType === "notion" ? (
+                      <iframe 
+                        src={form.targetUrl} 
+                        width="100%" 
+                        height="200" 
+                        frameBorder="0" 
+                        loading="lazy">
+                      </iframe>
                     ) : (
                       <div className="h-32 flex items-center justify-center flex-col text-zinc-400">
                          <Video className="w-6 h-6 mb-2" />
@@ -199,8 +232,27 @@ export default function UrlMediaFlow({
     { key: "preview", label: "Preview Grande", desc: "Destaque visual c/ Link" },
     { key: "callout", label: "Callout", desc: "Imagem menor, foco no texto" },
     { key: "button", label: "Button", desc: "Link rápido e minimalista" },
-    ...(!isAffiliate ? [{ key: "embed", label: "Embed nativo", desc: "Injeta YouTube ou Spotify" }] : [])
+    ...(!isAffiliate && !isReferralLink ? [{ key: "embed", label: "Embed nativo", desc: "Injeta YouTube ou Spotify" }] : [])
   ];
+
+  if (isReferralLink && isReferralLoading) {
+    return <div className="p-10 text-center animate-pulse text-muted-foreground">Verificando convite...</div>;
+  }
+
+  if (isReferralLink && !referralProfile) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
+         <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-6">
+            <Link2 className="w-8 h-8 text-purple-600" />
+         </div>
+         <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Você ainda não gerou seu Link</h2>
+         <p className="text-zinc-500 text-lg">Para adicionar o produto "Indique a Kivo" na sua loja, você precisa primeiro ativar seu painel de parceiro e link de afiliado.</p>
+         <Button onClick={() => navigate("/referrals")} className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-12 px-8 shadow-xl shadow-purple-600/20">
+           Ir para Painel de Indicações
+         </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -211,27 +263,32 @@ export default function UrlMediaFlow({
           <div className="space-y-8 animate-in fade-in pb-10">
             <div className="space-y-2">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                 <Link2 className="w-6 h-6 text-red-500" />
-                 {isAffiliate ? "Link de Afiliado Rastreável" : "URL, Mídia ou Link Externo"}
+                 <Link2 className={isReferralLink ? "w-6 h-6 text-purple-500" : "w-6 h-6 text-red-500"} />
+                 {isReferralLink ? "Sua Indicação Kivo" : isAffiliate ? "Link de Afiliado Rastreável" : "URL, Mídia ou Link Externo"}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {isAffiliate 
+                {isReferralLink 
+                  ? "Recomende a Kivo para sua audiência e ganhe 20% de comissão recorrente lifetime de cada assinatura gerada por você."
+                  : isAffiliate 
                   ? "Crie uma vitrine em sua loja que dispara a audiência para a sua comissão de afiliado com One-Click."
                   : "Não quer complicar? Adicione uma URL rápida, direcione para seu site principal, ou faça sua vitrine rodar um vídeo do Youtube/Spotify direto nela."}
               </p>
             </div>
 
             {/* URL Destino */}
-            <div className="space-y-4 p-5 rounded-2xl border-2 border-red-500/30 bg-red-50/20 dark:bg-card shadow-sm">
+            <div className={`space-y-4 p-5 rounded-2xl border-2 shadow-sm ${isReferralLink ? 'border-purple-500/30 bg-purple-50/20' : 'border-red-500/30 bg-red-50/20'} dark:bg-card`}>
                <div className="space-y-2">
-                 <Label className="text-sm font-semibold">{isAffiliate ? "Seu Link de Afiliado (URL Completa)*" : "Link de Destino / URL do Vídeo *"}</Label>
+                 <Label className="text-sm font-semibold">{isReferralLink ? "Link Seguro Kivo" : isAffiliate ? "Seu Link de Afiliado (URL Completa)*" : "Link de Destino / URL do Vídeo *"}</Label>
                  <Input 
                    placeholder="https://..." 
-                   className="text-lg font-mono border-red-500 focus-visible:ring-red-500"
+                   className={`text-lg font-mono ${isReferralLink ? 'border-purple-500 focus-visible:ring-purple-500 bg-purple-50/50 text-purple-700' : 'border-red-500 focus-visible:ring-red-500'} `}
                    value={form.targetUrl} onChange={e => updateForm({targetUrl: e.target.value})}
+                   readOnly={isReferralLink}
                  />
                  {embedType === "youtube" && <p className="text-[11px] text-green-600 font-medium">✨ Vídeo do YouTube detectado automagicamente!</p>}
                  {embedType === "spotify" && <p className="text-[11px] text-green-600 font-medium">✨ Playlist do Spotify detectada automagicamente!</p>}
+                 {embedType === "calendly" && <p className="text-[11px] text-green-600 font-medium">✨ Agenda do Calendly detectada automagicamente!</p>}
+                 {embedType === "notion" && <p className="text-[11px] text-green-600 font-medium">✨ Página do Notion detectada automagicamente!</p>}
                </div>
             </div>
 

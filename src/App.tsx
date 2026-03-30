@@ -37,6 +37,7 @@ const MemberDashboard = lazy(() => import("./pages/MemberDashboard"));
 const MemberCourse = lazy(() => import("./pages/MemberCourse"));
 const MemberBilling = lazy(() => import("./pages/MemberBilling"));
 const Affiliates = lazy(() => import("./pages/Affiliates"));
+const ReferralsDashboard = lazy(() => import("./pages/ReferralsDashboard"));
 const AffiliateApply = lazy(() => import("./pages/AffiliateApply"));
 const AffiliateDashboard = lazy(() => import("./pages/AffiliateDashboard"));
 const Leads = lazy(() => import("./pages/Leads"));
@@ -132,6 +133,14 @@ function DashboardShell() {
   );
 }
 
+import type { ReactNode } from "react";
+import { useReferralTracking } from "@/hooks/useReferralTracking";
+
+function GlobalTrackingWrapper({ children }: { children: ReactNode }) {
+  useReferralTracking();
+  return <>{children}</>;
+}
+
 /** Admin-guarded shell */
 function AdminShell() {
   return (
@@ -182,6 +191,7 @@ const App = () => (
                 {/* ===== PERSISTENT DASHBOARD LAYOUT ===== */}
                 <Route element={<DashboardShell />}>
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/referrals" element={<ReferralsDashboard />} />
                   <Route path="/creator-finance" element={<CreatorFinance />} />
                   <Route path="/earnings" element={<Income />} />
                   <Route path="/coupons" element={<Coupons />} />
@@ -256,21 +266,21 @@ const App = () => (
                 <Route path="/communities" element={<CommunityDiscovery />} />
 
                 {/* Landing page */}
-                <Route path="/" element={<LandingPage />} />
+                <Route path="/" element={<GlobalTrackingWrapper><LandingPage /></GlobalTrackingWrapper>} />
 
                 {/* Public routes */}
-                <Route path="/checkout/:productSlug" element={<Checkout />} />
-                <Route path="/order/success/:orderId" element={<OrderSuccess />} />
-                <Route path="/upsell/:offerId" element={<Upsell />} />
-                <Route path="/member/login" element={<MemberLogin />} />
-                <Route path="/member" element={<MemberDashboard />} />
-                <Route path="/member/course/:productId" element={<MemberCourse />} />
-                <Route path="/member/billing" element={<MemberBilling />} />
-                <Route path="/book/:productSlug" element={<BookAppointment />} />
-                <Route path="/affiliate/apply/:workspaceSlug" element={<AffiliateApply />} />
-                <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
-                <Route path="/:slug" element={<PublicStorefront />} />
-                <Route path="*" element={<NotFound />} />
+                <Route path="/checkout/:productSlug" element={<GlobalTrackingWrapper><Checkout /></GlobalTrackingWrapper>} />
+                <Route path="/order/success/:orderId" element={<GlobalTrackingWrapper><OrderSuccess /></GlobalTrackingWrapper>} />
+                <Route path="/upsell/:offerId" element={<GlobalTrackingWrapper><Upsell /></GlobalTrackingWrapper>} />
+                <Route path="/member/login" element={<GlobalTrackingWrapper><MemberLogin /></GlobalTrackingWrapper>} />
+                <Route path="/member" element={<GlobalTrackingWrapper><MemberDashboard /></GlobalTrackingWrapper>} />
+                <Route path="/member/course/:productId" element={<GlobalTrackingWrapper><MemberCourse /></GlobalTrackingWrapper>} />
+                <Route path="/member/billing" element={<GlobalTrackingWrapper><MemberBilling /></GlobalTrackingWrapper>} />
+                <Route path="/book/:productSlug" element={<GlobalTrackingWrapper><BookAppointment /></GlobalTrackingWrapper>} />
+                <Route path="/affiliate/apply/:workspaceSlug" element={<GlobalTrackingWrapper><AffiliateApply /></GlobalTrackingWrapper>} />
+                <Route path="/affiliate/dashboard" element={<GlobalTrackingWrapper><AffiliateDashboard /></GlobalTrackingWrapper>} />
+                <Route path="/:slug" element={<GlobalTrackingWrapper><PublicStorefront /></GlobalTrackingWrapper>} />
+                <Route path="*" element={<GlobalTrackingWrapper><NotFound /></GlobalTrackingWrapper>} />
               </Routes>
             </Suspense>
           </WorkspaceProvider>

@@ -26,6 +26,8 @@ import {
   Image as ImageIcon,
   Mail
 } from "lucide-react";
+import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
+import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 
 export default function WebinarProductFlow({
   initialProduct,
@@ -517,6 +519,15 @@ export default function WebinarProductFlow({
                 />
               </div>
 
+              {/* Formulário / Dados do Cliente */}
+              <div className="space-y-4 pt-4 mt-6 border-t border-border/40">
+                   <div className="space-y-1">
+                     <p className="text-base font-semibold text-foreground">Campos do Checkout / Ingresso</p>
+                     <p className="text-sm text-muted-foreground">Quais informações extras você precisa do inscrito (ex: WhatsApp)?</p>
+                   </div>
+                   <FormFieldsBuilder productId={initialProduct.id} />
+              </div>
+
             </TabsContent>
 
             {/* ABA: OPÇÕES */}
@@ -589,6 +600,8 @@ export default function WebinarProductFlow({
                     )}
                  </div>
 
+                 {/* Avaliações / Depoimentos (Prova Social) */}
+                 <ReviewsBuilder productId={initialProduct.id} />
               </div>
             </TabsContent>
 

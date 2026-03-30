@@ -44,6 +44,7 @@ const creatorGroups: NavGroup[] = [
     label: "Visão Geral",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: Home },
+      { title: "Indicações", url: "/referrals", icon: Users },
     ],
   },
   {

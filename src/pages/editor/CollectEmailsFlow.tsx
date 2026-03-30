@@ -22,6 +22,8 @@ import {
   Lock
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
+import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 
 export default function CollectEmailsFlow({
   initialProduct,
@@ -256,8 +258,17 @@ export default function CollectEmailsFlow({
                          <p className="text-xs text-muted-foreground mt-1">Gere arquivos em PDF, planilhas ou vídeos. Uma URL de download interno será gerada após salvar as alterações da aba.</p>
                       </div>
                    )}
-                </div>
-             </TabsContent>
+                 </div>
+
+                 {/* Campos Adicionais */}
+                 <div className="space-y-4 pt-4 mt-6 border-t border-border/40">
+                   <div className="space-y-1">
+                     <p className="text-base font-semibold text-foreground">Campos do Formulário</p>
+                     <p className="text-sm text-muted-foreground">Adicione campos para qualificar seus leads (ex: Telefone, Nome da Empresa).</p>
+                   </div>
+                   <FormFieldsBuilder productId={initialProduct.id} />
+                 </div>
+              </TabsContent>
 
              {/* ABA: OPÇÕES */}
              <TabsContent value="opcoes" className="space-y-6 animate-in fade-in">
@@ -320,6 +331,8 @@ export default function CollectEmailsFlow({
                        </div>
                    </div>
 
+                   {/* Avaliações / Depoimentos (Prova Social) */}
+                   <ReviewsBuilder productId={initialProduct.id} />
                 </div>
              </TabsContent>
 

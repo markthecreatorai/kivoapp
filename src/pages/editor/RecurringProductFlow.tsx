@@ -21,10 +21,11 @@ import {
   Image as ImageIcon,
   Lock,
   ShoppingCart,
-  Users,
   MessageSquare,
   RefreshCw
 } from "lucide-react";
+import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
+import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 
 export default function RecurringProductFlow({
   initialProduct,
@@ -52,7 +53,7 @@ export default function RecurringProductFlow({
     price: initialPriceConfig.amount || 0,
     compareAtPrice: initialPriceConfig.compare_at_amount,
     
-    billingInterval: initialProduct.billing_interval || "monthly", // weekly | monthly | quarterly | semiannual | yearly
+    billingInterval: (initialPriceConfig.interval || initialProduct.billing_interval || "MONTHLY").toUpperCase(), // WEEKLY | MONTHLY | QUARTERLY | SEMIANNUAL | YEARLY
     cancelAfterEnabled: initialProduct.cancel_after_enabled || false,
     cancelAfterCycles: initialProduct.cancel_after_cycles || 12,
     
@@ -98,14 +99,16 @@ export default function RecurringProductFlow({
          await supabase.from("prices").update({
            amount: form.price,
            compare_at_amount: form.compareAtPrice,
-           type: "RECURRING"
+           type: "RECURRING",
+           interval: form.billingInterval
          }).eq("id", initialPriceConfig.id);
       } else {
          await supabase.from("prices").insert({
            product_id: initialProduct.id,
            amount: form.price,
            compare_at_amount: form.compareAtPrice,
-           type: "RECURRING"
+           type: "RECURRING",
+           interval: form.billingInterval
          });
       }
 
@@ -132,12 +135,12 @@ export default function RecurringProductFlow({
   };
 
   const formatInterval = (interval: string) => {
-    switch (interval) {
-      case "weekly": return "/semana";
-      case "quarterly": return "/trimestre";
-      case "semiannual": return "/semestre";
-      case "yearly": return "/ano";
-      case "monthly":
+    switch (interval?.toUpperCase()) {
+      case "WEEKLY": return "/semana";
+      case "QUARTERLY": return "/trimestre";
+      case "SEMIANNUAL": return "/semestre";
+      case "YEARLY": return "/ano";
+      case "MONTHLY":
       default: return "/mês";
     }
   };
@@ -376,11 +379,11 @@ export default function RecurringProductFlow({
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="weekly">Semanal</SelectItem>
-                        <SelectItem value="monthly">Mensal</SelectItem>
-                        <SelectItem value="quarterly">Trimestral</SelectItem>
-                        <SelectItem value="semiannual">Semestral</SelectItem>
-                        <SelectItem value="yearly">Anual</SelectItem>
+                        <SelectItem value="WEEKLY">Semanal</SelectItem>
+                        <SelectItem value="MONTHLY">Mensal</SelectItem>
+                        <SelectItem value="QUARTERLY">Trimestral</SelectItem>
+                        <SelectItem value="SEMIANNUAL">Semestral</SelectItem>
+                        <SelectItem value="YEARLY">Anual</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -433,6 +436,15 @@ export default function RecurringProductFlow({
                 <p className="text-[11px] text-muted-foreground">Entregue automaticamente por e-mail e exibido na tela de "Parabéns".</p>
               </div>
 
+              {/* Formulário / Dados do Cliente */}
+              <div className="space-y-4 pt-4 mt-6 border-t border-border/40">
+                   <div className="space-y-1">
+                     <p className="text-base font-semibold text-foreground">Campos do Checkout</p>
+                     <p className="text-sm text-muted-foreground">Colete o WhatsApp ou informações relevantes do seu assinante.</p>
+                   </div>
+                   <FormFieldsBuilder productId={initialProduct.id} />
+              </div>
+
             </TabsContent>
 
             {/* ABA: OPÇÕES */}
@@ -443,16 +455,8 @@ export default function RecurringProductFlow({
               </div>
 
               <div className="space-y-3">
-                 {/* Locked */}
-                 <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">
-                     <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-zinc-200 text-zinc-600">
-                        <MessageSquare className="h-5 w-5" />
-                     </div>
-                     <div className="flex-1">
-                        <p className="text-sm font-semibold flex gap-2 items-center text-zinc-900">Prova Social & Depoimentos <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-zinc-800 text-zinc-100 h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
-                        <p className="text-xs text-zinc-500 mt-1">Exiba reviews para aumentar conversão.</p>
-                     </div>
-                 </div>
+                 {/* Avaliações / Depoimentos (Prova Social) */}
+                 <ReviewsBuilder productId={initialProduct.id} />
 
                  {/* Custom - Email Livre */}
                  <div className={cn("rounded-xl border bg-card transition-all mt-6", openEmail ? "border-purple-500/40 shadow-sm" : "border-border/60 hover:border-border")}>
