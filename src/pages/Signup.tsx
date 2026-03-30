@@ -323,34 +323,6 @@ export default function Signup() {
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      {/* Right side - Gradient/Image */}
-      <div className="hidden lg:flex flex-1 kivo-gradient items-center justify-center text-white p-8">
-        <div className="max-w-md text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Junte-se a milhares de creators
-          </h2>
-          <p className="text-lg opacity-90">
-            Crie sua loja digital em minutos e comece a vender hoje mesmo.
-          </p>
-          
-          <div className="mt-8 space-y-4">
-            <div className="flex items-center justify-start space-x-3">
-              <Check className="h-5 w-5 text-accent" />
-              <span>Setup em menos de 5 minutos</span>
-            </div>
-            <div className="flex items-center justify-start space-x-3">
-              <Check className="h-5 w-5 text-accent" />
-              <span>Sem taxas mensais</span>
-            </div>
-            <div className="flex items-center justify-start space-x-3">
-              <Check className="h-5 w-5 text-accent" />
-              <span>Suporte 24/7 em português</span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
