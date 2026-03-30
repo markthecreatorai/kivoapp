@@ -23,6 +23,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Products = lazy(() => import("./pages/Products"));
 const CreateProduct = lazy(() => import("./pages/CreateProduct"));
+const NewProduct = lazy(() => import("./pages/NewProduct"));
 const CourseBuilder = lazy(() => import("./pages/CourseBuilder"));
 const StorefrontEditor = lazy(() => import("./pages/StorefrontEditor"));
 const Store = lazy(() => import("./pages/Store"));
@@ -184,7 +185,8 @@ const App = () => (
                   <Route path="/earnings" element={<Income />} />
                   <Route path="/coupons" element={<Coupons />} />
                   <Route path="/products" element={<Navigate to="/store?tab=loja" replace />} />
-                  <Route path="/products/new" element={<CreateProduct />} />
+                  <Route path="/products/new" element={<NewProduct />} />
+                  <Route path="/products/:id/edit" element={<NewProduct />} />
                   <Route path="/store" element={<Store />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/clients" element={<Customers />} />

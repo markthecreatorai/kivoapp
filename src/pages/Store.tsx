@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ import {
   Loader2,
   User,
   FileText,
+  GripVertical,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -154,18 +155,28 @@ function StoreProfileCard({ storefront, storeUrl, onCopy, onOpen }: {
   );
 }
 
-// ─── Product list item ───────────────────────────────────────────────────────
+// ─── Draggable Product list item ─────────────────────────────────────────────
 
 function ProductListItem({
   product,
   onEdit,
   onArchive,
   onDelete,
+  dragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   product: any;
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
 }) {
   const typeInfo = TYPE_LABELS[product.type] ?? TYPE_LABELS.DIGITAL;
   const TypeIcon = typeInfo.icon;
@@ -173,9 +184,27 @@ function ProductListItem({
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border/50 bg-card hover:border-border hover:shadow-sm transition-all group cursor-pointer"
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "flex items-center gap-3 px-3 py-3 rounded-lg border bg-card transition-all group cursor-pointer select-none",
+        dragging
+          ? "opacity-40 scale-[0.98] border-primary/40 shadow-none"
+          : "border-border/50 hover:border-border hover:shadow-sm"
+      )}
       onClick={onEdit}
     >
+      {/* Drag handle */}
+      <div
+        className="flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+
       {/* Thumbnail */}
       <div className="h-11 w-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0">
         {product.thumbnail_url ? (
@@ -237,13 +266,122 @@ function ProductListItem({
   );
 }
 
+// ─── Mini store preview (simplified, shows products list) ────────────────────
+
+function MiniStorePreview({
+  storefront,
+  theme,
+  products,
+}: {
+  storefront: any;
+  theme: StorefrontTheme | null | undefined;
+  products: any[];
+}) {
+  const bg = theme?.background_color || "#ffffff";
+  const txt = theme?.text_color || "#1a1a1a";
+  const primary = theme?.primary_color || "#F9423A";
+  const btnRadius =
+    theme?.button_style === "pill" ? "9999px" :
+    theme?.button_style === "square" ? "0px" : "8px";
+
+  const publishedProducts = products.filter((p) => p.status === "PUBLISHED");
+
+  return (
+    <div className="w-[220px] flex-shrink-0">
+      <p className="text-[10px] font-medium text-muted-foreground mb-2 text-center">Preview da loja</p>
+      {/* Phone shell */}
+      <div className="w-[220px] h-[420px] bg-black rounded-[32px] p-2 shadow-xl">
+        <div
+          className="w-full h-full rounded-[26px] overflow-hidden flex flex-col"
+          style={{ backgroundColor: bg, fontFamily: theme?.font_body || "Inter" }}
+        >
+          {/* Notch */}
+          <div className="flex justify-center pt-1 pb-1 flex-shrink-0">
+            <div className="w-14 h-1.5 bg-black/80 rounded-full" />
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-3 pb-3">
+            {/* Profile */}
+            <div className="flex flex-col items-center text-center pt-2 pb-3">
+              <div
+                className="h-12 w-12 rounded-full mb-2 flex items-center justify-center overflow-hidden"
+                style={{ backgroundColor: primary + "20" }}
+              >
+                {storefront?.avatar_url ? (
+                  <img src={storefront.avatar_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-lg font-bold" style={{ color: primary }}>
+                    {storefront?.title?.charAt(0)?.toUpperCase() || "K"}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] font-bold leading-tight" style={{ color: txt }}>
+                {storefront?.title || "Minha Loja"}
+              </p>
+              {storefront?.bio && (
+                <p className="text-[9px] mt-0.5 opacity-70 line-clamp-2" style={{ color: txt }}>
+                  {storefront.bio}
+                </p>
+              )}
+            </div>
+
+            {/* Products */}
+            <div className="space-y-2">
+              {publishedProducts.length === 0 ? (
+                <div
+                  className="rounded-lg border border-dashed py-4 text-center"
+                  style={{ borderColor: txt + "30" }}
+                >
+                  <p className="text-[9px] opacity-40" style={{ color: txt }}>
+                    Nenhum produto publicado
+                  </p>
+                </div>
+              ) : (
+                publishedProducts.slice(0, 5).map((p) => (
+                  <div
+                    key={p.id}
+                    className="rounded-lg overflow-hidden border"
+                    style={{ borderColor: primary + "30" }}
+                  >
+                    {p.thumbnail_url && (
+                      <img
+                        src={p.thumbnail_url}
+                        alt={p.name}
+                        className="w-full h-14 object-cover"
+                      />
+                    )}
+                    <div className="p-1.5">
+                      <p className="text-[9px] font-semibold truncate" style={{ color: txt }}>
+                        {p.name}
+                      </p>
+                      <button
+                        className="mt-1 w-full py-0.5 text-[8px] font-medium text-white"
+                        style={{ backgroundColor: primary, borderRadius: btnRadius }}
+                      >
+                        Ver produto
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Aba Loja ────────────────────────────────────────────────────────────────
 
 function AbaLoja({
   storefront,
   storeUrl,
   products,
+  setProducts,
   productsLoading,
+  theme,
   onCopy,
   onOpen,
   navigate,
@@ -253,72 +391,118 @@ function AbaLoja({
   storefront: any;
   storeUrl: string | null;
   products: any[];
+  setProducts: (p: any[]) => void;
   productsLoading: boolean;
+  theme: StorefrontTheme | null | undefined;
   onCopy: () => void;
   onOpen: () => void;
   navigate: (path: string) => void;
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const dragIndexRef = useRef<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    dragIndexRef.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    const from = dragIndexRef.current;
+    if (from === null || from === index) return;
+    const reordered = [...products];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(index, 0, moved);
+    setProducts(reordered);
+    dragIndexRef.current = index;
+  };
+
+  const handleDrop = () => {
+    dragIndexRef.current = null;
+  };
+
+  const handleDragEnd = () => {
+    dragIndexRef.current = null;
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Perfil da loja */}
-      {storefront && (
-        <StoreProfileCard
-          storefront={storefront}
-          storeUrl={storeUrl}
-          onCopy={onCopy}
-          onOpen={onOpen}
-        />
-      )}
-
-      {/* Lista de produtos */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground">Itens da loja</h2>
-          <span className="text-xs text-muted-foreground">{products.length} item{products.length !== 1 ? "s" : ""}</span>
-        </div>
-
-        {productsLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[62px] rounded-lg" />)}
-          </div>
-        ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-14 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-              <Package className="h-6 w-6 text-primary" />
-            </div>
-            <p className="text-sm font-medium text-foreground mb-1">Nenhum produto ainda</p>
-            <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-              Crie seu primeiro produto e ele será exibido aqui e na sua loja pública.
-            </p>
-            <Button size="sm" onClick={() => navigate("/products/new")} className="gap-2">
-              <Plus className="h-4 w-4" /> Criar produto
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {products.map((product: any) => (
-              <ProductListItem
-                key={product.id}
-                product={product}
-                onEdit={() => navigate(`/products/${product.id}/edit`)}
-                onArchive={() => onArchive(product.id)}
-                onDelete={() => onDelete(product.id)}
-              />
-            ))}
-          </div>
+    <div className="flex gap-6">
+      {/* ── Left column ── */}
+      <div className="flex-1 min-w-0 space-y-6">
+        {/* Perfil da loja */}
+        {storefront && (
+          <StoreProfileCard
+            storefront={storefront}
+            storeUrl={storeUrl}
+            onCopy={onCopy}
+            onOpen={onOpen}
+          />
         )}
 
-        {/* CTA adicionar produto */}
-        <button
-          onClick={() => navigate("/products/new")}
-          className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
-        >
-          <Plus className="h-4 w-4" />
-          Adicionar produto
-        </button>
+        {/* Lista de produtos */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-foreground">Itens da loja</h2>
+            <span className="text-xs text-muted-foreground">{products.length} item{products.length !== 1 ? "s" : ""}</span>
+          </div>
+
+          {productsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[62px] rounded-lg" />)}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-14 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Package className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium text-foreground mb-1">Nenhum produto ainda</p>
+              <p className="text-xs text-muted-foreground mb-4 max-w-xs">
+                Crie seu primeiro produto e ele será exibido aqui e na sua loja pública.
+              </p>
+              <Button size="sm" onClick={() => navigate("/products/new")} className="gap-2">
+                <Plus className="h-4 w-4" /> Criar produto
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {products.map((product: any, index: number) => (
+                <ProductListItem
+                  key={product.id}
+                  product={product}
+                  onEdit={() => navigate(`/products/${product.id}/edit`)}
+                  onArchive={() => onArchive(product.id)}
+                  onDelete={() => onDelete(product.id)}
+                  dragging={dragIndexRef.current === index ? false : false}
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={handleDrop}
+                  onDragEnd={handleDragEnd}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* CTA adicionar produto */}
+          <button
+            onClick={() => navigate("/products/new")}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar produto
+          </button>
+        </div>
       </div>
+
+      {/* ── Right column: live mini preview ── */}
+      {storefront && (
+        <div className="hidden xl:flex items-start pt-1 flex-shrink-0">
+          <MiniStorePreview
+            storefront={storefront}
+            theme={theme}
+            products={products}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -334,7 +518,6 @@ function AbaLandingPages({
   loading: boolean;
   navigate: (path: string) => void;
 }) {
-  // Landing pages são produtos com tipo LEAD_MAGNET ou qualquer um que tenha uma página dedicada
   const landingPages = products.filter(
     (p: any) => p.type === "LEAD_MAGNET" || p.type === "SERVICE" || p.type === "DIGITAL"
   );
@@ -513,6 +696,8 @@ export default function Store() {
   const setTab = (t: StoreTab) => setSearchParams({ tab: t }, { replace: true });
 
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  // Local products state for drag & drop
+  const [localProducts, setLocalProducts] = useState<any[] | null>(null);
 
   // ── Storefront ──
   const { data: storefront, isLoading: storefrontLoading } = useQuery({
@@ -563,7 +748,7 @@ export default function Store() {
   });
 
   // ── All products ──
-  const { data: products = [], isLoading: productsLoading } = useQuery({
+  const { data: fetchedProducts = [], isLoading: productsLoading } = useQuery({
     queryKey: ["all-products", currentWorkspace?.id],
     queryFn: async () => {
       if (!currentWorkspace?.id) return [];
@@ -577,7 +762,23 @@ export default function Store() {
       return data;
     },
     enabled: !!currentWorkspace?.id,
-  });
+    onSuccess: (data: any[]) => {
+      // Sync local state when remote data arrives (but preserve drag order)
+      setLocalProducts((prev) => {
+        if (!prev) return data;
+        // Map to preserve any local reordering, adding new items
+        const existingIds = new Set(prev.map((p) => p.id));
+        const newItems = data.filter((p) => !existingIds.has(p.id));
+        const updatedPrev = prev
+          .map((lp) => data.find((dp: any) => dp.id === lp.id) ?? lp)
+          .filter((lp) => data.some((dp: any) => dp.id === lp.id));
+        return [...updatedPrev, ...newItems];
+      });
+    },
+  } as any);
+
+  const products = localProducts ?? fetchedProducts;
+  const setProducts = setLocalProducts;
 
   // ── Mutations ──
   const archiveMutation = useMutation({
@@ -740,7 +941,9 @@ export default function Store() {
             storefront={storefront}
             storeUrl={storeUrl}
             products={products}
+            setProducts={setProducts}
             productsLoading={productsLoading}
+            theme={theme}
             onCopy={copyLink}
             onOpen={openStore}
             navigate={navigate}
