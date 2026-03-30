@@ -1,0 +1,2 @@
+Need to install the following packages:
+vite@8.0.3
