@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export default function CollectEmailsFlow({
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("thumbnail");
+  const themeTokens = useStorefrontTheme();
   
   // Local Form State
   const [form, setForm] = useState({
@@ -120,7 +122,10 @@ export default function CollectEmailsFlow({
                     {form.shortDescription || "Breve descrição sobre o que será entregue."}
                   </p>
                   <div className="pt-2">
-                    <div className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm">
+                    <div
+                      className="w-full py-2.5 text-white font-medium text-sm text-center"
+                      style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}
+                    >
                       {form.ctaText || "Inscrever"}
                     </div>
                   </div>
@@ -145,11 +150,14 @@ export default function CollectEmailsFlow({
                    <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Email</p>
                    <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800" />
                  </div>
-                 <div className="pt-2">
-                    <div className="w-full py-3 rounded-xl bg-indigo-600 text-white font-medium text-center shadow-lg shadow-indigo-600/20">
-                      {form.ctaText || "Enviar"}
-                    </div>
-                 </div>
+                  <div className="pt-2">
+                     <div
+                       className="w-full py-3 text-white font-medium text-center"
+                       style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}
+                     >
+                       {form.ctaText || "Enviar"}
+                     </div>
+                  </div>
               </div>
             </div>
           )}
@@ -353,7 +361,7 @@ export default function CollectEmailsFlow({
                  Próximo Passo &rarr;
                </Button>
              ) : (
-               <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="bg-indigo-600 text-white hover:bg-indigo-700 max-w-[200px] w-full shadow-md">
+               <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="text-white max-w-[200px] w-full shadow-md" style={{ backgroundColor: themeTokens.primaryColor }}>
                  <Rocket className="h-4 w-4 mr-2" />
                  Lançar Formulário
                </Button>

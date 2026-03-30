@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ export default function DigitalProductFlow({
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("thumbnail");
+  const themeTokens = useStorefrontTheme();
 
   // Initial Price derived from DB relation (if exists)
   const initialPriceConfig = initialProduct.prices?.[0] || { amount: 0, compare_at_amount: null };
@@ -152,7 +154,10 @@ export default function DigitalProductFlow({
                     {form.shortDescription && (
                       <p className="text-sm text-zinc-500 mt-2 line-clamp-2">{form.shortDescription}</p>
                     )}
-                    <div className="mt-5 py-3 rounded-xl bg-indigo-600 text-white text-sm font-medium text-center">
+                    <div
+                      className="mt-5 py-3 text-white text-sm font-medium text-center"
+                      style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}
+                    >
                       {form.ctaText || "Comprar"}
                     </div>
                   </div>
@@ -176,7 +181,10 @@ export default function DigitalProductFlow({
                          <span className="font-bold text-foreground">
                             {form.isFree ? "Gratuito" : `R$ ${form.price.toFixed(2).replace(".", ",")}`}
                          </span>
-                         <div className="py-2.5 px-5 bg-indigo-600 text-white rounded-xl text-sm font-medium">
+                         <div
+                           className="py-2.5 px-5 text-white rounded-xl text-sm font-medium"
+                           style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}
+                         >
                            {form.ctaText || "Comprar"}
                          </div>
                       </div>
@@ -199,7 +207,7 @@ export default function DigitalProductFlow({
                   
                   <div className="flex items-center gap-2">
                     {!form.isFree && form.price > 0 && (
-                      <span className="text-2xl font-bold text-indigo-600">
+                      <span className="text-2xl font-bold" style={{ color: themeTokens.primaryColor }}>
                         R$ {form.price.toFixed(2).replace(".", ",")}
                       </span>
                     )}
@@ -227,9 +235,12 @@ export default function DigitalProductFlow({
                        <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700" />
                      </div>
                      <div className="pt-2">
-                        <div className="w-full py-4 rounded-xl bg-indigo-600 text-white font-medium text-center shadow-lg shadow-indigo-600/20">
-                          {form.ctaText || "Finalizar Compra"}
-                        </div>
+                        <div
+                           className="w-full py-4 text-white font-medium text-center"
+                           style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}
+                         >
+                           {form.ctaText || "Finalizar Compra"}
+                         </div>
                      </div>
                   </div>
                 </div>
@@ -520,7 +531,7 @@ export default function DigitalProductFlow({
                 Continuar
               </Button>
             ) : (
-              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-600/20 w-fit sm:w-[250px] transition-transform active:scale-95">
+              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="text-white shadow-xl w-fit sm:w-[250px] transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor }}>
                 <Rocket className="h-4 w-4 mr-2" /> Lançar Produto Digital
               </Button>
             )}

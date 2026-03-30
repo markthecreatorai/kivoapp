@@ -261,23 +261,16 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
   const socialLinks = storefront.social_links || {};
 
   return (
-    <div className="relative">
-      {/* Phone Frame */}
-      <div className="w-[375px] h-[812px] bg-black rounded-[50px] p-3 shadow-2xl">
-        <div 
-          className="w-full h-full rounded-[40px] overflow-hidden relative"
-          style={{ 
-            backgroundColor: currentTheme.background_color,
-            fontFamily: currentTheme.font_body
-          }}
-        >
-          {/* Notch */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-10" />
-          
-          {/* Content */}
-          <div className="h-full overflow-y-auto pt-10 pb-8 px-4">
-            {/* Profile */}
-            <div className="flex flex-col items-center text-center mb-6">
+    <div 
+      className="w-full h-full relative"
+      style={{ 
+        backgroundColor: currentTheme.background_color,
+        fontFamily: currentTheme.font_body
+      }}
+    >
+      <div className="w-full h-full overflow-y-auto overflow-x-hidden no-scrollbar">
+        {/* Profile */}
+        <div className="flex flex-col items-center text-center mb-6 pt-6 px-4">
               <Avatar className="h-24 w-24 mb-4 ring-4 ring-white shadow-lg">
                 <AvatarImage src={storefront.avatar_url || ''} />
                 <AvatarFallback 
@@ -371,16 +364,14 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
               )}
             </div>
 
-            {/* Footer */}
-            <div className="mt-8 text-center">
-              <p 
-                className="text-xs opacity-40"
-                style={{ color: currentTheme.text_color }}
-              >
-                Feito com ❤️ no Kivo
-              </p>
-            </div>
-          </div>
+        {/* Footer */}
+        <div className="mt-8 mb-6 pb-4 text-center">
+          <p 
+            className="text-xs opacity-40 font-medium"
+            style={{ color: currentTheme.text_color }}
+          >
+            Feito com ❤️ na Kivo
+          </p>
         </div>
       </div>
     </div>

@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isAdminUser } from "@/lib/admin";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -111,22 +110,6 @@ const adminGroup: NavGroup = {
   ],
 };
 
-const STORAGE_KEY = "kivo-sidebar-open";
-
-function loadOpenGroup(): string | null {
-  try {
-    return localStorage.getItem(STORAGE_KEY) || null;
-  } catch {}
-  return null;
-}
-
-function saveOpenGroup(label: string | null) {
-  try {
-    if (label) localStorage.setItem(STORAGE_KEY, label);
-    else localStorage.removeItem(STORAGE_KEY);
-  } catch {}
-}
-
 function getInitials(name?: string | null, email?: string | null): string {
   if (name) {
     const parts = name.trim().split(/\s+/);
@@ -171,53 +154,35 @@ export function AppSidebar() {
     || "Usuário";
 
   const allGroups = [...creatorGroups, ...(isAdmin ? [adminGroup] : [])];
-  const activeGroupLabel = allGroups.find(g =>
-    g.items.some(i => location.pathname === i.url || location.pathname.startsWith(i.url + "/"))
-  )?.label;
-
-  const [openGroup, setOpenGroup] = useState<string | null>(() => {
-    const stored = loadOpenGroup();
-    return stored || activeGroupLabel || null;
-  });
-
-  useEffect(() => {
-    if (activeGroupLabel && openGroup !== activeGroupLabel) {
-      setOpenGroup(activeGroupLabel);
-      saveOpenGroup(activeGroupLabel);
-    }
-  }, [activeGroupLabel]);
-
-  const toggleGroup = useCallback((label: string) => {
-    setOpenGroup(prev => {
-      const next = prev === label ? null : label;
-      saveOpenGroup(next);
-      return next;
-    });
-  }, []);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
 
   /* ── Single nav item (no group parent, e.g. Dashboard) ── */
-  const renderNavItem = (item: NavItem) => (
-    <SidebarMenuItem key={item.url}>
-      <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
-        <NavLink
-          to={item.url}
-          end={item.url !== "/circle"}
-          className={cn(
-            "flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
-            "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-            collapsed && "justify-center px-0"
-          )}
-          activeClassName="bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-foreground))] hover:bg-[hsl(var(--nav-active-bg))]"
-        >
-          <item.icon className="flex-shrink-0 w-[18px] h-[18px]" />
-          {!collapsed && <span>{item.title}</span>}
-        </NavLink>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
+  const renderNavItem = (item: NavItem) => {
+    const active = isActive(item.url);
+    return (
+      <SidebarMenuItem key={item.url}>
+        <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
+          <NavLink
+            to={item.url}
+            end={item.url !== "/circle"}
+            className={cn(
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium transition-all group",
+              active
+                ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+              collapsed && "justify-center px-0"
+            )}
+            activeClassName="bg-primary/10 text-primary font-semibold shadow-sm"
+          >
+            <item.icon className={cn("flex-shrink-0 w-4 h-4 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+            {!collapsed && <span>{item.title}</span>}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   /* ── Collapsed: group icon with dropdown submenu ── */
   const renderCollapsedGroup = (group: NavGroup) => {
@@ -232,12 +197,12 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <button
                   className={cn(
-                    "flex w-full items-center justify-center rounded-md p-2 transition-colors",
-                    "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                    hasActive && "text-[hsl(var(--nav-active-foreground))] bg-[hsl(var(--nav-active-bg))]"
+                    "flex w-full items-center justify-center rounded-xl p-2.5 transition-colors",
+                    "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+                    hasActive && "text-primary bg-primary/10 shadow-sm"
                   )}
                 >
-                  <GroupIcon className="h-[18px] w-[18px] flex-shrink-0" />
+                  <GroupIcon className="h-4 w-4 flex-shrink-0" />
                 </button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
@@ -263,59 +228,41 @@ export function AppSidebar() {
     );
   };
 
-  /* ── Expanded: collapsible group with inline submenu ── */
+  /* ── Expanded: flat group layout without collapsibles ── */
   const renderExpandedGroup = (group: NavGroup) => {
-    const hasActive = group.items.some(i => isActive(i.url));
-    const isOpen = openGroup === group.label;
-
     return (
-      <Collapsible
-        key={group.label}
-        open={isOpen}
-        onOpenChange={() => toggleGroup(group.label)}
-      >
-        <CollapsibleTrigger asChild>
-          <button
-            className={cn(
-              "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
-              "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-              hasActive && "text-foreground"
-            )}
-          >
-            {group.icon && <group.icon className="h-[18px] w-[18px] flex-shrink-0" />}
-            <span className="flex-1 text-left">{group.label}</span>
-            <ChevronRight className={cn(
-              "h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/50 transition-transform duration-200",
-              isOpen && "rotate-90"
-            )} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="relative ml-[22px] mt-1 mb-1">
-            <div className="absolute left-0 top-0 bottom-0 w-px bg-border/60" />
-            <SidebarMenu className="space-y-px pl-4">
-              {group.items.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url !== "/circle"}
-                      className={cn(
-                        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-normal transition-colors",
-                        "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                      )}
-                      activeClassName="bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-foreground))] font-medium hover:bg-[hsl(var(--nav-active-bg))]"
-                    >
-                      <item.icon className="flex-shrink-0 w-4 h-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+      <div key={group.label} className="mt-5 first:mt-1">
+        {group.items.length > 1 && (
+          <div className="px-3 mb-2 text-[11px] font-bold text-muted-foreground/40 uppercase tracking-wider">
+            {group.label}
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        )}
+        <SidebarMenu className="space-y-1">
+          {group.items.map((item) => {
+            const active = isActive(item.url);
+            return (
+              <SidebarMenuItem key={item.url}>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to={item.url}
+                    end={item.url !== "/circle"}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium transition-all group",
+                      active
+                        ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    )}
+                    activeClassName="bg-primary/10 text-primary font-semibold shadow-sm"
+                  >
+                    <item.icon className={cn("flex-shrink-0 w-4 h-4 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                    <span>{item.title}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </div>
     );
   };
 

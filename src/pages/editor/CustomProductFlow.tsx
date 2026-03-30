@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ export default function CustomProductFlow({
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("thumbnail");
+  const themeTokens = useStorefrontTheme();
 
   // Initial Price derived from DB relation (if exists)
   const initialPriceConfig = initialProduct.prices?.[0] || { amount: 0, compare_at_amount: null };
@@ -154,7 +156,10 @@ export default function CustomProductFlow({
                     {form.shortDescription && (
                       <p className="text-sm text-zinc-500 mt-2 line-clamp-2">{form.shortDescription}</p>
                     )}
-                    <div className="mt-5 py-3 rounded-xl bg-amber-600 text-white text-sm font-medium text-center">
+                    <div
+                      className="mt-5 py-3 text-white text-sm font-medium text-center"
+                      style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius }}
+                    >
                       {form.ctaText || "Solicitar Pedido"}
                     </div>
                   </div>
@@ -175,7 +180,7 @@ export default function CustomProductFlow({
                   
                   <div className="flex items-center gap-2">
                     {!form.isFree && form.price > 0 && (
-                      <span className="text-2xl font-bold text-amber-600">
+                      <span className="text-2xl font-bold" style={{ color: themeTokens.primaryColor }}>
                         R$ {form.price.toFixed(2).replace(".", ",")}
                       </span>
                     )}
@@ -184,7 +189,7 @@ export default function CustomProductFlow({
                         R$ {form.compareAtPrice.toFixed(2).replace(".", ",")}
                       </span>
                     )}
-                    {form.isFree && <span className="text-xl font-bold text-amber-600">Serviço Grátis</span>}
+                    {form.isFree && <span className="text-xl font-bold" style={{ color: themeTokens.primaryColor }}>Serviço Grátis</span>}
                   </div>
 
                   {form.description && (
@@ -205,7 +210,10 @@ export default function CustomProductFlow({
                        <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700" />
                      </div>
                      <div className="pt-4">
-                        <div className="w-full py-4 rounded-xl bg-amber-600 text-white font-medium text-center shadow-lg shadow-amber-600/20">
+                        <div
+                          className="w-full py-4 text-white font-medium text-center"
+                          style={{ backgroundColor: themeTokens.primaryColor, borderRadius: themeTokens.buttonRadius, boxShadow: `0 4px 14px ${themeTokens.primaryColor}40` }}
+                        >
                           {form.ctaText || "Enviar Pedido"}
                         </div>
                      </div>
@@ -445,7 +453,7 @@ export default function CustomProductFlow({
                 Continuar
               </Button>
             ) : (
-              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="bg-amber-600 hover:bg-amber-700 text-white shadow-xl shadow-amber-600/20 w-fit sm:w-[250px] transition-transform active:scale-95">
+              <Button onClick={() => saveMutation.mutate("PUBLISHED")} className="text-white shadow-xl w-fit sm:w-[250px] transition-transform active:scale-95" style={{ backgroundColor: themeTokens.primaryColor }}>
                 <PenTool className="h-4 w-4 mr-2" /> Habilitar Serviço
               </Button>
             )}
