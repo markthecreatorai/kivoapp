@@ -357,6 +357,7 @@ function AbaLoja({
   onOpen,
   navigate,
   onArchive,
+  onTogglePublish,
   onDelete,
   onDuplicate,
 }: {
