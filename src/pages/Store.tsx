@@ -820,6 +820,7 @@ export default function Store() {
     },
   });
 
+  const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("products")
