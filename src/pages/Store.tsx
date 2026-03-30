@@ -91,12 +91,12 @@ function StoreProfileCard({
 
   return (
     <div className="flex items-center gap-6 p-7 rounded-[20px] bg-white border border-[#ececec] shadow-sm">
-      {/* Avatar */}
-      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-border/30">
+      {/* Avatar - Increased size */}
+      <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-border/30">
         {storefront.avatar_url ? (
           <img src={storefront.avatar_url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <User className="h-7 w-7 text-muted-foreground" />
+          <User className="h-8 w-8 text-muted-foreground" />
         )}
       </div>
 
@@ -170,6 +170,7 @@ function ProductListItem({
   onEdit,
   onArchive,
   onDelete,
+  onDuplicate,
   dragging,
   onDragStart,
   onDragOver,
@@ -180,6 +181,7 @@ function ProductListItem({
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
   dragging: boolean;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -270,6 +272,9 @@ function ProductListItem({
             <DropdownMenuItem onClick={onEdit}>
               <Pencil className="h-4 w-4 mr-2" /> Editar
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDuplicate}>
+              <Copy className="h-4 w-4 mr-2" /> Duplicar
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onArchive}>
               <Archive className="h-4 w-4 mr-2" /> Arquivar
             </DropdownMenuItem>
@@ -350,6 +355,7 @@ function AbaLoja({
   navigate,
   onArchive,
   onDelete,
+  onDuplicate,
 }: {
   storefront: any;
   storeUrl: string | null;
@@ -363,6 +369,7 @@ function AbaLoja({
   navigate: (path: string) => void;
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }) {
   const dragIndexRef = useRef<number | null>(null);
 
@@ -460,6 +467,7 @@ function AbaLoja({
                 onEdit={() => navigate(`/products/${product.id}/edit`)}
                 onArchive={() => onArchive(product.id)}
                 onDelete={() => onDelete(product.id)}
+                onDuplicate={() => onDuplicate(product.id)}
                 dragging={dragIndexRef.current === index}
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
@@ -717,7 +725,7 @@ export default function Store() {
       return { 
         ...data, 
         social_links: (data.social_links as Record<string, string>) || {} 
-      } as StorefrontData;
+      } as unknown as StorefrontData;
     },
     enabled: !!currentWorkspace?.id,
   });
@@ -803,6 +811,36 @@ export default function Store() {
     },
   });
 
+  const duplicateProductMutation = useMutation({
+    mutationFn: async (product: any) => {
+      // Deep copy product, create new one with " - Cópia" suffix
+      const { data, error } = await supabase
+        .from("products")
+        .insert({
+          workspace_id: product.workspace_id,
+          name: `${product.name} - Cópia`,
+          type: product.type,
+          status: "DRAFT", // Always duplicate as draft
+          description: product.description,
+          short_description: product.short_description,
+          thumbnail_url: product.thumbnail_url,
+          // Note: We don't copy prices/attachments for now to avoid complexity
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-products"] });
+      toast.success("Produto duplicado.");
+    },
+    onError: () => {
+      toast.error("Erro ao duplicar produto.");
+    }
+  });
+
   const saveStorefrontMutation = useMutation({
     mutationFn: async (data: Partial<StorefrontData>) => {
       if (!storefront?.id) throw new Error("No storefront");
@@ -813,6 +851,7 @@ export default function Store() {
           title: data.title,
           bio: data.bio,
           avatar_url: data.avatar_url,
+          banner_url: data.banner_url,
           social_links: data.social_links,
         })
         .eq("id", storefront.id);
@@ -987,14 +1026,14 @@ export default function Store() {
           <Tabs value={tab} onValueChange={(v) => setTab(v as StoreTab)}>
             
             {/* Tabs */}
-            <TabsList className="bg-transparent h-auto p-0 gap-2.5 mb-7 flex-wrap justify-start border-none">
+            <TabsList className="bg-transparent h-auto p-0 gap-1.5 mb-7 flex-wrap justify-start border-none">
               <TabsTrigger
                 value="loja"
                 className={cn(
-                  "gap-2 text-[14px] font-bold px-5 py-3 rounded-[14px] border transition-all data-[state=active]:shadow-sm",
+                  "gap-2 text-[14px] font-bold px-5 py-2.5 rounded-full border transition-all data-[state=active]:bg-[#111827] data-[state=active]:text-white data-[state=active]:border-transparent",
                   tab === "loja"
-                    ? "bg-white border-[#ececec] text-[#111827]"
-                    : "border-transparent text-[#6b7280] hover:text-[#111827] hover:bg-[#fafafa]"
+                    ? "bg-[#111827] text-white border-transparent"
+                    : "border-transparent text-[#6b7280] hover:text-[#111827] hover:bg-[#fafafa] data-[state=active]:shadow-none"
                 )}
               >
                 <StoreIcon className="h-4 w-4" />
@@ -1003,9 +1042,9 @@ export default function Store() {
               <TabsTrigger
                 value="landing-pages"
                 className={cn(
-                  "gap-2 text-[14px] font-bold px-5 py-3 rounded-[14px] border transition-all data-[state=active]:shadow-sm",
+                  "gap-2 text-[14px] font-bold px-5 py-2.5 rounded-full border transition-all",
                   tab === "landing-pages"
-                    ? "bg-white border-[#ececec] text-[#111827]"
+                    ? "bg-[#111827] text-white border-transparent"
                     : "border-transparent text-[#6b7280] hover:text-[#111827] hover:bg-[#fafafa]"
                 )}
               >
@@ -1015,10 +1054,10 @@ export default function Store() {
               <TabsTrigger
                 value="design"
                 className={cn(
-                  "gap-2 text-[14px] font-bold px-5 py-3 rounded-[14px] border transition-all",
+                  "gap-2 text-[14px] font-bold px-5 py-2.5 rounded-full border transition-all",
                   tab === "design"
-                    ? "bg-primary/10 border-primary/30 text-primary ring-1 ring-primary/20"
-                    : "border-primary/20 text-primary/70 hover:text-primary hover:bg-primary/5"
+                    ? "bg-[#111827] text-white border-transparent"
+                    : "border-transparent text-primary/70 hover:text-primary hover:bg-primary/5"
                 )}
               >
                 <Palette className="h-4 w-4" />
@@ -1041,6 +1080,7 @@ export default function Store() {
                 navigate={navigate}
                 onArchive={(id) => archiveMutation.mutate(id)}
                 onDelete={(id) => deleteMutation.mutate(id)}
+                onDuplicate={(id) => duplicateProductMutation.mutate(products.find((p: any) => p.id === id))}
               />
             </TabsContent>
 

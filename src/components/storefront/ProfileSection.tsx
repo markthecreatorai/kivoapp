@@ -31,15 +31,18 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
   const [title, setTitle] = useState(storefront.title || '');
   const [bio, setBio] = useState(storefront.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(storefront.avatar_url || '');
+  const [bannerUrl, setBannerUrl] = useState(storefront.banner_url || '');
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>(
     storefront.social_links || {}
   );
-  const [uploading, setUploading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
     setTitle(storefront.title || '');
     setBio(storefront.bio || '');
     setAvatarUrl(storefront.avatar_url || '');
+    setBannerUrl(storefront.banner_url || '');
     setSocialLinks(storefront.social_links || {});
   }, [storefront]);
 
@@ -52,7 +55,7 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
       return;
     }
 
-    setUploading(true);
+    setUploadingAvatar(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -74,13 +77,56 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
         title, 
         bio, 
         avatar_url: urlData.publicUrl, 
+        banner_url: bannerUrl,
         social_links: socialLinks 
       });
       toast.success('Avatar atualizado!');
     } catch (error) {
       toast.error('Erro ao fazer upload do avatar');
     } finally {
-      setUploading(false);
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    setUploadingBanner(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${storefront.id}-banner.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('assets')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('assets')
+        .getPublicUrl(fileName);
+
+      setBannerUrl(urlData.publicUrl);
+      onUpdate({ 
+        title, 
+        bio, 
+        avatar_url: avatarUrl,
+        banner_url: urlData.publicUrl, 
+        social_links: socialLinks 
+      });
+      toast.success('Capa atualizada!');
+    } catch (error) {
+      toast.error('Erro ao fazer upload da capa');
+    } finally {
+      setUploadingBanner(false);
     }
   };
 
@@ -94,6 +140,7 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
       title: field === 'title' ? value : title, 
       bio: field === 'bio' ? value : bio, 
       avatar_url: avatarUrl, 
+      banner_url: bannerUrl,
       social_links: socialLinks 
     });
   };
@@ -101,7 +148,7 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
   const handleSocialChange = (platform: string, value: string) => {
     const newLinks = { ...socialLinks, [platform]: value };
     setSocialLinks(newLinks);
-    onUpdate({ title, bio, avatar_url: avatarUrl, social_links: newLinks });
+    onUpdate({ title, bio, avatar_url: avatarUrl, banner_url: bannerUrl, social_links: newLinks });
   };
 
   return (
@@ -128,10 +175,10 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
               variant="outline" 
               size="sm" 
               asChild
-              disabled={uploading}
+              disabled={uploadingAvatar}
             >
               <label htmlFor="avatar-upload" className="cursor-pointer">
-                {uploading ? (
+                {uploadingAvatar ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
@@ -142,6 +189,60 @@ export function ProfileSection({ storefront, onUpdate }: ProfileSectionProps) {
             <p className="text-xs text-muted-foreground mt-1">
               JPG, PNG até 5MB
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Banner */}
+      <div className="space-y-2">
+        <Label>Foto de Capa (Banner)</Label>
+        <div className="flex flex-col gap-3">
+          <div className="w-full h-32 rounded-xl bg-muted border border-border/50 overflow-hidden flex items-center justify-center shrink-0">
+            {bannerUrl ? (
+              <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+            ) : (
+              <div className="text-muted-foreground text-sm flex flex-col items-center">
+                <Upload className="h-6 w-6 mb-1 opacity-50" />
+                Nenhuma capa
+              </div>
+            )}
+          </div>
+          <div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleBannerUpload}
+              className="hidden"
+              id="banner-upload"
+            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              asChild
+              disabled={uploadingBanner}
+            >
+              <label htmlFor="banner-upload" className="cursor-pointer">
+                {uploadingBanner ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                {bannerUrl ? "Trocar capa" : "Enviar capa"}
+              </label>
+            </Button>
+            {bannerUrl && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="ml-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  setBannerUrl('');
+                  onUpdate({ title, bio, avatar_url: avatarUrl, banner_url: '', social_links: socialLinks });
+                }}
+              >
+                Remover
+              </Button>
+            )}
           </div>
         </div>
       </div>

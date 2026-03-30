@@ -28,6 +28,7 @@ export interface StorefrontData {
   title: string | null;
   bio: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   social_links: Record<string, string>;
   is_published: boolean;
 }
@@ -78,7 +79,7 @@ export default function StorefrontEditor() {
       return {
         ...data,
         social_links: (data.social_links as Record<string, string>) || {}
-      } as StorefrontData;
+      } as unknown as StorefrontData;
     },
     enabled: !!currentWorkspace?.id
   });
@@ -129,6 +130,7 @@ export default function StorefrontEditor() {
           title: data.title,
           bio: data.bio,
           avatar_url: data.avatar_url,
+          banner_url: data.banner_url,
           social_links: data.social_links
         })
         .eq('id', storefront.id);

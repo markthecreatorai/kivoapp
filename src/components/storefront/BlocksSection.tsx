@@ -63,6 +63,7 @@ import {
   Minus,
   Timer,
   ChevronDown,
+  Copy,
 } from "lucide-react";
 import type { StorefrontBlock } from "@/pages/StorefrontEditor";
 
@@ -92,9 +93,10 @@ interface SortableBlockItemProps {
   onToggleVisibility: (id: string, visible: boolean) => void;
   onEdit: (block: StorefrontBlock) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (block: StorefrontBlock) => void;
 }
 
-function SortableBlockItem({ block, onToggleVisibility, onEdit, onDelete }: SortableBlockItemProps) {
+function SortableBlockItem({ block, onToggleVisibility, onEdit, onDelete, onDuplicate }: SortableBlockItemProps) {
   const {
     attributes,
     listeners,
@@ -139,6 +141,15 @@ function SortableBlockItem({ block, onToggleVisibility, onEdit, onDelete }: Sort
       </div>
 
       <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onDuplicate(block)}
+          title="Duplicar"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -300,6 +311,30 @@ export function BlocksSection({ storefrontId, blocks, onBlocksChange }: BlocksSe
       toast.success('Bloco excluído');
       setDeleteId(null);
       onBlocksChange();
+    }
+  });
+
+  const duplicateBlockMutation = useMutation({
+    mutationFn: async (block: StorefrontBlock) => {
+      const maxPosition = Math.max(0, ...blocks.map(b => b.position));
+      const { error } = await supabase
+        .from('storefront_blocks')
+        .insert([{
+          storefront_id: block.storefront_id,
+          type: block.type,
+          position: maxPosition + 1,
+          is_visible: block.is_visible,
+          config: block.config
+        }]);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Bloco duplicado!');
+      onBlocksChange();
+    },
+    onError: () => {
+      toast.error('Erro ao duplicar bloco');
     }
   });
 
@@ -565,6 +600,7 @@ export function BlocksSection({ storefrontId, blocks, onBlocksChange }: BlocksSe
                     setBlockConfig(b.config);
                   }}
                   onDelete={setDeleteId}
+                  onDuplicate={(b) => duplicateBlockMutation.mutate(b)}
                 />
               ))}
             </div>
