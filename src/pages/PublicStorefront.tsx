@@ -229,6 +229,10 @@ export default function PublicStorefront() {
   const buttonClass =
     t.btn === "pill" ? "rounded-full" : t.btn === "square" ? "rounded-none" : "rounded-xl";
 
+  // Card wrapper uses rounded-2xl for pill to avoid clipping buttons
+  const cardClass =
+    t.btn === "pill" ? "rounded-2xl" : t.btn === "square" ? "rounded-none" : "rounded-xl";
+
   // ─── Fetch data ───
   useEffect(() => {
     if (!slug) return;
@@ -408,7 +412,7 @@ export default function PublicStorefront() {
           <a
             href={`/checkout/${product.slug}`}
             onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
-            className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${buttonClass}`}
+            className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
             style={{ borderColor: t.primary + "40" }}
           >
             {product.thumbnail_url && (
