@@ -4796,6 +4796,7 @@ export type Database = {
       products: {
         Row: {
           checkout_description: string | null
+          checkout_image: string | null
           created_at: string | null
           deleted_at: string | null
           description: string | null
@@ -4816,6 +4817,7 @@ export type Database = {
         }
         Insert: {
           checkout_description?: string | null
+          checkout_image?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
@@ -4836,6 +4838,7 @@ export type Database = {
         }
         Update: {
           checkout_description?: string | null
+          checkout_image?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
