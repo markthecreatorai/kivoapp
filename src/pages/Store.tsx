@@ -777,7 +777,7 @@ export default function Store() {
     },
   } as any);
 
-  const products: any[] = localProducts ?? fetchedProducts ?? [];
+  const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
   const setProducts = setLocalProducts;
 
   // ── Mutations ──
