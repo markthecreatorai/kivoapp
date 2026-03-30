@@ -142,7 +142,7 @@ export default function Signup() {
         <div className="w-full max-w-md space-y-6">
           {/* Logo/Brand */}
           <div className="text-center">
-            <img src={kivoLogo} alt="Kivo" className="h-8 mx-auto" />
+            <img src={kivoLogo} alt="Kivo" className="h-12 mx-auto" />
             <p className="text-muted-foreground mt-2">
               Sua plataforma all-in-one para vender produtos digitais
             </p>
