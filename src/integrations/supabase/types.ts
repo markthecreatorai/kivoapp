@@ -4892,6 +4892,195 @@ export type Database = {
           },
         ]
       }
+      referral_attributions: {
+        Row: {
+          attribution_status: string | null
+          clicked_at: string | null
+          created_at: string | null
+          first_paid_at: string | null
+          id: string
+          lock_status: string | null
+          referral_code: string
+          referred_user_id: string | null
+          referrer_user_id: string | null
+          signed_up_at: string | null
+          source: string | null
+          trial_started_at: string | null
+        }
+        Insert: {
+          attribution_status?: string | null
+          clicked_at?: string | null
+          created_at?: string | null
+          first_paid_at?: string | null
+          id?: string
+          lock_status?: string | null
+          referral_code: string
+          referred_user_id?: string | null
+          referrer_user_id?: string | null
+          signed_up_at?: string | null
+          source?: string | null
+          trial_started_at?: string | null
+        }
+        Update: {
+          attribution_status?: string | null
+          clicked_at?: string | null
+          created_at?: string | null
+          first_paid_at?: string | null
+          id?: string
+          lock_status?: string | null
+          referral_code?: string
+          referred_user_id?: string | null
+          referrer_user_id?: string | null
+          signed_up_at?: string | null
+          source?: string | null
+          trial_started_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_commissions: {
+        Row: {
+          available_at: string | null
+          commission_amount: number | null
+          commission_rate: number | null
+          created_at: string | null
+          currency: string | null
+          event_type: string | null
+          gross_base_amount: number | null
+          id: string
+          payment_id: string | null
+          payout_id: string | null
+          referred_user_id: string | null
+          referrer_user_id: string | null
+          status: string | null
+          subscription_id: string | null
+        }
+        Insert: {
+          available_at?: string | null
+          commission_amount?: number | null
+          commission_rate?: number | null
+          created_at?: string | null
+          currency?: string | null
+          event_type?: string | null
+          gross_base_amount?: number | null
+          id?: string
+          payment_id?: string | null
+          payout_id?: string | null
+          referred_user_id?: string | null
+          referrer_user_id?: string | null
+          status?: string | null
+          subscription_id?: string | null
+        }
+        Update: {
+          available_at?: string | null
+          commission_amount?: number | null
+          commission_rate?: number | null
+          created_at?: string | null
+          currency?: string | null
+          event_type?: string | null
+          gross_base_amount?: number | null
+          id?: string
+          payment_id?: string | null
+          payout_id?: string | null
+          referred_user_id?: string | null
+          referrer_user_id?: string | null
+          status?: string | null
+          subscription_id?: string | null
+        }
+        Relationships: []
+      }
+      referral_payout_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          payout_details: Json | null
+          payout_method: string | null
+          status: string | null
+          user_id: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          payout_details?: Json | null
+          payout_method?: string | null
+          status?: string | null
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          payout_details?: Json | null
+          payout_method?: string | null
+          status?: string | null
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_payouts: {
+        Row: {
+          created_at: string | null
+          id: string
+          items_count: number | null
+          paid_at: string | null
+          payout_method: string | null
+          payout_status: string | null
+          provider_reference: string | null
+          referrer_user_id: string | null
+          total_amount: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          items_count?: number | null
+          paid_at?: string | null
+          payout_method?: string | null
+          payout_status?: string | null
+          provider_reference?: string | null
+          referrer_user_id?: string | null
+          total_amount?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          items_count?: number | null
+          paid_at?: string | null
+          payout_method?: string | null
+          payout_status?: string | null
+          provider_reference?: string | null
+          referrer_user_id?: string | null
+          total_amount?: number | null
+        }
+        Relationships: []
+      }
+      referral_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          referral_code: string
+          referral_link: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          referral_code: string
+          referral_link: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          referral_code?: string
+          referral_link?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       refunds: {
         Row: {
           amount: number
