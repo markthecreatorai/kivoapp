@@ -1101,6 +1101,7 @@ export default function Store() {
                 onOpen={openStore}
                 navigate={navigate}
                 onArchive={(id) => archiveMutation.mutate(id)}
+                onTogglePublish={(id) => togglePublishMutation.mutate(id)}
                 onDelete={(id) => deleteMutation.mutate(id)}
                 onDuplicate={(id) => duplicateProductMutation.mutate(products.find((p: any) => p.id === id))}
               />
