@@ -49,9 +49,13 @@ export default function PostComposer({
   const [pollOptions, setPollOptions] = useState<string[]>(["", "", ""]);
 
   // Inline sections toggled by toolbar
-  const [showVideoInput, setShowVideoInput] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkModalUrl, setLinkModalUrl] = useState("");
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoModalUrl, setVideoModalUrl] = useState("");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [draggingVideo, setDraggingVideo] = useState(false);
+  const videoFileRef = useRef<HTMLInputElement>(null);
 
   const displayName = memberDisplayName || user?.email?.split("@")[0] || "User";
   const avatarUrl = memberAvatarUrl || "";
