@@ -283,8 +283,8 @@ export default function PostComposer({
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
           </button>
           <button
-            onClick={() => setShowLinkInput(!showLinkInput)}
-            className={cn("p-2 rounded-lg transition-colors", showLinkInput ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
+            onClick={() => { setLinkModalUrl(""); setShowLinkModal(true); }}
+            className={cn("p-2 rounded-lg transition-colors", linkUrl ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
             title="Link"
           >
             <Link2 className="h-4 w-4" />
