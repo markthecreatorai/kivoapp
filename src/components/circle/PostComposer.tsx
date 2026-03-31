@@ -131,7 +131,7 @@ export default function PostComposer({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
       queryClient.invalidateQueries({ queryKey: ["circle-member"] });
-      toast.success(`Post publicado! +${pointsPerPost} pts`);
+      toast.success("Post publicado com sucesso!");
       onSuccess();
       onClose();
     },
@@ -369,20 +369,22 @@ export default function PostComposer({
 
           <button
             onClick={onClose}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2"
+            className="text-sm font-bold uppercase tracking-wide px-2 transition-colors"
+            style={{ color: "#6B7280" }}
           >
-            CANCELAR
+            CANCEL
           </button>
 
           <button
             onClick={() => createPost.mutate()}
-            disabled={!hasContent || !selectedSpace || createPost.isPending}
+            disabled={!hasContent || createPost.isPending}
             className={cn(
-              "px-4 py-1.5 rounded-lg text-sm font-bold uppercase tracking-wide transition-colors",
-              hasContent && selectedSpace
-                ? "bg-primary text-primary-foreground hover:opacity-90"
+              "px-6 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-colors",
+              hasContent
+                ? "text-white hover:opacity-90"
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
+            style={hasContent ? { backgroundColor: "#F59E0B" } : undefined}
           >
             {createPost.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "POST"}
           </button>
