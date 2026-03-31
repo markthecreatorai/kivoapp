@@ -663,8 +663,6 @@ export default function CommunityLanding() {
                 </p>
               </form>
             )}
-          </>
-        )}
         </DialogContent>
       </Dialog>
       {/* ── INVITE MODAL ── */}
