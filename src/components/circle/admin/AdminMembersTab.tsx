@@ -87,6 +87,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
       queryClient.invalidateQueries({ queryKey: ["community"] });
       queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
       toast.success("Membro atualizado!");
     },
     onError: () => toast.error("Erro ao atualizar"),
@@ -121,6 +122,25 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   });
 
   const pendingMembers = members?.filter((m: any) => m.status === "PENDING") || [];
+
+  const { data: applications = [] } = useQuery({
+    queryKey: ["circle-join-applications", community.id, pendingMembers.map((m: any) => m.id).join(",")],
+    queryFn: async () => {
+      if (!pendingMembers.length) return [];
+      const memberIds = pendingMembers.map((m: any) => m.id);
+      const { data, error } = await (supabase as any)
+        .from("community_join_applications")
+        .select("id, member_id, answers, created_at")
+        .eq("community_id", community.id)
+        .in("member_id", memberIds)
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return (data || []) as any[];
+    },
+    enabled: pendingMembers.length > 0,
+  });
+
+  const appByMemberId = new Map<string, any>(applications.map((a: any) => [a.member_id, a]));
   
   let filtered = members?.filter((m: any) => m.status !== "PENDING") || [];
   if (search) {
@@ -166,32 +186,52 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         <Card className="p-4 border-yellow-300/50 bg-yellow-50/10">
           <h3 className="font-semibold text-sm text-foreground mb-3">Aguardando aprovação ({pendingMembers.length})</h3>
           <div className="space-y-2">
-            {pendingMembers.map((m: any) => (
-              <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={m.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">{(m.display_name || "U")[0].toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{m.display_name || "Sem nome"}</p>
-                  <p className="text-xs text-muted-foreground">{m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yyyy") : "—"}</p>
+            {pendingMembers.map((m: any) => {
+              const app = appByMemberId.get(m.id);
+              const answers = Array.isArray(app?.answers) ? app.answers : [];
+
+              return (
+                <div key={m.id} className="p-3 rounded-lg border bg-card space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={m.avatar_url || ""} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">{(m.display_name || "U")[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{m.display_name || "Sem nome"}</p>
+                      <p className="text-xs text-muted-foreground">{m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yyyy") : "—"}</p>
+                    </div>
+                  </div>
+
+                  {answers.length > 0 ? (
+                    <div className="space-y-2">
+                      {answers.map((a: any, idx: number) => (
+                        <div key={`${m.id}-a-${idx}`} className="text-xs rounded-md border p-2 bg-muted/30">
+                          <p className="font-medium text-foreground">{a.question || `Pergunta ${idx + 1}`}</p>
+                          <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{a.answer || "—"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="flex gap-1">
+                    <Button size="sm" onClick={() => updateMember.mutate({ memberId: m.id, updates: { status: "ACTIVE" } })}>
+                      <UserCheck className="h-3.5 w-3.5 mr-1" />Aprovar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      supabase.from("community_members").delete().eq("id", m.id).then(() => {
+                        queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
+                        queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
+                        queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
+                        toast.success("Solicitação rejeitada");
+                      });
+                    }}>
+                      <X className="h-3.5 w-3.5 mr-1" />Rejeitar
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button size="sm" onClick={() => updateMember.mutate({ memberId: m.id, updates: { status: "ACTIVE" } })}>
-                    <UserCheck className="h-3.5 w-3.5 mr-1" />Aprovar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => {
-                    supabase.from("community_members").delete().eq("id", m.id).then(() => {
-                      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
-                      queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
-                      toast.success("Solicitação rejeitada");
-                    });
-                  }}>
-                    <X className="h-3.5 w-3.5 mr-1" />Rejeitar
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       )}

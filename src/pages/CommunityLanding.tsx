@@ -61,6 +61,7 @@ export default function CommunityLanding() {
   const [forgotSent, setForgotSent] = useState(false);
   const [formData, setFormData] = useState({ display_name: "", email: "", password: "" });
   const [videoPlaying, setVideoPlaying] = useState(false);
+  const [joinAnswers, setJoinAnswers] = useState<Record<string, string>>({});
 
   const inviteLink = `${window.location.origin}/c/${slug}`;
 
@@ -133,6 +134,21 @@ export default function CommunityLanding() {
     enabled: !!community?.linked_product_id,
   });
 
+  const { data: joinQuestions = [] } = useQuery({
+    queryKey: ["community-join-questions", community?.id],
+    queryFn: async () => {
+      if (!community?.id) return [];
+      const { data, error } = await (supabase as any)
+        .from("community_join_questions")
+        .select("id, question, required, position")
+        .eq("community_id", community.id)
+        .order("position", { ascending: true });
+      if (error) return [];
+      return (data || []) as any[];
+    },
+    enabled: !!community?.id,
+  });
+
   // Already active member → go directly to feed
   useEffect(() => {
     if (existingMember?.status === "ACTIVE" && community?.slug) {
@@ -146,7 +162,23 @@ export default function CommunityLanding() {
     if (!formData.display_name.trim()) { toast.error("Informe seu nome"); return; }
     if (!formData.email.trim()) { toast.error("Informe seu email"); return; }
     if (formData.password.length < 6) { toast.error("Senha deve ter ao menos 6 caracteres"); return; }
-    await signupAndJoin(formData, community);
+
+    const requiresAnswers = community.require_approval && !inviteCode && joinQuestions.length > 0;
+    if (requiresAnswers) {
+      const missing = joinQuestions.find((q: any) => q.required && !String(joinAnswers[q.id] || "").trim());
+      if (missing) {
+        toast.error("Responda todas as perguntas obrigatórias para solicitar entrada.");
+        return;
+      }
+    }
+
+    const payloadAnswers = joinQuestions.map((q: any) => ({
+      question_id: q.id,
+      question: q.question,
+      answer: joinAnswers[q.id] || "",
+    })).filter((a: any) => a.answer.trim().length > 0);
+
+    await signupAndJoin(formData, community, payloadAnswers);
     setShowJoinModal(false);
   };
 
@@ -160,7 +192,23 @@ export default function CommunityLanding() {
       }
       return;
     }
-    await joinAsExistingUser(user.id, community);
+
+    const requiresAnswers = community.require_approval && !inviteCode && joinQuestions.length > 0;
+    if (requiresAnswers) {
+      const missing = joinQuestions.find((q: any) => q.required && !String(joinAnswers[q.id] || "").trim());
+      if (missing) {
+        toast.error("Responda todas as perguntas obrigatórias para solicitar entrada.");
+        return;
+      }
+    }
+
+    const payloadAnswers = joinQuestions.map((q: any) => ({
+      question_id: q.id,
+      question: q.question,
+      answer: joinAnswers[q.id] || "",
+    })).filter((a: any) => a.answer.trim().length > 0);
+
+    await joinAsExistingUser(user.id, community, payloadAnswers);
     setShowJoinModal(false);
   };
 
@@ -592,6 +640,24 @@ export default function CommunityLanding() {
                   <p className="text-xs text-muted-foreground mt-0.5">Cancele quando quiser</p>
                 </div>
               ) : null}
+
+              {community.require_approval && !inviteCode && joinQuestions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Perguntas de entrada</p>
+                  {joinQuestions.map((q: any) => (
+                    <div key={q.id} className="space-y-1">
+                      <Label className="text-xs">{q.question}{q.required ? " *" : ""}</Label>
+                      <textarea
+                        className="w-full min-h-20 rounded-md border bg-background p-2 text-sm"
+                        value={joinAnswers[q.id] || ""}
+                        onChange={(e) => setJoinAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                        placeholder="Sua resposta"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Button size="lg" className="w-full gap-2" onClick={handleLoggedUserJoin} disabled={isLoading} id="modal-join-logged">
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isPaid ? <CreditCard className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                 {isPaid && !inviteCode ? "Continuar para Pagamento" : requireApproval ? "Solicitar Entrada" : "Entrar Agora"}
@@ -640,6 +706,23 @@ export default function CommunityLanding() {
                   <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
                     <p className="text-lg font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
                     <p className="text-xs text-muted-foreground">Após criar conta, você será direcionado ao pagamento</p>
+                  </div>
+                )}
+
+                {community.require_approval && !inviteCode && joinQuestions.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Perguntas de entrada</p>
+                    {joinQuestions.map((q: any) => (
+                      <div key={q.id} className="space-y-1">
+                        <Label className="text-xs">{q.question}{q.required ? " *" : ""}</Label>
+                        <textarea
+                          className="w-full min-h-20 rounded-md border bg-background p-2 text-sm"
+                          value={joinAnswers[q.id] || ""}
+                          onChange={(e) => setJoinAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                          placeholder="Sua resposta"
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
 

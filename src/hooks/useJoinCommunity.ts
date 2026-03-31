@@ -9,6 +9,8 @@ interface JoinFormData {
   password: string;
 }
 
+type JoinAnswers = Array<{ question_id?: string; question: string; answer: string }>;
+
 export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +66,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
   };
 
   // Sign up NEW member and join community
-  const signupAndJoin = async (formData: JoinFormData, community: any) => {
+  const signupAndJoin = async (formData: JoinFormData, community: any, joinAnswers: JoinAnswers = []) => {
     setIsLoading(true);
     try {
       // 1. Create Supabase Auth user
@@ -101,6 +103,26 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
         status
       );
 
+      if (status === "PENDING" && joinAnswers.length > 0) {
+        const { data: member } = await supabase
+          .from("community_members")
+          .select("id")
+          .eq("community_id", community.id)
+          .eq("user_id", authData.user.id)
+          .maybeSingle();
+
+        if (member?.id) {
+          await (supabase as any).from("community_join_applications").insert({
+            community_id: community.id,
+            member_id: member.id,
+            user_id: authData.user.id,
+            status: "PENDING",
+            answers: joinAnswers,
+            invite_code: inviteCode || null,
+          });
+        }
+      }
+
       // 3. Increment invite uses_count if applicable
       if (inviteCode) {
         const invite = await validateInviteCode(community.id, inviteCode);
@@ -130,7 +152,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
   };
 
   // Existing LOGGED-IN user joins a community
-  const joinAsExistingUser = async (userId: string, community: any) => {
+  const joinAsExistingUser = async (userId: string, community: any, joinAnswers: JoinAnswers = []) => {
     setIsLoading(true);
     try {
       const status = community.require_approval && !inviteCode ? "PENDING" : "ACTIVE";
@@ -142,6 +164,26 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
         "", // display_name will use existing profile
         status
       );
+
+      if (status === "PENDING" && joinAnswers.length > 0) {
+        const { data: member } = await supabase
+          .from("community_members")
+          .select("id")
+          .eq("community_id", community.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (member?.id) {
+          await (supabase as any).from("community_join_applications").insert({
+            community_id: community.id,
+            member_id: member.id,
+            user_id: userId,
+            status: "PENDING",
+            answers: joinAnswers,
+            invite_code: inviteCode || null,
+          });
+        }
+      }
 
       if (inviteCode) {
         const invite = await validateInviteCode(community.id, inviteCode);
