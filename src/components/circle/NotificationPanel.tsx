@@ -145,7 +145,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
           toast(text, {
             duration: 5000,
             action: n.post_id
-              ? { label: "Ver", onClick: () => navigate(`/circle/post/${n.post_id}`) }
+              ? { label: "Ver", onClick: () => navigate(`/c/${communitySlug}/post/${n.post_id}`) }
               : undefined,
           });
         }
