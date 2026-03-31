@@ -721,8 +721,9 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 const next = new Set(expandedReplies);
                                 if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id);
                                 setExpandedReplies(next);
-                              }} className="flex items-center gap-1 text-xs text-primary hover:underline">
-                                {isExpanded ? <><ChevronUp className="h-3.5 w-3.5" />Ocultar respostas</> : <><ChevronDown className="h-3.5 w-3.5" />Ver {hiddenCount} mais {hiddenCount === 1 ? "resposta" : "respostas"}</>}
+                              }} className="flex items-center gap-1.5 text-xs text-primary hover:underline pl-2">
+                                <span className="text-primary">↩</span>
+                                {isExpanded ? "Ocultar respostas" : `Ver ${hiddenCount} mais ${hiddenCount === 1 ? "resposta" : "respostas"}`}
                               </button>
                             )}
                           </div>
