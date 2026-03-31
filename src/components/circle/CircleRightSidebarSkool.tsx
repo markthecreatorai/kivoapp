@@ -25,7 +25,8 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
-  const inviteLink = `${window.location.origin}/c/${slug}`;
+  const [copied, setCopied] = useState(false);
+  const inviteLink = `${window.location.origin}/c/${slug}/feed`;
 
   // Simulated online count
   const [onlineCount, setOnlineCount] = useState(0);
