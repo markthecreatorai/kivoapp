@@ -94,6 +94,8 @@ export default function CircleAbout() {
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
 
+  const isAdminEditing = isAdmin && !previewMode;
+
   // ─── Mutations ───
 
   const updateCommunity = useMutation({
