@@ -384,7 +384,7 @@ export default function PostComposer({
                 ? "text-white hover:opacity-90"
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
-            style={hasContent ? { backgroundColor: "#F59E0B" } : undefined}
+            style={hasContent ? { backgroundColor: "hsl(var(--primary))" } : undefined}
           >
             {createPost.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "POST"}
           </button>
