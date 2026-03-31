@@ -308,6 +308,38 @@ export default function CircleLeaderboard() {
         open={!!profileMemberId}
         onOpenChange={(open) => !open && setProfileMemberId(null)}
       />
+
+      {/* Level names settings modal */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Leaderboards</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Torne seu grupo divertido dando nomes aos seus níveis.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {LEVEL_THRESHOLDS.map((l) => (
+              <Input
+                key={l.level}
+                placeholder={`Nível ${l.level} -`}
+                value={levelNames[l.level] || ""}
+                onChange={(e) =>
+                  setLevelNames((prev) => ({ ...prev, [l.level]: e.target.value }))
+                }
+              />
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSettingsOpen(false)}>
+              CANCELAR
+            </Button>
+            <Button onClick={handleSaveLevelNames} disabled={savingNames}>
+              {savingNames ? "SALVANDO..." : "SALVAR"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
