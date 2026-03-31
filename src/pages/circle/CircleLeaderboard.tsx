@@ -161,32 +161,45 @@ export default function CircleLeaderboard() {
             )}
           </div>
 
-          {/* Right: Levels Grid */}
+          {/* Right: Levels Grid — column-first: 1-5 left, 6-9 right */}
           <div className="flex-1 grid grid-cols-2 gap-x-8 gap-y-3 content-start">
-            {levelDistribution.map((l) => {
-              const isUnlocked = myLevel && myLevel.level >= l.level;
-              const isCurrent = myLevel?.level === l.level;
-              return (
-                <div key={l.level} className="flex items-center gap-3">
-                  {isUnlocked ? (
-                    <LevelCircle level={l.level} size={28} />
-                  ) : (
-                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+            {(() => {
+              const left = levelDistribution.slice(0, 5);
+              const right = levelDistribution.slice(5);
+              const maxRows = Math.max(left.length, right.length);
+              const items: typeof levelDistribution = [];
+              for (let i = 0; i < maxRows; i++) {
+                if (i < left.length) items.push(left[i]);
+                else items.push(null as any);
+                if (i < right.length) items.push(right[i]);
+                else items.push(null as any);
+              }
+              return items.map((l, idx) => {
+                if (!l) return <div key={`empty-${idx}`} />;
+                const isUnlocked = myLevel && myLevel.level >= l.level;
+                const isCurrent = myLevel?.level === l.level;
+                return (
+                  <div key={l.level} className="flex items-center gap-3">
+                    {isUnlocked ? (
+                      <LevelCircle level={l.level} size={28} />
+                    ) : (
+                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+                        <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <p className={cn(
+                        "text-sm font-semibold",
+                        isCurrent ? "text-foreground" : isUnlocked ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        Nível {l.level}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{l.percent}% dos membros</p>
                     </div>
-                  )}
-                  <div>
-                    <p className={cn(
-                      "text-sm font-semibold",
-                      isCurrent ? "text-foreground" : isUnlocked ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      Nível {l.level}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{l.percent}% dos membros</p>
                   </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       </Card>
