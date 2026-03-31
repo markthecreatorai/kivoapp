@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ThumbsUp, MessageCircle, Pin, Lock, Trash2, Link2,
-  MoreHorizontal, Bell, BellOff, ArrowRightLeft, ChevronDown,
+  MoreHorizontal, Bell, ArrowRightLeft, ChevronDown,
   ChevronUp, ChevronLeft, ChevronRight, Paperclip, Video,
   Smile, Send, ArrowDown, Flag,
 } from "lucide-react";
@@ -371,10 +371,20 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                 {/* Header actions */}
                 <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => { setIsNotified(!isNotified); toast.success(isNotified ? "Notificações desativadas" : "Notificações ativadas para este post"); }}
+                    onClick={async () => {
+                      if (!member || !community) return;
+                      const next = !isNotified;
+                      setIsNotified(next);
+                      if (next) {
+                        await supabase.from("community_post_subscriptions" as any).upsert({ post_id: postId, member_id: member.id } as any, { onConflict: "post_id,member_id" });
+                      } else {
+                        await supabase.from("community_post_subscriptions" as any).delete().eq("post_id", postId).eq("member_id", member.id);
+                      }
+                      toast.success(next ? "Notificações ativadas para este post" : "Notificações desativadas");
+                    }}
                     className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                   >
-                    {isNotified ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                    {isNotified ? <Bell className="h-4 w-4 fill-current text-primary" /> : <Bell className="h-4 w-4" />}
                   </button>
 
                   {(isAdmin || isAuthor) && (
@@ -639,7 +649,15 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 {comment.like_count > 0 && <span>{comment.like_count}</span>}
                               </button>
                               {!post.is_locked && !isMuted && (
-                                <button onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
+                                <button onClick={() => {
+                                  if (replyTo === comment.id) {
+                                    setReplyTo(null);
+                                    setReplyBody("");
+                                  } else {
+                                    setReplyTo(comment.id);
+                                    setReplyBody(`@${comment.author?.display_name || "Membro"} `);
+                                  }
+                                }}
                                   className="text-xs font-medium text-muted-foreground hover:text-foreground">
                                   Reply
                                 </button>
