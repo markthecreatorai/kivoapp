@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2,
+  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
