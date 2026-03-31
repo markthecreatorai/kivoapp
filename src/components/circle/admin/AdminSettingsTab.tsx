@@ -231,6 +231,85 @@ export default function AdminSettingsTab({ community, member }: Props) {
         </div>
       </Card>
 
+      {/* Featured Links */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Link2 className="h-4 w-4" /> Links de Destaque
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Links visíveis na sidebar da comunidade (máx. 5)</p>
+          </div>
+          {(settings.community_links?.length || 0) < 5 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => set("community_links", [...(settings.community_links || []), { emoji: "", label: "", url: "" }])}
+            >
+              <Plus className="h-4 w-4 mr-1.5" /> Adicionar
+            </Button>
+          )}
+        </div>
+        {(settings.community_links || []).length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Nenhum link adicionado.</p>
+        ) : (
+          <div className="space-y-3">
+            {(settings.community_links as any[]).map((link: any, i: number) => (
+              <div key={i} className="flex items-start gap-2">
+                <div className="w-16">
+                  <Label className="text-xs">Emoji</Label>
+                  <Input
+                    value={link.emoji || ""}
+                    onChange={(e) => {
+                      const updated = [...settings.community_links];
+                      updated[i] = { ...updated[i], emoji: e.target.value };
+                      set("community_links", updated);
+                    }}
+                    placeholder="🎁"
+                    maxLength={4}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs">Texto</Label>
+                  <Input
+                    value={link.label || ""}
+                    onChange={(e) => {
+                      const updated = [...settings.community_links];
+                      updated[i] = { ...updated[i], label: e.target.value };
+                      set("community_links", updated);
+                    }}
+                    placeholder="The 30 Day Challenge"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs">URL</Label>
+                  <Input
+                    value={link.url || ""}
+                    onChange={(e) => {
+                      const updated = [...settings.community_links];
+                      updated[i] = { ...updated[i], url: e.target.value };
+                      set("community_links", updated);
+                    }}
+                    placeholder="https://..."
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 mt-5 text-destructive hover:text-destructive"
+                  onClick={() => {
+                    const updated = settings.community_links.filter((_: any, j: number) => j !== i);
+                    set("community_links", updated);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* Save */}
       <Button onClick={() => updateSettings.mutate()} disabled={updateSettings.isPending} className="w-full md:w-auto">
         <Save className="h-4 w-4 mr-2" />Salvar configurações
