@@ -204,9 +204,10 @@ export default function CircleLeaderboard() {
         </div>
       </Card>
 
-      {/* Info text */}
-      <p className="text-sm text-muted-foreground italic text-center">
-        O ranking será atualizado conforme houver mais atividade
+      {/* Last updated */}
+      <p className="text-xs text-muted-foreground">
+        Última atualização: {new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}{" "}
+        {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
       </p>
 
       {/* 3 Leaderboard columns */}
