@@ -163,13 +163,28 @@ export default function CommunityLanding() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: loginData.email, password: loginData.password });
       if (error) throw error;
-      // After login, the useEffect will detect existingMember and redirect, or we join
       toast.success("Login realizado!");
-      // Don't close modal — let the logged-in state take over and show the join button
     } catch (err: any) {
       toast.error(err.message || "Erro ao fazer login");
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) { toast.error("Informe seu email"); return; }
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setForgotSent(true);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar email");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
