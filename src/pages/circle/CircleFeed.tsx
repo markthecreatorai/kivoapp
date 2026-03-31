@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Calendar, Lock, Video, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { MessageCircle, Calendar, Lock, Video, SlidersHorizontal, ChevronDown, X, CheckCircle2, Circle, PlayCircle, MessageSquare, Smartphone, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -133,6 +133,46 @@ export default function CircleFeed() {
     },
     enabled: !!member,
   });
+
+  // Onboarding checklist data
+  const { data: memberCommentCount } = useQuery({
+    queryKey: ["circle-member-comments-count", member?.id],
+    queryFn: async () => {
+      if (!member) return 0;
+      const { count } = await supabase.from("community_comments")
+        .select("id", { count: "exact", head: true })
+        .eq("author_id", member.id);
+      return count || 0;
+    },
+    enabled: !!member && !(member as any).onboarding_dismissed,
+  });
+
+  const { data: lessonProgress } = useQuery({
+    queryKey: ["circle-lesson-progress-count", member?.id],
+    queryFn: async () => {
+      if (!member) return 0;
+      const { count } = await supabase.from("circle_lesson_progress")
+        .select("id", { count: "exact", head: true })
+        .eq("member_id", member.id);
+      return count || 0;
+    },
+    enabled: !!member && !(member as any).onboarding_dismissed,
+  });
+
+  const onboardingTasks = useMemo(() => [
+    { label: "Assistir vídeo de introdução", icon: PlayCircle, done: (lessonProgress || 0) > 0, link: "/circle/classroom" },
+    { label: "Encontrar um post e deixar um comentário", icon: MessageSquare, done: (memberCommentCount || 0) > 0, link: "#" },
+    { label: "Baixar o app", icon: Smartphone, done: false, link: "#" },
+  ], [lessonProgress, memberCommentCount]);
+
+  const allOnboardingDone = onboardingTasks.every((t) => t.done);
+  const showOnboarding = member && !(member as any).onboarding_dismissed && !allOnboardingDone;
+
+  const handleDismissOnboarding = async () => {
+    if (!member) return;
+    await supabase.from("community_members").update({ onboarding_dismissed: true } as any).eq("id", member.id);
+    queryClient.invalidateQueries({ queryKey: ["circle-member"] });
+  };
 
   const isMuted = member?.status === "MUTED";
   const isAdminMember = member?.role === "OWNER" || member?.role === "ADMIN" || member?.role === "MODERATOR";
@@ -303,7 +343,46 @@ export default function CircleFeed() {
         </DropdownMenu>
       </div>
 
-
+      {/* Onboarding welcome card */}
+      {showOnboarding && (
+        <Card className="p-4 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+              <span className="text-sm font-bold text-foreground">Welcome! Start here</span>
+            </div>
+            <button
+              onClick={handleDismissOnboarding}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Dismiss
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {onboardingTasks.map((task, i) => (
+              <a
+                key={i}
+                href={task.link}
+                onClick={(e) => { if (task.link === "#") e.preventDefault(); }}
+                className="flex items-center gap-3 group cursor-pointer"
+              >
+                {task.done ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                )}
+                <task.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className={cn(
+                  "text-sm",
+                  task.done ? "text-muted-foreground line-through" : "text-foreground group-hover:text-primary"
+                )}>
+                  {task.label}
+                </span>
+              </a>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Posts */}
       {isLoading ? (
