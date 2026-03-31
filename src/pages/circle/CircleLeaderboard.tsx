@@ -93,6 +93,36 @@ export default function CircleLeaderboard() {
     enabled: !!community,
   });
 
+  // Custom level names from community
+  const savedLevelNames: Record<number, string> = (community as any)?.level_names || {};
+  const getLevelName = (level: number) => savedLevelNames[level] || `Nível ${level}`;
+
+  const isAdmin = member?.role === "ADMIN" || member?.role === "OWNER";
+
+  const openSettings = () => {
+    setLevelNames({ ...savedLevelNames });
+    setSettingsOpen(true);
+  };
+
+  const handleSaveLevelNames = async () => {
+    if (!community) return;
+    setSavingNames(true);
+    try {
+      const { error } = await supabase
+        .from("communities")
+        .update({ level_names: levelNames } as any)
+        .eq("id", community.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
+      toast.success("Nomes dos níveis salvos!");
+      setSettingsOpen(false);
+    } catch {
+      toast.error("Erro ao salvar nomes dos níveis");
+    } finally {
+      setSavingNames(false);
+    }
+  };
+
   const myLevel = member ? getLevelInfo(member.total_points) : null;
   const nextLevel = myLevel ? LEVEL_THRESHOLDS.find((l) => l.level === myLevel.level + 1) : null;
   const pointsToNext = nextLevel ? nextLevel.min - (member?.total_points || 0) : 0;
