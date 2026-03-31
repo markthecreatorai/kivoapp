@@ -260,25 +260,7 @@ export default function CircleFeed() {
         ))}
       </div>
 
-      {/* Event banner */}
-      {nextEvent && isFuture(new Date(nextEvent.starts_at)) && (
-        <div className="flex items-center gap-3 rounded-xl bg-card shadow-sm px-4 py-3">
-          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="text-[13px] font-medium text-foreground">
-              📅 {nextEvent.title}
-            </span>
-            <span className="text-[12px] text-muted-foreground ml-2">
-              {differenceInHours(new Date(nextEvent.starts_at), new Date()) <= 24
-                ? `in ${formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}`
-                : format(new Date(nextEvent.starts_at), "dd MMM · HH:mm", { locale: ptBR })}
-            </span>
-          </div>
-          {nextEvent.rsvp_count > 0 && (
-            <span className="text-[11px] text-muted-foreground shrink-0">👥 {nextEvent.rsvp_count}</span>
-          )}
-        </div>
-      )}
+
 
       {/* Posts */}
       {isLoading ? (
