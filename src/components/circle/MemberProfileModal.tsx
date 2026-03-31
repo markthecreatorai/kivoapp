@@ -8,7 +8,7 @@ import LevelBadge from "@/components/circle/LevelBadge";
 import { getLevelInfo } from "@/components/circle/CircleLayout";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 interface MemberProfileModalProps {
   memberId: string | null;

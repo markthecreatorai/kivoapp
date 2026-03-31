@@ -159,7 +159,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
 
   const handleClick = (n: any) => {
     if (!n.is_read) markRead.mutate(n.id);
-    const route = getNotificationRoute(n);
+    const route = getNotificationRoute(n, communitySlug);
     if (route) {
       setOpen(false);
       navigate(route);
