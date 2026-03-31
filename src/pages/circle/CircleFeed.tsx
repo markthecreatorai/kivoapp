@@ -6,7 +6,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Calendar, Lock, Filter } from "lucide-react";
+import { MessageCircle, Calendar, Lock, Filter, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow, differenceInHours, isFuture } from "date-fns";
