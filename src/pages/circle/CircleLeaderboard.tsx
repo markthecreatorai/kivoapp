@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Lock, HelpCircle } from "lucide-react";
+import { Lock, HelpCircle, Settings } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getLevelInfo, LEVEL_THRESHOLDS } from "@/components/circle/CircleLayout";
 import MemberProfileModal from "@/components/circle/MemberProfileModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function CircleLeaderboard() {
   const { currentWorkspace } = useWorkspace();
