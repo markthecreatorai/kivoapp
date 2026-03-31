@@ -755,7 +755,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         {(member?.display_name || "U").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 flex items-center gap-2 border border-border rounded-lg px-3 py-2 focus-within:border-primary/50 transition-colors">
+                    <div className="flex-1 flex items-center gap-2 border border-border rounded-full px-4 py-2 focus-within:border-primary/50 transition-colors">
                       <input
                         type="text"
                         value={commentBody}
