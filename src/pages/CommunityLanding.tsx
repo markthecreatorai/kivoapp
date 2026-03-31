@@ -639,7 +639,7 @@ export default function CommunityLanding() {
                   <a href="/terms" className="text-primary hover:underline">Termos de Uso</a>.
                 </p>
               </form>
-            ) : (
+            ) : modalMode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4 pt-2">
                 <div className="space-y-1">
                   <Label htmlFor="modal-login-email" className="text-sm">Email</Label>
@@ -683,19 +683,17 @@ export default function CommunityLanding() {
             ) : modalMode === "forgot-password" ? (
               <div className="space-y-4 pt-2">
                 {forgotSent ? (
-                  <>
-                    <div className="text-center space-y-3 py-4">
-                      <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
-                      <h3 className="font-semibold text-foreground">Email enviado!</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Enviamos um link de redefinição para <strong>{forgotEmail}</strong>. Verifique sua caixa de entrada.
-                      </p>
-                    </div>
+                  <div className="text-center space-y-3 py-4">
+                    <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
+                    <h3 className="font-semibold text-foreground">Email enviado!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enviamos um link de redefinição para <strong>{forgotEmail}</strong>. Verifique sua caixa de entrada.
+                    </p>
                     <button type="button" onClick={() => { setForgotSent(false); setModalMode("login"); }}
                       className="text-sm text-primary hover:underline flex items-center gap-1 mx-auto">
                       ← Voltar ao login
                     </button>
-                  </>
+                  </div>
                 ) : (
                   <form onSubmit={handleForgotPassword} className="space-y-4">
                     <div className="text-center space-y-1">
