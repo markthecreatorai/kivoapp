@@ -228,11 +228,11 @@ export default function MyCommunities() {
 
                   {/* Body */}
                   <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 -mt-6 relative z-10">
                       {c.icon_url ? (
-                        <img src={c.icon_url} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 -mt-8 relative z-10 ring-2 ring-background shadow-md" />
+                        <img src={c.icon_url} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 ring-2 ring-background shadow-md" />
                       ) : (
-                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 -mt-8 relative z-10 ring-2 ring-background shadow-md">
+                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-2 ring-background shadow-md">
                           <MessageSquare className="h-5 w-5 text-primary" />
                         </div>
                       )}
