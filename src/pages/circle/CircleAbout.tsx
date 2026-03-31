@@ -280,8 +280,8 @@ export default function CircleAbout() {
       ) : community.description ? (
         <div
           className={cn(
-            "bg-card rounded-xl p-5 shadow-sm border border-border",
-            isAdmin && "cursor-pointer hover:border-primary/40 group relative"
+            "relative",
+            isAdmin && "cursor-pointer group"
           )}
           onClick={() => {
             if (isAdmin) {
@@ -290,11 +290,11 @@ export default function CircleAbout() {
             }
           }}
         >
-          <p className="text-foreground leading-relaxed whitespace-pre-line text-sm">
+          <p className="text-foreground leading-relaxed whitespace-pre-line text-sm px-1">
             {community.description}
           </p>
           {isAdmin && (
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
               <Pencil className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
