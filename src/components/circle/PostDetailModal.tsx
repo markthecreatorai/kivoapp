@@ -555,7 +555,10 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     <MessageCircle className="h-4 w-4" />
                     {topComments.length} {topComments.length === 1 ? "comentário" : "comentários"}
                   </span>
-                  <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copiado!"); }}
+                  <button onClick={() => {
+                    const url = `${window.location.origin}/c/${communitySlug}/post/${postId}`;
+                    navigator.clipboard.writeText(url); toast.success("Link copiado!");
+                  }}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-auto">
                     <Link2 className="h-3.5 w-3.5" />
                   </button>
