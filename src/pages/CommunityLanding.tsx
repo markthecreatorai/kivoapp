@@ -134,6 +134,23 @@ export default function CommunityLanding() {
     enabled: !!community?.linked_product_id,
   });
 
+  const { data: primaryPlan } = useQuery({
+    queryKey: ["community-primary-plan", community?.id],
+    queryFn: async () => {
+      if (!community?.id) return null;
+      const { data } = await supabase
+        .from("circle_plans")
+        .select("id, trial_days, interval, price_cents, is_active")
+        .eq("community_id", community.id)
+        .eq("is_active", true)
+        .order("price_cents", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!community?.id,
+  });
+
   const { data: joinQuestions = [] } = useQuery({
     queryKey: ["community-join-questions", community?.id],
     queryFn: async () => {
@@ -284,6 +301,7 @@ export default function CommunityLanding() {
   const isPaid = community.access_type === "PAID_SUBSCRIPTION" && !!(community as any).price;
   const price = (community as any).price as number | undefined;
   const billingPeriod = (community as any).billing_period as string | undefined;
+  const trialDays = primaryPlan?.trial_days || 0;
   const videoUrl = (community as any).about_video_url as string | undefined;
   const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null;
   const requireApproval = community.require_approval && !inviteCode;
@@ -581,7 +599,7 @@ export default function CommunityLanding() {
               {isPaid && !inviteCode && (
                 <div className="mx-4 mb-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
                   <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{formatPrice(price!, billingPeriod)}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Cancele a qualquer momento</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{trialDays > 0 ? `${trialDays} dias grátis` : "Cancele a qualquer momento"}</p>
                 </div>
               )}
 
@@ -637,7 +655,7 @@ export default function CommunityLanding() {
               {isPaid && !inviteCode ? (
                 <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
                   <p className="text-2xl font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Cancele quando quiser</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{trialDays > 0 ? `${trialDays} dias grátis, depois cobrança recorrente` : "Cancele quando quiser"}</p>
                 </div>
               ) : null}
 
@@ -705,7 +723,7 @@ export default function CommunityLanding() {
                 {isPaid && !inviteCode && (
                   <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
                     <p className="text-lg font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
-                    <p className="text-xs text-muted-foreground">Após criar conta, você será direcionado ao pagamento</p>
+                    <p className="text-xs text-muted-foreground">{trialDays > 0 ? `Após criar conta, você inicia ${trialDays} dias grátis` : "Após criar conta, você será direcionado ao pagamento"}</p>
                   </div>
                 )}
 

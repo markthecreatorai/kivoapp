@@ -87,7 +87,8 @@ function CommunityCard({ community }: { community: any }) {
 export default function CommunityDiscovery() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "free" | "newest">("all");
+  const [filter, setFilter] = useState<"all" | "free" | "paid">("all");
+  const [sort, setSort] = useState<"trending" | "newest" | "members">("trending");
 
   const { data: communities = [], isLoading } = useQuery({
     queryKey: ["public-communities"],
@@ -106,14 +107,16 @@ export default function CommunityDiscovery() {
     const matchesFilter =
       filter === "all" ||
       (filter === "free" && c.access_type === "OPEN") ||
-      filter === "newest";
+      (filter === "paid" && c.access_type !== "OPEN");
     return matchesSearch && matchesFilter;
   });
 
   const sorted = [...filtered].sort((a: any, b: any) => {
-    if (filter === "newest")
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    return (b.member_count || 0) - (a.member_count || 0);
+    if (sort === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sort === "members") return (b.member_count || 0) - (a.member_count || 0);
+    const aScore = (a.member_count || 0) * 0.7 + (a.post_count || 0) * 0.3;
+    const bScore = (b.member_count || 0) * 0.7 + (b.post_count || 0) * 0.3;
+    return bScore - aScore;
   });
 
   return (
@@ -148,12 +151,12 @@ export default function CommunityDiscovery() {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Filters */}
-        <div className="flex items-center gap-2 mb-6 flex-wrap">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           {(
             [
-              { key: "all", label: "Mais ativas" },
+              { key: "all", label: "Todas" },
               { key: "free", label: "Gratuitas" },
-              { key: "newest", label: "Mais novas" },
+              { key: "paid", label: "Pagas" },
             ] as const
           ).map((f) => (
             <button
@@ -173,6 +176,30 @@ export default function CommunityDiscovery() {
           <span className="ml-auto text-sm text-muted-foreground">
             {sorted.length} {sorted.length === 1 ? "comunidade" : "comunidades"}
           </span>
+        </div>
+
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          {(
+            [
+              { key: "trending", label: "Em alta" },
+              { key: "newest", label: "Recentes" },
+              { key: "members", label: "Mais membros" },
+            ] as const
+          ).map((s) => (
+            <button
+              key={s.key}
+              id={`sort-${s.key}`}
+              onClick={() => setSort(s.key)}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs font-medium transition-colors border",
+                sort === s.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
         {isLoading ? (
