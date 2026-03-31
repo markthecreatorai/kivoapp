@@ -201,20 +201,12 @@ export default function PostComposer({
           </div>
         )}
 
-        {/* Video URL inline */}
-        {showVideoInput && (
-          <div className="flex items-center gap-2">
-            <Video className="h-4 w-4 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="URL do vídeo (YouTube, Vimeo, Loom)"
-              className="flex-1 text-sm text-foreground placeholder:text-muted-foreground/50 bg-muted/30 rounded-lg px-3 py-1.5 border border-border outline-none"
-            />
-            <button onClick={() => { setShowVideoInput(false); setVideoUrl(""); }} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
+        {/* Video shown as tag */}
+        {videoUrl && (
+          <div className="flex items-center gap-2 text-sm">
+            <Video className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="text-primary truncate">{videoUrl}</span>
+            <button onClick={() => setVideoUrl("")} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
 
