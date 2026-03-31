@@ -67,6 +67,8 @@ export default function CircleSpaces() {
     !search || s.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const basePath = community?.slug ? `/c/${community.slug}` : "/circle";
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -116,7 +118,7 @@ export default function CircleSpaces() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filtered?.map((space: any) => (
-            <Link key={space.id} to={`/circle/spaces/${space.slug}`}>
+            <Link key={space.id} to={`${basePath}/spaces/${space.slug}`}>
               <Card className="p-5 hover:shadow-md transition-all hover:border-primary/20 cursor-pointer h-full group">
                 <div className="flex items-start gap-4">
                   <div

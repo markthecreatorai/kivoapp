@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, MessageSquare, Calendar, Trophy } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getLevelInfo } from "@/components/circle/CircleLayout";
@@ -15,6 +15,9 @@ interface CircleRightSidebarProps {
 }
 
 export default function CircleRightSidebar({ community, member }: CircleRightSidebarProps) {
+  const { slug } = useParams<{ slug: string }>();
+  const basePath = slug ? `/c/${slug}` : "/circle";
+
   // Top 5 members for mini leaderboard
   const { data: topMembers } = useQuery({
     queryKey: ["circle-top5", community?.id],
@@ -80,7 +83,7 @@ export default function CircleRightSidebar({ community, member }: CircleRightSid
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranking</h3>
-            <Link to="/circle/leaderboard" className="text-xs text-primary hover:underline">Ver todos</Link>
+            <Link to={`${basePath}/leaderboard`} className="text-xs text-primary hover:underline">Ver todos</Link>
           </div>
           <div className="space-y-2">
             {topMembers.map((m: any, i: number) => {
@@ -109,7 +112,7 @@ export default function CircleRightSidebar({ community, member }: CircleRightSid
       {nextEvent && (
         <Card className="p-4 space-y-2">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Próximo evento</h3>
-          <Link to="/circle/events" className="block hover:bg-muted/50 rounded-lg -m-1 p-1 transition-colors">
+          <Link to={`${basePath}/events`} className="block hover:bg-muted/50 rounded-lg -m-1 p-1 transition-colors">
             <p className="text-sm font-semibold text-foreground">{nextEvent.title}</p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
               <Calendar className="h-3.5 w-3.5" />

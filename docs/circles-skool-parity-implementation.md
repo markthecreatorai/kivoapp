@@ -28,5 +28,5 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - cards com social proof mais forte e microcopy de conversão
 - [x] `src/components/circle/admin/*`
   - checklist visual para setup da comunidade (about, links, pricing, discovery)
-- [~] QA final de consistência de rotas legacy (`/circle/*` vs `/c/:slug/*`)
-  - corrigidos pontos críticos em `CirclePaywall`, `JoinCommunity`, `CirclePostDetail`, `CircleFeed`
+- [x] QA final de consistência de rotas legacy (`/circle/*` vs `/c/:slug/*`)
+  - corrigidos pontos críticos em `CirclePaywall`, `JoinCommunity`, `CirclePostDetail`, `CircleFeed`, `CircleDashboard`, `CircleSpaces`, `CircleRightSidebar`
