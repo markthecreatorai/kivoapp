@@ -252,6 +252,16 @@ export default function CircleAbout() {
             <><CheckCircle className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600 font-medium">Gratuito</span></>
           )}
         </span>
+        {owner && (
+          <span className="flex items-center gap-1.5">
+            {owner.avatar_url ? (
+              <img src={owner.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+            ) : (
+              <Users className="h-4 w-4" />
+            )}
+            <span>By <span className="font-medium text-foreground">{owner.display_name || "Criador"}</span></span>
+          </span>
+        )}
       </div>
 
       {/* ── DESCRIPTION — editable for admin ── */}
