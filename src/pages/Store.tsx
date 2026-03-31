@@ -1160,6 +1160,7 @@ export default function Store() {
             storefront={localStorefront ?? storefront}
             theme={localTheme ?? theme}
             blocks={blocks}
+            products={products}
           />
         </div>
       </div>
