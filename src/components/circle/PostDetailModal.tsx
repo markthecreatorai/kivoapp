@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Heart, MessageCircle, Pin, Lock, Trash2, Link2,
-  MoreHorizontal, Eye, ArrowRightLeft, X,
+  MoreHorizontal, Eye, ArrowRightLeft,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
