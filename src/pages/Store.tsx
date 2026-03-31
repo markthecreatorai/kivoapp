@@ -397,29 +397,20 @@ function AbaLoja({
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
 }) {
-  const dragIndexRef = useRef<number | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-  const handleDragStart = (index: number) => {
-    dragIndexRef.current = index;
-  };
+  const productIds = useMemo(() => products.map((p: any) => p.id), [products]);
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    const from = dragIndexRef.current;
-    if (from === null || from === index) return;
-    const reordered = [...products];
-    const [moved] = reordered.splice(from, 1);
-    reordered.splice(index, 0, moved);
-    setProducts(reordered);
-    dragIndexRef.current = index;
-  };
-
-  const handleDrop = () => {
-    dragIndexRef.current = null;
-  };
-
-  const handleDragEnd = () => {
-    dragIndexRef.current = null;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = products.findIndex((p: any) => p.id === active.id);
+    const newIndex = products.findIndex((p: any) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    setProducts(arrayMove(products, oldIndex, newIndex));
   };
 
   return (
@@ -444,14 +435,14 @@ function AbaLoja({
             ))}
           </div>
         ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center rounded-[20px] border-2 border-dashed border-[#e5e7eb] bg-[#fafafa]/50">
+          <div className="flex flex-col items-center justify-center py-20 text-center rounded-[20px] border-2 border-dashed border-border bg-muted/30">
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Package className="h-8 w-8 text-primary" />
             </div>
-            <p className="text-[16px] font-bold text-[#111827] mb-2">
+            <p className="text-[16px] font-bold text-foreground mb-2">
               Nenhum produto ainda
             </p>
-            <p className="text-[14px] text-[#6b7280] mb-6 max-w-[280px]">
+            <p className="text-[14px] text-muted-foreground mb-6 max-w-[280px]">
               Crie seu primeiro produto para começar a vender
             </p>
             <Button 
@@ -462,36 +453,39 @@ function AbaLoja({
             </Button>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {products.map((product: any, index: number) => (
-              <ProductListItem
-                key={product.id}
-                product={product}
-                onEdit={() => navigate(`/products/${product.id}/edit`)}
-                onArchive={() => onArchive(product.id)}
-                onTogglePublish={() => onTogglePublish(product.id)}
-                onDelete={() => onDelete(product.id)}
-                onDuplicate={() => onDuplicate(product.id)}
-                dragging={dragIndexRef.current === index}
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={handleDrop}
-                onDragEnd={handleDragEnd}
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={productIds} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2.5">
+                {products.map((product: any) => (
+                  <SortableProductItem
+                    key={product.id}
+                    product={product}
+                    onEdit={() => navigate(`/products/${product.id}/edit`)}
+                    onArchive={() => onArchive(product.id)}
+                    onTogglePublish={() => onTogglePublish(product.id)}
+                    onDelete={() => onDelete(product.id)}
+                    onDuplicate={() => onDuplicate(product.id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
 
         {/* Add Product CTA */}
         {products.length > 0 && (
           <div className="mt-4">
-            <button
+            <Button
               onClick={() => navigate("/products/new")}
-              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-[12px] bg-[#ff4e00] text-white text-[14px] font-bold hover:bg-[#e64500] transition-all shadow-sm"
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-[12px] h-12 text-[14px] font-bold shadow-sm"
             >
               <Plus className="h-5 w-5" />
               Adicionar Produto
-            </button>
+            </Button>
           </div>
         )}
       </div>
