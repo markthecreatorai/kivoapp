@@ -164,18 +164,6 @@ export default function CircleAbout() {
       {/* Title row */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">{community.name}</h1>
-        {isAdmin && (
-          <button
-            onClick={() => {
-              setMediaVideoUrl(videoUrl || "");
-              setShowMediaModal(true);
-            }}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            title="Editar mídia"
-          >
-            {hasMedia ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-          </button>
-        )}
       </div>
 
       {/* ── MEDIA AREA ── */}
