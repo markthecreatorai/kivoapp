@@ -234,19 +234,19 @@ export default function CircleLeaderboard() {
 
       {/* 3 Leaderboard columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-5">
+        <Card className="p-5 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
             Ranking (7 dias)
           </h3>
           {renderLeaderboardList(weekly, "period_points")}
         </Card>
-        <Card className="p-5">
+        <Card className="p-5 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
             Ranking (30 dias)
           </h3>
           {renderLeaderboardList(monthly, "period_points")}
         </Card>
-        <Card className="p-5">
+        <Card className="p-5 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
           <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
             Ranking (geral)
           </h3>
