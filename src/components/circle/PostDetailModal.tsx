@@ -308,7 +308,12 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-        <DialogContent className="max-w-2xl w-full p-0 gap-0 flex flex-col" style={{ maxHeight: "90vh" }}>
+        {/* Custom overlay — rgba(0,0,0,0.5) per Skool spec */}
+        <DialogContent
+          className="max-w-[570px] w-full p-0 gap-0 flex flex-col border-0 rounded-xl bg-background shadow-xl"
+          style={{ maxHeight: "90vh" }}
+          overlayClassName="bg-black/50"
+        >
           <VisuallyHidden><DialogTitle>Post detail</DialogTitle></VisuallyHidden>
 
           {isLoading ? (
