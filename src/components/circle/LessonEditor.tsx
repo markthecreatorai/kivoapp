@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -12,10 +12,17 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Bold, Italic, Strikethrough, Code, List, ListOrdered,
   Quote, Image as ImageIcon, Link as LinkIcon, Youtube as YoutubeIcon,
   Heading1, Heading2, Heading3, Heading4,
-  Loader2, Save, X, CheckCircle2,
+  Loader2, Save, X, CheckCircle2, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
