@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -24,30 +24,36 @@ export default function CircleFeed() {
   const { user } = useAuth();
   const { slug: communitySlug, spaceSlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [showCompose, setShowCompose] = useState(false);
   const [filter, setFilter] = useState<"recent" | "popular">("recent");
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
 
-  // Post modal state from URL search param
-  const activePostId = searchParams.get("post");
+  // Post modal state — support both ?post=id (legacy) and direct open via prop/state
+  const [activePostId, setActivePostId] = useState<string | null>(searchParams.get("post"));
+
+  // Sync from search params on mount (for legacy ?post= links and redirects)
+  useEffect(() => {
+    const qp = searchParams.get("post");
+    if (qp) {
+      setActivePostId(qp);
+      // Clean the query param and switch to clean URL
+      setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete("post"); return next; }, { replace: true });
+      window.history.replaceState(null, "", `/c/${communitySlug}/post/${qp}`);
+    }
+  }, [searchParams, communitySlug, setSearchParams]);
 
   const handleOpenPost = useCallback((postId: string) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("post", postId);
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+    setActivePostId(postId);
+    window.history.pushState(null, "", `/c/${communitySlug}/post/${postId}`);
+  }, [communitySlug]);
 
   const handleClosePost = useCallback(() => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete("post");
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+    setActivePostId(null);
+    window.history.pushState(null, "", `/c/${communitySlug}/feed`);
+  }, [communitySlug]);
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],

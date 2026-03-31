@@ -40,12 +40,13 @@ function truncate(s: string | null, max = 40) {
   return s.length > max ? s.slice(0, max) + "…" : s;
 }
 
-function getNotificationRoute(n: any): string | null {
-  if (n.type === "NEW_DM") return `/circle/messages`;
-  if (n.type === "SUBSCRIPTION_PAST_DUE" || n.type === "SUBSCRIPTION_EXPIRED") return `/circle/feed`;
-  if (n.post_id) return `/circle/post/${n.post_id}`;
-  if (n.event_id) return `/circle/events`;
-  if (n.type === "LEVEL_UP") return `/circle/leaderboard`;
+function getNotificationRoute(n: any, slug?: string): string | null {
+  const base = slug ? `/c/${slug}` : `/circle`;
+  if (n.type === "NEW_DM") return `${base}/messages`;
+  if (n.type === "SUBSCRIPTION_PAST_DUE" || n.type === "SUBSCRIPTION_EXPIRED") return `${base}/feed`;
+  if (n.post_id) return `${base}/post/${n.post_id}`;
+  if (n.event_id) return `${base}/events`;
+  if (n.type === "LEVEL_UP") return `${base}/leaderboard`;
   return null;
 }
 
