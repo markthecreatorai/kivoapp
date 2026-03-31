@@ -303,7 +303,7 @@ export default function CircleAbout() {
         <div
           className={cn(
             "relative",
-            isAdmin && "cursor-pointer group"
+            isAdminEditing && "cursor-pointer group"
           )}
           onClick={() => {
             if (isAdmin) {
