@@ -286,8 +286,8 @@ export default function PostComposer({
             <Link2 className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setShowVideoInput(!showVideoInput)}
-            className={cn("p-2 rounded-lg transition-colors", showVideoInput ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
+            onClick={() => { setVideoModalUrl(""); setShowVideoModal(true); }}
+            className={cn("p-2 rounded-lg transition-colors", videoUrl ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
             title="Vídeo"
           >
             <Video className="h-4 w-4" />
