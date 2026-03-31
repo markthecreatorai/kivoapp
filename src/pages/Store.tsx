@@ -183,19 +183,14 @@ function StoreProfileCard({
   );
 }
 
-// ─── Product List Item (Stan-style compact horizontal) ───────────────────────
-function ProductListItem({
+// ─── Sortable Product List Item (using @dnd-kit) ─────────────────────────────
+function SortableProductItem({
   product,
   onEdit,
   onArchive,
   onTogglePublish,
   onDelete,
   onDuplicate,
-  dragging,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
 }: {
   product: any;
   onEdit: () => void;
@@ -203,35 +198,44 @@ function ProductListItem({
   onTogglePublish: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  dragging: boolean;
-  onDragStart: () => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void;
-  onDragEnd: () => void;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: product.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
   const typeInfo = TYPE_LABELS[product.type] ?? TYPE_LABELS.DIGITAL;
   const TypeIcon = typeInfo.icon;
   const price = product.prices?.find((p: any) => p.is_default && p.is_active);
 
   return (
     <div
-      draggable
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
+      ref={setNodeRef}
+      style={style}
       className={cn(
-        "flex items-center gap-3 px-3 py-3 rounded-[14px] bg-white transition-all group cursor-pointer select-none",
-        dragging
-          ? "opacity-50 scale-[0.98] ring-2 ring-primary/40"
+        "flex items-center gap-3 px-3 py-3 rounded-[14px] bg-white transition-shadow group cursor-pointer select-none",
+        isDragging
+          ? "opacity-80 shadow-lg ring-2 ring-primary/30"
           : "border border-[#ececec] hover:bg-[#fafafa] hover:border-[#d4d4d4]"
       )}
       onClick={onEdit}
     >
       {/* Drag handle */}
       <div
-        className="flex-shrink-0 cursor-grab active:cursor-grabbing text-[#d4d4d4] group-hover:text-[#9ca3af] transition-colors"
+        className="flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors touch-none"
         onClick={(e) => e.stopPropagation()}
+        {...attributes}
+        {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </div>
@@ -241,21 +245,21 @@ function ProductListItem({
         {product.thumbnail_url ? (
           <img src={product.thumbnail_url} alt={product.name} className="h-full w-full object-cover" />
         ) : (
-          <TypeIcon className="h-5 w-5 text-[#9ca3af]" />
+          <TypeIcon className="h-5 w-5 text-muted-foreground" />
         )}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-semibold text-[#111827] truncate leading-tight">
+        <p className="text-[14px] font-semibold text-foreground truncate leading-tight">
           {product.name}
         </p>
         <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[12px] text-[#6b7280] font-medium">{typeInfo.label}</span>
+          <span className="text-[12px] text-muted-foreground font-medium">{typeInfo.label}</span>
           {price && (
             <>
-              <span className="text-[#d4d4d4] text-[10px]">·</span>
-              <span className="text-[12px] font-semibold text-[#6b7280]">
+              <span className="text-border text-[10px]">·</span>
+              <span className="text-[12px] font-semibold text-muted-foreground">
                 {formatCurrency(price.amount)}
               </span>
             </>
@@ -270,7 +274,7 @@ function ProductListItem({
           className={cn(
             "text-[11px] font-semibold px-2.5 py-0.5 border",
             product.status === "PUBLISHED" 
-              ? "bg-[#f3f4f6] text-[#6b7280] border-[#e5e7eb]"
+              ? "bg-muted text-muted-foreground border-border"
               : "bg-amber-50 text-amber-700 border-amber-200"
           )}
         >
@@ -282,7 +286,7 @@ function ProductListItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-[#9ca3af] hover:bg-muted hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
