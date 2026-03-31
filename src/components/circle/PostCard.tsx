@@ -261,7 +261,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         <div className="flex-1" />
 
         {post.comment_count > 0 && (
-          <Link to={`/circle/post/${post.id}`} className="flex items-center gap-2">
+          <button onClick={() => onOpenPost?.(post.id)} className="flex items-center gap-2">
             <div className="flex items-center">
               {[0, 1, 2].slice(0, Math.min(post.comment_count, 3)).map((idx) => (
                 <div
@@ -278,7 +278,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
             <span className="text-[12px] text-primary hover:underline whitespace-nowrap hidden sm:block">
               New comment {timeAgo(post.updated_at)} ago
             </span>
-          </Link>
+          </button>
         )}
       </div>
     </div>
