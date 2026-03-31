@@ -680,7 +680,48 @@ export default function CommunityLanding() {
                   </button>
                 </p>
               </form>
-            )}
+            ) : modalMode === "forgot-password" ? (
+              <div className="space-y-4 pt-2">
+                {forgotSent ? (
+                  <>
+                    <div className="text-center space-y-3 py-4">
+                      <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
+                      <h3 className="font-semibold text-foreground">Email enviado!</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Enviamos um link de redefinição para <strong>{forgotEmail}</strong>. Verifique sua caixa de entrada.
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => { setForgotSent(false); setModalMode("login"); }}
+                      className="text-sm text-primary hover:underline flex items-center gap-1 mx-auto">
+                      ← Voltar ao login
+                    </button>
+                  </>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="text-center space-y-1">
+                      <h3 className="font-semibold text-foreground">Esqueceu sua senha?</h3>
+                      <p className="text-sm text-muted-foreground">Digite seu email e enviaremos um link para redefinir sua senha</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="modal-forgot-email" className="text-sm">Email</Label>
+                      <Input id="modal-forgot-email" type="email" placeholder="seu@email.com" value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)} className="h-10" />
+                    </div>
+                    <Button type="submit" size="lg" className="w-full gap-2" disabled={forgotLoading}>
+                      {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Enviar link de redefinição
+                    </Button>
+                    <p className="text-center">
+                      <button type="button" onClick={() => setModalMode("login")}
+                        className="text-sm text-primary hover:underline">
+                        ← Voltar ao login
+                      </button>
+                    </p>
+                  </form>
+                )}
+              </div>
+            ) : null}
+
         </DialogContent>
       </Dialog>
       {/* ── INVITE MODAL ── */}
