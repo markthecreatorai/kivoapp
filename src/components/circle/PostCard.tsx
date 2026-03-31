@@ -205,7 +205,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
             </div>
           )}
         </div>
-      </Link>
+      </div>
 
       {/* Interactive Poll */}
       {isPoll && <PollSection post={post} memberId={memberId} />}
