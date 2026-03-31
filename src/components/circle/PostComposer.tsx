@@ -388,7 +388,6 @@ export default function PostComposer({
           >
             {createPost.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "POST"}
           </button>
-          </button>
         </div>
       </div>
 
