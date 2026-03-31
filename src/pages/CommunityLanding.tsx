@@ -350,7 +350,7 @@ export default function CommunityLanding() {
               )}
               <Button
                 size="sm"
-                className="h-8 px-4 text-xs font-semibold bg-[#f5c518] hover:bg-[#e6b800] text-black border-0 gap-1.5"
+                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground border-0 gap-1.5"
                 onClick={handleJoinClick}
                 id="join-btn-topbar"
               >
@@ -471,7 +471,7 @@ export default function CommunityLanding() {
                 <div className="md:hidden bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
                   <Button
                     size="lg"
-                    className="w-full font-bold text-sm h-11 bg-[#f5c518] hover:bg-[#e6b800] text-black border-0"
+                    className="w-full font-bold text-sm h-11 bg-primary hover:bg-primary/90 text-primary-foreground border-0"
                     onClick={handleJoinClick}
                     id="join-btn-mobile"
                   >
@@ -500,7 +500,7 @@ export default function CommunityLanding() {
                 </div>
                 <Button
                   onClick={handleJoinClick}
-                  className="bg-[#f5c518] hover:bg-[#e6b800] text-black border-0 font-semibold gap-2"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 font-semibold gap-2"
                 >
                   <UserCheck className="h-4 w-4" />
                   {isPaid ? "Assinar Comunidade" : "Entrar Gratuitamente"}
@@ -607,7 +607,7 @@ export default function CommunityLanding() {
               <div className="px-4 pb-4">
                 <Button
                   size="lg"
-                  className="w-full font-bold text-sm h-11 gap-2 bg-[#f5c518] hover:bg-[#e6b800] text-black border-0"
+                  className="w-full font-bold text-sm h-11 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-0"
                   onClick={handleJoinClick}
                   id="join-btn-sidebar"
                 >
