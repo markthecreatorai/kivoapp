@@ -127,6 +127,9 @@ export default function CircleLeaderboard() {
               <p className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">
                 {m.display_name || "Membro"}
               </p>
+              {(m.current_streak >= 2 || i < 3) && (
+                <span className="shrink-0 text-base" style={{ color: "#F97316" }}>🔥</span>
+              )}
               <span className="text-sm font-semibold text-primary shrink-0">+{pts}</span>
             </div>
           );
