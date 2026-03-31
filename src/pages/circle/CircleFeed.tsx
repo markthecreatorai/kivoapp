@@ -343,7 +343,46 @@ export default function CircleFeed() {
         </DropdownMenu>
       </div>
 
-
+      {/* Onboarding welcome card */}
+      {showOnboarding && (
+        <Card className="p-4 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+              <span className="text-sm font-bold text-foreground">Welcome! Start here</span>
+            </div>
+            <button
+              onClick={handleDismissOnboarding}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Dismiss
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {onboardingTasks.map((task, i) => (
+              <a
+                key={i}
+                href={task.link}
+                onClick={(e) => { if (task.link === "#") e.preventDefault(); }}
+                className="flex items-center gap-3 group cursor-pointer"
+              >
+                {task.done ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                )}
+                <task.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className={cn(
+                  "text-sm",
+                  task.done ? "text-muted-foreground line-through" : "text-foreground group-hover:text-primary"
+                )}>
+                  {task.label}
+                </span>
+              </a>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Posts */}
       {isLoading ? (
