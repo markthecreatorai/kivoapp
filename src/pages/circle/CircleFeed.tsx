@@ -6,7 +6,9 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Calendar, Lock, Filter, Video } from "lucide-react";
+import { MessageCircle, Calendar, Lock, Video, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -231,33 +233,74 @@ export default function CircleFeed() {
         </div>
       )}
 
-      {/* Category pills */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide items-center">
-        <button
-          onClick={() => setActiveSpaceId("all")}
-          className={cn(
-            "shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors",
-            !effectiveSpaceId
-              ? "bg-foreground text-background"
-              : "bg-card text-muted-foreground hover:text-foreground shadow-sm"
-          )}
-        >
-          All
-        </button>
-        {spaces?.map((space: any) => (
+      {/* Category pills + filter */}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide items-center flex-1 min-w-0">
           <button
-            key={space.id}
-            onClick={() => setActiveSpaceId(space.id)}
+            onClick={() => setActiveSpaceId("all")}
             className={cn(
-              "shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors whitespace-nowrap",
-              effectiveSpaceId === space.id
-                ? "bg-foreground text-background"
-                : "bg-card text-muted-foreground hover:text-foreground shadow-sm"
+              "shrink-0 px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+              !effectiveSpaceId
+                ? "text-background"
+                : "text-muted-foreground hover:text-foreground"
             )}
+            style={!effectiveSpaceId ? { backgroundColor: "#111827" } : { backgroundColor: "#F3F4F6" }}
           >
-            {space.name} {space.emoji}
+            All
           </button>
-        ))}
+          {(spaces || []).slice(0, 5).map((space: any) => (
+            <button
+              key={space.id}
+              onClick={() => setActiveSpaceId(space.id)}
+              className={cn(
+                "shrink-0 px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+                effectiveSpaceId === space.id
+                  ? "text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              style={effectiveSpaceId === space.id ? { backgroundColor: "#111827" } : { backgroundColor: "#F3F4F6" }}
+            >
+              {space.emoji} {space.name}
+            </button>
+          ))}
+          {(spaces || []).length > 5 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="shrink-0 px-3 py-1 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground whitespace-nowrap flex items-center gap-1"
+                  style={{ backgroundColor: "#F3F4F6" }}
+                >
+                  More... <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {(spaces || []).slice(5).map((space: any) => (
+                  <DropdownMenuItem key={space.id} onClick={() => setActiveSpaceId(space.id)}>
+                    {space.emoji} {space.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        <Separator orientation="vertical" className="h-5" />
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setFilter("recent")} className={cn(filter === "recent" && "font-semibold")}>
+              Mais recentes
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilter("popular")} className={cn(filter === "popular" && "font-semibold")}>
+              Mais curtidos
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
 
