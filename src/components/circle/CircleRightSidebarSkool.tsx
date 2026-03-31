@@ -68,7 +68,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
         .eq("status", "ACTIVE")
         .in("role", ["OWNER", "ADMIN"])
         .order("role")
-        .limit(6);
+        .limit(10);
       return data || [];
     },
     enabled: !!community,
@@ -209,54 +209,54 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
           {/* Admin avatars */}
           {adminMembers && adminMembers.length > 0 && (
             <div className="flex items-center">
-              {adminMembers.map((m: any, i: number) => (
+              {adminMembers.slice(0, 8).map((m: any, i: number) => (
                 <Avatar
                   key={m.id}
-                  className="h-7 w-7 border-2 border-card"
-                  style={{ marginLeft: i > 0 ? "-5px" : "0", zIndex: 20 - i }}
+                  className="h-8 w-8 border-2 border-card"
+                  style={{ marginLeft: i > 0 ? "-6px" : "0", zIndex: 20 - i }}
                 >
                   <AvatarImage src={m.avatar_url || ""} />
-                  <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-medium">
+                  <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
                     {(m.display_name || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               ))}
+              {adminMembers.length > 8 && (
+                <div
+                  className="h-8 w-8 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground"
+                  style={{ marginLeft: "-6px", zIndex: 10 }}
+                >
+                  +{adminMembers.length - 8}
+                </div>
+              )}
             </div>
           )}
 
           {/* ── CTA BUTTONS ── */}
-          {isAboutPage && isAdmin ? (
-            /* Admin: Settings + Invite */
+          {member ? (
+            /* Member (any role): show settings (admin only) + invite */
             <div className="space-y-2">
-              <button
-                onClick={() => onOpenAdmin ? onOpenAdmin() : navigate(`/c/${slug}/admin`)}
-                className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-semibold text-sm border border-border bg-card hover:bg-muted transition-colors text-foreground"
-                id="sidebar-settings-btn"
-              >
-                <Settings className="h-4 w-4" />
-                Configurações
-              </button>
+              {isAdmin && isAboutPage && (
+                <button
+                  onClick={() => onOpenAdmin ? onOpenAdmin() : navigate(`/c/${slug}/admin`)}
+                  className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-semibold text-sm border border-foreground/20 bg-transparent hover:bg-muted transition-colors text-foreground"
+                  id="sidebar-settings-btn"
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurações
+                </button>
+              )}
               <button
                 onClick={() => setShowInviteModal(true)}
-                className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-semibold text-sm border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-semibold text-sm border border-foreground/20 bg-transparent hover:bg-muted transition-colors text-foreground uppercase tracking-wide"
                 id="sidebar-invite-btn"
               >
                 <UserPlus className="h-4 w-4" />
-                Convidar pessoas
+                Convidar Pessoas
               </button>
             </div>
-          ) : isAboutPage && member ? (
-            /* Member (non-admin): just invite */
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="flex items-center justify-center gap-2 w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
-              id="sidebar-invite-btn-member"
-            >
-              <UserPlus className="h-4 w-4" />
-              Convidar Pessoas
-            </button>
           ) : (
-            /* Other pages: go to feed */
+            /* Visitor / non-member: join */
             <Link
               to={`/c/${slug}/feed`}
               className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
