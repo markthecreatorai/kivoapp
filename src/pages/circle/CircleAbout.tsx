@@ -232,7 +232,7 @@ export default function CircleAbout() {
             </button>
           )}
         </div>
-      ) : isAdmin ? (
+      ) : isAdminEditing ? (
         <button
           onClick={() => { setMediaVideoUrl(videoUrl || ""); setShowMediaModal(true); }}
           className="w-full aspect-video rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/40 transition-all flex flex-col items-center justify-center gap-3 text-muted-foreground group"
