@@ -146,11 +146,12 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     }
   };
 
-  const promptAndInsertYoutube = () => {
-    const url = window.prompt("URL do vídeo YouTube:");
-    if (url && editor) {
-      editor.chain().focus().setYoutubeVideo({ src: url }).run();
-    }
+  const handleAddVideo = () => {
+    if (!videoUrl.trim() || !editor) return;
+    editor.chain().focus().setYoutubeVideo({ src: videoUrl.trim() }).run();
+    setVideoUrl("");
+    setVideoDialogOpen(false);
+    setHasChanges(true);
   };
 
   if (!isAdmin) {
