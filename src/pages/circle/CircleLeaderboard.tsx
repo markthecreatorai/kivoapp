@@ -100,31 +100,36 @@ export default function CircleLeaderboard() {
       return <p className="text-sm text-muted-foreground py-4">Nenhuma atividade ainda</p>;
     }
     return (
-      <div className="space-y-3 mt-3">
-        {data.slice(0, 10).map((m: any, i: number) => (
-          <div
-            key={m.id}
-            onClick={() => setProfileMemberId(m.id)}
-            className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-lg px-2 py-1 transition-colors"
-          >
-            <span className="w-5 text-xs font-medium text-muted-foreground">{i + 1}</span>
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={m.avatar_url || ""} />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                {(m.display_name || "U").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-foreground">{m.display_name || "Membro"}</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <LevelCircle level={getLevelInfo(useField === "period_points" ? (m.total_points || 0) : m.total_points).level} size={20} />
-              <span className="text-xs font-semibold text-muted-foreground">
-                {useField === "period_points" ? m.period_points : m.total_points}
+      <div className="divide-y divide-border">
+        {data.slice(0, 10).map((m: any, i: number) => {
+          const pts = useField === "period_points" ? m.period_points : m.total_points;
+          const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+          return (
+            <div
+              key={m.id}
+              onClick={() => setProfileMemberId(m.id)}
+              className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors py-3 px-1"
+            >
+              <span className="w-6 text-center shrink-0">
+                {medal ? (
+                  <span className="text-base">{medal}</span>
+                ) : (
+                  <span className="text-sm font-medium text-muted-foreground">{i + 1}</span>
+                )}
               </span>
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage src={m.avatar_url || ""} />
+                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                  {(m.display_name || "U").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">
+                {m.display_name || "Membro"}
+              </p>
+              <span className="text-sm font-semibold text-primary shrink-0">+{pts}</span>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
