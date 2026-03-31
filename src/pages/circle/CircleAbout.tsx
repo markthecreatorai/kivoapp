@@ -275,7 +275,7 @@ export default function CircleAbout() {
       </div>
 
       {/* ── DESCRIPTION — editable for admin ── */}
-      {editingDescription ? (
+      {editingDescription && isAdminEditing ? (
         <div className="space-y-2">
           <div className="relative">
             <Textarea
