@@ -19,6 +19,10 @@ export default function CircleLeaderboard() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [levelNames, setLevelNames] = useState<Record<number, string>>({});
+  const [savingNames, setSavingNames] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
