@@ -157,7 +157,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] }, link: false } as any),
       Image.configure({ inline: false, allowBase64: true }),
       TiptapLink.configure({ openOnClick: false, autolink: true }),
       Youtube.configure({ width: 640, height: 360 }),
