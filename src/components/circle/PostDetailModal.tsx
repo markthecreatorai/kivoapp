@@ -350,7 +350,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         {ROLE_LABEL[post.author.role]}
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[13px] text-muted-foreground">
                       · {formatDistanceToNow(new Date(post.created_at), { addSuffix: false, locale: ptBR })}
                     </span>
                     {post.space && (
