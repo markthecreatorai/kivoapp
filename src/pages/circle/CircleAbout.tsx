@@ -74,6 +74,23 @@ export default function CircleAbout() {
     enabled: !!community?.id && !!user?.id,
   });
 
+  // Fetch community owner
+  const { data: owner } = useQuery({
+    queryKey: ["community-owner", community?.id],
+    queryFn: async () => {
+      if (!community) return null;
+      const { data } = await supabase
+        .from("community_members")
+        .select("display_name, avatar_url, user_id")
+        .eq("community_id", community.id)
+        .eq("role", "OWNER")
+        .eq("status", "ACTIVE")
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!community?.id,
+  });
+
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
 
   // ─── Mutations ───
