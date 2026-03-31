@@ -217,7 +217,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           <Separator orientation="vertical" className="h-5 mx-1" />
           <ToolbarButton editor={editor} icon={ImageIcon} label="Image" action={promptAndInsertImage} />
           <ToolbarButton editor={editor} icon={LinkIcon} label="Link" action={promptAndInsertLink} isActive={editor?.isActive("link")} />
-          <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={promptAndInsertYoutube} />
+          <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={() => setVideoDialogOpen(true)} />
         </div>
 
         {/* Tiptap Editor Content */}
