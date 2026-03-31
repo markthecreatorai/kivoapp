@@ -31,7 +31,7 @@ function getEmbedUrl(url: string): string | null {
   return url;
 }
 
-type TabKey = "about" | "community" | "classroom" | "events" | "members" | "leaderboard";
+type TabKey = "about" | "community" | "classroom" | "events" | "members" | "map" | "leaderboard";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode; locked: boolean }[] = [
   { key: "about", label: "Sobre", icon: <Star className="h-3.5 w-3.5" />, locked: false },
@@ -39,6 +39,7 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode; locked: boolean
   { key: "classroom", label: "Classroom", icon: <BookOpen className="h-3.5 w-3.5" />, locked: true },
   { key: "events", label: "Eventos", icon: <Calendar className="h-3.5 w-3.5" />, locked: true },
   { key: "members", label: "Membros", icon: <Users className="h-3.5 w-3.5" />, locked: true },
+  { key: "map", label: "Mapa", icon: <Globe className="h-3.5 w-3.5" />, locked: true },
   { key: "leaderboard", label: "Ranking", icon: <Trophy className="h-3.5 w-3.5" />, locked: true },
 ];
 
