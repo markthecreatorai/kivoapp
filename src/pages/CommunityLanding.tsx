@@ -53,9 +53,12 @@ export default function CommunityLanding() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [modalMode, setModalMode] = useState<"signup" | "login">("signup");
+  const [modalMode, setModalMode] = useState<"signup" | "login" | "forgot-password">("signup");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [loginLoading, setLoginLoading] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const [formData, setFormData] = useState({ display_name: "", email: "", password: "" });
   const [videoPlaying, setVideoPlaying] = useState(false);
 
