@@ -32,3 +32,4 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - corrigidos pontos críticos em `CirclePaywall`, `JoinCommunity`, `CirclePostDetail`, `CircleFeed`, `CircleDashboard`, `CircleSpaces`, `CircleRightSidebar`
 - [x] `src/components/circle/CircleLayout.tsx`
   - polimento de header/tabs (estado ativo mais evidente e alinhamento de navegação interna)
+  - bloqueio de ações admin no modo `?preview=visitor`

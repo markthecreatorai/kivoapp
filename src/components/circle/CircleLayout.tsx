@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
 import CircleAdminModal from "@/components/circle/admin/CircleAdminModal";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -79,6 +79,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
@@ -259,6 +260,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   });
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
+  const isPreviewVisitor = searchParams.get("preview") === "visitor";
   const isActive = (path: string) => {
     if (path === `/c/${slug}/feed`) {
       return location.pathname === `/c/${slug}/feed` ||
@@ -475,7 +477,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 unreadCount={unreadCount ?? 0}
               />
             )}
-            {member && isAdmin && (
+            {member && isAdmin && !isPreviewVisitor && (
               <button
                 onClick={() => setShowAdminModal(true)}
                 className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
@@ -528,7 +530,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
               </Link>
             );
           })}
-          {isAdmin && (
+          {isAdmin && !isPreviewVisitor && (
             <button
               onClick={() => setShowAdminModal(true)}
               className={cn(
