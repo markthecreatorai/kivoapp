@@ -179,7 +179,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     setIsPublished(lesson.is_published);
     setResources(Array.isArray(lesson.resources) ? (lesson.resources as Resource[]) : []);
     setHasChanges(false);
-    editor?.commands.setContent(lesson.content || "");
+    editor?.commands.setContent(migrateContent(lesson.content));
   }
 
   const saveMutation = useMutation({
