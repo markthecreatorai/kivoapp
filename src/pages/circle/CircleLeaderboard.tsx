@@ -179,7 +179,16 @@ export default function CircleLeaderboard() {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6" style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
       {/* Profile + Levels Card */}
-      <Card className="p-6 md:p-8 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+      <Card className="p-6 md:p-8 rounded-xl border-0 relative" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+        {isAdmin && (
+          <button
+            onClick={openSettings}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            title="Configurar níveis"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        )}
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left: Avatar + Name */}
           <div className="flex flex-col items-center text-center min-w-[200px]">
