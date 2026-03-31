@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Paperclip, Link2, Video, BarChart3, Smile, X, Loader2,
 } from "lucide-react";
@@ -49,7 +50,8 @@ export default function PostComposer({
 
   // Inline sections toggled by toolbar
   const [showVideoInput, setShowVideoInput] = useState(false);
-  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkModalUrl, setLinkModalUrl] = useState("");
 
   const displayName = memberDisplayName || user?.email?.split("@")[0] || "User";
   const avatarUrl = memberAvatarUrl || "";
@@ -212,20 +214,12 @@ export default function PostComposer({
           </div>
         )}
 
-        {/* Link URL inline */}
-        {showLinkInput && (
-          <div className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="Link externo"
-              className="flex-1 text-sm text-foreground placeholder:text-muted-foreground/50 bg-muted/30 rounded-lg px-3 py-1.5 border border-border outline-none"
-            />
-            <button onClick={() => { setShowLinkInput(false); setLinkUrl(""); }} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
+        {/* Inserted link shown as tag */}
+        {linkUrl && (
+          <div className="flex items-center gap-2 text-sm">
+            <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
+            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">{linkUrl}</a>
+            <button onClick={() => setLinkUrl("")} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
 
@@ -289,8 +283,8 @@ export default function PostComposer({
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
           </button>
           <button
-            onClick={() => setShowLinkInput(!showLinkInput)}
-            className={cn("p-2 rounded-lg transition-colors", showLinkInput ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
+            onClick={() => { setLinkModalUrl(""); setShowLinkModal(true); }}
+            className={cn("p-2 rounded-lg transition-colors", linkUrl ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
             title="Link"
           >
             <Link2 className="h-4 w-4" />
@@ -370,6 +364,65 @@ export default function PostComposer({
         className="hidden"
         onChange={(e) => handleImageUpload(e.target.files)}
       />
+
+      {/* Link modal */}
+      <Dialog open={showLinkModal} onOpenChange={setShowLinkModal}>
+        <DialogContent className="sm:max-w-md p-6 [&>button[data-close]]:hidden [&>button]:hidden">
+          <DialogHeader className="pb-0">
+            <DialogTitle className="text-lg font-bold text-foreground">Add link</DialogTitle>
+          </DialogHeader>
+          <div className="pt-4 space-y-4">
+            <div>
+              <input
+                type="url"
+                value={linkModalUrl}
+                onChange={(e) => setLinkModalUrl(e.target.value)}
+                placeholder="Enter a URL"
+                className="w-full px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 border border-border rounded-sm outline-none focus:border-primary transition-colors"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (linkModalUrl.trim()) {
+                      try {
+                        new URL(linkModalUrl.trim());
+                        setLinkUrl(linkModalUrl.trim());
+                        setShowLinkModal(false);
+                      } catch {
+                        toast.error("URL inválida");
+                      }
+                    }
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowLinkModal(false)}
+                className="px-4 py-1.5 text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={() => {
+                  const url = linkModalUrl.trim();
+                  if (!url) return;
+                  try {
+                    new URL(url);
+                    setLinkUrl(url);
+                    setShowLinkModal(false);
+                  } catch {
+                    toast.error("URL inválida");
+                  }
+                }}
+                className="px-4 py-1.5 rounded-sm text-sm font-bold uppercase tracking-wide text-primary-foreground bg-primary hover:opacity-90 transition-opacity"
+              >
+                LINK
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
