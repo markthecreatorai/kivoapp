@@ -308,7 +308,12 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-        <DialogContent className="max-w-2xl w-full p-0 gap-0 flex flex-col" style={{ maxHeight: "90vh" }}>
+        {/* Custom overlay — rgba(0,0,0,0.5) per Skool spec */}
+        <DialogContent
+          className="max-w-[570px] w-full p-0 gap-0 flex flex-col border-0 rounded-xl bg-background shadow-xl"
+          style={{ maxHeight: "90vh" }}
+          overlayClassName="bg-black/50"
+        >
           <VisuallyHidden><DialogTitle>Post detail</DialogTitle></VisuallyHidden>
 
           {isLoading ? (
@@ -336,16 +341,23 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
 
                 {/* Author info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-sm font-bold text-foreground cursor-pointer hover:underline">
+                  <div className="flex items-center gap-1.5 flex-wrap leading-tight">
+                    <span className="text-[14px] font-semibold text-foreground cursor-pointer hover:underline">
                       {post.author?.display_name || "Membro"}
                     </span>
                     {ROLE_LABEL[post.author?.role] && (
-                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                      <Badge
+                        className={cn(
+                          "text-[10px] h-4 px-1.5 border-0",
+                          post.author.role === "OWNER"
+                            ? "bg-primary/15 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        )}
+                      >
                         {ROLE_LABEL[post.author.role]}
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[13px] text-muted-foreground">
                       · {formatDistanceToNow(new Date(post.created_at), { addSuffix: false, locale: ptBR })}
                     </span>
                     {post.space && (
@@ -538,7 +550,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                 </div>
 
                 {/* ═══ COMMENTS SECTION ═══ */}
-                <div className="px-5 py-4 space-y-4">
+                <div className="px-5 py-4 divide-y divide-border/50">
                   {post.is_locked && (
                     <p className="text-center text-sm text-muted-foreground py-2">🔒 Comentários bloqueados neste post.</p>
                   )}
@@ -551,7 +563,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     const hiddenCount = replies.length - 2;
 
                     return (
-                      <div key={comment.id} className="group/comment">
+                      <div key={comment.id} className="group/comment py-3 first:pt-0">
                         {/* Top-level comment */}
                         <div className="flex gap-3">
                           <div className="relative shrink-0">
@@ -645,7 +657,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 {(member?.display_name || "U").charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 flex items-center gap-2 border border-border rounded-lg px-3 py-1.5 focus-within:border-primary/50 transition-colors">
+                            <div className="flex-1 flex items-center gap-2 border border-border rounded-full px-3 py-1.5 focus-within:border-primary/50 transition-colors">
                               <input
                                 type="text"
                                 value={replyBody}
@@ -665,11 +677,11 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
 
                         {/* Nested replies */}
                         {replies.length > 0 && (
-                          <div className="ml-11 mt-3 space-y-3 border-l-2 border-border/40 pl-4">
+                          <div className="ml-11 mt-3 space-y-2 pl-4 border-l-2 border-border/30">
                             {visibleReplies.map((reply: any) => {
                               const rLiked = userReactions?.commentLikes.includes(reply.id);
                               return (
-                                <div key={reply.id} className="flex gap-2.5 group/reply">
+                                <div key={reply.id} className="flex gap-2.5 group/reply rounded-lg p-2 bg-muted/30">
                                   <div className="relative shrink-0">
                                     <Avatar className="h-6 w-6">
                                       <AvatarImage src={reply.author?.avatar_url || ""} />
@@ -716,8 +728,9 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 const next = new Set(expandedReplies);
                                 if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id);
                                 setExpandedReplies(next);
-                              }} className="flex items-center gap-1 text-xs text-primary hover:underline">
-                                {isExpanded ? <><ChevronUp className="h-3.5 w-3.5" />Ocultar respostas</> : <><ChevronDown className="h-3.5 w-3.5" />Ver {hiddenCount} mais {hiddenCount === 1 ? "resposta" : "respostas"}</>}
+                              }} className="flex items-center gap-1.5 text-xs text-primary hover:underline pl-2">
+                                <span className="text-primary">↩</span>
+                                {isExpanded ? "Ocultar respostas" : `Ver ${hiddenCount} mais ${hiddenCount === 1 ? "resposta" : "respostas"}`}
                               </button>
                             )}
                           </div>
@@ -749,7 +762,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         {(member?.display_name || "U").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 flex items-center gap-2 border border-border rounded-lg px-3 py-2 focus-within:border-primary/50 transition-colors">
+                    <div className="flex-1 flex items-center gap-2 border border-border rounded-full px-4 py-2 focus-within:border-primary/50 transition-colors">
                       <input
                         type="text"
                         value={commentBody}
