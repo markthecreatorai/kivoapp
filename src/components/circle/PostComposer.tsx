@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2,
+  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -49,9 +49,13 @@ export default function PostComposer({
   const [pollOptions, setPollOptions] = useState<string[]>(["", "", ""]);
 
   // Inline sections toggled by toolbar
-  const [showVideoInput, setShowVideoInput] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkModalUrl, setLinkModalUrl] = useState("");
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoModalUrl, setVideoModalUrl] = useState("");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [draggingVideo, setDraggingVideo] = useState(false);
+  const videoFileRef = useRef<HTMLInputElement>(null);
 
   const displayName = memberDisplayName || user?.email?.split("@")[0] || "User";
   const avatarUrl = memberAvatarUrl || "";
@@ -197,20 +201,12 @@ export default function PostComposer({
           </div>
         )}
 
-        {/* Video URL inline */}
-        {showVideoInput && (
-          <div className="flex items-center gap-2">
-            <Video className="h-4 w-4 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="URL do vídeo (YouTube, Vimeo, Loom)"
-              className="flex-1 text-sm text-foreground placeholder:text-muted-foreground/50 bg-muted/30 rounded-lg px-3 py-1.5 border border-border outline-none"
-            />
-            <button onClick={() => { setShowVideoInput(false); setVideoUrl(""); }} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
+        {/* Video shown as tag */}
+        {videoUrl && (
+          <div className="flex items-center gap-2 text-sm">
+            <Video className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="text-primary truncate">{videoUrl}</span>
+            <button onClick={() => setVideoUrl("")} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
 
@@ -290,8 +286,8 @@ export default function PostComposer({
             <Link2 className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setShowVideoInput(!showVideoInput)}
-            className={cn("p-2 rounded-lg transition-colors", showVideoInput ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
+            onClick={() => { setVideoModalUrl(""); setShowVideoModal(true); }}
+            className={cn("p-2 rounded-lg transition-colors", videoUrl ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
             title="Vídeo"
           >
             <Video className="h-4 w-4" />
@@ -423,6 +419,121 @@ export default function PostComposer({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Video modal */}
+      <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+        <DialogContent className="sm:max-w-md p-6 [&>button]:hidden">
+          <DialogHeader className="pb-0">
+            <DialogTitle className="text-lg font-bold text-foreground">Add video</DialogTitle>
+          </DialogHeader>
+          <div className="pt-4 space-y-4">
+            {/* URL input */}
+            <div className="flex items-center gap-2 border border-border rounded-lg px-4 py-3 focus-within:border-primary transition-colors">
+              <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                type="url"
+                value={videoModalUrl}
+                onChange={(e) => setVideoModalUrl(e.target.value)}
+                placeholder="YouTube, Loom, Vimeo, or Wistia link"
+                className="flex-1 text-sm text-foreground placeholder:text-muted-foreground/60 bg-transparent outline-none"
+                autoFocus
+              />
+            </div>
+
+            {/* Drag and drop area */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDraggingVideo(true); }}
+              onDragLeave={() => setDraggingVideo(false)}
+              onDrop={async (e) => {
+                e.preventDefault();
+                setDraggingVideo(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file && /\.(mp4|mov|webm)$/i.test(file.name)) {
+                  await handleVideoUpload(file);
+                } else {
+                  toast.error("Formato não suportado. Use MP4, MOV ou WebM.");
+                }
+              }}
+              className={cn(
+                "border-2 border-dashed rounded-lg flex flex-col items-center justify-center py-8 transition-colors cursor-pointer",
+                draggingVideo ? "border-primary bg-primary/5" : "border-border"
+              )}
+              onClick={() => videoFileRef.current?.click()}
+            >
+              {uploadingVideo ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : (
+                <>
+                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop video here{" "}
+                    <span className="text-primary hover:underline">or select file</span>
+                  </p>
+                </>
+              )}
+            </div>
+            <input
+              ref={videoFileRef}
+              type="file"
+              accept="video/mp4,video/quicktime,video/webm"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleVideoUpload(file);
+              }}
+            />
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowVideoModal(false)}
+                className="px-4 py-1.5 text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={() => {
+                  const url = videoModalUrl.trim();
+                  if (!url) return;
+                  try {
+                    new URL(url);
+                    setVideoUrl(url);
+                    setShowVideoModal(false);
+                  } catch {
+                    toast.error("URL inválida");
+                  }
+                }}
+                className="px-4 py-1.5 rounded-sm text-sm font-bold uppercase tracking-wide text-primary-foreground bg-primary hover:opacity-90 transition-opacity"
+              >
+                ADD
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
+  async function handleVideoUpload(file: File) {
+    if (!user) return;
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Vídeo deve ter no máximo 50MB");
+      return;
+    }
+    setUploadingVideo(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/video-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("community").upload(path, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("community").getPublicUrl(path);
+      setVideoUrl(publicUrl);
+      setShowVideoModal(false);
+      toast.success("Vídeo enviado!");
+    } catch (e: any) {
+      toast.error("Erro no upload: " + (e.message || ""));
+    } finally {
+      setUploadingVideo(false);
+    }
+  }
 }
