@@ -311,7 +311,7 @@ export default function CommunityLanding() {
   const joinBtnLabel = isAlreadyMember
     ? "Ir para a Comunidade"
     : isPaid && !inviteCode
-      ? `Assinar — ${formatPrice(price!, billingPeriod)}`
+      ? (trialDays > 0 ? `Iniciar ${trialDays} dias grátis` : `Assinar — ${formatPrice(price!, billingPeriod)}`)
       : requireApproval
         ? "Solicitar Entrada"
         : "Entrar na Comunidade";
@@ -356,7 +356,7 @@ export default function CommunityLanding() {
               >
                 {isAlreadyMember
                   ? <><UserPlus className="h-3.5 w-3.5" />Convidar Pessoas</>
-                  : isPaid ? `Assinar` : "Participar Grátis"
+                  : isPaid ? (trialDays > 0 ? `Teste grátis` : `Assinar`) : "Participar Grátis"
                 }
               </Button>
             </div>
@@ -614,7 +614,7 @@ export default function CommunityLanding() {
                   {isAlreadyMember
                     ? <><UserPlus className="h-4 w-4" /> Convidar Pessoas</>
                     : isPaid && !inviteCode
-                      ? <><CreditCard className="h-4 w-4" /> {formatPrice(price!, billingPeriod)}</>
+                      ? <><CreditCard className="h-4 w-4" /> {trialDays > 0 ? `Iniciar ${trialDays} dias grátis` : `Assinar ${formatPrice(price!, billingPeriod)}`}</>
                       : requireApproval
                         ? <><UserCheck className="h-4 w-4" /> Solicitar Entrada</>
                         : <><UserCheck className="h-4 w-4" /> Entrar na Comunidade</>
@@ -642,9 +642,39 @@ export default function CommunityLanding() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {community.icon_url && <img src={community.icon_url} alt="" className="h-7 w-7 rounded-lg object-cover" />}
-              {isPaid && !inviteCode ? `Assinar — ${formatPrice(price!, billingPeriod)}` : "Entrar na Comunidade"}
+              {isPaid && !inviteCode ? (trialDays > 0 ? `Iniciar ${trialDays} dias grátis` : `Assinar — ${formatPrice(price!, billingPeriod)}`) : "Entrar na Comunidade"}
             </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              {isPaid && !inviteCode
+                ? (trialDays > 0 ? `Acesso imediato. Cobrança após ${trialDays} dias.` : "Acesso imediato após confirmação do pagamento.")
+                : (requireApproval ? "Sua solicitação será revisada pelo admin." : "Leva menos de 1 minuto para entrar.")}
+            </p>
           </DialogHeader>
+
+          {!user && modalMode !== "forgot-password" && (
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-muted mb-2">
+              <button
+                type="button"
+                onClick={() => setModalMode("signup")}
+                className={cn(
+                  "h-8 rounded-md text-xs font-medium transition-colors",
+                  modalMode === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                Criar conta
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalMode("login")}
+                className={cn(
+                  "h-8 rounded-md text-xs font-medium transition-colors",
+                  modalMode === "login" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                Entrar
+              </button>
+            </div>
+          )}
 
           {/* Logged-in user */}
           {user ? (
@@ -678,7 +708,7 @@ export default function CommunityLanding() {
 
               <Button size="lg" className="w-full gap-2" onClick={handleLoggedUserJoin} disabled={isLoading} id="modal-join-logged">
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isPaid ? <CreditCard className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                {isPaid && !inviteCode ? "Continuar para Pagamento" : requireApproval ? "Solicitar Entrada" : "Entrar Agora"}
+                {isPaid && !inviteCode ? (trialDays > 0 ? `Iniciar ${trialDays} dias grátis` : "Continuar para pagamento") : requireApproval ? "Solicitar Entrada" : "Entrar Agora"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Não é você?{" "}
@@ -746,7 +776,7 @@ export default function CommunityLanding() {
 
                 <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading} id="modal-join-submit">
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isPaid ? <CreditCard className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                  {isPaid && !inviteCode ? "Criar conta e pagar" : requireApproval ? "Solicitar Entrada" : "Criar conta e entrar"}
+                  {isPaid && !inviteCode ? (trialDays > 0 ? `Criar conta e iniciar ${trialDays} dias grátis` : "Criar conta e pagar") : requireApproval ? "Solicitar Entrada" : "Criar conta e entrar"}
                 </Button>
 
                 <p className="text-center text-xs text-muted-foreground">
