@@ -447,6 +447,15 @@ export default function CircleFeed() {
           ))}
         </div>
       )}
+
+      {/* Post detail modal */}
+      {activePostId && (
+        <PostDetailModal
+          postId={activePostId}
+          open={!!activePostId}
+          onClose={handleClosePost}
+        />
+      )}
     </div>
   );
 }
