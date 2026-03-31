@@ -25,9 +25,10 @@ interface StorefrontPreviewProps {
   storefront: StorefrontData;
   theme: StorefrontTheme | null | undefined;
   blocks: StorefrontBlock[];
+  products?: any[];
 }
 
-export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPreviewProps) {
+export function StorefrontPreview({ storefront, theme, blocks, products: externalProducts }: StorefrontPreviewProps) {
   const currentTheme = {
     primary_color: theme?.primary_color || '#F9423A',
     secondary_color: theme?.secondary_color || '#1a1a1a',
@@ -483,6 +484,51 @@ export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPrevi
                 ))
               )}
             </div>
+
+            {/* Product List from store management */}
+            {externalProducts && externalProducts.filter((p: any) => p.status === 'PUBLISHED').length > 0 && (
+              <div className="flex flex-col w-full space-y-2.5 px-5 mt-3 relative z-20">
+                {externalProducts
+                  .filter((p: any) => p.status === 'PUBLISHED')
+                  .map((product: any) => {
+                    const price = product.prices?.find((p: any) => p.is_default && p.is_active);
+                    return (
+                      <div
+                        key={product.id}
+                        className="w-full overflow-hidden border rounded-xl"
+                        style={{ borderColor: currentTheme.primary_color + '30' }}
+                      >
+                        {product.thumbnail_url && (
+                          <img
+                            src={product.thumbnail_url}
+                            alt={product.name}
+                            className="w-full h-28 object-cover"
+                          />
+                        )}
+                        <div className="p-3">
+                          <p className="font-medium text-sm" style={{ color: currentTheme.text_color }}>
+                            {product.name}
+                          </p>
+                          {price && (
+                            <p className="text-xs mt-0.5 opacity-70" style={{ color: currentTheme.text_color }}>
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price.amount / 100)}
+                            </p>
+                          )}
+                          <button
+                            className={cn(
+                              "w-full mt-2.5 py-2 text-xs font-medium text-white transition-all hover:opacity-90",
+                              getButtonClass()
+                            )}
+                            style={{ backgroundColor: currentTheme.primary_color }}
+                          >
+                            {product.listing_button_text || 'Ver produto'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
 
         {/* Footer */}
         <div className="mt-8 mb-6 pb-4 text-center">
