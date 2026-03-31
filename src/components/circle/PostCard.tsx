@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Pin, BarChart3, Play, Flag } from "lucide-react";
+import { ThumbsUp, MessageCircle, Pin, BarChart3, Play, Flag } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -145,7 +145,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
             isMuted && "opacity-50 cursor-not-allowed"
           )}
         >
-          <Heart className={cn("h-[14px] w-[14px]", liked && "fill-current")} />
+          <ThumbsUp className={cn("h-[14px] w-[14px]", liked && "fill-current")} />
           {post.like_count > 0 && <span>{post.like_count}</span>}
         </button>
 
