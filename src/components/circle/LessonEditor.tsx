@@ -247,6 +247,35 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           </Button>
         </div>
       </div>
+      {/* Video Dialog */}
+      <Dialog open={videoDialogOpen} onOpenChange={(open) => { setVideoDialogOpen(open); if (!open) setVideoUrl(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar vídeo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Input
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="YouTube, Loom, Vimeo ou link de vídeo"
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddVideo(); }}
+            />
+            <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center gap-2 text-center">
+              <Upload className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Arraste e solte o vídeo aqui</p>
+              <button type="button" className="text-sm text-primary hover:underline">ou selecione arquivo</button>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setVideoDialogOpen(false); setVideoUrl(""); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddVideo} disabled={!videoUrl.trim()}>
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
