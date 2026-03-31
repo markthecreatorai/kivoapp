@@ -140,6 +140,17 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
           <h3 className="font-bold text-foreground text-[15px] leading-tight">
             {community.name}
           </h3>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.host}/c/${community.slug}`);
+              toast.success("Link copiado!");
+            }}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
+            title="Copiar link"
+          >
+            <Link2 className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{window.location.host}/c/{community.slug}</span>
+          </button>
 
           {/* Description */}
           {(community.description || community.long_description) ? (
