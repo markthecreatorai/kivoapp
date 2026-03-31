@@ -4,12 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Paperclip, Link2, Video, BarChart3, Smile, X, Loader2, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthProvider";
+import EmojiPicker from "@/components/circle/EmojiPicker";
+import GifPicker from "@/components/circle/GifPicker";
 
 interface PostComposerProps {
   communityId: string;
@@ -299,20 +302,39 @@ export default function PostComposer({
           >
             <BarChart3 className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => toast.info("Emoji picker em breve!")}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            title="Emoji"
-          >
-            <Smile className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => toast.info("GIF picker em breve!")}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs font-bold"
-            title="GIF"
-          >
-            GIF
-          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Emoji"
+              >
+                <Smile className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-auto p-0 border-0 shadow-none bg-transparent">
+              <EmojiPicker onSelect={(emoji) => {
+                setBody(prev => prev + emoji);
+                if (bodyRef.current) {
+                  bodyRef.current.focus();
+                }
+              }} />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs font-bold"
+                title="GIF"
+              >
+                GIF
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-auto p-0 border-0 shadow-none bg-transparent">
+              <GifPicker onSelect={(gifUrl) => {
+                setImages(prev => [...prev, gifUrl]);
+              }} />
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Right: category + cancel + post */}
