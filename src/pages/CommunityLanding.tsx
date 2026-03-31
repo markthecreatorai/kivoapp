@@ -549,7 +549,7 @@ export default function CommunityLanding() {
       </div>
 
       {/* ── JOIN MODAL ── */}
-      <Dialog open={showJoinModal} onOpenChange={setShowJoinModal}>
+      <Dialog open={showJoinModal} onOpenChange={(open) => { setShowJoinModal(open); if (!open) { setForgotSent(false); setForgotEmail(""); setForgotLoading(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
