@@ -556,7 +556,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     const hiddenCount = replies.length - 2;
 
                     return (
-                      <div key={comment.id} className="group/comment">
+                      <div key={comment.id} className="group/comment py-3 first:pt-0">
                         {/* Top-level comment */}
                         <div className="flex gap-3">
                           <div className="relative shrink-0">
