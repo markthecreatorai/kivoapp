@@ -1,20 +1,28 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Lock, HelpCircle } from "lucide-react";
+import { Lock, HelpCircle, Settings } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getLevelInfo, LEVEL_THRESHOLDS } from "@/components/circle/CircleLayout";
 import MemberProfileModal from "@/components/circle/MemberProfileModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function CircleLeaderboard() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [levelNames, setLevelNames] = useState<Record<number, string>>({});
+  const [savingNames, setSavingNames] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
@@ -85,6 +93,36 @@ export default function CircleLeaderboard() {
     enabled: !!community,
   });
 
+  // Custom level names from community
+  const savedLevelNames: Record<number, string> = (community as any)?.level_names || {};
+  const getLevelName = (level: number) => savedLevelNames[level] || `Nível ${level}`;
+
+  const isAdmin = member?.role === "ADMIN" || member?.role === "OWNER";
+
+  const openSettings = () => {
+    setLevelNames({ ...savedLevelNames });
+    setSettingsOpen(true);
+  };
+
+  const handleSaveLevelNames = async () => {
+    if (!community) return;
+    setSavingNames(true);
+    try {
+      const { error } = await supabase
+        .from("communities")
+        .update({ level_names: levelNames } as any)
+        .eq("id", community.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
+      toast.success("Nomes dos níveis salvos!");
+      setSettingsOpen(false);
+    } catch {
+      toast.error("Erro ao salvar nomes dos níveis");
+    } finally {
+      setSavingNames(false);
+    }
+  };
+
   const myLevel = member ? getLevelInfo(member.total_points) : null;
   const nextLevel = myLevel ? LEVEL_THRESHOLDS.find((l) => l.level === myLevel.level + 1) : null;
   const pointsToNext = nextLevel ? nextLevel.min - (member?.total_points || 0) : 0;
@@ -141,7 +179,16 @@ export default function CircleLeaderboard() {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6" style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
       {/* Profile + Levels Card */}
-      <Card className="p-6 md:p-8 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+      <Card className="p-6 md:p-8 rounded-xl border-0 relative" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+        {isAdmin && (
+          <button
+            onClick={openSettings}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            title="Configurar níveis"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        )}
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left: Avatar + Name */}
           <div className="flex flex-col items-center text-center min-w-[200px]">
@@ -162,7 +209,7 @@ export default function CircleLeaderboard() {
               )}
             </div>
             <h2 className="text-xl font-bold text-foreground mt-4">{member?.display_name || "Membro"}</h2>
-            {myLevel && <p className="text-sm font-medium mt-0.5" style={{ color: "#3B82F6" }}>Nível {myLevel.level}</p>}
+            {myLevel && <p className="text-sm font-medium mt-0.5" style={{ color: "#3B82F6" }}>{getLevelName(myLevel.level)}</p>}
             {nextLevel && (
               <p className="text-sm mt-1 flex items-center gap-1" style={{ color: "#6B7280" }}>
                 <span className="font-semibold">{pointsToNext}</span> pontos para subir de nível
@@ -214,7 +261,7 @@ export default function CircleLeaderboard() {
                         "text-sm font-semibold",
                         isCurrent ? "text-foreground" : isUnlocked ? "text-foreground" : "text-muted-foreground"
                       )}>
-                        Nível {l.level}
+                        {getLevelName(l.level)}
                       </p>
                       <p className="text-xs text-muted-foreground">{l.percent}% dos membros</p>
                     </div>
@@ -261,6 +308,38 @@ export default function CircleLeaderboard() {
         open={!!profileMemberId}
         onOpenChange={(open) => !open && setProfileMemberId(null)}
       />
+
+      {/* Level names settings modal */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Leaderboards</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Torne seu grupo divertido dando nomes aos seus níveis.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {LEVEL_THRESHOLDS.map((l) => (
+              <Input
+                key={l.level}
+                placeholder={`Nível ${l.level} -`}
+                value={levelNames[l.level] || ""}
+                onChange={(e) =>
+                  setLevelNames((prev) => ({ ...prev, [l.level]: e.target.value }))
+                }
+              />
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSettingsOpen(false)}>
+              CANCELAR
+            </Button>
+            <Button onClick={handleSaveLevelNames} disabled={savingNames}>
+              {savingNames ? "SALVANDO..." : "SALVAR"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
