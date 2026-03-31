@@ -6,7 +6,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Calendar, Lock, Video, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { MessageCircle, Calendar, Lock, Video, SlidersHorizontal, ChevronDown, X, CheckCircle2, Circle, PlayCircle, MessageSquare, Smartphone, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
