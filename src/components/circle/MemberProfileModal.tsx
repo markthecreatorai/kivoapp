@@ -18,6 +18,7 @@ interface MemberProfileModalProps {
 }
 
 export default function MemberProfileModal({ memberId, communityId, open, onOpenChange }: MemberProfileModalProps) {
+  const { slug: communitySlug } = useParams();
   const { data: member } = useQuery({
     queryKey: ["circle-member-profile", memberId],
     queryFn: async () => {
