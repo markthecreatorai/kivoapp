@@ -27,7 +27,14 @@ export function useUpdateMemberProfile(memberId: string, communityId: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["circle-member", communityId] });
+      // Invalidate all community member queries so avatar/name updates reflect everywhere
+      queryClient.invalidateQueries({ queryKey: ["circle-member"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-member-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-leaderboard-all"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-lb-7day"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-lb-30day"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-members"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-member-profile"] });
       toast.success("Perfil atualizado!");
     },
     onError: (err: any) => toast.error(err.message || "Erro ao atualizar perfil"),
