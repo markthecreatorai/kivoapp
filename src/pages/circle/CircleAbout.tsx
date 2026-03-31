@@ -223,7 +223,7 @@ export default function CircleAbout() {
               <img src={community.cover_image_url!} alt="" className="w-full h-full object-cover" />
             </div>
           )}
-          {isAdmin && (
+          {isAdminEditing && (
             <button
               onClick={() => { setMediaVideoUrl(videoUrl || ""); setShowMediaModal(true); }}
               className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-lg px-2.5 py-1.5 text-xs flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
