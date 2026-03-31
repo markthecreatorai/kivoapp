@@ -661,10 +661,10 @@ export default function CommunityLanding() {
                 </div>
 
                 <div className="text-right">
-                  <a href="/forgot-password" target="_blank" rel="noopener noreferrer"
+                  <button type="button" onClick={() => { setForgotEmail(loginData.email); setForgotSent(false); setModalMode("forgot-password"); }}
                     className="text-xs text-primary hover:underline">
                     Esqueci minha senha
-                  </a>
+                  </button>
                 </div>
 
                 <Button type="submit" size="lg" className="w-full gap-2" disabled={loginLoading}>
