@@ -237,7 +237,7 @@ export default function CommunityLanding() {
                   size="sm"
                   variant="ghost"
                   className="h-8 px-3 text-xs text-gray-600 dark:text-gray-400"
-                  onClick={() => navigate(`/login?redirect=/c/${slug}`)}
+                  onClick={() => { setModalMode("login"); setShowJoinModal(true); }}
                 >
                   Entrar
                 </Button>
