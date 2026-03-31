@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Pin, BarChart3, Play, Flag } from "lucide-react";
+import { ThumbsUp, MessageCircle, Pin, BarChart3, Play, Flag } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
