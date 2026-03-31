@@ -50,7 +50,8 @@ export default function PostComposer({
 
   // Inline sections toggled by toolbar
   const [showVideoInput, setShowVideoInput] = useState(false);
-  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkModalUrl, setLinkModalUrl] = useState("");
 
   const displayName = memberDisplayName || user?.email?.split("@")[0] || "User";
   const avatarUrl = memberAvatarUrl || "";
