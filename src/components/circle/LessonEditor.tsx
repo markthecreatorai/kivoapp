@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -12,10 +12,17 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Bold, Italic, Strikethrough, Code, List, ListOrdered,
   Quote, Image as ImageIcon, Link as LinkIcon, Youtube as YoutubeIcon,
   Heading1, Heading2, Heading3, Heading4,
-  Loader2, Save, X, CheckCircle2,
+  Loader2, Save, X, CheckCircle2, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -64,6 +71,8 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   const [title, setTitle] = useState(lesson.title);
   const [isPublished, setIsPublished] = useState(lesson.is_published);
   const [hasChanges, setHasChanges] = useState(false);
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
 
   const editor = useEditor({
     extensions: [
@@ -137,11 +146,12 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     }
   };
 
-  const promptAndInsertYoutube = () => {
-    const url = window.prompt("URL do vídeo YouTube:");
-    if (url && editor) {
-      editor.chain().focus().setYoutubeVideo({ src: url }).run();
-    }
+  const handleAddVideo = () => {
+    if (!videoUrl.trim() || !editor) return;
+    editor.chain().focus().setYoutubeVideo({ src: videoUrl.trim() }).run();
+    setVideoUrl("");
+    setVideoDialogOpen(false);
+    setHasChanges(true);
   };
 
   if (!isAdmin) {
@@ -207,7 +217,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           <Separator orientation="vertical" className="h-5 mx-1" />
           <ToolbarButton editor={editor} icon={ImageIcon} label="Image" action={promptAndInsertImage} />
           <ToolbarButton editor={editor} icon={LinkIcon} label="Link" action={promptAndInsertLink} isActive={editor?.isActive("link")} />
-          <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={promptAndInsertYoutube} />
+          <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={() => setVideoDialogOpen(true)} />
         </div>
 
         {/* Tiptap Editor Content */}
@@ -237,6 +247,35 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           </Button>
         </div>
       </div>
+      {/* Video Dialog */}
+      <Dialog open={videoDialogOpen} onOpenChange={(open) => { setVideoDialogOpen(open); if (!open) setVideoUrl(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar vídeo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Input
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="YouTube, Loom, Vimeo ou link de vídeo"
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddVideo(); }}
+            />
+            <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center gap-2 text-center">
+              <Upload className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Arraste e solte o vídeo aqui</p>
+              <button type="button" className="text-sm text-primary hover:underline">ou selecione arquivo</button>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setVideoDialogOpen(false); setVideoUrl(""); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddVideo} disabled={!videoUrl.trim()}>
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
