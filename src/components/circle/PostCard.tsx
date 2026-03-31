@@ -21,6 +21,7 @@ interface PostCardProps {
   showSpace?: boolean;
   communityId?: string;
   memberId?: string;
+  onOpenPost?: (postId: string) => void;
 }
 
 function getVideoThumb(url: string | null) {
