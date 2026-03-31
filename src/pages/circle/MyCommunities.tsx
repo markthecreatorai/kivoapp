@@ -230,9 +230,9 @@ export default function MyCommunities() {
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-start gap-3">
                       {c.icon_url ? (
-                        <img src={c.icon_url} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 -mt-10 ring-2 ring-background shadow-md" />
+                        <img src={c.icon_url} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 -mt-8 ring-2 ring-background shadow-md" />
                       ) : (
-                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 -mt-10 ring-2 ring-background shadow-md">
+                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 -mt-8 ring-2 ring-background shadow-md">
                           <MessageSquare className="h-5 w-5 text-primary" />
                         </div>
                       )}
