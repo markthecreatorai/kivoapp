@@ -551,7 +551,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
             {children}
           </div>
           {/* Right sidebar ~35% — desktop only, hidden on classroom */}
-          {!location.pathname.startsWith("/circle/classroom") && (
+          {!location.pathname.includes("/classroom") && (
             <div className="hidden lg:block w-[340px] shrink-0">
               <div className="sticky top-[108px]">
                 <CircleRightSidebarSkool
