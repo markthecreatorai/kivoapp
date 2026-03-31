@@ -227,35 +227,34 @@ export default function MyCommunities() {
                   </div>
 
                   {/* Body */}
-                  <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex items-start gap-3 -mt-6 relative z-10">
+                  <div className="p-4 pt-0 flex-1 flex flex-col items-center text-center">
+                    <div className="-mt-8 relative z-10 mb-2">
                       {c.icon_url ? (
-                        <img src={c.icon_url} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 ring-2 ring-background shadow-md" />
+                        <img src={c.icon_url} alt="" className="h-14 w-14 rounded-xl object-cover ring-2 ring-background shadow-md" />
                       ) : (
-                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-2 ring-background shadow-md">
-                          <MessageSquare className="h-5 w-5 text-primary" />
+                        <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center ring-2 ring-background shadow-md">
+                          <MessageSquare className="h-6 w-6 text-primary" />
                         </div>
                       )}
-                      <div className="min-w-0 pt-0.5">
-                        <h3 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">
-                          {c.name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Users className="h-3 w-3" />{c.member_count || 0}</span>
-                          {c.access_type === "PAID_SUBSCRIPTION" ? (
-                            <span className="flex items-center gap-1 text-purple-500"><Lock className="h-3 w-3" />Paga</span>
-                          ) : (
-                            <span className="flex items-center gap-1 text-emerald-500"><Globe className="h-3 w-3" />Gratuita</span>
-                          )}
-                        </div>
-                      </div>
+                    </div>
+
+                    <h3 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                      {c.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Users className="h-3 w-3" />{c.member_count || 0}</span>
+                      {c.access_type === "PAID_SUBSCRIPTION" ? (
+                        <span className="flex items-center gap-1 text-purple-500"><Lock className="h-3 w-3" />Paga</span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-emerald-500"><Globe className="h-3 w-3" />Gratuita</span>
+                      )}
                     </div>
 
                     {c.description && (
                       <p className="text-xs text-muted-foreground mt-2 line-clamp-2 flex-1">{c.description}</p>
                     )}
 
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50 w-full">
                       <span className="text-xs font-medium text-primary group-hover:underline">
                         Acessar comunidade
                       </span>
