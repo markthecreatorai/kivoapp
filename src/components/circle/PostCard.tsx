@@ -180,7 +180,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
       </div>
 
       {/* Title + body + thumbnail */}
-      <Link to={`/circle/post/${post.id}`} className="block mt-3">
+      <div className="block mt-3 cursor-pointer" onClick={() => onOpenPost?.(post.id)}>
         <div className="flex gap-4">
           <div className="flex-1 min-w-0">
             <h3 className="text-base font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
