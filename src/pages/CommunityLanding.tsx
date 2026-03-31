@@ -53,9 +53,12 @@ export default function CommunityLanding() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [modalMode, setModalMode] = useState<"signup" | "login">("signup");
+  const [modalMode, setModalMode] = useState<"signup" | "login" | "forgot-password">("signup");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [loginLoading, setLoginLoading] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const [formData, setFormData] = useState({ display_name: "", email: "", password: "" });
   const [videoPlaying, setVideoPlaying] = useState(false);
 
@@ -160,13 +163,28 @@ export default function CommunityLanding() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: loginData.email, password: loginData.password });
       if (error) throw error;
-      // After login, the useEffect will detect existingMember and redirect, or we join
       toast.success("Login realizado!");
-      // Don't close modal — let the logged-in state take over and show the join button
     } catch (err: any) {
       toast.error(err.message || "Erro ao fazer login");
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) { toast.error("Informe seu email"); return; }
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setForgotSent(true);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar email");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -531,7 +549,7 @@ export default function CommunityLanding() {
       </div>
 
       {/* ── JOIN MODAL ── */}
-      <Dialog open={showJoinModal} onOpenChange={setShowJoinModal}>
+      <Dialog open={showJoinModal} onOpenChange={(open) => { setShowJoinModal(open); if (!open) { setForgotSent(false); setForgotEmail(""); setForgotLoading(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -621,7 +639,7 @@ export default function CommunityLanding() {
                   <a href="/terms" className="text-primary hover:underline">Termos de Uso</a>.
                 </p>
               </form>
-            ) : (
+            ) : modalMode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4 pt-2">
                 <div className="space-y-1">
                   <Label htmlFor="modal-login-email" className="text-sm">Email</Label>
@@ -643,10 +661,10 @@ export default function CommunityLanding() {
                 </div>
 
                 <div className="text-right">
-                  <a href="/forgot-password" target="_blank" rel="noopener noreferrer"
+                  <button type="button" onClick={() => { setForgotEmail(loginData.email); setForgotSent(false); setModalMode("forgot-password"); }}
                     className="text-xs text-primary hover:underline">
                     Esqueci minha senha
-                  </a>
+                  </button>
                 </div>
 
                 <Button type="submit" size="lg" className="w-full gap-2" disabled={loginLoading}>
@@ -662,7 +680,46 @@ export default function CommunityLanding() {
                   </button>
                 </p>
               </form>
-            )}
+            ) : modalMode === "forgot-password" ? (
+              <div className="space-y-4 pt-2">
+                {forgotSent ? (
+                  <div className="text-center space-y-3 py-4">
+                    <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
+                    <h3 className="font-semibold text-foreground">Email enviado!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enviamos um link de redefinição para <strong>{forgotEmail}</strong>. Verifique sua caixa de entrada.
+                    </p>
+                    <button type="button" onClick={() => { setForgotSent(false); setModalMode("login"); }}
+                      className="text-sm text-primary hover:underline flex items-center gap-1 mx-auto">
+                      ← Voltar ao login
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="text-center space-y-1">
+                      <h3 className="font-semibold text-foreground">Esqueceu sua senha?</h3>
+                      <p className="text-sm text-muted-foreground">Digite seu email e enviaremos um link para redefinir sua senha</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="modal-forgot-email" className="text-sm">Email</Label>
+                      <Input id="modal-forgot-email" type="email" placeholder="seu@email.com" value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)} className="h-10" />
+                    </div>
+                    <Button type="submit" size="lg" className="w-full gap-2" disabled={forgotLoading}>
+                      {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Enviar link de redefinição
+                    </Button>
+                    <p className="text-center">
+                      <button type="button" onClick={() => setModalMode("login")}
+                        className="text-sm text-primary hover:underline">
+                        ← Voltar ao login
+                      </button>
+                    </p>
+                  </form>
+                )}
+              </div>
+            ) : null}
+
         </DialogContent>
       </Dialog>
       {/* ── INVITE MODAL ── */}
