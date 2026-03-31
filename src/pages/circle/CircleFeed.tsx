@@ -22,12 +22,32 @@ import { useIsMobile } from "@/hooks/use-mobile";
 export default function CircleFeed() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
-  const { slug: spaceSlug } = useParams();
+  const { slug: communitySlug, spaceSlug } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [showCompose, setShowCompose] = useState(false);
   const [filter, setFilter] = useState<"recent" | "popular">("recent");
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
+
+  // Post modal state from URL search param
+  const activePostId = searchParams.get("post");
+
+  const handleOpenPost = useCallback((postId: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("post", postId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const handleClosePost = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("post");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
