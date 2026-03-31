@@ -230,14 +230,6 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
         <DialogContent className="max-w-2xl w-full p-0 gap-0 max-h-[90vh] overflow-hidden">
           <VisuallyHidden><DialogTitle>Post detail</DialogTitle></VisuallyHidden>
 
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute right-4 top-4 z-10 rounded-sm p-1 opacity-70 hover:opacity-100 transition-opacity"
-          >
-            <X className="h-4 w-4" />
-          </button>
-
           <ScrollArea className="max-h-[90vh]">
             <div className="p-5 md:p-6 space-y-6">
               {isLoading ? (
