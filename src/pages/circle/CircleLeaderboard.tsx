@@ -209,7 +209,7 @@ export default function CircleLeaderboard() {
               )}
             </div>
             <h2 className="text-xl font-bold text-foreground mt-4">{member?.display_name || "Membro"}</h2>
-            {myLevel && <p className="text-sm font-medium mt-0.5" style={{ color: "#3B82F6" }}>Nível {myLevel.level}</p>}
+            {myLevel && <p className="text-sm font-medium mt-0.5" style={{ color: "#3B82F6" }}>{getLevelName(myLevel.level)}</p>}
             {nextLevel && (
               <p className="text-sm mt-1 flex items-center gap-1" style={{ color: "#6B7280" }}>
                 <span className="font-semibold">{pointsToNext}</span> pontos para subir de nível
