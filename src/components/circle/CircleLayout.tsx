@@ -433,6 +433,8 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   // === MAIN LAYOUT — Skool-style ===
   const isMuted = !!(member?.muted_until && new Date(member.muted_until) > new Date());
 
+  const navItems = tabItems.filter((item) => item.path !== `/c/${slug}/about`);
+
   return (
     <div className="min-h-screen bg-muted/40 flex flex-col">
       {/* Fixed Header */}
@@ -460,9 +462,9 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
           {/* Right: level + notifications + avatar */}
           <div className="flex items-center gap-2">
             {member && (
-              <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
+              <span className="text-[11px] text-muted-foreground hidden sm:flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1">
                 🔥 {member.current_streak}
-                <span className="mx-1">·</span>
+                <span className="opacity-60">•</span>
                 {member.total_points} pts
               </span>
             )}
@@ -502,7 +504,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
 
         {/* Horizontal Tab Bar — desktop */}
         <nav className="hidden md:flex items-center gap-0 max-w-5xl mx-auto px-4 border-t border-border">
-          {tabItems.map((item) => {
+          {navItems.map((item) => {
             const active = isActive(item.path);
             const hasDmBadge = item.path === `/c/${slug}/messages` && (dmUnreadCount ?? 0) > 0;
             return (
@@ -512,7 +514,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 className={cn(
                   "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors relative",
                   active
-                    ? "border-primary text-primary"
+                    ? "border-primary text-primary bg-primary/5"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
                 )}
               >
@@ -568,7 +570,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
       {/* Mobile bottom tab bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border safe-area-pb">
         <nav className="flex items-center justify-around h-14">
-          {tabItems.map((item) => {
+          {navItems.map((item) => {
             const active = isActive(item.path);
             const hasDmBadge = item.path === `/c/${slug}/messages` && (dmUnreadCount ?? 0) > 0;
             return (

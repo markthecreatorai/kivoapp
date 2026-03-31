@@ -30,3 +30,5 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - checklist visual para setup da comunidade (about, links, pricing, discovery)
 - [x] QA final de consistência de rotas legacy (`/circle/*` vs `/c/:slug/*`)
   - corrigidos pontos críticos em `CirclePaywall`, `JoinCommunity`, `CirclePostDetail`, `CircleFeed`, `CircleDashboard`, `CircleSpaces`, `CircleRightSidebar`
+- [x] `src/components/circle/CircleLayout.tsx`
+  - polimento de header/tabs (estado ativo mais evidente e alinhamento de navegação interna)
