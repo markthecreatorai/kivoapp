@@ -68,7 +68,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
         .eq("status", "ACTIVE")
         .in("role", ["OWNER", "ADMIN"])
         .order("role")
-        .limit(6);
+        .limit(10);
       return data || [];
     },
     enabled: !!community,
