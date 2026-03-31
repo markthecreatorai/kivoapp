@@ -315,7 +315,7 @@ export default function CircleAbout() {
           <p className="text-foreground leading-relaxed whitespace-pre-line text-sm px-1">
             {community.description}
           </p>
-          {isAdmin && (
+          {isAdminEditing && (
             <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
               <Pencil className="h-4 w-4 text-muted-foreground" />
             </div>
