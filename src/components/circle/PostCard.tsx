@@ -225,13 +225,13 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           {post.like_count > 0 && <span>{post.like_count}</span>}
         </button>
 
-        <Link
-          to={`/circle/post/${post.id}`}
+        <button
+          onClick={() => onOpenPost?.(post.id)}
           className="flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50"
         >
           <MessageCircle className="h-[14px] w-[14px]" />
           {post.comment_count > 0 && <span>{post.comment_count}</span>}
-        </Link>
+        </button>
 
         {communityId && memberId && (
           <DropdownMenu>
