@@ -639,7 +639,15 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 {comment.like_count > 0 && <span>{comment.like_count}</span>}
                               </button>
                               {!post.is_locked && !isMuted && (
-                                <button onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
+                                <button onClick={() => {
+                                  if (replyTo === comment.id) {
+                                    setReplyTo(null);
+                                    setReplyBody("");
+                                  } else {
+                                    setReplyTo(comment.id);
+                                    setReplyBody(`@${comment.author?.display_name || "Membro"} `);
+                                  }
+                                }}
                                   className="text-xs font-medium text-muted-foreground hover:text-foreground">
                                   Reply
                                 </button>
