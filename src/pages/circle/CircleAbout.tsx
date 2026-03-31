@@ -255,17 +255,26 @@ export default function CircleAbout() {
       {/* ── DESCRIPTION — editable for admin ── */}
       {editingDescription ? (
         <div className="space-y-2">
-          <Textarea
-            value={descriptionDraft}
-            onChange={(e) => setDescriptionDraft(e.target.value)}
-            rows={6}
-            placeholder="Descreva sua comunidade..."
-            className="resize-none"
-            autoFocus
-          />
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={handleSaveDescription} disabled={updateCommunity.isPending}>Salvar</Button>
+          <div className="relative">
+            <Textarea
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value.slice(0, 1000))}
+              maxLength={1000}
+              rows={6}
+              placeholder="Descreva sua comunidade..."
+              className="resize-none pb-7"
+              autoFocus
+            />
+            <span className={cn(
+              "absolute bottom-2 right-3 text-xs",
+              1000 - descriptionDraft.length < 50 ? "text-destructive" : "text-muted-foreground"
+            )}>
+              {descriptionDraft.length} / 1000
+            </span>
+          </div>
+          <div className="flex items-center justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={() => setEditingDescription(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleSaveDescription} disabled={updateCommunity.isPending}>Salvar</Button>
           </div>
         </div>
       ) : community.description ? (
