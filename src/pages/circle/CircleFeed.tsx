@@ -6,7 +6,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Calendar, Lock, Filter } from "lucide-react";
+import { MessageCircle, Calendar, Lock, Filter, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow, differenceInHours, isFuture } from "date-fns";
@@ -168,23 +168,34 @@ export default function CircleFeed() {
       {/* Composer trigger — Skool style */}
       {!isMuted && canPost && (
         <>
-          {!showCompose ? (
-            <div
-              className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:shadow-sm transition-shadow"
-              onClick={() => setShowCompose(true)}
-            >
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarImage src={member?.avatar_url || ""} />
-                  <AvatarFallback className="bg-muted text-muted-foreground text-[11px] font-medium">
-                    {(member?.display_name || user?.email || "U").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 rounded-full border border-border px-4 py-2">
-                  <span className="text-muted-foreground text-[14px]">Write something...</span>
-                </div>
-              </div>
-            </div>
+           {!showCompose ? (
+             <Card
+               className="rounded-xl border-0 px-4 py-3 cursor-pointer hover:shadow-md transition-shadow"
+               style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
+               onClick={() => setShowCompose(true)}
+             >
+               <div className="flex items-center gap-3">
+                 <Avatar className="h-10 w-10 shrink-0">
+                   <AvatarImage src={member?.avatar_url || ""} />
+                   <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
+                     {(member?.display_name || user?.email || "U").charAt(0).toUpperCase()}
+                   </AvatarFallback>
+                 </Avatar>
+                 <div className="flex-1 rounded-xl bg-muted/40 px-4 py-2.5">
+                   <span className="text-muted-foreground text-sm">Write something...</span>
+                 </div>
+                 <button
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     toast.info("Go Live em breve!");
+                   }}
+                   className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 px-3 py-1.5 rounded-lg hover:bg-muted/50"
+                 >
+                   <Video className="h-4 w-4" />
+                   <span className="hidden sm:inline">Go Live</span>
+                 </button>
+               </div>
+             </Card>
           ) : community && member && (
             <PostComposer
               communityId={community.id}
