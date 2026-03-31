@@ -341,7 +341,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
 
                 {/* Author info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap leading-tight">
                     <span className="text-sm font-bold text-foreground cursor-pointer hover:underline">
                       {post.author?.display_name || "Membro"}
                     </span>
