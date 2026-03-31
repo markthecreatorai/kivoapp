@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +20,7 @@ interface PostCardProps {
   showSpace?: boolean;
   communityId?: string;
   memberId?: string;
+  onOpenPost?: (postId: string) => void;
 }
 
 function getVideoThumb(url: string | null) {
@@ -124,7 +124,7 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
   );
 }
 
-export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId }: PostCardProps) {
+export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, onOpenPost }: PostCardProps) {
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
   const thumbnail = firstImage || videoThumb;
@@ -149,14 +149,14 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
       {/* Header */}
       <div className="flex items-center gap-2.5">
-        <Link to={`/circle/post/${post.id}`} className="shrink-0">
+        <div className="shrink-0 cursor-pointer" onClick={() => onOpenPost?.(post.id)}>
           <Avatar className="h-9 w-9">
             <AvatarImage src={post.author?.avatar_url || ""} />
             <AvatarFallback className="bg-muted text-muted-foreground text-[11px] font-medium">
               {(post.author?.display_name || "U").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-        </Link>
+        </div>
         <div className="flex items-center gap-1.5 flex-wrap min-w-0 leading-none">
           <span className="text-[13px] font-bold text-foreground whitespace-nowrap">
             {post.author?.display_name || "Membro"}
@@ -179,7 +179,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
       </div>
 
       {/* Title + body + thumbnail */}
-      <Link to={`/circle/post/${post.id}`} className="block mt-3">
+      <div className="block mt-3 cursor-pointer" onClick={() => onOpenPost?.(post.id)}>
         <div className="flex gap-4">
           <div className="flex-1 min-w-0">
             <h3 className="text-base font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
@@ -204,7 +204,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
             </div>
           )}
         </div>
-      </Link>
+      </div>
 
       {/* Interactive Poll */}
       {isPoll && <PollSection post={post} memberId={memberId} />}
@@ -224,13 +224,13 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           {post.like_count > 0 && <span>{post.like_count}</span>}
         </button>
 
-        <Link
-          to={`/circle/post/${post.id}`}
+        <button
+          onClick={() => onOpenPost?.(post.id)}
           className="flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50"
         >
           <MessageCircle className="h-[14px] w-[14px]" />
           {post.comment_count > 0 && <span>{post.comment_count}</span>}
-        </Link>
+        </button>
 
         {communityId && memberId && (
           <DropdownMenu>
@@ -260,7 +260,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         <div className="flex-1" />
 
         {post.comment_count > 0 && (
-          <Link to={`/circle/post/${post.id}`} className="flex items-center gap-2">
+          <button onClick={() => onOpenPost?.(post.id)} className="flex items-center gap-2">
             <div className="flex items-center">
               {[0, 1, 2].slice(0, Math.min(post.comment_count, 3)).map((idx) => (
                 <div
@@ -277,7 +277,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
             <span className="text-[12px] text-primary hover:underline whitespace-nowrap hidden sm:block">
               New comment {timeAgo(post.updated_at)} ago
             </span>
-          </Link>
+          </button>
         )}
       </div>
     </div>

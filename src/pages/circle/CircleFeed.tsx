@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -16,17 +16,38 @@ import { ptBR } from "date-fns/locale";
 import PostCard from "@/components/circle/PostCard";
 import PostComposer from "@/components/circle/PostComposer";
 import SpaceFormModal from "@/components/circle/SpaceFormModal";
+import PostDetailModal from "@/components/circle/PostDetailModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function CircleFeed() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
-  const { slug: spaceSlug } = useParams();
+  const { slug: communitySlug, spaceSlug } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [showCompose, setShowCompose] = useState(false);
   const [filter, setFilter] = useState<"recent" | "popular">("recent");
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
+
+  // Post modal state from URL search param
+  const activePostId = searchParams.get("post");
+
+  const handleOpenPost = useCallback((postId: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("post", postId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const handleClosePost = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("post");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
@@ -421,9 +442,19 @@ export default function CircleFeed() {
               showSpace={!effectiveSpaceId}
               communityId={community?.id}
               memberId={member?.id}
+              onOpenPost={handleOpenPost}
             />
           ))}
         </div>
+      )}
+
+      {/* Post detail modal */}
+      {activePostId && (
+        <PostDetailModal
+          postId={activePostId}
+          open={!!activePostId}
+          onClose={handleClosePost}
+        />
       )}
     </div>
   );
