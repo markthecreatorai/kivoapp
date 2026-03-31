@@ -250,10 +250,16 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   };
   const handleAddVideo = () => {
     if (!videoUrl.trim() || !editor) return;
-    editor.chain().focus().setYoutubeVideo({ src: videoUrl.trim() }).run();
-    setVideoUrl("");
-    setVideoDialogOpen(false);
-    setHasChanges(true);
+    try {
+      editor.chain().focus().setYoutubeVideo({ src: videoUrl.trim() }).run();
+      setHasChanges(true);
+    } catch (err) {
+      console.error("Erro ao inserir vídeo:", err);
+      toast.error("URL de vídeo inválida ou não suportada");
+    } finally {
+      setVideoUrl("");
+      setVideoDialogOpen(false);
+    }
   };
 
   const parsedResources: Resource[] = resources;
@@ -422,7 +428,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => { setVideoDialogOpen(false); setVideoUrl(""); }}>Cancelar</Button>
-            <Button onClick={handleAddVideo} disabled={!videoUrl.trim()}>Adicionar</Button>
+            <Button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddVideo(); }} disabled={!videoUrl.trim()}>Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
