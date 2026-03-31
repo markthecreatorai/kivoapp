@@ -162,7 +162,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
       TiptapLink.configure({ openOnClick: false, autolink: true }),
       Youtube.configure({ width: 640, height: 360 }),
     ],
-    content: lesson.content || "",
+    content: migrateContent(lesson.content),
     editorProps: {
       attributes: {
         class: "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[300px] p-4",
