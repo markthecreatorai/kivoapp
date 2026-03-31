@@ -419,6 +419,8 @@ export default function CircleFeed() {
               onToggleLike={(id) => toggleLike.mutate(id)}
               isMuted={isMuted}
               showSpace={!effectiveSpaceId}
+              communityId={community?.id}
+              memberId={member?.id}
             />
           ))}
         </div>
