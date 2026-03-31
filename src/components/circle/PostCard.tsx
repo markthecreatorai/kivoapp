@@ -150,14 +150,14 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
       {/* Header */}
       <div className="flex items-center gap-2.5">
-        <Link to={`/circle/post/${post.id}`} className="shrink-0">
+        <div className="shrink-0 cursor-pointer" onClick={() => onOpenPost?.(post.id)}>
           <Avatar className="h-9 w-9">
             <AvatarImage src={post.author?.avatar_url || ""} />
             <AvatarFallback className="bg-muted text-muted-foreground text-[11px] font-medium">
               {(post.author?.display_name || "U").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-        </Link>
+        </div>
         <div className="flex items-center gap-1.5 flex-wrap min-w-0 leading-none">
           <span className="text-[13px] font-bold text-foreground whitespace-nowrap">
             {post.author?.display_name || "Membro"}
