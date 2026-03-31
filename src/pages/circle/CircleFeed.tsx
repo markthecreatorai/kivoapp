@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import PostCard from "@/components/circle/PostCard";
 import PostComposer from "@/components/circle/PostComposer";
 import SpaceFormModal from "@/components/circle/SpaceFormModal";
+import PostDetailModal from "@/components/circle/PostDetailModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function CircleFeed() {
