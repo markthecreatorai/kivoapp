@@ -1935,6 +1935,7 @@ export type Database = {
           muted_at: string | null
           muted_until: string | null
           notification_preferences: Json
+          onboarding_dismissed: boolean
           role: Database["public"]["Enums"]["community_member_role"]
           status: Database["public"]["Enums"]["community_member_status"]
           total_points: number
@@ -1959,6 +1960,7 @@ export type Database = {
           muted_at?: string | null
           muted_until?: string | null
           notification_preferences?: Json
+          onboarding_dismissed?: boolean
           role?: Database["public"]["Enums"]["community_member_role"]
           status?: Database["public"]["Enums"]["community_member_status"]
           total_points?: number
@@ -1983,6 +1985,7 @@ export type Database = {
           muted_at?: string | null
           muted_until?: string | null
           notification_preferences?: Json
+          onboarding_dismissed?: boolean
           role?: Database["public"]["Enums"]["community_member_role"]
           status?: Database["public"]["Enums"]["community_member_status"]
           total_points?: number
