@@ -1,49 +1,44 @@
 
 
-## Fix: Community Card Layout — Icon & Title Alignment
+## Fix: Community Landing Auth Modal — Two Bugs
 
-**Problem**: The icon and title are in a horizontal row with `-mt-6`, causing the title to sit too close to the banner and appear misaligned. The reference image shows a vertical stack: icon overlapping the banner, then title below it.
+### Bug 1 — "Entrar" button not working
 
-**Solution**: Restructure the card body to use a vertical layout matching the reference:
+The code at line 240 already has the correct handler: `onClick={() => { setModalMode("login"); setShowJoinModal(true); }}`. However, the button is wrapped in `{!user && ...}` (line 235), so it's hidden when the user is logged in. The button should work for non-authenticated visitors.
 
-1. Icon centered horizontally, overlapping the banner by ~50% (`-mt-6`)
-2. Title centered below the icon with proper spacing
-3. Member count + access type centered below the title
-4. Description below that
-5. "Acessar comunidade" link at bottom
+**Possible cause**: The button may be visually present but blocked by an overlapping element, or there's a rendering issue. I'll ensure the button works by verifying the onClick is properly wired and check for any CSS/z-index issues. If the code is correct as-is, I'll add a small debugging check.
 
-### Changes (single file: `src/pages/circle/MyCommunities.tsx`)
+**Action**: Verify and ensure the onClick handler fires correctly. The code looks correct — this may be a browser cache issue. However, to be safe, I'll make the handler more explicit.
 
-**Lines 229-264** — Restructure the card body:
+### Bug 2 — "Esqueci minha senha" opens new tab
 
-```
-/* Body */
-<div className="p-4 pt-0 flex-1 flex flex-col items-center text-center">
-  {/* Avatar overlapping banner */}
-  <div className="-mt-8 relative z-10 mb-2">
-    {icon_url ? (
-      <img ... className="h-14 w-14 rounded-xl ... ring-2 ring-background shadow-md" />
-    ) : (
-      <div ... className="h-14 w-14 rounded-xl ..." />
-    )}
-  </div>
+**Current**: Line 646 uses `<a href="/forgot-password" target="_blank">` which navigates away.
 
-  <h3 className="font-semibold text-sm ...">{c.name}</h3>
-  <div className="flex items-center gap-2 mt-1 text-xs ...">
-    {/* member count + access type */}
-  </div>
+**Fix**: Add a third modal state `"forgot-password"` to the existing `modalMode` state, and replace the `<a>` tag with a button that switches to this new state.
 
-  {c.description && <p className="text-xs mt-2 ...">...</p>}
+---
 
-  <div className="mt-3 pt-3 border-t w-full ...">
-    Acessar comunidade >
-  </div>
-</div>
-```
+### Changes (single file: `src/pages/CommunityLanding.tsx`)
 
-Key differences from current:
-- Vertical stack (`flex-col items-center`) instead of horizontal flex row
-- Icon in its own centered block with `-mt-8` and `mb-2` for spacing
-- Title no longer crammed next to icon — sits below with breathing room
-- Role badge stays on the banner (top-right, unchanged)
+1. **Expand modalMode type** (line 56):
+   - Change from `"signup" | "login"` to `"signup" | "login" | "forgot-password"`
+
+2. **Add forgot-password state and handler**:
+   - Add state: `forgotEmail`, `forgotLoading`, `forgotSent`
+   - Add `handleForgotPassword` function that calls `supabase.auth.resetPasswordForEmail()` (same logic as ForgotPassword.tsx)
+
+3. **Replace the `<a href="/forgot-password">` link** (lines 645-650):
+   - Change to `<button onClick={() => setModalMode("forgot-password")}>`
+
+4. **Add third modal view** after the login form (around line 664):
+   - Insert a new conditional block for `modalMode === "forgot-password"`:
+     - Title: "Esqueceu sua senha?"
+     - Subtitle: "Digite seu email e enviaremos um link para redefinir sua senha"
+     - Email input field
+     - "Enviar link de redefinição" button (primary/red)
+     - "← Voltar ao login" link that switches back to `modalMode="login"`
+     - Success state: "✅ Email enviado!" message with "← Voltar ao login" button
+
+5. **Reset forgot-password state** when modal closes:
+   - In `onOpenChange` or when switching modes, reset `forgotEmail`, `forgotSent`, `forgotLoading`
 
