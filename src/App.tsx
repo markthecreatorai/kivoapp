@@ -95,6 +95,7 @@ const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
 // Public community pages
 const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
+const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -260,13 +261,14 @@ const App = () => (
                 <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleMessages /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/about" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleAbout /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/about" element={<CircleLayout><CircleAbout /></CircleLayout>} />
 
-                {/* Legacy /join/:slug → /c/:slug redirect */}
-                <Route path="/join/:slug" element={<Navigate to="/c/:slug" replace />} />
+                {/* Legacy /join/:slug -> /c/:slug redirect */}
+                <Route path="/join/:slug" element={<JoinRedirect />} />
 
                 {/* Public community discovery */}
                 <Route path="/communities" element={<CommunityDiscovery />} />
+                <Route path="/circles/discover" element={<CommunityDiscovery />} />
 
                 {/* Landing page */}
                 <Route path="/" element={<GlobalTrackingWrapper><LandingPage /></GlobalTrackingWrapper>} />

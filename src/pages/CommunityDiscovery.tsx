@@ -22,7 +22,7 @@ function CommunityCard({ community }: { community: any }) {
 
   return (
     <div
-      onClick={() => navigate(`/join/${community.slug}`)}
+      onClick={() => navigate(`/c/${community.slug}`)}
       className="group bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-200"
       id={`community-card-${community.id}`}
     >

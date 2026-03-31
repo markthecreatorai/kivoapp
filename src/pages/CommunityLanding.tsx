@@ -119,6 +119,20 @@ export default function CommunityLanding() {
     enabled: !!user && !!community,
   });
 
+  const { data: linkedProduct } = useQuery({
+    queryKey: ["community-linked-product", community?.linked_product_id],
+    queryFn: async () => {
+      if (!community?.linked_product_id) return null;
+      const { data } = await supabase
+        .from("products")
+        .select("id, slug")
+        .eq("id", community.linked_product_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!community?.linked_product_id,
+  });
+
   // Already active member → go directly to feed
   useEffect(() => {
     if (existingMember?.status === "ACTIVE" && community?.slug) {
@@ -139,7 +153,11 @@ export default function CommunityLanding() {
   const handleLoggedUserJoin = async () => {
     if (!user || !community) return;
     if (isPaid && !inviteCode) {
-      toast.info("Checkout em breve disponível.");
+      if (linkedProduct?.slug) {
+        navigate(`/checkout/${linkedProduct.slug}`);
+      } else {
+        toast.error("Plano pago sem produto vinculado. Configure no admin da comunidade.");
+      }
       return;
     }
     await joinAsExistingUser(user.id, community);
@@ -149,6 +167,10 @@ export default function CommunityLanding() {
   const handleJoinClick = () => {
     if (isAlreadyMember) {
       setShowInviteModal(true);
+      return;
+    }
+    if (isPaid && !inviteCode && linkedProduct?.slug) {
+      navigate(`/checkout/${linkedProduct.slug}`);
       return;
     }
     setModalMode("signup");
