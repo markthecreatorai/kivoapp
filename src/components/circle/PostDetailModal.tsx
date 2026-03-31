@@ -346,7 +346,14 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                       {post.author?.display_name || "Membro"}
                     </span>
                     {ROLE_LABEL[post.author?.role] && (
-                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                      <Badge
+                        className={cn(
+                          "text-[10px] h-4 px-1.5 border-0",
+                          post.author.role === "OWNER"
+                            ? "bg-primary/15 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        )}
+                      >
                         {ROLE_LABEL[post.author.role]}
                       </Badge>
                     )}
