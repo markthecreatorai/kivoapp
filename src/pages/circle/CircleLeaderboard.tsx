@@ -261,7 +261,7 @@ export default function CircleLeaderboard() {
                         "text-sm font-semibold",
                         isCurrent ? "text-foreground" : isUnlocked ? "text-foreground" : "text-muted-foreground"
                       )}>
-                        Nível {l.level}
+                        {getLevelName(l.level)}
                       </p>
                       <p className="text-xs text-muted-foreground">{l.percent}% dos membros</p>
                     </div>
