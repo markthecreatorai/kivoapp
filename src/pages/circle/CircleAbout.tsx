@@ -306,7 +306,7 @@ export default function CircleAbout() {
             isAdminEditing && "cursor-pointer group"
           )}
           onClick={() => {
-            if (isAdmin) {
+            if (isAdminEditing) {
               setDescriptionDraft(community.description || "");
               setEditingDescription(true);
             }
