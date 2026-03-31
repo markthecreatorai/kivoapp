@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Settings, UserPlus, Upload, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -18,10 +18,12 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
   const location = useLocation();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const coverInputRef = useRef<HTMLInputElement>(null);
   const isAboutPage = location.pathname === `/c/${slug}/about`;
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
+  const isPreviewVisitor = searchParams.get("preview") === "visitor";
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -113,7 +115,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
           )}
 
           {/* Upload capa — visible for admin on About page */}
-          {isAdmin && isAboutPage && (
+          {isAdmin && isAboutPage && !isPreviewVisitor && (
             <>
               <input
                 type="file"
@@ -158,7 +160,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
             <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-3">
               {community.long_description || community.description}
             </p>
-          ) : isAdmin && isAboutPage ? (
+          ) : isAdmin && isAboutPage && !isPreviewVisitor ? (
             <p className="text-[12px] text-muted-foreground italic">
               Adicione uma descrição clicando na área à esquerda.
             </p>
@@ -234,7 +236,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
           )}
 
           {/* ── CTA BUTTONS ── */}
-          {member ? (
+          {member && !isPreviewVisitor ? (
             /* Member (any role): show settings (admin only) + invite */
             <div className="space-y-2">
               {isAdmin && isAboutPage && (
@@ -257,9 +259,9 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
               </button>
             </div>
           ) : (
-            /* Visitor / non-member: join */
+            /* Visitor / preview visitor: join */
             <Link
-              to={`/c/${slug}/feed`}
+              to={`/c/${slug}`}
               className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
             >
               Entrar no Grupo

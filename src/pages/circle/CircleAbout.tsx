@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -31,6 +31,7 @@ function getEmbedUrl(url: string): string | null {
 
 export default function CircleAbout() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -41,7 +42,7 @@ export default function CircleAbout() {
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaImageInputRef = useRef<HTMLInputElement>(null);
-  const [previewMode, setPreviewMode] = useState(false);
+  const previewMode = searchParams.get("preview") === "visitor";
 
   // Fetch community
   const { data: community, isLoading } = useQuery({
@@ -168,7 +169,16 @@ export default function CircleAbout() {
       {previewMode && (
         <div className="flex items-center justify-between bg-muted rounded-lg px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">Modo de visualização — você está vendo como um visitante</span>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewMode(false)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete("preview");
+              setSearchParams(next);
+            }}
+          >
             <EyeOff className="h-3.5 w-3.5" /> Sair do preview
           </Button>
         </div>
@@ -179,7 +189,11 @@ export default function CircleAbout() {
         <h1 className="text-xl font-bold text-foreground">{community.name}</h1>
         {isAdmin && !previewMode && (
           <button
-            onClick={() => setPreviewMode(true)}
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.set("preview", "visitor");
+              setSearchParams(next);
+            }}
             className="text-muted-foreground hover:text-foreground transition-colors"
             title="Ver como visitante"
           >

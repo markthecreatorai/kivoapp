@@ -473,14 +473,14 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 unreadCount={unreadCount ?? 0}
               />
             )}
-            {member && (
-              <Link
-                to="/circle/settings"
+            {member && isAdmin && (
+              <button
+                onClick={() => setShowAdminModal(true)}
                 className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
                 title="Configurações"
               >
                 <SlidersHorizontal className="h-4 w-4" />
-              </Link>
+              </button>
             )}
             {member && (
               <Avatar className="h-8 w-8">
@@ -504,7 +504,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="hidden md:flex items-center gap-0 max-w-5xl mx-auto px-4 border-t border-border">
           {tabItems.map((item) => {
             const active = isActive(item.path);
-            const hasDmBadge = item.path === "/circle/messages" && (dmUnreadCount ?? 0) > 0;
+            const hasDmBadge = item.path === `/c/${slug}/messages` && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
@@ -570,7 +570,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="flex items-center justify-around h-14">
           {tabItems.map((item) => {
             const active = isActive(item.path);
-            const hasDmBadge = item.path === "/circle/messages" && (dmUnreadCount ?? 0) > 0;
+            const hasDmBadge = item.path === `/c/${slug}/messages` && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
