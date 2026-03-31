@@ -317,10 +317,12 @@ function PremiumPhonePreview({
   storefront,
   theme,
   blocks,
+  products,
 }: {
   storefront: any;
   theme: StorefrontTheme | null | undefined;
   blocks: StorefrontBlock[];
+  products?: any[];
 }) {
   return (
     <div className="w-full flex flex-col items-center">
@@ -346,6 +348,7 @@ function PremiumPhonePreview({
               storefront={storefront}
               theme={theme ?? undefined}
               blocks={blocks}
+              products={products}
             />
           </div>
 
