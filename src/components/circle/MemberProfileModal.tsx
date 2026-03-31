@@ -8,7 +8,7 @@ import LevelBadge from "@/components/circle/LevelBadge";
 import { getLevelInfo } from "@/components/circle/CircleLayout";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 interface MemberProfileModalProps {
   memberId: string | null;
@@ -18,6 +18,7 @@ interface MemberProfileModalProps {
 }
 
 export default function MemberProfileModal({ memberId, communityId, open, onOpenChange }: MemberProfileModalProps) {
+  const { slug: communitySlug } = useParams();
   const { data: member } = useQuery({
     queryKey: ["circle-member-profile", memberId],
     queryFn: async () => {
@@ -139,7 +140,7 @@ export default function MemberProfileModal({ memberId, communityId, open, onOpen
               {recentPosts.map((p: any) => (
                 <Link
                   key={p.id}
-                  to={`/circle/post/${p.id}`}
+                  to={`/c/${communitySlug}/post/${p.id}`}
                   onClick={() => onOpenChange(false)}
                   className="block text-sm text-foreground hover:text-primary truncate"
                 >

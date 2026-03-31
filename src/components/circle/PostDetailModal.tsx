@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -51,6 +52,7 @@ function getVideoEmbed(url: string | null) {
 export default function PostDetailModal({ postId, open, onClose }: PostDetailModalProps) {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
+  const { slug: communitySlug } = useParams();
   const queryClient = useQueryClient();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -416,6 +418,13 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                             <DropdownMenuSeparator />
                           </>
                         )}
+                        <DropdownMenuItem onClick={() => {
+                          const url = `${window.location.origin}/c/${communitySlug}/post/${postId}`;
+                          navigator.clipboard.writeText(url); toast.success("Link copiado!");
+                        }}>
+                          <Link2 className="h-3.5 w-3.5 mr-2" />Copiar link
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm("Excluir este post?")) deletePost.mutate(); }}>
                           <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir
                         </DropdownMenuItem>
@@ -435,6 +444,12 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                           supabase.from("community_reports" as any).insert({ community_id: community.id, reporter_id: member.id, post_id: postId, target_member_id: post.author_id, reason: "spam", status: "PENDING" } as any).then(({ error }) => { if (!error) toast.success("Denúncia enviada"); });
                         }}>
                           <Flag className="h-3.5 w-3.5 mr-2" />Denunciar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          const url = `${window.location.origin}/c/${communitySlug}/post/${postId}`;
+                          navigator.clipboard.writeText(url); toast.success("Link copiado!");
+                        }}>
+                          <Link2 className="h-3.5 w-3.5 mr-2" />Copiar link
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -553,7 +568,10 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     <MessageCircle className="h-4 w-4" />
                     {topComments.length} {topComments.length === 1 ? "comentário" : "comentários"}
                   </span>
-                  <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copiado!"); }}
+                  <button onClick={() => {
+                    const url = `${window.location.origin}/c/${communitySlug}/post/${postId}`;
+                    navigator.clipboard.writeText(url); toast.success("Link copiado!");
+                  }}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-auto">
                     <Link2 className="h-3.5 w-3.5" />
                   </button>

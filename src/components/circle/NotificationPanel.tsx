@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,12 +40,13 @@ function truncate(s: string | null, max = 40) {
   return s.length > max ? s.slice(0, max) + "…" : s;
 }
 
-function getNotificationRoute(n: any): string | null {
-  if (n.type === "NEW_DM") return `/circle/messages`;
-  if (n.type === "SUBSCRIPTION_PAST_DUE" || n.type === "SUBSCRIPTION_EXPIRED") return `/circle/feed`;
-  if (n.post_id) return `/circle/post/${n.post_id}`;
-  if (n.event_id) return `/circle/events`;
-  if (n.type === "LEVEL_UP") return `/circle/leaderboard`;
+function getNotificationRoute(n: any, slug?: string): string | null {
+  const base = slug ? `/c/${slug}` : `/circle`;
+  if (n.type === "NEW_DM") return `${base}/messages`;
+  if (n.type === "SUBSCRIPTION_PAST_DUE" || n.type === "SUBSCRIPTION_EXPIRED") return `${base}/feed`;
+  if (n.post_id) return `${base}/post/${n.post_id}`;
+  if (n.event_id) return `${base}/events`;
+  if (n.type === "LEVEL_UP") return `${base}/leaderboard`;
   return null;
 }
 
@@ -58,6 +59,7 @@ interface NotificationPanelProps {
 export default function NotificationPanel({ memberId, communityId, unreadCount }: NotificationPanelProps) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { slug: communitySlug } = useParams();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
@@ -143,7 +145,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
           toast(text, {
             duration: 5000,
             action: n.post_id
-              ? { label: "Ver", onClick: () => navigate(`/circle/post/${n.post_id}`) }
+              ? { label: "Ver", onClick: () => navigate(`/c/${communitySlug}/post/${n.post_id}`) }
               : undefined,
           });
         }
@@ -157,7 +159,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
 
   const handleClick = (n: any) => {
     if (!n.is_read) markRead.mutate(n.id);
-    const route = getNotificationRoute(n);
+    const route = getNotificationRoute(n, communitySlug);
     if (route) {
       setOpen(false);
       navigate(route);
