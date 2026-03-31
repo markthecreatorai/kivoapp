@@ -1,0 +1,1 @@
+ALTER TABLE public.circle_lessons ADD COLUMN IF NOT EXISTS resources jsonb DEFAULT '[]'::jsonb;

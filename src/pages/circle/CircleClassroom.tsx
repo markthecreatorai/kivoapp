@@ -43,6 +43,7 @@ interface CircleLesson {
   created_at: string;
   type: string;
   parent_id: string | null;
+  resources?: any[] | null;
 }
 
 // ─── Mock data ───────────────────────────────────────────────

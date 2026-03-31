@@ -1219,6 +1219,7 @@ export type Database = {
           is_published: boolean
           parent_id: string | null
           position: number
+          resources: Json | null
           title: string
           type: string
           updated_at: string
@@ -1231,6 +1232,7 @@ export type Database = {
           is_published?: boolean
           parent_id?: string | null
           position?: number
+          resources?: Json | null
           title?: string
           type?: string
           updated_at?: string
@@ -1243,6 +1245,7 @@ export type Database = {
           is_published?: boolean
           parent_id?: string | null
           position?: number
+          resources?: Json | null
           title?: string
           type?: string
           updated_at?: string

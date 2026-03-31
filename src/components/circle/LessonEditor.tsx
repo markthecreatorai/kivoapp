@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
+import TiptapLink from "@tiptap/extension-link";
 import Youtube from "@tiptap/extension-youtube";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,13 +19,26 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Bold, Italic, Strikethrough, Code, List, ListOrdered,
   Quote, Image as ImageIcon, Link as LinkIcon, Youtube as YoutubeIcon,
   Heading1, Heading2, Heading3, Heading4,
   Loader2, Save, X, CheckCircle2, Upload,
+  ChevronDown, ExternalLink, FileText, MessageSquare, Paperclip, Trash2, File,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+// ─── Types ───────────────────────────────────────────
+type ResourceLink = { type: "link"; label: string; url: string };
+type ResourceFile = { type: "file"; label: string; fileUrl: string };
+type ResourcePost = { type: "post"; postId: string };
+type Resource = ResourceLink | ResourceFile | ResourcePost;
 
 interface LessonEditorProps {
   lesson: {
@@ -34,6 +47,7 @@ interface LessonEditorProps {
     title: string;
     content: string | null;
     is_published: boolean;
+    resources?: Resource[] | null;
   };
   isAdmin: boolean;
   courseId: string;
@@ -42,15 +56,10 @@ interface LessonEditorProps {
   isCompleted?: boolean;
 }
 
-interface ToolbarButtonProps {
-  editor: ReturnType<typeof useEditor>;
-  icon: React.ElementType;
-  label: string;
-  action: () => void;
-  isActive?: boolean;
-}
-
-function ToolbarButton({ icon: Icon, label, action, isActive }: ToolbarButtonProps) {
+// ─── Toolbar Button ──────────────────────────────────
+function ToolbarButton({ icon: Icon, label, action, isActive }: {
+  editor: any; icon: React.ElementType; label: string; action: () => void; isActive?: boolean;
+}) {
   return (
     <button
       onClick={action}
@@ -66,6 +75,50 @@ function ToolbarButton({ icon: Icon, label, action, isActive }: ToolbarButtonPro
   );
 }
 
+// ─── Resources Read-Only ─────────────────────────────
+function ResourcesList({ resources }: { resources: Resource[] }) {
+  if (resources.length === 0) return null;
+  return (
+    <div className="border-t border-border px-6 py-4 space-y-2">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <Paperclip className="h-4 w-4" /> Recursos
+      </h3>
+      <div className="space-y-1.5">
+        {resources.map((r, i) => {
+          if (r.type === "link") {
+            return (
+              <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-primary hover:underline py-1">
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                {r.label || r.url}
+              </a>
+            );
+          }
+          if (r.type === "file") {
+            return (
+              <a key={i} href={r.fileUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-primary hover:underline py-1">
+                <File className="h-3.5 w-3.5 shrink-0" />
+                {r.label || "Arquivo"}
+              </a>
+            );
+          }
+          if (r.type === "post") {
+            return (
+              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+                <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                Post fixado: {r.postId.slice(0, 8)}…
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────
 export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMarkCompleted, isCompleted = false }: LessonEditorProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(lesson.title);
@@ -74,13 +127,23 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
 
+  // Resources state
+  const [resources, setResources] = useState<Resource[]>(() =>
+    Array.isArray(lesson.resources) ? (lesson.resources as Resource[]) : []
+  );
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkLabel, setLinkLabel] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [postDialogOpen, setPostDialogOpen] = useState(false);
+  const [postId, setPostId] = useState("");
+  const fileUploadRef = useRef<HTMLInputElement>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4] },
-      }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
       Image.configure({ inline: false, allowBase64: true }),
-      Link.configure({ openOnClick: false, autolink: true }),
+      TiptapLink.configure({ openOnClick: false, autolink: true }),
       Youtube.configure({ width: 640, height: 360 }),
     ],
     content: lesson.content || "",
@@ -89,17 +152,16 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
         class: "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[300px] p-4",
       },
     },
-    onUpdate: () => {
-      setHasChanges(true);
-    },
+    onUpdate: () => setHasChanges(true),
   });
 
-  // Reset state when lesson changes
+  // Reset on lesson change
   const [prevId, setPrevId] = useState(lesson.id);
   if (lesson.id !== prevId) {
     setPrevId(lesson.id);
     setTitle(lesson.title);
     setIsPublished(lesson.is_published);
+    setResources(Array.isArray(lesson.resources) ? (lesson.resources as Resource[]) : []);
     setHasChanges(false);
     editor?.commands.setContent(lesson.content || "");
   }
@@ -113,7 +175,8 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           title: title.trim() || "Untitled Lesson",
           content: htmlContent,
           is_published: isPublished,
-        })
+          resources: resources as any,
+        } as any)
         .eq("id", lesson.id);
       if (error) throw error;
     },
@@ -128,24 +191,63 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   const handleCancel = () => {
     setTitle(lesson.title);
     setIsPublished(lesson.is_published);
+    setResources(Array.isArray(lesson.resources) ? (lesson.resources as Resource[]) : []);
     setHasChanges(false);
     editor?.commands.setContent(lesson.content || "");
   };
 
+  // ── Resource helpers ──
+  const addResource = (r: Resource) => {
+    setResources(prev => [...prev, r]);
+    setHasChanges(true);
+  };
+
+  const removeResource = (index: number) => {
+    setResources(prev => prev.filter((_, i) => i !== index));
+    setHasChanges(true);
+  };
+
+  const handleAddLink = () => {
+    if (!linkUrl.trim()) return;
+    addResource({ type: "link", label: linkLabel.trim() || linkUrl.trim(), url: linkUrl.trim() });
+    setLinkLabel("");
+    setLinkUrl("");
+    setLinkDialogOpen(false);
+  };
+
+  const handleAddPost = () => {
+    if (!postId.trim()) return;
+    addResource({ type: "post", postId: postId.trim() });
+    setPostId("");
+    setPostDialogOpen(false);
+  };
+
+  const handleFileUpload = async (file: globalThis.File) => {
+    setUploadingFile(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `classroom/${courseId}/${lesson.id}_${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from("private-files").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("private-files").getPublicUrl(data.path);
+      addResource({ type: "file", label: file.name, fileUrl: urlData.publicUrl });
+      toast.success("Arquivo enviado!");
+    } catch (e: any) {
+      toast.error("Erro ao enviar arquivo");
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  // ── Editor toolbar helpers ──
   const promptAndInsertLink = () => {
     const url = window.prompt("URL do link:");
-    if (url && editor) {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
+    if (url && editor) editor.chain().focus().setLink({ href: url }).run();
   };
-
   const promptAndInsertImage = () => {
     const url = window.prompt("URL da imagem:");
-    if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
+    if (url && editor) editor.chain().focus().setImage({ src: url }).run();
   };
-
   const handleAddVideo = () => {
     if (!videoUrl.trim() || !editor) return;
     editor.chain().focus().setYoutubeVideo({ src: videoUrl.trim() }).run();
@@ -154,20 +256,21 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     setHasChanges(true);
   };
 
+  const parsedResources: Resource[] = resources;
+
+  // ═══ READ-ONLY VIEW ═══
   if (!isAdmin) {
     return (
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
         <div className="p-6">
           <h2 className="text-xl font-bold text-foreground mb-4">{lesson.title}</h2>
           {lesson.content ? (
-            <div
-              className="prose prose-sm dark:prose-invert max-w-none text-foreground"
-              dangerouslySetInnerHTML={{ __html: lesson.content }}
-            />
+            <div className="prose prose-sm dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: lesson.content }} />
           ) : (
             <p className="text-muted-foreground text-sm italic">Conteúdo em breve...</p>
           )}
         </div>
+        {parsedResources.length > 0 && <ResourcesList resources={parsedResources} />}
         {memberId && onMarkCompleted && (
           <div className="px-6 pb-6">
             <Button
@@ -186,10 +289,11 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     );
   }
 
+  // ═══ EDIT VIEW ═══
   return (
     <div className="space-y-4">
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        {/* Editable title */}
+        {/* Title */}
         <div className="p-4 border-b border-border">
           <Input
             value={title}
@@ -220,23 +324,81 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={() => setVideoDialogOpen(true)} />
         </div>
 
-        {/* Tiptap Editor Content */}
+        {/* Tiptap Editor */}
         <EditorContent editor={editor} />
+      </div>
+
+      {/* ── Resources Section ── */}
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="p-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Paperclip className="h-4 w-4" /> Recursos
+          </h3>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                Adicionar <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setLinkDialogOpen(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" /> Adicionar link de recurso
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileUploadRef.current?.click()} disabled={uploadingFile}>
+                <Upload className="h-4 w-4 mr-2" /> Adicionar arquivo
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPostDialogOpen(true)}>
+                <MessageSquare className="h-4 w-4 mr-2" /> Fixar post da comunidade
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            ref={fileUploadRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        {resources.length > 0 && (
+          <div className="px-4 pb-4 space-y-1.5">
+            {resources.map((r, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 group">
+                {r.type === "link" && <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />}
+                {r.type === "file" && <File className="h-4 w-4 text-muted-foreground shrink-0" />}
+                {r.type === "post" && <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />}
+                <span className="text-sm text-foreground truncate flex-1">
+                  {r.type === "link" ? r.label : r.type === "file" ? r.label : `Post: ${r.postId.slice(0, 8)}…`}
+                </span>
+                <button
+                  onClick={() => removeResource(i)}
+                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remover"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {resources.length === 0 && (
+          <div className="px-4 pb-4">
+            <p className="text-xs text-muted-foreground">Nenhum recurso adicionado.</p>
+          </div>
+        )}
       </div>
 
       {/* Bottom controls */}
       <div className="bg-card rounded-xl shadow-sm border border-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Switch
-            id="lesson-published"
-            checked={isPublished}
-            onCheckedChange={(v) => { setIsPublished(v); setHasChanges(true); }}
-          />
-          <Label htmlFor="lesson-published" className="text-sm">
-            {isPublished ? "Publicado" : "Rascunho"}
-          </Label>
+          <Switch id="lesson-published" checked={isPublished} onCheckedChange={(v) => { setIsPublished(v); setHasChanges(true); }} />
+          <Label htmlFor="lesson-published" className="text-sm">{isPublished ? "Publicado" : "Rascunho"}</Label>
         </div>
-
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleCancel} disabled={!hasChanges}>
             <X className="h-4 w-4 mr-1" /> Cancel
@@ -247,19 +409,13 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           </Button>
         </div>
       </div>
-      {/* Video Dialog */}
+
+      {/* ── Video Dialog ── */}
       <Dialog open={videoDialogOpen} onOpenChange={(open) => { setVideoDialogOpen(open); if (!open) setVideoUrl(""); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Adicionar vídeo</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Adicionar vídeo</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <Input
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="YouTube, Loom, Vimeo ou link de vídeo"
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddVideo(); }}
-            />
+            <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube, Loom, Vimeo ou link de vídeo" onKeyDown={(e) => { if (e.key === "Enter") handleAddVideo(); }} />
             <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center gap-2 text-center">
               <Upload className="h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Arraste e solte o vídeo aqui</p>
@@ -267,12 +423,46 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => { setVideoDialogOpen(false); setVideoUrl(""); }}>
-              Cancelar
-            </Button>
-            <Button onClick={handleAddVideo} disabled={!videoUrl.trim()}>
-              Adicionar
-            </Button>
+            <Button variant="outline" onClick={() => { setVideoDialogOpen(false); setVideoUrl(""); }}>Cancelar</Button>
+            <Button onClick={handleAddVideo} disabled={!videoUrl.trim()}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Link Resource Dialog ── */}
+      <Dialog open={linkDialogOpen} onOpenChange={(open) => { setLinkDialogOpen(open); if (!open) { setLinkLabel(""); setLinkUrl(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Adicionar link de recurso</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-sm">Nome do link</Label>
+              <Input value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} placeholder="Ex: Documentação oficial" className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-sm">URL</Label>
+              <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." className="mt-1" onKeyDown={(e) => { if (e.key === "Enter") handleAddLink(); }} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setLinkDialogOpen(false); setLinkLabel(""); setLinkUrl(""); }}>Cancelar</Button>
+            <Button onClick={handleAddLink} disabled={!linkUrl.trim()}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Pin Post Dialog ── */}
+      <Dialog open={postDialogOpen} onOpenChange={(open) => { setPostDialogOpen(open); if (!open) setPostId(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Fixar post da comunidade</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-sm">ID do post</Label>
+              <Input value={postId} onChange={(e) => setPostId(e.target.value)} placeholder="Cole o ID do post aqui" className="mt-1" onKeyDown={(e) => { if (e.key === "Enter") handleAddPost(); }} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setPostDialogOpen(false); setPostId(""); }}>Cancelar</Button>
+            <Button onClick={handleAddPost} disabled={!postId.trim()}>Fixar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
