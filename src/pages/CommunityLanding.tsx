@@ -563,9 +563,7 @@ export default function CommunityLanding() {
                 </button>
               </p>
             </div>
-          ) : (
-            /* New user — signup or login */
-            {modalMode === "signup" ? (
+          ) : modalMode === "signup" ? (
               <form onSubmit={handleSubmit} className="space-y-4 pt-2">
                 {inviteCode && (
                   <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20">
