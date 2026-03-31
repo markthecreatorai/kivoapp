@@ -321,7 +321,7 @@ export default function CircleAbout() {
             </div>
           )}
         </div>
-      ) : isAdmin ? (
+      ) : isAdminEditing ? (
         <button
           onClick={() => { setDescriptionDraft(""); setEditingDescription(true); }}
           className="text-primary hover:underline text-sm flex items-center gap-1.5"
