@@ -1501,6 +1501,7 @@ export type Database = {
           allow_member_posts: boolean
           billing_period: string
           category: string | null
+          community_links: Json | null
           cover_image_url: string | null
           created_at: string
           description: string | null
@@ -1532,6 +1533,7 @@ export type Database = {
           allow_member_posts?: boolean
           billing_period?: string
           category?: string | null
+          community_links?: Json | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -1563,6 +1565,7 @@ export type Database = {
           allow_member_posts?: boolean
           billing_period?: string
           category?: string | null
+          community_links?: Json | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null

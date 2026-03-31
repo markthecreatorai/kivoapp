@@ -1,0 +1,1 @@
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS community_links jsonb DEFAULT '[]'::jsonb;
