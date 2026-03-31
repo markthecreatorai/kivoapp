@@ -71,6 +71,8 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   const [title, setTitle] = useState(lesson.title);
   const [isPublished, setIsPublished] = useState(lesson.is_published);
   const [hasChanges, setHasChanges] = useState(false);
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
 
   const editor = useEditor({
     extensions: [
