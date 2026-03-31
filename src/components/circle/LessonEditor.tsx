@@ -34,6 +34,22 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+// ─── Migrate legacy markdown to HTML ─────────────────
+function migrateContent(raw: string | null): string {
+  if (!raw) return "";
+  if (raw.trim().startsWith("<")) return raw;
+  let html = raw.replace(
+    /\[youtube\]\(([^)]+)\)/g,
+    (_, url: string) => {
+      const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      if (m) return `<div data-youtube-video><iframe src="https://www.youtube.com/embed/${m[1]}" width="640" height="480" allowfullscreen></iframe></div>`;
+      return `<a href="${url}">${url}</a>`;
+    }
+  );
+  html = html.replace(/\n\n/g, "</p><p>");
+  return `<p>${html}</p>`;
+}
+
 // ─── Types ───────────────────────────────────────────
 type ResourceLink = { type: "link"; label: string; url: string };
 type ResourceFile = { type: "file"; label: string; fileUrl: string };
