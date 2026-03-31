@@ -1508,6 +1508,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_listed: boolean
+          level_names: Json | null
           linked_product_id: string | null
           long_description: string | null
           member_count: number
@@ -1538,6 +1539,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_listed?: boolean
+          level_names?: Json | null
           linked_product_id?: string | null
           long_description?: string | null
           member_count?: number
@@ -1568,6 +1570,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_listed?: boolean
+          level_names?: Json | null
           linked_product_id?: string | null
           long_description?: string | null
           member_count?: number
