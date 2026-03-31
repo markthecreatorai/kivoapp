@@ -241,11 +241,14 @@ export default function CircleFeed() {
                  </button>
                </div>
              </Card>
-          ) : community && member && (
+           ) : community && member && (
             <PostComposer
               communityId={community.id}
+              communityName={community.name}
               memberId={member.id}
               memberPoints={member.total_points || 0}
+              memberAvatarUrl={member.avatar_url || ""}
+              memberDisplayName={member.display_name || ""}
               pointsPerPost={community.points_per_post}
               spaces={spaces || []}
               isAdmin={isAdminMember}
