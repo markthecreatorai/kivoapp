@@ -25,9 +25,10 @@ interface StorefrontPreviewProps {
   storefront: StorefrontData;
   theme: StorefrontTheme | null | undefined;
   blocks: StorefrontBlock[];
+  products?: any[];
 }
 
-export function StorefrontPreview({ storefront, theme, blocks }: StorefrontPreviewProps) {
+export function StorefrontPreview({ storefront, theme, blocks, products: externalProducts }: StorefrontPreviewProps) {
   const currentTheme = {
     primary_color: theme?.primary_color || '#F9423A',
     secondary_color: theme?.secondary_color || '#1a1a1a',
