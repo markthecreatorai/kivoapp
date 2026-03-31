@@ -5,7 +5,8 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Lock, Settings } from "lucide-react";
+import { Lock, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getLevelInfo, LEVEL_THRESHOLDS } from "@/components/circle/CircleLayout";
 import MemberProfileModal from "@/components/circle/MemberProfileModal";
@@ -137,32 +138,45 @@ export default function CircleLeaderboard() {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
       {/* Profile + Levels Card */}
-      <Card className="p-6 md:p-8">
+      <Card className="p-6 md:p-8 bg-card shadow-sm rounded-xl">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left: Avatar + Name */}
           <div className="flex flex-col items-center text-center min-w-[200px]">
             <div className="relative">
-              <Avatar className="h-40 w-40 ring-4 ring-muted">
+              <Avatar className="h-40 w-40 ring-4 ring-border">
                 <AvatarImage src={member?.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/10 text-primary text-3xl">
+                <AvatarFallback className="bg-muted text-muted-foreground text-3xl">
                   {(member?.display_name || "U").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               {myLevel && (
-                <div className="absolute -bottom-1 -right-1">
-                  <LevelCircle level={myLevel.level} size={36} />
+                <div
+                  className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center text-white font-bold border-2 border-card"
+                  style={{ width: 36, height: 36, fontSize: 14, backgroundColor: "#1D4ED8" }}
+                >
+                  {myLevel.level}
                 </div>
               )}
             </div>
             <h2 className="text-xl font-bold text-foreground mt-4">{member?.display_name || "Membro"}</h2>
-            {myLevel && <p className="text-sm text-primary font-medium">Nível {myLevel.level}</p>}
+            {myLevel && <p className="text-sm font-medium mt-0.5" style={{ color: "#3B82F6" }}>Nível {myLevel.level}</p>}
             {nextLevel && (
-              <p className="text-sm text-primary mt-1">
+              <p className="text-sm mt-1 flex items-center gap-1" style={{ color: "#6B7280" }}>
                 <span className="font-semibold">{pointsToNext}</span> pontos para subir de nível
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 cursor-help" style={{ color: "#9CA3AF" }} />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                      Ganhe pontos criando posts, comentando, recebendo curtidas e completando cursos.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </p>
             )}
             {!nextLevel && myLevel && (
-              <p className="text-sm text-primary mt-1 font-medium">Nível máximo atingido! 👑</p>
+              <p className="text-sm mt-1 font-medium" style={{ color: "#6B7280" }}>Nível máximo atingido! 👑</p>
             )}
           </div>
 
