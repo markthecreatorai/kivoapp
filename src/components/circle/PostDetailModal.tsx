@@ -52,6 +52,7 @@ function getVideoEmbed(url: string | null) {
 export default function PostDetailModal({ postId, open, onClose }: PostDetailModalProps) {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
+  const { slug: communitySlug } = useParams();
   const queryClient = useQueryClient();
 
   const scrollRef = useRef<HTMLDivElement>(null);
