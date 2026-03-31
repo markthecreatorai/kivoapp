@@ -41,6 +41,7 @@ export default function CircleAbout() {
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaImageInputRef = useRef<HTMLInputElement>(null);
+  const [previewMode, setPreviewMode] = useState(false);
 
   // Fetch community
   const { data: community, isLoading } = useQuery({
