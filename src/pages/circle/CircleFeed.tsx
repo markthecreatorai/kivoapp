@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { MessageCircle, Calendar, Lock, Filter, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow, differenceInHours, isFuture } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PostCard from "@/components/circle/PostCard";
 import PostComposer from "@/components/circle/PostComposer";
@@ -103,12 +103,15 @@ export default function CircleFeed() {
     queryKey: ["circle-next-event-banner", community?.id],
     queryFn: async () => {
       if (!community) return null;
+      const now = new Date();
+      const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       const { data } = await supabase
         .from("community_events")
         .select("*")
         .eq("community_id", community.id)
         .eq("status", "UPCOMING")
-        .gte("starts_at", new Date().toISOString())
+        .gte("starts_at", now.toISOString())
+        .lte("starts_at", in24h.toISOString())
         .order("starts_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -213,6 +216,21 @@ export default function CircleFeed() {
         </>
       )}
 
+      {/* Event banner — only shows when event starts within 24h */}
+      {nextEvent && (
+        <div
+          className="flex items-center justify-center gap-2 py-2 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => toast.info(`Evento: ${nextEvent.title}`)}
+        >
+          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+          {nextEvent.max_attendees && <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+          <span className="text-sm" style={{ color: "#111827" }}>
+            <strong>{nextEvent.title}</strong>
+            {" "}is happening in {formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}
+          </span>
+        </div>
+      )}
+
       {/* Category pills */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide items-center">
         <button
@@ -242,25 +260,7 @@ export default function CircleFeed() {
         ))}
       </div>
 
-      {/* Event banner */}
-      {nextEvent && isFuture(new Date(nextEvent.starts_at)) && (
-        <div className="flex items-center gap-3 rounded-xl bg-card shadow-sm px-4 py-3">
-          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="text-[13px] font-medium text-foreground">
-              📅 {nextEvent.title}
-            </span>
-            <span className="text-[12px] text-muted-foreground ml-2">
-              {differenceInHours(new Date(nextEvent.starts_at), new Date()) <= 24
-                ? `in ${formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}`
-                : format(new Date(nextEvent.starts_at), "dd MMM · HH:mm", { locale: ptBR })}
-            </span>
-          </div>
-          {nextEvent.rsvp_count > 0 && (
-            <span className="text-[11px] text-muted-foreground shrink-0">👥 {nextEvent.rsvp_count}</span>
-          )}
-        </div>
-      )}
+
 
       {/* Posts */}
       {isLoading ? (
