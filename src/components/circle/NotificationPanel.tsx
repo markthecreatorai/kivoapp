@@ -59,6 +59,7 @@ interface NotificationPanelProps {
 export default function NotificationPanel({ memberId, communityId, unreadCount }: NotificationPanelProps) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { slug: communitySlug } = useParams();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
