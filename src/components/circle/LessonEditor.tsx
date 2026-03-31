@@ -34,6 +34,22 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+// ─── Migrate legacy markdown to HTML ─────────────────
+function migrateContent(raw: string | null): string {
+  if (!raw) return "";
+  if (raw.trim().startsWith("<")) return raw;
+  let html = raw.replace(
+    /\[youtube\]\(([^)]+)\)/g,
+    (_, url: string) => {
+      const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      if (m) return `<div data-youtube-video><iframe src="https://www.youtube.com/embed/${m[1]}" width="640" height="480" allowfullscreen></iframe></div>`;
+      return `<a href="${url}">${url}</a>`;
+    }
+  );
+  html = html.replace(/\n\n/g, "</p><p>");
+  return `<p>${html}</p>`;
+}
+
 // ─── Types ───────────────────────────────────────────
 type ResourceLink = { type: "link"; label: string; url: string };
 type ResourceFile = { type: "file"; label: string; fileUrl: string };
@@ -146,7 +162,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
       TiptapLink.configure({ openOnClick: false, autolink: true }),
       Youtube.configure({ width: 640, height: 360 }),
     ],
-    content: lesson.content || "",
+    content: migrateContent(lesson.content),
     editorProps: {
       attributes: {
         class: "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[300px] p-4",
@@ -163,7 +179,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     setIsPublished(lesson.is_published);
     setResources(Array.isArray(lesson.resources) ? (lesson.resources as Resource[]) : []);
     setHasChanges(false);
-    editor?.commands.setContent(lesson.content || "");
+    editor?.commands.setContent(migrateContent(lesson.content));
   }
 
   const saveMutation = useMutation({
