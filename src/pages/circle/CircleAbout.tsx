@@ -164,9 +164,28 @@ export default function CircleAbout() {
 
   return (
     <div className="p-4 md:p-5 space-y-5">
+      {/* Preview banner */}
+      {previewMode && (
+        <div className="flex items-center justify-between bg-muted rounded-lg px-4 py-2.5 text-sm">
+          <span className="text-muted-foreground">Modo de visualização — você está vendo como um visitante</span>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewMode(false)}>
+            <EyeOff className="h-3.5 w-3.5" /> Sair do preview
+          </Button>
+        </div>
+      )}
+
       {/* Title row */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">{community.name}</h1>
+        {isAdmin && !previewMode && (
+          <button
+            onClick={() => setPreviewMode(true)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Ver como visitante"
+          >
+            <Eye className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* ── MEDIA AREA ── */}
