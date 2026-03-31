@@ -103,12 +103,15 @@ export default function CircleFeed() {
     queryKey: ["circle-next-event-banner", community?.id],
     queryFn: async () => {
       if (!community) return null;
+      const now = new Date();
+      const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       const { data } = await supabase
         .from("community_events")
         .select("*")
         .eq("community_id", community.id)
         .eq("status", "UPCOMING")
-        .gte("starts_at", new Date().toISOString())
+        .gte("starts_at", now.toISOString())
+        .lte("starts_at", in24h.toISOString())
         .order("starts_at", { ascending: true })
         .limit(1)
         .maybeSingle();
