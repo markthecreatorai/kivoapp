@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThumbsUp, MessageCircle, Pin, BarChart3, Play, Flag } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
+import { toast } from "sonner";
 
 interface PostCardProps {
   post: any;
@@ -37,11 +40,96 @@ const ROLE_LABEL: Record<string, string> = {
   MODERATOR: "Mod",
 };
 
+function PollSection({ post, memberId }: { post: any; memberId?: string }) {
+  const queryClient = useQueryClient();
+  const options = (post.poll_options || []) as Array<{ id: string; text: string; votes?: number }>;
+
+  const { data: votes } = useQuery({
+    queryKey: ["poll-votes", post.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_poll_votes")
+        .select("option_id, member_id")
+        .eq("post_id", post.id);
+      return data || [];
+    },
+  });
+
+  const myVote = votes?.find((v: any) => v.member_id === memberId)?.option_id;
+  const hasVoted = !!myVote;
+  const totalVotes = votes?.length || 0;
+
+  const voteMutation = useMutation({
+    mutationFn: async (optionId: string) => {
+      if (!memberId) throw new Error("Not a member");
+      // Remove existing vote first
+      await supabase.from("community_poll_votes").delete().eq("post_id", post.id).eq("member_id", memberId);
+      // Insert new vote
+      const { error } = await supabase.from("community_poll_votes").insert({
+        post_id: post.id, member_id: memberId, option_id: optionId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["poll-votes", post.id] });
+    },
+    onError: () => toast.error("Erro ao votar"),
+  });
+
+  const getVoteCount = (optionId: string) => votes?.filter((v: any) => v.option_id === optionId).length || 0;
+  const getPercent = (optionId: string) => totalVotes === 0 ? 0 : Math.round((getVoteCount(optionId) / totalVotes) * 100);
+
+  return (
+    <div className="mt-3 space-y-2">
+      {options.map((opt) => {
+        const percent = getPercent(opt.id);
+        const isMyVote = myVote === opt.id;
+
+        return (
+          <button
+            key={opt.id}
+            onClick={() => !voteMutation.isPending && memberId && voteMutation.mutate(opt.id)}
+            disabled={!memberId || voteMutation.isPending}
+            className={cn(
+              "w-full relative rounded-lg border px-4 py-2.5 text-left text-sm transition-colors overflow-hidden",
+              isMyVote ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+              !memberId && "cursor-default"
+            )}
+          >
+            {/* Progress bar background */}
+            {hasVoted && (
+              <div
+                className={cn(
+                  "absolute inset-y-0 left-0 transition-all duration-500",
+                  isMyVote ? "bg-primary/15" : "bg-muted/60"
+                )}
+                style={{ width: `${percent}%` }}
+              />
+            )}
+            <div className="relative flex items-center justify-between">
+              <span className={cn("font-medium", isMyVote && "text-primary")}>
+                {opt.text}
+              </span>
+              {hasVoted && (
+                <span className={cn("text-xs font-semibold ml-2", isMyVote ? "text-primary" : "text-muted-foreground")}>
+                  {percent}%
+                </span>
+              )}
+            </div>
+          </button>
+        );
+      })}
+      <p className="text-xs text-muted-foreground">{totalVotes} vote{totalVotes !== 1 ? "s" : ""}</p>
+    </div>
+  );
+}
+
 export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId }: PostCardProps) {
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
   const thumbnail = firstImage || videoThumb;
   const roleLabel = ROLE_LABEL[post.author?.role];
+  const isPoll = post.post_type === "POLL" && post.poll_options;
 
   return (
     <div
@@ -51,7 +139,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
       )}
       style={post.is_pinned ? { borderLeftColor: "#f5c518" } : undefined}
     >
-      {/* Pinned badge — top right */}
+      {/* Pinned badge */}
       {post.is_pinned && (
         <div className="absolute top-3 right-4 flex items-center gap-1">
           <Pin className="h-3 w-3 text-muted-foreground" />
@@ -59,7 +147,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         </div>
       )}
 
-      {/* Header line: avatar | name + role + level | timestamp | category */}
+      {/* Header */}
       <div className="flex items-center gap-2.5">
         <Link to={`/circle/post/${post.id}`} className="shrink-0">
           <Avatar className="h-9 w-9">
@@ -90,35 +178,20 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         </div>
       </div>
 
-      {/* Title + body + optional thumbnail */}
+      {/* Title + body + thumbnail */}
       <Link to={`/circle/post/${post.id}`} className="block mt-3">
         <div className="flex gap-4">
           <div className="flex-1 min-w-0">
-            {/* Title — bold, 16px */}
             <h3 className="text-base font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
               {post.title}
             </h3>
-            {/* Excerpt — 2-3 lines, gray */}
             {post.body && (
               <p className="text-[13px] text-muted-foreground mt-1.5 line-clamp-3 leading-relaxed">
                 {post.body.replace(/<[^>]*>/g, "")}
               </p>
             )}
-            {/* Poll preview */}
-            {post.post_type === "POLL" && post.poll_options && (
-              <div className="mt-2 space-y-1">
-                {(post.poll_options as any[]).slice(0, 3).map((opt: any) => (
-                  <div key={opt.id} className="flex items-center gap-2 text-[12px]">
-                    <BarChart3 className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground">{opt.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-
-          {/* Thumbnail — right side, 120x90 */}
-          {thumbnail && (
+          {thumbnail && !isPoll && (
             <div className="shrink-0 w-[120px] h-[90px] rounded-lg overflow-hidden bg-muted relative">
               <img src={thumbnail} alt="" className="w-full h-full object-cover" />
               {videoThumb && !firstImage && (
@@ -133,9 +206,11 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         </div>
       </Link>
 
-      {/* Footer: likes | comments | commenter avatars | "New comment X ago" */}
+      {/* Interactive Poll */}
+      {isPoll && <PollSection post={post} memberId={memberId} />}
+
+      {/* Footer */}
       <div className="mt-3 pt-3 border-t border-border flex items-center gap-1">
-        {/* Like */}
         <button
           onClick={() => !isMuted && onToggleLike(post.id)}
           disabled={isMuted}
@@ -149,7 +224,6 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           {post.like_count > 0 && <span>{post.like_count}</span>}
         </button>
 
-        {/* Comment count */}
         <Link
           to={`/circle/post/${post.id}`}
           className="flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50"
@@ -158,7 +232,6 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           {post.comment_count > 0 && <span>{post.comment_count}</span>}
         </Link>
 
-        {/* Report */}
         {communityId && memberId && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -169,19 +242,12 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => {
-                  import("@/integrations/supabase/client").then(({ supabase }) => {
-                    supabase.from("community_reports" as any).insert({
-                      community_id: communityId,
-                      reporter_id: memberId,
-                      post_id: post.id,
-                      target_member_id: post.author_id,
-                      reason: "spam",
-                      status: "PENDING",
-                    } as any).then(({ error }) => {
-                      if (!error) {
-                        import("sonner").then(({ toast }) => toast.success("Denúncia enviada"));
-                      }
-                    });
+                  supabase.from("community_reports" as any).insert({
+                    community_id: communityId, reporter_id: memberId,
+                    post_id: post.id, target_member_id: post.author_id,
+                    reason: "spam", status: "PENDING",
+                  } as any).then(({ error }) => {
+                    if (!error) toast.success("Denúncia enviada");
                   });
                 }}
               >
@@ -193,13 +259,8 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
         <div className="flex-1" />
 
-        {/* Right side: commenter avatars + "New comment X ago" */}
         {post.comment_count > 0 && (
-          <Link
-            to={`/circle/post/${post.id}`}
-            className="flex items-center gap-2"
-          >
-            {/* Mini commenter avatars — show up to 3 overlapping */}
+          <Link to={`/circle/post/${post.id}`} className="flex items-center gap-2">
             <div className="flex items-center">
               {[0, 1, 2].slice(0, Math.min(post.comment_count, 3)).map((idx) => (
                 <div
