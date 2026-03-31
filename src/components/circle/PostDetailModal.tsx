@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ThumbsUp, MessageCircle, Pin, Lock, Trash2, Link2,
-  MoreHorizontal, Bell, BellOff, ArrowRightLeft, ChevronDown,
+  MoreHorizontal, Bell, ArrowRightLeft, ChevronDown,
   ChevronUp, ChevronLeft, ChevronRight, Paperclip, Video,
   Smile, Send, ArrowDown, Flag,
 } from "lucide-react";
