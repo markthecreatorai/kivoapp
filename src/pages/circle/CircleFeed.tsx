@@ -134,6 +134,46 @@ export default function CircleFeed() {
     enabled: !!member,
   });
 
+  // Onboarding checklist data
+  const { data: memberCommentCount } = useQuery({
+    queryKey: ["circle-member-comments-count", member?.id],
+    queryFn: async () => {
+      if (!member) return 0;
+      const { count } = await supabase.from("community_comments")
+        .select("id", { count: "exact", head: true })
+        .eq("author_id", member.id);
+      return count || 0;
+    },
+    enabled: !!member && !(member as any).onboarding_dismissed,
+  });
+
+  const { data: lessonProgress } = useQuery({
+    queryKey: ["circle-lesson-progress-count", member?.id],
+    queryFn: async () => {
+      if (!member) return 0;
+      const { count } = await supabase.from("circle_lesson_progress")
+        .select("id", { count: "exact", head: true })
+        .eq("member_id", member.id);
+      return count || 0;
+    },
+    enabled: !!member && !(member as any).onboarding_dismissed,
+  });
+
+  const onboardingTasks = useMemo(() => [
+    { label: "Assistir vídeo de introdução", icon: PlayCircle, done: (lessonProgress || 0) > 0, link: "/circle/classroom" },
+    { label: "Encontrar um post e deixar um comentário", icon: MessageSquare, done: (memberCommentCount || 0) > 0, link: "#" },
+    { label: "Baixar o app", icon: Smartphone, done: false, link: "#" },
+  ], [lessonProgress, memberCommentCount]);
+
+  const allOnboardingDone = onboardingTasks.every((t) => t.done);
+  const showOnboarding = member && !(member as any).onboarding_dismissed && !allOnboardingDone;
+
+  const handleDismissOnboarding = async () => {
+    if (!member) return;
+    await supabase.from("community_members").update({ onboarding_dismissed: true } as any).eq("id", member.id);
+    queryClient.invalidateQueries({ queryKey: ["circle-member"] });
+  };
+
   const isMuted = member?.status === "MUTED";
   const isAdminMember = member?.role === "OWNER" || member?.role === "ADMIN" || member?.role === "MODERATOR";
 
