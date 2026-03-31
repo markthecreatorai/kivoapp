@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import {
   Users, Globe, CreditCard, CheckCircle, Play,
-  Upload, Link2, Pencil, X, Plus,
+  Upload, Link2, Pencil, X, Plus, Eye, EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,7 @@ export default function CircleAbout() {
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaImageInputRef = useRef<HTMLInputElement>(null);
+  const [previewMode, setPreviewMode] = useState(false);
 
   // Fetch community
   const { data: community, isLoading } = useQuery({
@@ -92,6 +93,8 @@ export default function CircleAbout() {
   });
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
+
+  const isAdminEditing = isAdmin && !previewMode;
 
   // ─── Mutations ───
 
@@ -161,9 +164,28 @@ export default function CircleAbout() {
 
   return (
     <div className="p-4 md:p-5 space-y-5">
+      {/* Preview banner */}
+      {previewMode && (
+        <div className="flex items-center justify-between bg-muted rounded-lg px-4 py-2.5 text-sm">
+          <span className="text-muted-foreground">Modo de visualização — você está vendo como um visitante</span>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewMode(false)}>
+            <EyeOff className="h-3.5 w-3.5" /> Sair do preview
+          </Button>
+        </div>
+      )}
+
       {/* Title row */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">{community.name}</h1>
+        {isAdmin && !previewMode && (
+          <button
+            onClick={() => setPreviewMode(true)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Ver como visitante"
+          >
+            <Eye className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* ── MEDIA AREA ── */}
@@ -201,7 +223,7 @@ export default function CircleAbout() {
               <img src={community.cover_image_url!} alt="" className="w-full h-full object-cover" />
             </div>
           )}
-          {isAdmin && (
+          {isAdminEditing && (
             <button
               onClick={() => { setMediaVideoUrl(videoUrl || ""); setShowMediaModal(true); }}
               className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-lg px-2.5 py-1.5 text-xs flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -210,7 +232,7 @@ export default function CircleAbout() {
             </button>
           )}
         </div>
-      ) : isAdmin ? (
+      ) : isAdminEditing ? (
         <button
           onClick={() => { setMediaVideoUrl(videoUrl || ""); setShowMediaModal(true); }}
           className="w-full aspect-video rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/40 transition-all flex flex-col items-center justify-center gap-3 text-muted-foreground group"
@@ -253,7 +275,7 @@ export default function CircleAbout() {
       </div>
 
       {/* ── DESCRIPTION — editable for admin ── */}
-      {editingDescription ? (
+      {editingDescription && isAdminEditing ? (
         <div className="space-y-2">
           <div className="relative">
             <Textarea
@@ -281,10 +303,10 @@ export default function CircleAbout() {
         <div
           className={cn(
             "relative",
-            isAdmin && "cursor-pointer group"
+            isAdminEditing && "cursor-pointer group"
           )}
           onClick={() => {
-            if (isAdmin) {
+            if (isAdminEditing) {
               setDescriptionDraft(community.description || "");
               setEditingDescription(true);
             }
@@ -293,13 +315,13 @@ export default function CircleAbout() {
           <p className="text-foreground leading-relaxed whitespace-pre-line text-sm px-1">
             {community.description}
           </p>
-          {isAdmin && (
+          {isAdminEditing && (
             <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
               <Pencil className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
         </div>
-      ) : isAdmin ? (
+      ) : isAdminEditing ? (
         <button
           onClick={() => { setDescriptionDraft(""); setEditingDescription(true); }}
           className="text-primary hover:underline text-sm flex items-center gap-1.5"
