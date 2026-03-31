@@ -364,6 +364,65 @@ export default function PostComposer({
         className="hidden"
         onChange={(e) => handleImageUpload(e.target.files)}
       />
+
+      {/* Link modal */}
+      <Dialog open={showLinkModal} onOpenChange={setShowLinkModal}>
+        <DialogContent className="sm:max-w-md p-6 [&>button[data-close]]:hidden [&>button]:hidden">
+          <DialogHeader className="pb-0">
+            <DialogTitle className="text-lg font-bold text-foreground">Add link</DialogTitle>
+          </DialogHeader>
+          <div className="pt-4 space-y-4">
+            <div>
+              <input
+                type="url"
+                value={linkModalUrl}
+                onChange={(e) => setLinkModalUrl(e.target.value)}
+                placeholder="Enter a URL"
+                className="w-full px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 border border-border rounded-sm outline-none focus:border-primary transition-colors"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (linkModalUrl.trim()) {
+                      try {
+                        new URL(linkModalUrl.trim());
+                        setLinkUrl(linkModalUrl.trim());
+                        setShowLinkModal(false);
+                      } catch {
+                        toast.error("URL inválida");
+                      }
+                    }
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowLinkModal(false)}
+                className="px-4 py-1.5 text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={() => {
+                  const url = linkModalUrl.trim();
+                  if (!url) return;
+                  try {
+                    new URL(url);
+                    setLinkUrl(url);
+                    setShowLinkModal(false);
+                  } catch {
+                    toast.error("URL inválida");
+                  }
+                }}
+                className="px-4 py-1.5 rounded-sm text-sm font-bold uppercase tracking-wide text-primary-foreground bg-primary hover:opacity-90 transition-opacity"
+              >
+                LINK
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
