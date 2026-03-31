@@ -442,6 +442,7 @@ export default function CircleFeed() {
               showSpace={!effectiveSpaceId}
               communityId={community?.id}
               memberId={member?.id}
+              onOpenPost={handleOpenPost}
             />
           ))}
         </div>
