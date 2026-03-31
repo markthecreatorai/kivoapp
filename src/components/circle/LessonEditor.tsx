@@ -64,8 +64,8 @@ function ToolbarButton({ icon: Icon, label, action, isActive }: {
     <button
       onClick={action}
       className={cn(
-        "h-8 w-8 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground",
-        isActive && "bg-muted text-foreground"
+        "h-7 w-7 flex items-center justify-center rounded transition-colors text-muted-foreground/60 hover:text-foreground",
+        isActive && "text-foreground"
       )}
       title={label}
       type="button"
