@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import {
   Users, Globe, CreditCard, CheckCircle, Play,
-  Upload, Link2, Pencil, X, Plus,
+  Upload, Link2, Pencil, X, Plus, Eye, EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
