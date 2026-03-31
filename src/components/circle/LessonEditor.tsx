@@ -327,7 +327,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
       </div>
 
       {/* ── Resources Section ── */}
-      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Paperclip className="h-4 w-4" /> Recursos
