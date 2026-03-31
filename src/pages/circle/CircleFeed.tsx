@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { MessageCircle, Calendar, Lock, Filter, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow, differenceInHours, isFuture } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PostCard from "@/components/circle/PostCard";
 import PostComposer from "@/components/circle/PostComposer";
