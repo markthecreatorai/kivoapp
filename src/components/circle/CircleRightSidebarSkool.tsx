@@ -172,7 +172,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
             <div className="w-px h-9 bg-border" />
             <div className="flex-1 text-center">
               <p className="text-[15px] font-bold text-foreground flex items-center justify-center gap-1">
-                <span className="inline-block h-2 w-2 rounded-full bg-accent animate-pulse" />
+                <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                 {onlineCount}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Online</p>
