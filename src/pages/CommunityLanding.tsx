@@ -148,7 +148,26 @@ export default function CommunityLanding() {
       setShowInviteModal(true);
       return;
     }
+    setModalMode("signup");
     setShowJoinModal(true);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginData.email.trim()) { toast.error("Informe seu email"); return; }
+    if (!loginData.password.trim()) { toast.error("Informe sua senha"); return; }
+    setLoginLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: loginData.email, password: loginData.password });
+      if (error) throw error;
+      // After login, the useEffect will detect existingMember and redirect, or we join
+      toast.success("Login realizado!");
+      // Don't close modal — let the logged-in state take over and show the join button
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao fazer login");
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   if (communityLoading) {
