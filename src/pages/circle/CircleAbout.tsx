@@ -74,6 +74,23 @@ export default function CircleAbout() {
     enabled: !!community?.id && !!user?.id,
   });
 
+  // Fetch community owner
+  const { data: owner } = useQuery({
+    queryKey: ["community-owner", community?.id],
+    queryFn: async () => {
+      if (!community) return null;
+      const { data } = await supabase
+        .from("community_members")
+        .select("display_name, avatar_url, user_id")
+        .eq("community_id", community.id)
+        .eq("role", "OWNER")
+        .eq("status", "ACTIVE")
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!community?.id,
+  });
+
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
 
   // ─── Mutations ───
@@ -235,6 +252,16 @@ export default function CircleAbout() {
             <><CheckCircle className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600 font-medium">Gratuito</span></>
           )}
         </span>
+        {owner && (
+          <span className="flex items-center gap-1.5">
+            {owner.avatar_url ? (
+              <img src={owner.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+            ) : (
+              <Users className="h-4 w-4" />
+            )}
+            <span>By <span className="font-medium text-foreground">{owner.display_name || "Criador"}</span></span>
+          </span>
+        )}
       </div>
 
       {/* ── DESCRIPTION — editable for admin ── */}
