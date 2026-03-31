@@ -163,6 +163,28 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
             </p>
           ) : null}
 
+          {/* Featured links */}
+          {(() => {
+            const links = (community as any).community_links;
+            if (!Array.isArray(links) || links.length === 0) return null;
+            return (
+              <div className="space-y-1.5">
+                {links.slice(0, 5).map((link: any, i: number) => (
+                  <a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-[13px] text-foreground hover:text-primary transition-colors group"
+                  >
+                    <span className="text-muted-foreground group-hover:text-primary text-xs">↗️</span>
+                    <span className="truncate">{link.emoji ? `${link.emoji} ` : ""}{link.label}</span>
+                  </a>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Stats row — Members | Online | Admins */}
           <div className="flex items-center border-t border-b border-border py-3 -mx-4 px-4">
             <div className="flex-1 text-center">
