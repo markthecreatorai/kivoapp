@@ -674,7 +674,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                             {visibleReplies.map((reply: any) => {
                               const rLiked = userReactions?.commentLikes.includes(reply.id);
                               return (
-                                <div key={reply.id} className="flex gap-2.5 group/reply">
+                                <div key={reply.id} className="flex gap-2.5 group/reply rounded-lg p-2 bg-muted/30">
                                   <div className="relative shrink-0">
                                     <Avatar className="h-6 w-6">
                                       <AvatarImage src={reply.author?.avatar_url || ""} />
