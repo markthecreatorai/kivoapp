@@ -543,7 +543,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                 </div>
 
                 {/* ═══ COMMENTS SECTION ═══ */}
-                <div className="px-5 py-4 space-y-4">
+                <div className="px-5 py-4 divide-y divide-border/50">
                   {post.is_locked && (
                     <p className="text-center text-sm text-muted-foreground py-2">🔒 Comentários bloqueados neste post.</p>
                   )}
