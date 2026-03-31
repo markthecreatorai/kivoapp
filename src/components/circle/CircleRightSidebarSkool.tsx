@@ -77,6 +77,23 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
     enabled: !!community,
   });
 
+  const { data: primaryPlan } = useQuery({
+    queryKey: ["sidebar-primary-plan", community?.id],
+    queryFn: async () => {
+      if (!community?.id || community.access_type !== "PAID_SUBSCRIPTION") return null;
+      const { data } = await supabase
+        .from("circle_plans")
+        .select("trial_days, price_cents, interval")
+        .eq("community_id", community.id)
+        .eq("is_active", true)
+        .order("price_cents", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!community?.id,
+  });
+
   const handleUploadCover = async (file: File) => {
     setUploadingCover(true);
     try {
@@ -99,6 +116,10 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
   if (!community) return null;
 
   const adminCount = adminMembers?.length ?? 0;
+  const trialDays = (primaryPlan as any)?.trial_days || 0;
+  const visitorCta = community.access_type === "PAID_SUBSCRIPTION"
+    ? (trialDays > 0 ? `Iniciar ${trialDays} dias grátis` : "Assinar comunidade")
+    : "Entrar no Grupo";
 
   return (
     <div className="p-4 space-y-4">
@@ -264,7 +285,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
               to={`/c/${slug}`}
               className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
             >
-              Entrar no Grupo
+              {visitorCta}
             </Link>
           )}
         </div>

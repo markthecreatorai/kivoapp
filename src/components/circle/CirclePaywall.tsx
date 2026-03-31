@@ -128,7 +128,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
         );
         queryClient.invalidateQueries({ queryKey: ["circle-member"] });
         queryClient.invalidateQueries({ queryKey: ["circle-subscription"] });
-        navigate("/circle/feed");
+        navigate(`/c/${community.slug}/feed`);
       } else if (data?.requires_card) {
         setShowCardForm(true);
         toast.info("Informe os dados do cartão para continuar.");
@@ -140,7 +140,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
       if (err?.message?.includes("Already subscribed")) {
         toast.info("Você já possui uma assinatura ativa.");
         queryClient.invalidateQueries({ queryKey: ["circle-member"] });
-        navigate("/circle/feed");
+        navigate(`/c/${community.slug}/feed`);
       } else {
         toast.error(err?.message || "Erro ao processar assinatura. Tente novamente.");
       }
@@ -348,7 +348,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
 
               {!user && (
                 <p className="text-xs text-muted-foreground">
-                  <button onClick={() => navigate("/member/login?redirect=/circle")} className="text-primary hover:underline">
+                  <button onClick={() => navigate(`/member/login?redirect=${encodeURIComponent(`/c/${community.slug}`)}`)} className="text-primary hover:underline">
                     Faça login
                   </button>
                   {" "}para assinar

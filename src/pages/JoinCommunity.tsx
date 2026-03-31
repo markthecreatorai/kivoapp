@@ -74,10 +74,10 @@ export default function JoinCommunity() {
 
   // If already an active member, redirect
   useEffect(() => {
-    if (existingMember?.status === "ACTIVE") {
-      navigate("/circle/feed", { replace: true });
+    if (existingMember?.status === "ACTIVE" && community?.slug) {
+      navigate(`/c/${community.slug}/feed`, { replace: true });
     }
-  }, [existingMember, navigate]);
+  }, [existingMember, community, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

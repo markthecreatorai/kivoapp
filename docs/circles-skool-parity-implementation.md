@@ -22,10 +22,11 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - corrigir badge de DM para rota slug-first (`/c/:slug/messages`)
 
 ## Fase C — Próximos incrementos (a implementar)
-- [ ] `src/components/circle/CircleRightSidebarSkool.tsx`
+- [x] `src/components/circle/CircleRightSidebarSkool.tsx`
   - CTA contextual para paid/trial (não só "Entrar no Grupo")
 - [ ] `src/pages/CommunityDiscovery.tsx`
   - cards com social proof mais forte e microcopy de conversão
 - [ ] `src/components/circle/admin/*`
   - checklist visual para setup da comunidade (about, links, pricing, discovery)
-- [ ] QA final de consistência de rotas legacy (`/circle/*` vs `/c/:slug/*`)
+- [~] QA final de consistência de rotas legacy (`/circle/*` vs `/c/:slug/*`)
+  - corrigidos pontos críticos em `CirclePaywall`, `JoinCommunity`, `CirclePostDetail`, `CircleFeed`
