@@ -564,65 +564,109 @@ export default function CommunityLanding() {
               </p>
             </div>
           ) : (
-            /* New user signup */
-            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-              {inviteCode && (
-                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20">
-                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-xs font-medium text-primary">Você foi convidado — acesso imediato!</span>
-                </div>
-              )}
+            /* New user — signup or login */
+            {modalMode === "signup" ? (
+              <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                {inviteCode && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20">
+                    <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs font-medium text-primary">Você foi convidado — acesso imediato!</span>
+                  </div>
+                )}
 
-              <div className="space-y-1">
-                <Label htmlFor="modal-name" className="text-sm">Seu nome</Label>
-                <Input id="modal-name" placeholder="Como quer ser chamado?" value={formData.display_name}
-                  onChange={(e) => setFormData((p) => ({ ...p, display_name: e.target.value }))} className="h-10" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="modal-email" className="text-sm">Email</Label>
-                <Input id="modal-email" type="email" placeholder="seu@email.com" value={formData.email}
-                  onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} className="h-10" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="modal-password" className="text-sm">Senha</Label>
-                <div className="relative">
-                  <Input id="modal-password" type={showPassword ? "text" : "password"}
-                    placeholder="Mínimo 6 caracteres" value={formData.password}
-                    onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
-                    className="h-10 pr-10" />
-                  <button type="button" onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <div className="space-y-1">
+                  <Label htmlFor="modal-name" className="text-sm">Seu nome</Label>
+                  <Input id="modal-name" placeholder="Como quer ser chamado?" value={formData.display_name}
+                    onChange={(e) => setFormData((p) => ({ ...p, display_name: e.target.value }))} className="h-10" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="modal-email" className="text-sm">Email</Label>
+                  <Input id="modal-email" type="email" placeholder="seu@email.com" value={formData.email}
+                    onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} className="h-10" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="modal-password" className="text-sm">Senha</Label>
+                  <div className="relative">
+                    <Input id="modal-password" type={showPassword ? "text" : "password"}
+                      placeholder="Mínimo 6 caracteres" value={formData.password}
+                      onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
+                      className="h-10 pr-10" />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {isPaid && !inviteCode && (
+                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
+                    <p className="text-lg font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
+                    <p className="text-xs text-muted-foreground">Após criar conta, você será direcionado ao pagamento</p>
+                  </div>
+                )}
+
+                <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading} id="modal-join-submit">
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isPaid ? <CreditCard className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                  {isPaid && !inviteCode ? "Criar conta e pagar" : requireApproval ? "Solicitar Entrada" : "Criar conta e entrar"}
+                </Button>
+
+                <p className="text-center text-xs text-muted-foreground">
+                  Já tem conta?{" "}
+                  <button type="button" onClick={() => setModalMode("login")}
+                    className="text-primary hover:underline">
+                    Fazer login
                   </button>
+                </p>
+
+                <p className="text-center text-[10px] text-muted-foreground leading-relaxed">
+                  Ao continuar, você concorda com os{" "}
+                  <a href="/terms" className="text-primary hover:underline">Termos de Uso</a>.
+                </p>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-4 pt-2">
+                <div className="space-y-1">
+                  <Label htmlFor="modal-login-email" className="text-sm">Email</Label>
+                  <Input id="modal-login-email" type="email" placeholder="seu@email.com" value={loginData.email}
+                    onChange={(e) => setLoginData((p) => ({ ...p, email: e.target.value }))} className="h-10" />
                 </div>
-              </div>
-
-              {isPaid && !inviteCode && (
-                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
-                  <p className="text-lg font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
-                  <p className="text-xs text-muted-foreground">Após criar conta, você será direcionado ao pagamento</p>
+                <div className="space-y-1">
+                  <Label htmlFor="modal-login-password" className="text-sm">Senha</Label>
+                  <div className="relative">
+                    <Input id="modal-login-password" type={showPassword ? "text" : "password"}
+                      placeholder="Sua senha" value={loginData.password}
+                      onChange={(e) => setLoginData((p) => ({ ...p, password: e.target.value }))}
+                      className="h-10 pr-10" />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading} id="modal-join-submit">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isPaid ? <CreditCard className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                {isPaid && !inviteCode ? "Criar conta e pagar" : requireApproval ? "Solicitar Entrada" : "Criar conta e entrar"}
-              </Button>
+                <div className="text-right">
+                  <a href="/forgot-password" target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline">
+                    Esqueci minha senha
+                  </a>
+                </div>
 
-              <p className="text-center text-xs text-muted-foreground">
-                Já tem conta?{" "}
-                <button type="button" onClick={() => { setShowJoinModal(false); navigate(`/login?redirect=/c/${slug}`); }}
-                  className="text-primary hover:underline">
-                  Fazer login
-                </button>
-              </p>
+                <Button type="submit" size="lg" className="w-full gap-2" disabled={loginLoading}>
+                  {loginLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                  Entrar
+                </Button>
 
-              <p className="text-center text-[10px] text-muted-foreground leading-relaxed">
-                Ao continuar, você concorda com os{" "}
-                <a href="/terms" className="text-primary hover:underline">Termos de Uso</a>.
-              </p>
-            </form>
-          )}
+                <p className="text-center text-xs text-muted-foreground">
+                  Não tem conta?{" "}
+                  <button type="button" onClick={() => setModalMode("signup")}
+                    className="text-primary hover:underline">
+                    Criar conta
+                  </button>
+                </p>
+              </form>
+            )}
+          </>
+        )}
         </DialogContent>
       </Dialog>
       {/* ── INVITE MODAL ── */}
