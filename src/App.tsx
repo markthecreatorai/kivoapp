@@ -84,6 +84,9 @@ const CircleEvents = lazy(() => import("./pages/circle/CircleEvents"));
 const CircleClassroom = lazy(() => import("./pages/circle/CircleClassroom"));
 const CircleAdmin = lazy(() => import("./pages/circle/CircleAdmin"));
 const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
+
+// Redirect /c/:slug/post/:id → /c/:slug/feed?post=:id
+const CirclePostRedirect = lazy(() => import("./pages/circle/CirclePostRedirect"));
 const CircleMessages = lazy(() => import("./pages/circle/CircleMessages"));
 const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
 const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
