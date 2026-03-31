@@ -2,11 +2,10 @@ import { useState, useRef, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2, Upload,
+  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2, Upload, ChevronDown, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -339,18 +338,34 @@ export default function PostComposer({
 
         {/* Right: category + cancel + post */}
         <div className="flex items-center gap-2">
-          <Select value={selectedSpace} onValueChange={setSelectedSpace}>
-            <SelectTrigger className="h-8 text-xs border-border bg-transparent w-auto min-w-[140px]">
-              <SelectValue placeholder="Select a category" />
-            </SelectTrigger>
-            <SelectContent>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="h-8 flex items-center gap-1.5 px-3 text-xs border border-border rounded-lg bg-transparent hover:bg-muted/50 transition-colors">
+                <span className={cn(selectedSpace ? "text-foreground" : "text-muted-foreground")}>
+                  {selectedSpace
+                    ? (() => { const s = spaces?.find((sp: any) => sp.id === selectedSpace); return s ? `${s.emoji || ""} ${s.name}` : "Select a category"; })()
+                    : "Select a category"}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" className="w-[200px] p-1">
               {spaces?.map((s: any) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.emoji} {s.name}
-                </SelectItem>
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedSpace(s.id)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-2.5 py-2 text-sm rounded-md transition-colors text-left",
+                    selectedSpace === s.id ? "bg-accent text-accent-foreground" : "hover:bg-muted/60 text-foreground"
+                  )}
+                >
+                  <span>{s.emoji}</span>
+                  <span className="flex-1 truncate">{s.name}</span>
+                  {selectedSpace === s.id && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                </button>
               ))}
-            </SelectContent>
-          </Select>
+            </PopoverContent>
+          </Popover>
 
           <button
             onClick={onClose}
