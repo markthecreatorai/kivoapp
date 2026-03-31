@@ -216,6 +216,21 @@ export default function CircleFeed() {
         </>
       )}
 
+      {/* Event banner — only shows when event starts within 24h */}
+      {nextEvent && (
+        <div
+          className="flex items-center justify-center gap-2 py-2 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => toast.info(`Evento: ${nextEvent.title}`)}
+        >
+          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+          {nextEvent.max_attendees && <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+          <span className="text-sm" style={{ color: "#111827" }}>
+            <strong>{nextEvent.title}</strong>
+            {" "}is happening in {formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}
+          </span>
+        </div>
+      )}
+
       {/* Category pills */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide items-center">
         <button
