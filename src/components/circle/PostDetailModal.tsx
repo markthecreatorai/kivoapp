@@ -445,6 +445,12 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         }}>
                           <Flag className="h-3.5 w-3.5 mr-2" />Denunciar
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          const url = `${window.location.origin}/c/${communitySlug}/post/${postId}`;
+                          navigator.clipboard.writeText(url); toast.success("Link copiado!");
+                        }}>
+                          <Link2 className="h-3.5 w-3.5 mr-2" />Copiar link
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
