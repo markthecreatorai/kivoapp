@@ -131,7 +131,7 @@ export default function PostComposer({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
       queryClient.invalidateQueries({ queryKey: ["circle-member"] });
-      toast.success(`Post publicado! +${pointsPerPost} pts`);
+      toast.success("Post publicado com sucesso!");
       onSuccess();
       onClose();
     },
