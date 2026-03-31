@@ -670,7 +670,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
 
                         {/* Nested replies */}
                         {replies.length > 0 && (
-                          <div className="ml-11 mt-3 space-y-3 border-l-2 border-border/40 pl-4">
+                          <div className="ml-11 mt-3 space-y-2 pl-4 border-l-2 border-border/30">
                             {visibleReplies.map((reply: any) => {
                               const rLiked = userReactions?.commentLikes.includes(reply.id);
                               return (
