@@ -47,6 +47,7 @@ export default function AdminSettingsTab({ community, member }: Props) {
     points_per_like_received: community.points_per_like_received,
     points_per_course_completed: community.points_per_course_completed,
     points_per_daily_login: community.points_per_daily_login,
+    community_links: (community as any).community_links || [],
   });
 
   // Fetch workspace products for linking
