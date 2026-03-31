@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users, MessageSquare, Search, TrendingUp, Calendar,
-  BookOpen, Trophy, ArrowRight, Sparkles, Globe,
+  Users, MessageSquare, Search,
+  Sparkles, Globe, CheckCircle2, Crown,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -15,10 +15,10 @@ function CommunityCard({ community }: { community: any }) {
   const navigate = useNavigate();
 
   const accessInfo = {
-    OPEN: { label: "Gratuita", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-    FREE_WITH_PRODUCT: { label: "Inclusa na compra", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-    PAID_SUBSCRIPTION: { label: "Assinatura", className: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
-  }[community.access_type as string] || { label: "Gratuita", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" };
+    OPEN: { label: "Gratuita", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", cta: "Participar grátis" },
+    FREE_WITH_PRODUCT: { label: "Inclusa na compra", className: "bg-blue-500/10 text-blue-600 border-blue-500/20", cta: "Ver detalhes" },
+    PAID_SUBSCRIPTION: { label: "Assinatura", className: "bg-purple-500/10 text-purple-600 border-purple-500/20", cta: "Ver plano" },
+  }[community.access_type as string] || { label: "Gratuita", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", cta: "Participar grátis" };
 
   return (
     <div
@@ -78,6 +78,14 @@ function CommunityCard({ community }: { community: any }) {
           <span className="flex items-center gap-1">
             <MessageSquare className="h-3.5 w-3.5" />{community.post_count || 0}
           </span>
+          <span className="flex items-center gap-1 text-emerald-600">
+            <CheckCircle2 className="h-3.5 w-3.5" /> ativa
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{community.require_approval ? "Entrada com aprovação" : "Entrada imediata"}</span>
+          <span className="text-xs font-semibold text-primary">{accessInfo.cta}</span>
         </div>
       </div>
     </div>
@@ -134,6 +142,10 @@ export default function CommunityDiscovery() {
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Explore comunidades, aprenda com especialistas e conecte-se com pessoas que compartilham seus interesses.
           </p>
+          <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Crown className="h-3.5 w-3.5 text-primary" />
+            Comunidades com maior engajamento aparecem primeiro em "Em alta"
+          </div>
 
           {/* Search */}
           <div className="relative max-w-md mx-auto mt-6">

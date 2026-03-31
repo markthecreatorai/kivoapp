@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Compass, Tag, X } from "lucide-react";
+import { Compass, Tag, X, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -37,6 +37,16 @@ export default function AdminDiscoveryTab({ community }: Props) {
   const [category, setCategory] = useState(community.discovery_category || "");
   const [tags, setTags] = useState<string[]>(community.discovery_tags || []);
   const [tagInput, setTagInput] = useState("");
+
+  const setupChecklist = [
+    { label: "Descrição preenchida", done: !!community.description?.trim() },
+    { label: "Imagem de capa adicionada", done: !!community.cover_image_url },
+    { label: "Ícone da comunidade", done: !!community.icon_url },
+    { label: "Categoria definida", done: !!category },
+    { label: "Pelo menos 1 tag", done: tags.length > 0 },
+    { label: "Modelo de acesso configurado", done: !!community.access_type },
+  ];
+  const checklistDone = setupChecklist.filter((i) => i.done).length;
 
   const saveDiscovery = useMutation({
     mutationFn: async () => {
@@ -84,6 +94,22 @@ export default function AdminDiscoveryTab({ community }: Props) {
         >
           SAVE
         </Button>
+      </div>
+
+      {/* Setup checklist */}
+      <div className="p-4 bg-white border border-gray-100 rounded-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-900">Checklist de prontidão</p>
+          <span className="text-xs text-gray-500">{checklistDone}/{setupChecklist.length}</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {setupChecklist.map((item) => (
+            <div key={item.label} className="flex items-center gap-2 text-xs text-gray-700">
+              {item.done ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Circle className="h-3.5 w-3.5 text-gray-300" />}
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Discovery toggle */}
