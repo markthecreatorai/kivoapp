@@ -392,18 +392,18 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
       </div>
 
       {/* Bottom controls */}
-      <div className="bg-card rounded-xl shadow-sm border border-border p-4 flex items-center justify-between">
+      <div className="bg-card rounded-lg shadow-sm p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Switch id="lesson-published" checked={isPublished} onCheckedChange={(v) => { setIsPublished(v); setHasChanges(true); }} />
           <Label htmlFor="lesson-published" className="text-sm">{isPublished ? "Publicado" : "Rascunho"}</Label>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCancel} disabled={!hasChanges}>
-            <X className="h-4 w-4 mr-1" /> Cancel
+          <Button variant="ghost" size="sm" onClick={handleCancel} disabled={!hasChanges}>
+            <X className="h-4 w-4 mr-1" /> Cancelar
           </Button>
-          <Button size="sm" onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending}>
+          <Button size="sm" onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending} className={cn(!hasChanges && "opacity-50 cursor-not-allowed")}>
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-            Save
+            Salvar
           </Button>
         </div>
       </div>
