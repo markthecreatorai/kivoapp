@@ -292,33 +292,31 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   // ═══ EDIT VIEW ═══
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm p-6">
         {/* Title */}
-        <div className="p-4 border-b border-border">
-          <Input
-            value={title}
-            onChange={(e) => { setTitle(e.target.value); setHasChanges(true); }}
-            placeholder="Título da lição..."
-            className="text-lg font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50"
-          />
-        </div>
+        <Input
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); setHasChanges(true); }}
+          placeholder="Título da lição..."
+          className="text-[20px] font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/40 mb-4"
+        />
 
         {/* Toolbar */}
-        <div className="flex items-center gap-0.5 px-3 py-2 border-b border-border bg-muted/30 flex-wrap">
+        <div className="flex items-center gap-0.5 py-2 border-y border-border/50 mb-4 flex-wrap">
           <ToolbarButton editor={editor} icon={Heading1} label="Heading 1" action={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} isActive={editor?.isActive("heading", { level: 1 })} />
           <ToolbarButton editor={editor} icon={Heading2} label="Heading 2" action={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} isActive={editor?.isActive("heading", { level: 2 })} />
           <ToolbarButton editor={editor} icon={Heading3} label="Heading 3" action={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} isActive={editor?.isActive("heading", { level: 3 })} />
           <ToolbarButton editor={editor} icon={Heading4} label="Heading 4" action={() => editor?.chain().focus().toggleHeading({ level: 4 }).run()} isActive={editor?.isActive("heading", { level: 4 })} />
-          <Separator orientation="vertical" className="h-5 mx-1" />
+          <Separator orientation="vertical" className="h-4 mx-1.5" />
           <ToolbarButton editor={editor} icon={Bold} label="Bold" action={() => editor?.chain().focus().toggleBold().run()} isActive={editor?.isActive("bold")} />
           <ToolbarButton editor={editor} icon={Italic} label="Italic" action={() => editor?.chain().focus().toggleItalic().run()} isActive={editor?.isActive("italic")} />
           <ToolbarButton editor={editor} icon={Strikethrough} label="Strikethrough" action={() => editor?.chain().focus().toggleStrike().run()} isActive={editor?.isActive("strike")} />
           <ToolbarButton editor={editor} icon={Code} label="Code" action={() => editor?.chain().focus().toggleCode().run()} isActive={editor?.isActive("code")} />
-          <Separator orientation="vertical" className="h-5 mx-1" />
+          <Separator orientation="vertical" className="h-4 mx-1.5" />
           <ToolbarButton editor={editor} icon={List} label="Bullet List" action={() => editor?.chain().focus().toggleBulletList().run()} isActive={editor?.isActive("bulletList")} />
           <ToolbarButton editor={editor} icon={ListOrdered} label="Numbered List" action={() => editor?.chain().focus().toggleOrderedList().run()} isActive={editor?.isActive("orderedList")} />
           <ToolbarButton editor={editor} icon={Quote} label="Blockquote" action={() => editor?.chain().focus().toggleBlockquote().run()} isActive={editor?.isActive("blockquote")} />
-          <Separator orientation="vertical" className="h-5 mx-1" />
+          <Separator orientation="vertical" className="h-4 mx-1.5" />
           <ToolbarButton editor={editor} icon={ImageIcon} label="Image" action={promptAndInsertImage} />
           <ToolbarButton editor={editor} icon={LinkIcon} label="Link" action={promptAndInsertLink} isActive={editor?.isActive("link")} />
           <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={() => setVideoDialogOpen(true)} />
