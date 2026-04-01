@@ -502,10 +502,10 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
                     <p className="text-sm font-medium text-foreground truncate">{member.display_name || user?.email?.split("@")[0]}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
                   </div>
-                  <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings`)} className="gap-2 text-sm cursor-pointer">
+                  <DropdownMenuItem onClick={() => navigate(`/circle-settings?section=profile`)} className="gap-2 text-sm cursor-pointer">
                     <User className="h-4 w-4" /> Perfil da comunidade
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings?section=account`)} className="gap-2 text-sm cursor-pointer">
+                  <DropdownMenuItem onClick={() => navigate(`/circle-settings?section=account`)} className="gap-2 text-sm cursor-pointer">
                     <Settings className="h-4 w-4" /> Configurações da conta
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

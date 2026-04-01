@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { WorkspaceProvider } from "@/contexts/WorkspaceProvider";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -98,6 +98,15 @@ const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPla
 const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
+
+/** Redirect /c/:slug/settings?section=X → /circle-settings?section=X */
+function CircleSettingsRedirect() {
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get("section");
+  const target = section ? `/circle-settings?section=${section}` : "/circle-settings";
+  return <Navigate to={target} replace />;
+}
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -264,13 +273,17 @@ const App = () => (
                 {/* /c/:slug/messages → redirect to feed (messages are now popup-only) */}
                 <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
+                {/* Legacy redirect: /c/:slug/settings → /circle-settings */}
+                <Route path="/c/:slug/settings" element={<CircleSettingsRedirect />} />
                 <Route path="/c/:slug/about" element={<CircleLayout><CircleAbout /></CircleLayout>} />
                 <Route path="/c/:slug/profile" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/profile/:memberId" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
 
                 {/* Legacy /join/:slug -> /c/:slug redirect */}
                 <Route path="/join/:slug" element={<JoinRedirect />} />
+
+                {/* Global circle settings — outside community layout */}
+                <Route path="/circle-settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettings /></ProtectedRoute>} />
 
                 {/* Public community discovery */}
                 <Route path="/communities" element={<CommunityDiscovery />} />

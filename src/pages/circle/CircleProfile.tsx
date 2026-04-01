@@ -415,7 +415,7 @@ export default function CircleProfile() {
               variant="outline"
               size="sm"
               className="w-full text-xs"
-              onClick={() => navigate(`/c/${slug}/settings`)}
+              onClick={() => navigate(`/circle-settings?section=profile`)}
             >
               <Pencil className="h-3 w-3 mr-1.5" /> EDIT PROFILE
             </Button>
@@ -436,7 +436,7 @@ export default function CircleProfile() {
           <p className="text-[10px] text-muted-foreground">{totalContributions} contributions</p>
         </div>
         {isOwnProfile && (
-          <Button variant="outline" size="sm" className="text-xs h-7 shrink-0" onClick={() => navigate(`/c/${slug}/settings`)}>
+          <Button variant="outline" size="sm" className="text-xs h-7 shrink-0" onClick={() => navigate(`/circle-settings?section=profile`)}>
             Edit
           </Button>
         )}
