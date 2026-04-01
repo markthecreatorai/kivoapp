@@ -241,7 +241,7 @@ export default function AffiliatesSettings() {
       <Card className="p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <h3 className="font-semibold text-foreground">Referrals</h3>
+          <h3 className="font-semibold text-foreground">Indicações</h3>
         </div>
 
         {commissions && commissions.length > 0 ? (
