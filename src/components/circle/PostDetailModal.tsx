@@ -88,6 +88,8 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [commentImages, setCommentImages] = useState<string[]>([]);
   const commentImageRef = useRef<HTMLInputElement>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentBody, setEditingCommentBody] = useState("");
 
   /* ── Queries ─────── */
   const { data: community } = useQuery({
