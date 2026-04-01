@@ -24,6 +24,8 @@ export default function AdminInviteTab({ community, member }: Props) {
   const [csvEmails, setCsvEmails] = useState("");
   const [selectedInviteIds, setSelectedInviteIds] = useState<string[]>([]);
   const [inviteStatusFilter, setInviteStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [newMaxUses, setNewMaxUses] = useState<number | "">("");
+  const [newExpiresDays, setNewExpiresDays] = useState<number | "">("");
 
   const parsedEmails = useMemo(() => {
     return Array.from(
@@ -59,6 +61,18 @@ export default function AdminInviteTab({ community, member }: Props) {
   const filteredInviteLinks = inviteLinks.filter((l: any) =>
     inviteStatusFilter === "all" ? true : inviteStatusFilter === "active" ? !!l.is_active : !l.is_active
   );
+
+  const createAdvancedLink = () => {
+    const expires_at = newExpiresDays
+      ? new Date(Date.now() + Number(newExpiresDays) * 24 * 60 * 60 * 1000).toISOString()
+      : undefined;
+    createLink.mutate({
+      max_uses: newMaxUses ? Number(newMaxUses) : undefined,
+      expires_at,
+    });
+    setNewMaxUses("");
+    setNewExpiresDays("");
+  };
 
   const bulkDeactivateInvites = useMutation({
     mutationFn: async (ids: string[]) => {
@@ -144,7 +158,7 @@ export default function AdminInviteTab({ community, member }: Props) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => createLink.mutate({})}
+            onClick={createAdvancedLink}
             disabled={createLink.isPending}
             className="gap-1.5"
           >
@@ -155,6 +169,26 @@ export default function AdminInviteTab({ community, member }: Props) {
         <p className="text-xs text-gray-500 mb-4">
           Compartilhe links para que novos membros entrem sem precisar de aprovação manual.
         </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+          <Input
+            type="number"
+            min={1}
+            placeholder="Máx. usos (opcional)"
+            value={newMaxUses}
+            onChange={(e) => setNewMaxUses(e.target.value ? Number(e.target.value) : "")}
+          />
+          <Input
+            type="number"
+            min={1}
+            placeholder="Expira em X dias"
+            value={newExpiresDays}
+            onChange={(e) => setNewExpiresDays(e.target.value ? Number(e.target.value) : "")}
+          />
+          <Button variant="outline" onClick={createAdvancedLink} disabled={createLink.isPending}>
+            Criar com regras
+          </Button>
+        </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
           <div className="rounded-lg border p-2"><p className="text-[10px] text-gray-500">Total</p><p className="text-sm font-semibold">{inviteLinks.length}</p></div>
@@ -185,7 +219,7 @@ export default function AdminInviteTab({ community, member }: Props) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => createLink.mutate({})}
+              onClick={createAdvancedLink}
               className="mt-3 gap-1.5"
             >
               <Plus className="h-4 w-4" />
