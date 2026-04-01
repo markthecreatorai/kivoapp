@@ -10,11 +10,13 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
+import MemberProfileModal from "@/components/circle/MemberProfileModal";
 
 export default function CircleMembers() {
   const { currentWorkspace } = useWorkspace();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"points" | "recent" | "streak">("points");
+  const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
@@ -113,7 +115,7 @@ export default function CircleMembers() {
           {filtered?.map((m: any) => {
             const role = roleLabel(m.role);
             return (
-              <Card key={m.id} className="p-4 flex items-center gap-3">
+              <Card key={m.id} className="p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setProfileMemberId(m.id)}>
                 <Avatar className="h-11 w-11">
                   <AvatarImage src={m.avatar_url || ""} />
                   <AvatarFallback className="bg-primary/10 text-primary">
@@ -134,6 +136,7 @@ export default function CircleMembers() {
                   </p>
                 </div>
                 <div className="text-right">
+                  <p className="text-[10px] text-muted-foreground">#{filtered.findIndex((x: any) => x.id === m.id) + 1}</p>
                   <p className="text-xs text-muted-foreground"><Flame className="h-3 w-3 inline text-orange-500" /> {m.current_streak}d</p>
                 </div>
               </Card>
@@ -141,6 +144,13 @@ export default function CircleMembers() {
           })}
         </div>
       )}
+
+      <MemberProfileModal
+        memberId={profileMemberId}
+        communityId={community?.id || null}
+        open={!!profileMemberId}
+        onOpenChange={(open) => !open && setProfileMemberId(null)}
+      />
     </div>
   );
 }

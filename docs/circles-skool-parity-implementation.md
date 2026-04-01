@@ -43,10 +43,12 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - confirmação para ações em lote sensíveis
   - bloqueio visual de lote para roles sem permissão
 
-## Sprint 4 — Members + Leaderboard clarity (em andamento)
+## Sprint 4 — Members + Leaderboard clarity (concluído)
 - [x] `src/pages/circle/CircleMembers.tsx`
   - filtros rápidos de ordenação (pontos, atividade recente, sequência)
   - card explicativo de "como ganhar pontos"
+  - acesso ao perfil do membro por clique no card
+  - posição no ranking exibida no card de membro
 - [x] `src/pages/circle/CircleLeaderboard.tsx`
   - dica contextual de origem dos pontos no topo do ranking
   - alternância clara de período (7d / 30d / geral)
