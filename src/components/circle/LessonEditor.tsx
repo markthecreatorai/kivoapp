@@ -145,6 +145,20 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
 
+  // Image modal state
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageTab, setImageTab] = useState<"url" | "upload">("url");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageFileRef = useRef<HTMLInputElement>(null);
+
+  // Inline link modal state
+  const [inlineLinkDialogOpen, setInlineLinkDialogOpen] = useState(false);
+  const [inlineLinkUrl, setInlineLinkUrl] = useState("");
+  const [inlineLinkText, setInlineLinkText] = useState("");
+  const [inlineLinks, setInlineLinks] = useState<{ url: string; text: string }[]>([]);
+
   // Resources state
   const [resources, setResources] = useState<Resource[]>(() =>
     Array.isArray(lesson.resources) ? (lesson.resources as Resource[]) : []
@@ -260,14 +274,72 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     }
   };
 
-  // ── Editor toolbar helpers ──
-  const promptAndInsertLink = () => {
-    const url = window.prompt("URL do link:");
-    if (url && editor) editor.chain().focus().setLink({ href: url }).run();
+  // ── Image modal helpers ──
+  const handleImageFromUrl = () => {
+    if (!imageUrl.trim() || !editor) return;
+    try { new URL(imageUrl.trim()); } catch { toast.error("URL inválida"); return; }
+    editor.chain().focus().setImage({ src: imageUrl.trim() }).run();
+    setHasChanges(true);
+    setImageUrl("");
+    setImagePreview(null);
+    setImageDialogOpen(false);
   };
-  const promptAndInsertImage = () => {
-    const url = window.prompt("URL da imagem:");
-    if (url && editor) editor.chain().focus().setImage({ src: url }).run();
+
+  const handleImageFileSelect = async (file: globalThis.File) => {
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+    if (!validTypes.includes(file.type)) { toast.error("Formato não suportado. Use JPG, PNG, GIF, WebP ou SVG."); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Imagem muito grande. Máximo 10MB."); return; }
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `classroom/${courseId}/${lesson.id}_img_${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from("community").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("community").getPublicUrl(data.path);
+      const src = urlData.publicUrl;
+      setImagePreview(src);
+      setImageUrl(src);
+      setImageTab("url");
+    } catch (e: any) {
+      toast.error("Erro ao enviar imagem");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleInsertImageConfirm = () => {
+    if (!imageUrl.trim() || !editor) return;
+    editor.chain().focus().setImage({ src: imageUrl.trim() }).run();
+    setHasChanges(true);
+    setImageUrl("");
+    setImagePreview(null);
+    setImageDialogOpen(false);
+  };
+
+  // ── Inline link modal helpers ──
+  const handleAddInlineLinkToList = () => {
+    if (!inlineLinkUrl.trim()) return;
+    try { new URL(inlineLinkUrl.trim()); } catch { toast.error("URL inválida"); return; }
+    setInlineLinks(prev => [...prev, { url: inlineLinkUrl.trim(), text: inlineLinkText.trim() || inlineLinkUrl.trim() }]);
+    setInlineLinkUrl("");
+    setInlineLinkText("");
+  };
+
+  const handleRemoveInlineLink = (index: number) => {
+    setInlineLinks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleInsertInlineLinks = () => {
+    if (!editor || inlineLinks.length === 0) return;
+    inlineLinks.forEach((link, i) => {
+      if (i > 0) editor.chain().focus().insertContent(" ").run();
+      editor.chain().focus().insertContent(`<a href="${link.url}">${link.text}</a>`).run();
+    });
+    setHasChanges(true);
+    setInlineLinks([]);
+    setInlineLinkUrl("");
+    setInlineLinkText("");
+    setInlineLinkDialogOpen(false);
   };
   const handleAddVideo = () => {
     if (!videoUrl.trim() || !editor) return;
@@ -354,8 +426,8 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           <ToolbarButton editor={editor} icon={ListOrdered} label="Numbered List" action={() => editor?.chain().focus().toggleOrderedList().run()} isActive={editor?.isActive("orderedList")} />
           <ToolbarButton editor={editor} icon={Quote} label="Blockquote" action={() => editor?.chain().focus().toggleBlockquote().run()} isActive={editor?.isActive("blockquote")} />
           <Separator orientation="vertical" className="h-4 mx-1.5" />
-          <ToolbarButton editor={editor} icon={ImageIcon} label="Image" action={promptAndInsertImage} />
-          <ToolbarButton editor={editor} icon={LinkIcon} label="Link" action={promptAndInsertLink} isActive={editor?.isActive("link")} />
+          <ToolbarButton editor={editor} icon={ImageIcon} label="Image" action={() => setImageDialogOpen(true)} />
+          <ToolbarButton editor={editor} icon={LinkIcon} label="Link" action={() => setInlineLinkDialogOpen(true)} isActive={editor?.isActive("link")} />
           <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={() => setVideoDialogOpen(true)} />
         </div>
 
@@ -498,6 +570,124 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => { setPostDialogOpen(false); setPostId(""); }}>Cancelar</Button>
             <Button onClick={handleAddPost} disabled={!postId.trim()}>Fixar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Image Dialog ── */}
+      <Dialog open={imageDialogOpen} onOpenChange={(open) => { setImageDialogOpen(open); if (!open) { setImageUrl(""); setImagePreview(null); setImageTab("url"); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Inserir imagem</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Tabs */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setImageTab("url")}
+                className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-colors", imageTab === "url" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}
+              >
+                URL da imagem
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageTab("upload")}
+                className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-colors", imageTab === "upload" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}
+              >
+                Upload de arquivo
+              </button>
+            </div>
+
+            {imageTab === "url" && (
+              <Input
+                value={imageUrl}
+                onChange={(e) => { setImageUrl(e.target.value); setImagePreview(e.target.value); }}
+                placeholder="https://exemplo.com/imagem.jpg"
+                onKeyDown={(e) => { if (e.key === "Enter") handleInsertImageConfirm(); }}
+              />
+            )}
+
+            {imageTab === "upload" && (
+              <div>
+                <input
+                  ref={imageFileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFileSelect(f); e.target.value = ""; }}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageFileRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center gap-2 text-center hover:bg-muted/50 transition-colors"
+                >
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">{uploadingImage ? "Enviando..." : "Clique para selecionar imagem"}</p>
+                  <p className="text-xs text-muted-foreground/60">JPG, PNG, GIF, WebP ou SVG · Máx 10MB</p>
+                </button>
+              </div>
+            )}
+
+            {/* Preview */}
+            {imagePreview && (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full max-h-48 object-contain bg-muted/30"
+                  onError={() => setImagePreview(null)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setImageDialogOpen(false); setImageUrl(""); setImagePreview(null); }}>Cancelar</Button>
+            <Button onClick={handleInsertImageConfirm} disabled={!imageUrl.trim()}>Inserir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Inline Link Dialog ── */}
+      <Dialog open={inlineLinkDialogOpen} onOpenChange={(open) => { setInlineLinkDialogOpen(open); if (!open) { setInlineLinkUrl(""); setInlineLinkText(""); setInlineLinks([]); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Inserir link</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm">URL</Label>
+                <Input value={inlineLinkUrl} onChange={(e) => setInlineLinkUrl(e.target.value)} placeholder="https://..." className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm">Texto do link (opcional)</Label>
+                <Input value={inlineLinkText} onChange={(e) => setInlineLinkText(e.target.value)} placeholder="Ex: Saiba mais" className="mt-1" onKeyDown={(e) => { if (e.key === "Enter") handleAddInlineLinkToList(); }} />
+              </div>
+              <Button variant="outline" size="sm" onClick={handleAddInlineLinkToList} disabled={!inlineLinkUrl.trim()} className="w-full">
+                + Adicionar link
+              </Button>
+            </div>
+
+            {/* Links list */}
+            {inlineLinks.length > 0 && (
+              <div className="space-y-1.5 border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground font-medium">Links a inserir:</p>
+                {inlineLinks.map((link, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 group">
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground truncate">{link.text}</p>
+                      <p className="text-xs text-muted-foreground truncate">{link.url}</p>
+                    </div>
+                    <button onClick={() => handleRemoveInlineLink(i)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setInlineLinkDialogOpen(false); setInlineLinkUrl(""); setInlineLinkText(""); setInlineLinks([]); }}>Cancelar</Button>
+            <Button onClick={handleInsertInlineLinks} disabled={inlineLinks.length === 0}>Inserir {inlineLinks.length > 0 ? `(${inlineLinks.length})` : ""}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
