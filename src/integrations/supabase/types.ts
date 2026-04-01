@@ -6739,6 +6739,14 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_entitlement_source_breakdown: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          active_count: number
+          percentage: number
+          source_type: string
+        }[]
+      }
       get_reserve_balance: {
         Args: { p_workspace_id: string }
         Returns: {
@@ -6756,6 +6764,20 @@ export type Database = {
         Returns: {
           order_count: number
           source_type: string
+          total_revenue: number
+        }[]
+      }
+      get_revenue_by_tier: {
+        Args: {
+          p_end_date: string
+          p_start_date: string
+          p_workspace_id: string
+        }
+        Returns: {
+          community_name: string
+          entitlement_count: number
+          tier_id: string
+          tier_name: string
           total_revenue: number
         }[]
       }
@@ -6780,6 +6802,21 @@ export type Database = {
           community_id: string
           community_name: string
           order_count: number
+          total_revenue: number
+        }[]
+      }
+      get_top_tiers_revenue: {
+        Args: {
+          p_end_date: string
+          p_limit?: number
+          p_start_date: string
+          p_workspace_id: string
+        }
+        Returns: {
+          community_name: string
+          member_count: number
+          tier_id: string
+          tier_name: string
           total_revenue: number
         }[]
       }

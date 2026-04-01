@@ -13,6 +13,8 @@ import { DashboardUpgradeCard } from "@/components/dashboard/DashboardUpgradeCar
 import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
 import { RevenueBySourceCard } from "@/components/dashboard/RevenueBySourceCard";
 import { TopCommunitiesCard } from "@/components/dashboard/TopCommunitiesCard";
+import { RevenueByTierCard } from "@/components/dashboard/RevenueByTierCard";
+import { EntitlementSourceCard } from "@/components/dashboard/EntitlementSourceCard";
 
 interface Metrics {
   totalRevenue: number;
@@ -42,6 +44,20 @@ interface CommunityRevenue {
   order_count: number;
 }
 
+interface TierRevenue {
+  tier_id: string;
+  tier_name: string;
+  community_name: string;
+  total_revenue: number;
+  member_count: number;
+}
+
+interface SourceBreakdown {
+  source_type: string;
+  active_count: number;
+  percentage: number;
+}
+
 export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<number | "custom">(30);
   const [metrics, setMetrics] = useState<Metrics>({
@@ -54,6 +70,8 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [sourceData, setSourceData] = useState<SourceData[]>([]);
   const [topCommunities, setTopCommunities] = useState<CommunityRevenue[]>([]);
+  const [topTiers, setTopTiers] = useState<TierRevenue[]>([]);
+  const [entitlementSources, setEntitlementSources] = useState<SourceBreakdown[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { currentWorkspace } = useWorkspace();
@@ -76,8 +94,8 @@ export default function Dashboard() {
 
         const endDate = new Date();
 
-        // Fetch orders + source breakdown + top communities in parallel
-        const [ordersRes, prevRes, sourceRes, communitiesRes] = await Promise.all([
+        // Fetch orders + source breakdown + top communities + tier analytics in parallel
+        const [ordersRes, prevRes, sourceRes, communitiesRes, tiersRes, entitlementRes] = await Promise.all([
           supabase
             .from("orders")
             .select("total_amount, created_at, payment_method")
@@ -101,6 +119,15 @@ export default function Dashboard() {
             p_start_date: startDate.toISOString(),
             p_end_date: endDate.toISOString(),
             p_limit: 5,
+          }),
+          supabase.rpc("get_top_tiers_revenue" as any, {
+            p_workspace_id: currentWorkspace.id,
+            p_start_date: startDate.toISOString(),
+            p_end_date: endDate.toISOString(),
+            p_limit: 5,
+          }),
+          supabase.rpc("get_entitlement_source_breakdown" as any, {
+            p_workspace_id: currentWorkspace.id,
           }),
         ]);
 
@@ -137,6 +164,8 @@ export default function Dashboard() {
         setChartData(chart);
         setSourceData((sourceRes.data as any) || []);
         setTopCommunities((communitiesRes.data as any) || []);
+        setTopTiers((tiersRes.data as any) || []);
+        setEntitlementSources((entitlementRes.data as any) || []);
       } catch (error) {
         console.error("Erro ao buscar métricas:", error);
       } finally {
@@ -195,8 +224,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top communities */}
-      <TopCommunitiesCard data={topCommunities} formatCurrency={formatCurrency} />
+      {/* Top communities + top tiers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TopCommunitiesCard data={topCommunities} formatCurrency={formatCurrency} />
+        <RevenueByTierCard data={topTiers} formatCurrency={formatCurrency} />
+      </div>
+
+      {/* Entitlement source breakdown */}
+      <EntitlementSourceCard data={entitlementSources} />
 
       {/* Payment methods block */}
       <PaymentMethodsCard />
