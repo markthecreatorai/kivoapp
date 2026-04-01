@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Layout, Grid3x3, BookOpen, Plus, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import SpaceFormModal from "@/components/circle/SpaceFormModal";
 import {
   DndContext,
   closestCenter,
