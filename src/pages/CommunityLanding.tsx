@@ -770,7 +770,7 @@ export default function CommunityLanding() {
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Não é você?{" "}
-                <button onClick={() => { setShowJoinModal(false); navigate(`/login?redirect=/c/${slug}`); }} className="text-primary hover:underline">
+                <button onClick={() => { setShowJoinModal(false); navigate(`/login?redirect=/circles/${slug}`); }} className="text-primary hover:underline">
                   Trocar conta
                 </button>
               </p>
