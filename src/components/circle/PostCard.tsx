@@ -143,7 +143,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
       {post.is_pinned && (
         <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1">
           <Pin className="h-3 w-3" />
-          <span className="text-[11px] font-semibold">Post importante</span>
+          <span className="text-[11px] font-semibold">Post fixado</span>
         </div>
       )}
 
