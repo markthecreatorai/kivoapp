@@ -329,18 +329,88 @@ export default function CircleSettings() {
     }
   }, [form, updateProfile]);
 
-  const handleChangePassword = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const newPwd = fd.get("new_password") as string;
-    const confirm = fd.get("confirm_password") as string;
-    if (newPwd !== confirm) { toast.error("As senhas não coincidem"); return; }
-    if (newPwd.length < 6) { toast.error("Mínimo de 6 caracteres"); return; }
-    const { error } = await supabase.auth.updateUser({ password: newPwd });
-    if (error) toast.error(error.message);
-    else toast.success("Senha alterada com sucesso!");
-    (e.target as HTMLFormElement).reset();
+  const handleChangeEmail = useCallback(async () => {
+    if (!newEmail.trim()) { toast.error("Informe o novo email"); return; }
+    if (!emailConfirmPassword.trim()) { toast.error("Informe sua senha atual"); return; }
+    setChangingEmail(true);
+    try {
+      // Re-authenticate first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: emailConfirmPassword,
+      });
+      if (signInError) { toast.error("Senha incorreta"); return; }
+
+      const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+      if (error) { toast.error(error.message); return; }
+      toast.success("Email de confirmação enviado para " + newEmail.trim());
+      setEmailModalOpen(false);
+      setNewEmail("");
+      setEmailConfirmPassword("");
+    } catch {
+      toast.error("Erro ao alterar email");
+    } finally {
+      setChangingEmail(false);
+    }
+  }, [newEmail, emailConfirmPassword, user?.email]);
+
+  const handleChangePassword = useCallback(async () => {
+    if (!currentPassword.trim()) { toast.error("Informe sua senha atual"); return; }
+    if (newPassword.length < 6) { toast.error("Mínimo de 6 caracteres"); return; }
+    if (newPassword !== confirmNewPassword) { toast.error("As senhas não coincidem"); return; }
+    setChangingPassword(true);
+    try {
+      // Re-authenticate
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: currentPassword,
+      });
+      if (signInError) { toast.error("Senha atual incorreta"); return; }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) { toast.error(error.message); return; }
+      toast.success("Senha alterada com sucesso!");
+      setPasswordModalOpen(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch {
+      toast.error("Erro ao alterar senha");
+    } finally {
+      setChangingPassword(false);
+    }
+  }, [currentPassword, newPassword, confirmNewPassword, user?.email]);
+
+  const handleLogoutEverywhere = useCallback(async () => {
+    if (!confirm("Tem certeza? Todas as sessões ativas serão encerradas, incluindo esta. Você precisará fazer login novamente.")) return;
+    setLoggingOutAll(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "global" });
+      if (error) { toast.error(error.message); return; }
+      toast.success("Todas as sessões foram encerradas.");
+      window.location.href = "/login";
+    } catch {
+      toast.error("Erro ao encerrar sessões");
+    } finally {
+      setLoggingOutAll(false);
+    }
   }, []);
+
+  const handleSaveTimezone = useCallback(async () => {
+    setSavingTimezone(true);
+    try {
+      if (member) {
+        await updateProfile.mutateAsync({
+          ...(({ timezone: selectedTimezone }) as any),
+        });
+      }
+      toast.success("Timezone salvo!");
+    } catch {
+      toast.error("Erro ao salvar timezone");
+    } finally {
+      setSavingTimezone(false);
+    }
+  }, [selectedTimezone, member, updateProfile]);
 
   // Unsaved changes warning
   useEffect(() => {
