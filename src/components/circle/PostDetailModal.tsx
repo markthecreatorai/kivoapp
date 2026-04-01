@@ -653,6 +653,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                     <DropdownMenuItem onClick={() => {
                                       setEditingCommentId(comment.id);
                                       setEditingCommentBody(comment.body);
+                                      setEditingCommentImages((comment.images as string[]) || []);
                                     }}>✏️ Editar</DropdownMenuItem>
                                   )}
                                   {(isAdmin || comment.author_id === member?.id) && (
