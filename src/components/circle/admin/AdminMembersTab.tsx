@@ -636,18 +636,26 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         {savedViews.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {savedViews.map((v) => (
-              <button
-                key={v.name}
-                className="text-xs rounded-full border px-2.5 py-1 hover:bg-muted"
-                onClick={() => {
-                  setRoleFilter(v.roleFilter);
-                  setStatusFilter(v.statusFilter);
-                  setLifecycleFilter(v.lifecycleFilter as any);
-                  setSortBy(v.sortBy);
-                }}
-              >
-                {v.name}
-              </button>
+              <div key={v.name} className="inline-flex items-center rounded-full border overflow-hidden">
+                <button
+                  className="text-xs px-2.5 py-1 hover:bg-muted"
+                  onClick={() => {
+                    setRoleFilter(v.roleFilter);
+                    setStatusFilter(v.statusFilter);
+                    setLifecycleFilter(v.lifecycleFilter as any);
+                    setSortBy(v.sortBy);
+                  }}
+                >
+                  {v.name}
+                </button>
+                <button
+                  className="text-xs px-2 py-1 border-l hover:bg-muted text-muted-foreground"
+                  onClick={() => setSavedViews((prev) => prev.filter((x) => x.name !== v.name))}
+                  title="Remover visão"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -711,6 +719,13 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                   {m.total_points || 0} pts · Desde {m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yy") : "—"}
                   {isInactive(m) ? " · inativo 14d+" : ""}
                 </p>
+                {(isInactive(m) || ["MUTED", "PENDING"].includes(m.status)) && (
+                  <div className="mt-1 flex gap-1 flex-wrap">
+                    {isInactive(m) && <Badge variant="outline" className="text-[10px]">Inatividade</Badge>}
+                    {m.status === "MUTED" && <Badge variant="outline" className="text-[10px]">Silenciado</Badge>}
+                    {m.status === "PENDING" && <Badge variant="outline" className="text-[10px]">Pendente</Badge>}
+                  </div>
+                )}
               </div>
               <Badge variant={m.role === "OWNER" || m.role === "ADMIN" ? "default" : "secondary"} className="text-[10px]">
                 {ROLE_LABELS[m.role] || m.role}
