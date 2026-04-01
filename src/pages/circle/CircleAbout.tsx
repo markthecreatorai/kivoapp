@@ -33,6 +33,76 @@ import { CSS } from "@dnd-kit/utilities";
 
 type GalleryItem = { type: "image" | "video"; url: string; position: number };
 
+function SortableThumb({
+  item,
+  index,
+  isActive,
+  isAdminEditing,
+  onSelect,
+  onRemove,
+}: {
+  item: GalleryItem;
+  index: number;
+  isActive: boolean;
+  isAdminEditing: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `gallery-${index}`,
+    disabled: !isAdminEditing,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "relative group/thumb shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all",
+        isAdminEditing && "cursor-grab active:cursor-grabbing",
+        !isAdminEditing && "cursor-pointer",
+        isActive ? "border-primary ring-1 ring-primary/30" : "border-transparent hover:border-muted-foreground/30"
+      )}
+      onClick={onSelect}
+    >
+      {item.type === "image" ? (
+        <img src={item.url} alt="" className="w-full h-full object-cover pointer-events-none" />
+      ) : (
+        <div className="relative w-full h-full pointer-events-none">
+          {getVideoThumbnail(item.url) ? (
+            <img src={getVideoThumbnail(item.url)!} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+              <Play className="h-4 w-4 text-white/60" />
+            </div>
+          )}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Play className="h-4 w-4 text-white drop-shadow" />
+          </div>
+        </div>
+      )}
+
+      {isAdminEditing && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/70 hover:bg-destructive text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function formatPrice(price: number, period?: string) {
   const fmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
   return period === "annual" ? `${fmt}/ano` : `${fmt}/mês`;
