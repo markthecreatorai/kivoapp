@@ -1,27 +1,26 @@
 
 
-## Fix: Link & Video buttons not working in comment toolbar
+## Fix: GIF sent as text URL instead of visual attachment
 
-### Root Cause
+### Problem
+Line 888: GIF selection appends the URL to `commentBody` as plain text. It should instead be added to `commentImages` so it renders visually like an image attachment.
 
-Both buttons use `window.prompt()` (lines 864, 875) which is **blocked in iframe/sandbox environments** like the Lovable preview. The browser silently returns `null`, so nothing happens.
+### Solution — single file change
 
-### Solution
+**`src/components/circle/PostDetailModal.tsx`** (line 887-889):
 
-Replace `prompt()` with **Popover-based inline inputs** (same pattern already used for Emoji and GIF pickers), each with a text input + confirm button.
+Change the GIF `onSelect` handler from appending to `commentBody` to pushing the GIF URL into `commentImages`:
 
-### Changes — single file
+```tsx
+// Before
+setCommentBody((prev) => prev + (prev ? " " : "") + gifUrl);
 
-**`src/components/circle/PostDetailModal.tsx`**:
+// After
+setCommentImages((prev) => [...prev, gifUrl]);
+```
 
-1. Add two new state variables: `showLinkInput` and `showVideoInput` (booleans), plus `linkInputValue` and `videoInputValue` (strings)
-2. Replace the Link button (lines 861-869) with a `<Popover>` containing:
-   - Text input with placeholder "Cole o link"
-   - "Inserir" button that appends URL to `commentBody`
-3. Replace the Video button (lines 872-880) with a `<Popover>` containing:
-   - Text input with placeholder "Cole o link do vídeo (YouTube, Vimeo, Loom)"
-   - "Inserir" button that appends URL to `commentBody`
-4. Both popovers use `align="end" side="top"` like the existing emoji/GIF pickers
+This reuses the existing image preview/rendering pipeline — GIF URLs will display as visual thumbnails before sending, and get stored in the `images` array column on `community_comments`, just like uploaded photos.
 
-No other files affected. No database changes.
+### Files to change
+- `src/components/circle/PostDetailModal.tsx` — 1 line change in GIF picker `onSelect`
 
