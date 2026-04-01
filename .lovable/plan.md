@@ -1,25 +1,40 @@
 
 
-## Fix: Allow sending image-only comments via Enter key
+## Fix: GIF/Image Lightbox closing the entire post modal
 
 ### Problem
-The send **button** (line 895) correctly allows sending when images are attached without text. But the **Enter key handler** (line 302) only checks `commentBody.trim()`, so pressing Enter with only images does nothing.
+The lightbox overlay `div` (line 1011) uses `onClick={() => setLightboxImg(null)}`, but the click event **propagates up** to the `Dialog` component, which interprets it as an outside click and closes the entire post modal — sending the user back to the feed.
 
-### Solution — single file
+### Solution — single file change
 
-**`src/components/circle/PostDetailModal.tsx`**:
+**`src/components/circle/PostDetailModal.tsx`** (lines 1010-1014):
 
-Line 302 — change the Enter key condition to also check for images:
+1. Add `e.stopPropagation()` to the overlay click handler so the event doesn't reach the Dialog
+2. Add `e.stopPropagation()` to the inner `<img>` so clicking the image itself doesn't dismiss the lightbox
+3. Add an **X close button** (top-right corner) for explicit dismissal
+
 ```tsx
-// Before
-if (commentBody.trim()) addComment.mutate({ body: commentBody });
-
-// After
-if (commentBody.trim() || commentImages.length > 0) addComment.mutate({ body: commentBody || "📷" });
+{lightboxImg && (
+  <div
+    className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+    onClick={(e) => { e.stopPropagation(); setLightboxImg(null); }}
+  >
+    <button
+      onClick={(e) => { e.stopPropagation(); setLightboxImg(null); }}
+      className="absolute top-4 right-4 text-white/80 hover:text-white ..."
+    >
+      <X className="h-6 w-6" />
+    </button>
+    <img
+      src={lightboxImg}
+      alt=""
+      className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg"
+      onClick={(e) => e.stopPropagation()}
+    />
+  </div>
+)}
 ```
 
-This mirrors the exact logic already used by the send button on line 895.
-
 ### Files to change
-- `src/components/circle/PostDetailModal.tsx` — 1 line fix
+- `src/components/circle/PostDetailModal.tsx` — ~5 lines modified around line 1010
 
