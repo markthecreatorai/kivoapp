@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, keepPreviousData, useQuery } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams, useParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +83,7 @@ const CircleMembers = lazy(() => import("./pages/circle/CircleMembers"));
 const CircleLeaderboard = lazy(() => import("./pages/circle/CircleLeaderboard"));
 const CircleEvents = lazy(() => import("./pages/circle/CircleEvents"));
 const CircleClassroom = lazy(() => import("./pages/circle/CircleClassroom"));
-const CircleAdmin = lazy(() => import("./pages/circle/CircleAdmin"));
+
 const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 
 // Redirect /c/:slug/post/:id → /c/:slug/feed?post=:id
@@ -117,10 +117,18 @@ function CircleSettingsRedirect() {
   });
 
   if (!community?.slug) return null;
-  const target = section ? `/c/${community.slug}/settings?section=${section}` : `/c/${community.slug}/settings`;
+  const target = section ? `/circles/${community.slug}/settings?section=${section}` : `/circles/${community.slug}/settings`;
   return <Navigate to={target} replace />;
 }
 
+/** Legacy /c/:slug/* → /circles/:slug/* redirect */
+function LegacyCRedirect() {
+  const { slug, "*": rest } = useParams<{ slug: string; "*": string }>();
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  const target = `/circles/${slug}${rest ? `/${rest}` : ""}${qs ? `?${qs}` : ""}`;
+  return <Navigate to={target} replace />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -273,30 +281,30 @@ const App = () => (
                 <Route path="/circle" element={<Navigate to="/circles" replace />} />
 
                 {/* Public community landing (no auth required) */}
-                <Route path="/c/:slug" element={<CommunityLanding />} />
-                <Route path="/c/:slug/plans" element={<CommunitySelectPlan />} />
+                <Route path="/circles/:slug" element={<CommunityLanding />} />
+                <Route path="/circles/:slug/plans" element={<CommunitySelectPlan />} />
 
                 {/* Authenticated circle pages — all scoped to /c/:slug/* */}
-                <Route path="/c/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />
-                <Route path="/c/:slug/spaces/:spaceSlug" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/members" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/events" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/classroom" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/admin" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
-                {/* /c/:slug/messages → redirect to feed (messages are now popup-only) */}
-                <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
-                {/* Settings inside community layout */}
-                <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/about" element={<CircleLayout><CircleAbout /></CircleLayout>} />
-                <Route path="/c/:slug/profile" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/profile/:memberId" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />
+                <Route path="/circles/:slug/spaces/:spaceSlug" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/members" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/events" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/classroom" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
+                {/* Admin → feed (admin is popup-only) */}
+                <Route path="/circles/:slug/admin" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                {/* Messages → feed (popup-only) */}
+                <Route path="/circles/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/about" element={<CircleLayout><CircleAbout /></CircleLayout>} />
+                <Route path="/circles/:slug/profile" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/profile/:memberId" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
 
-                {/* Legacy /join/:slug -> /c/:slug redirect */}
+                {/* Legacy redirects */}
                 <Route path="/join/:slug" element={<JoinRedirect />} />
-
-                {/* Legacy redirects to canonical /c/:slug/settings */}
+                <Route path="/c/:slug/*" element={<LegacyCRedirect />} />
+                <Route path="/c/:slug" element={<LegacyCRedirect />} />
                 <Route path="/circle-settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
                 <Route path="/circle/settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
 

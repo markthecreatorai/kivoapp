@@ -31,7 +31,7 @@ function CommunityCard({ community }: { community: any }) {
 
   return (
     <div
-      onClick={() => navigate(`/c/${community.slug}`)}
+      onClick={() => navigate(`/circles/${community.slug}`)}
       className="group bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-200"
       id={`community-card-${community.id}`}
     >
@@ -103,7 +103,7 @@ function CommunityCard({ community }: { community: any }) {
           <span className="text-xs text-muted-foreground">{cadenceLabel}</span>
         </div>
 
-        <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/c/${community.slug}`); }}>
+        <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/circles/${community.slug}`); }}>
           {accessInfo.cta}
         </Button>
       </div>

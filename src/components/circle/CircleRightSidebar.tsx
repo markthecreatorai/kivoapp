@@ -16,7 +16,7 @@ interface CircleRightSidebarProps {
 
 export default function CircleRightSidebar({ community, member }: CircleRightSidebarProps) {
   const { slug } = useParams<{ slug: string }>();
-  const basePath = slug ? `/c/${slug}` : "/circle";
+  const basePath = slug ? `/circles/${slug}` : "/circle";
 
   // Top 5 members for mini leaderboard
   const { data: topMembers } = useQuery({

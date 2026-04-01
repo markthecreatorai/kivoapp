@@ -7,5 +7,5 @@ export default function JoinRedirect() {
 
   if (!slug) return <Navigate to="/communities" replace />;
 
-  return <Navigate to={`/c/${slug}${invite ? `?invite=${invite}` : ""}`} replace />;
+  return <Navigate to={`/circles/${slug}${invite ? `?invite=${invite}` : ""}`} replace />;
 }

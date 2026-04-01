@@ -159,7 +159,7 @@ export default function CommunitySelectPlan() {
     try {
       if (tier.is_free) {
         if (!user) {
-          navigate(`/c/${slug}?action=join`);
+          navigate(`/circles/${slug}?action=join`);
           return;
         }
         await joinAsExistingUser(user.id, community);
@@ -177,7 +177,7 @@ export default function CommunitySelectPlan() {
       }
 
       if (!user) {
-        navigate(`/c/${slug}?action=join`);
+        navigate(`/circles/${slug}?action=join`);
         return;
       }
 
@@ -249,7 +249,7 @@ export default function CommunitySelectPlan() {
           <Star className="h-10 w-10 text-muted-foreground/40 mx-auto" />
           <h2 className="text-lg font-semibold text-foreground">Nenhum plano disponível</h2>
           <p className="text-sm text-muted-foreground">Esta comunidade ainda não configurou planos de acesso.</p>
-          <Button variant="outline" onClick={() => navigate(`/c/${slug}`)}>Voltar</Button>
+          <Button variant="outline" onClick={() => navigate(`/circles/${slug}`)}>Voltar</Button>
         </div>
       </div>
     );
@@ -450,7 +450,7 @@ function HeaderBar({
           variant="ghost"
           size="icon"
           className="h-8 w-8 shrink-0"
-          onClick={() => navigate(`/c/${slug}`)}
+          onClick={() => navigate(`/circles/${slug}`)}
           aria-label="Voltar para a comunidade"
         >
           <ArrowLeft className="h-4 w-4" />

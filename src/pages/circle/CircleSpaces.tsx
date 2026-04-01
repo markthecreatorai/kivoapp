@@ -67,7 +67,7 @@ export default function CircleSpaces() {
     !search || s.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const basePath = community?.slug ? `/c/${community.slug}` : "/circle";
+  const basePath = community?.slug ? `/circles/${community.slug}` : "/circle";
 
   return (
     <div className="p-4 md:p-6 space-y-6">

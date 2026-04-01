@@ -41,7 +41,7 @@ function truncate(s: string | null, max = 40) {
 }
 
 function getNotificationRoute(n: any, slug?: string): string | null {
-  const base = slug ? `/c/${slug}` : `/circle`;
+  const base = slug ? `/circles/${slug}` : `/circle`;
   if (n.type === "NEW_DM") return `${base}/messages`;
   if (n.type === "SUBSCRIPTION_PAST_DUE" || n.type === "SUBSCRIPTION_EXPIRED") return `${base}/feed`;
   if (n.post_id) return `${base}/post/${n.post_id}`;
@@ -153,7 +153,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
           toast(text, {
             duration: 5000,
             action: n.post_id
-              ? { label: "Ver", onClick: () => navigate(`/c/${communitySlug}/post/${n.post_id}`) }
+              ? { label: "Ver", onClick: () => navigate(`/circles/${communitySlug}/post/${n.post_id}`) }
               : undefined,
           });
         }

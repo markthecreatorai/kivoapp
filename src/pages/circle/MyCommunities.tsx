@@ -147,7 +147,7 @@ export default function MyCommunities() {
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
       setShowCreateModal(false);
       setNewName(""); setNewDescription(""); setNewSlug(""); setSlugEdited(false);
-      navigate(`/c/${community.slug}/about`);
+      navigate(`/circles/${community.slug}/about`);
     },
     onError: (err: any) => toast.error(err.message || "Erro ao criar comunidade"),
   });
@@ -203,7 +203,7 @@ export default function MyCommunities() {
             {communities.map((c) => (
               <button
                 key={c.id}
-                onClick={() => navigate(`/c/${c.slug}/feed`)}
+                onClick={() => navigate(`/circles/${c.slug}/feed`)}
                 className="text-left group"
               >
                 <Card className="overflow-hidden border-border hover:border-primary/40 hover:shadow-md transition-all duration-200 h-full flex flex-col">

@@ -48,18 +48,18 @@ export default function CircleFeed() {
       setActivePostId(qp);
       // Clean the query param and switch to clean URL
       setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete("post"); return next; }, { replace: true });
-      window.history.replaceState(null, "", `/c/${communitySlug}/post/${qp}`);
+      window.history.replaceState(null, "", `/circles/${communitySlug}/post/${qp}`);
     }
   }, [searchParams, communitySlug, setSearchParams]);
 
   const handleOpenPost = useCallback((postId: string) => {
     setActivePostId(postId);
-    window.history.pushState(null, "", `/c/${communitySlug}/post/${postId}`);
+    window.history.pushState(null, "", `/circles/${communitySlug}/post/${postId}`);
   }, [communitySlug]);
 
   const handleClosePost = useCallback(() => {
     setActivePostId(null);
-    window.history.pushState(null, "", `/c/${communitySlug}/feed`);
+    window.history.pushState(null, "", `/circles/${communitySlug}/feed`);
   }, [communitySlug]);
 
   const { data: community } = useQuery({
@@ -194,7 +194,7 @@ export default function CircleFeed() {
   });
 
   const onboardingTasks = useMemo(() => [
-    { label: "Assistir vídeo de introdução", icon: PlayCircle, done: (lessonProgress || 0) > 0, link: community?.slug ? `/c/${community.slug}/classroom` : "#" },
+    { label: "Assistir vídeo de introdução", icon: PlayCircle, done: (lessonProgress || 0) > 0, link: community?.slug ? `/circles/${community.slug}/classroom` : "#" },
     { label: "Encontrar um post e deixar um comentário", icon: MessageSquare, done: (memberCommentCount || 0) > 0, link: "#" },
     { label: "Baixar o app", icon: Smartphone, done: false, link: "#" },
   ], [lessonProgress, memberCommentCount, community?.slug]);

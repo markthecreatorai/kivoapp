@@ -79,7 +79,7 @@ export default function AdminSettingsTab({ community, member }: Props) {
       if (conflict) throw new Error("Slug indisponível");
       return slug;
     },
-    onSuccess: (slug) => toast.success(`URL disponível: /c/${slug}`),
+    onSuccess: (slug) => toast.success(`URL disponível: /circles/${slug}`),
     onError: (e: any) => toast.error(e?.message || "Falha ao validar URL"),
   });
 
@@ -150,7 +150,7 @@ export default function AdminSettingsTab({ community, member }: Props) {
               Validar URL
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">URL pública: /c/{settings.slug}</p>
+          <p className="text-xs text-muted-foreground mt-1">URL pública: /circles/{settings.slug}</p>
         </div>
         <div>
           <Label>Descrição curta</Label>

@@ -516,7 +516,7 @@ export default function CircleSettings() {
                           className="h-8 text-xs font-semibold"
                           onClick={() => {
                             if (c.slug) {
-                              window.location.href = `/c/${c.slug}/admin`;
+                              window.location.href = `/circles/${c.slug}/admin`;
                             }
                           }}
                         >

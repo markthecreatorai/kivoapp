@@ -71,12 +71,12 @@ interface CircleLayoutProps {
 
 function getTabItems(slug: string) {
   return [
-    { label: "Comunidade", icon: MessageSquare, path: `/c/${slug}/feed` },
-    { label: "Classroom", icon: BookOpen, path: `/c/${slug}/classroom` },
-    { label: "Calendário", icon: Calendar, path: `/c/${slug}/events` },
-    { label: "Membros", icon: Users, path: `/c/${slug}/members` },
-    { label: "Ranking", icon: Trophy, path: `/c/${slug}/leaderboard` },
-    { label: "Sobre", icon: Star, path: `/c/${slug}/about` },
+    { label: "Comunidade", icon: MessageSquare, path: `/circles/${slug}/feed` },
+    { label: "Classroom", icon: BookOpen, path: `/circles/${slug}/classroom` },
+    { label: "Calendário", icon: Calendar, path: `/circles/${slug}/events` },
+    { label: "Membros", icon: Users, path: `/circles/${slug}/members` },
+    { label: "Ranking", icon: Trophy, path: `/circles/${slug}/leaderboard` },
+    { label: "Sobre", icon: Star, path: `/circles/${slug}/about` },
   ];
 }
 
@@ -267,11 +267,11 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
   const isPreviewVisitor = searchParams.get("preview") === "visitor";
   const isActive = (path: string) => {
-    if (path === `/c/${slug}/feed`) {
-      return location.pathname === `/c/${slug}/feed` ||
-        location.pathname === `/c/${slug}` ||
-        location.pathname.startsWith(`/c/${slug}/spaces/`) ||
-        location.pathname.startsWith(`/c/${slug}/post/`);
+    if (path === `/circles/${slug}/feed`) {
+      return location.pathname === `/circles/${slug}/feed` ||
+        location.pathname === `/circles/${slug}` ||
+        location.pathname.startsWith(`/circles/${slug}/spaces/`) ||
+        location.pathname.startsWith(`/circles/${slug}/post/`);
     }
     return location.pathname === path || location.pathname.startsWith(path + "/");
   };
@@ -289,7 +289,7 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
 
   // Not logged in — redirect to community landing
   if (!user) {
-    return <Navigate to={`/c/${slug}`} replace />;
+    return <Navigate to={`/circles/${slug}`} replace />;
   }
 
   // No community
@@ -502,10 +502,10 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
                     <p className="text-sm font-medium text-foreground truncate">{member.display_name || user?.email?.split("@")[0]}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{member.username ? `@${member.username}` : user?.email}</p>
                   </div>
-                  <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings?section=profile`)} className="gap-2 text-sm cursor-pointer">
+                  <DropdownMenuItem onClick={() => navigate(`/circles/${slug}/settings?section=profile`)} className="gap-2 text-sm cursor-pointer">
                     <User className="h-4 w-4" /> Perfil da comunidade
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings?section=account`)} className="gap-2 text-sm cursor-pointer">
+                  <DropdownMenuItem onClick={() => navigate(`/circles/${slug}/settings?section=account`)} className="gap-2 text-sm cursor-pointer">
                     <Settings className="h-4 w-4" /> Configurações da conta
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
