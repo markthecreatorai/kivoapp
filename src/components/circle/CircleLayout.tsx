@@ -552,10 +552,12 @@ export default function CircleLayout() {
         <div className="max-w-5xl mx-auto flex gap-0">
           {/* Main feed column ~65% */}
           <div className="flex-1 min-w-0">
-            {children}
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
           </div>
-          {/* Right sidebar ~35% — desktop only, hidden on classroom and settings */}
-          {showRightSidebar && !location.pathname.includes("/classroom") && !location.pathname.includes("/settings") && (
+          {/* Right sidebar ~35% — desktop only, hidden on classroom/settings/profile */}
+          {!hideRightSidebar && (
             <div className="hidden lg:block w-[340px] shrink-0">
               <div className="sticky top-[108px]">
                 <CircleRightSidebarSkool
