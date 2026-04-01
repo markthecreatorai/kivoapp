@@ -337,5 +337,41 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir transmissão</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja excluir esta live e o evento vinculado? Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={async () => {
+              try {
+                const { error: evtErr } = await supabase.from("community_events").delete().eq("live_stream_id", stream.id);
+                if (evtErr) throw evtErr;
+                const { error: strErr } = await supabase.from("community_live_streams" as any).delete().eq("id", stream.id);
+                if (strErr) throw strErr;
+                queryClient.invalidateQueries({ queryKey: ["live-streams"] });
+                queryClient.invalidateQueries({ queryKey: ["community-events"] });
+                queryClient.invalidateQueries({ queryKey: ["circle-events"] });
+                toast.success("Live excluída");
+                onOpenChange(false);
+              } catch (err) {
+                console.error("Erro ao excluir live:", err);
+                toast.error("Erro ao excluir");
+              }
+            }}
+          >
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
