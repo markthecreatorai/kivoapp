@@ -500,7 +500,7 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
                 <DropdownMenuContent align="end" className="w-48">
                   <div className="px-3 py-2 border-b border-border">
                     <p className="text-sm font-medium text-foreground truncate">{member.display_name || user?.email?.split("@")[0]}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{member.username ? `@${member.username}` : user?.email}</p>
                   </div>
                   <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings?section=profile`)} className="gap-2 text-sm cursor-pointer">
                     <User className="h-4 w-4" /> Perfil da comunidade
