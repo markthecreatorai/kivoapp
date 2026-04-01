@@ -105,16 +105,16 @@ export default function CourseFormModal({
     enabled: !!communityId && accessMode === "PRIVATE" && (privateMode === "SPECIFIC_MEMBERS" || privateMode === "BOTH"),
   });
 
-  // Fetch circle plans (tiers) for PRIVATE
+  // Fetch community tiers for PRIVATE
   const { data: tiers = [] } = useQuery({
-    queryKey: ["circle-plans", communityId],
+    queryKey: ["community-tiers", communityId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("circle_plans")
-        .select("id, name, price_cents, interval")
+        .from("community_tiers")
+        .select("id, name, price_cents, billing_period, is_free")
         .eq("community_id", communityId)
         .eq("is_active", true)
-        .order("price_cents");
+        .order("sort_order");
       return data || [];
     },
     enabled: !!communityId && accessMode === "PRIVATE" && (privateMode === "TIERS" || privateMode === "BOTH"),
