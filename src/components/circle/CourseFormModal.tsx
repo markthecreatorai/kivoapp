@@ -82,7 +82,7 @@ export default function CourseFormModal({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Nome é obrigatório");
 
-      const payload: Record<string, any> = {
+      const payload = {
         community_id: communityId,
         name: name.trim(),
         description: description.trim() || null,
@@ -97,10 +97,10 @@ export default function CourseFormModal({
       };
 
       if (isEdit && course) {
-        const { error } = await supabase.from("circle_courses").update(payload).eq("id", course.id);
+        const { error } = await supabase.from("circle_courses").update(payload as any).eq("id", course.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("circle_courses").insert(payload);
+        const { error } = await supabase.from("circle_courses").insert(payload as any);
         if (error) throw error;
       }
     },
