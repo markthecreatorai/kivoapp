@@ -13,6 +13,8 @@ import { DashboardUpgradeCard } from "@/components/dashboard/DashboardUpgradeCar
 import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
 import { RevenueBySourceCard } from "@/components/dashboard/RevenueBySourceCard";
 import { TopCommunitiesCard } from "@/components/dashboard/TopCommunitiesCard";
+import { RevenueByTierCard } from "@/components/dashboard/RevenueByTierCard";
+import { EntitlementSourceCard } from "@/components/dashboard/EntitlementSourceCard";
 
 interface Metrics {
   totalRevenue: number;
