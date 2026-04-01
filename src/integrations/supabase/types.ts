@@ -1586,6 +1586,7 @@ export type Database = {
       }
       communities: {
         Row: {
+          about_gallery: Json | null
           about_video_url: string | null
           access_type: Database["public"]["Enums"]["community_access_type"]
           allow_member_events: boolean
@@ -1621,6 +1622,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          about_gallery?: Json | null
           about_video_url?: string | null
           access_type?: Database["public"]["Enums"]["community_access_type"]
           allow_member_events?: boolean
@@ -1656,6 +1658,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          about_gallery?: Json | null
           about_video_url?: string | null
           access_type?: Database["public"]["Enums"]["community_access_type"]
           allow_member_events?: boolean
