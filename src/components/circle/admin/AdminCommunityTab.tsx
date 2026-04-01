@@ -154,6 +154,7 @@ export default function AdminCommunityTab({ community }: Props) {
   const [rules, setRules] = useState<string[]>((community.community_rules as string[]) || []);
   const [newRule, setNewRule] = useState("");
   const [activeSection, setActiveSection] = useState<"tabs" | "categories" | "rules">("tabs");
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
