@@ -59,6 +59,8 @@ export default function CircleAdminModal({ community, member, onClose }: Props) 
         return <AdminInviteTab community={community} member={member} />;
       case "general":
         return <AdminGeneralTab community={community} />;
+      case "onboarding":
+        return <AdminOnboardingTab community={community} />;
       case "payouts":
         return <AdminPayoutsTab community={community} />;
       case "pricing":
