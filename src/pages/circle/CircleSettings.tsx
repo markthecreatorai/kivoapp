@@ -1063,8 +1063,8 @@ export default function CircleSettings() {
           <Dialog open={passwordModalOpen} onOpenChange={(open) => { if (!open) { setCurrentPassword(""); setNewPassword(""); setConfirmNewPassword(""); } setPasswordModalOpen(open); }}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Change password</DialogTitle>
-                <DialogDescription>Your password must be at least 6 characters.</DialogDescription>
+                <DialogTitle>Alterar senha</DialogTitle>
+                <DialogDescription>Sua senha deve ter pelo menos 6 caracteres.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
