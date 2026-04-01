@@ -79,14 +79,14 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
             display_name: formData.display_name,
             is_creator: false, // ← member, not a creator
           },
-          emailRedirectTo: `${window.location.origin}/c/${communitySlug}/feed`,
+          emailRedirectTo: `${window.location.origin}/circles/${communitySlug}/feed`,
         },
       });
 
       if (authError) {
         if (authError.message?.includes("already registered") || authError.message?.includes("User already registered")) {
           toast.error("Este email já está cadastrado. Faça login.");
-          navigate(`/member/login?redirect=/c/${communitySlug}`);
+          navigate(`/member/login?redirect=/circles/${communitySlug}`);
           return;
         }
         throw authError;
@@ -142,7 +142,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
         // If Supabase requires email confirmation before login (common):
         // We redirect to verify-email with a return path
         toast.success("Conta criada! Confirme seu email para acessar a comunidade.");
-        navigate(`/verify-email?redirect=/c/${communitySlug}/feed`);
+        navigate(`/verify-email?redirect=/circles/${communitySlug}/feed`);
       }
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar conta. Tente novamente.");
