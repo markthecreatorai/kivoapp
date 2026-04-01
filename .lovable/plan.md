@@ -1,36 +1,74 @@
 
 
-## Usar EmojiPicker na edição de emoji das categorias
+## Carrossel de mídia na página Sobre (padrão Skool)
 
-### Problema
-Atualmente, ao clicar no emoji de uma categoria, abre um `<Input>` de texto onde o usuário precisa digitar/colar um emoji manualmente. O projeto já possui um componente `EmojiPicker` completo em `src/components/circle/EmojiPicker.tsx`.
+### Problema atual
+A página Sobre suporta apenas 1 imagem (`cover_image_url`) e 1 vídeo (`about_video_url`). Imagem serve apenas como thumbnail do vídeo. Não há carrossel nem botão "+" para adicionar mais mídias.
 
 ### Solução
 
-**`src/components/circle/admin/AdminCommunityTab.tsx`**
+**1. Migration — nova coluna `about_gallery` (jsonb)**
 
-1. Importar `EmojiPicker` e `Popover`/`PopoverTrigger`/`PopoverContent` do shadcn
-2. Remover estados `isEditingEmoji`, `editEmoji`, `emojiInputRef` (não mais necessários)
-3. Substituir o bloco de edição de emoji (linhas 149-169) por um `Popover` que abre o `EmojiPicker`:
+Adicionar coluna `about_gallery` na tabela `communities` para armazenar array de itens de mídia:
 
-```tsx
-<Popover>
-  <PopoverTrigger asChild>
-    <button type="button" className="text-sm hover:bg-muted rounded px-1 py-0.5 cursor-pointer" title="Editar emoji">
-      {category.emoji || "📁"}
-    </button>
-  </PopoverTrigger>
-  <PopoverContent className="w-auto p-0" align="start">
-    <EmojiPicker onSelect={(emoji) => {
-      onUpdatePatch(category.id, { emoji });
-      // popover fecha automaticamente
-    }} />
-  </PopoverContent>
-</Popover>
+```sql
+ALTER TABLE public.communities
+  ADD COLUMN IF NOT EXISTS about_gallery jsonb DEFAULT '[]';
 ```
 
-4. Para fechar o popover ao selecionar, envolver com estado `open`/`onOpenChange` controlado
+Estrutura do array:
+```json
+[
+  { "type": "image", "url": "https://...", "position": 0 },
+  { "type": "video", "url": "https://youtube.com/...", "position": 1 },
+  { "type": "image", "url": "https://...", "position": 2 }
+]
+```
+
+Migrar dados existentes (`cover_image_url` e `about_video_url`) para o gallery automaticamente na migration.
+
+**2. `src/pages/circle/CircleAbout.tsx` — reescrever seção de mídia**
+
+- Ler `about_gallery` (jsonb array) em vez de campos individuais
+- Exibir carrossel com:
+  - Imagem principal grande (item selecionado)
+  - Thumbnails abaixo (como na referência Skool)
+  - Botão "+" ao final das thumbnails (admin only)
+  - Clique na thumbnail troca o item principal
+  - Vídeos exibem botão play no carrossel, imagens exibem direto
+- Navegação por setas esquerda/direita no item principal
+- Admin pode remover item individual (X no hover da thumbnail)
+
+**3. Modal de mídia atualizado**
+
+- Modal "Adicionar mídia" agora adiciona ao array `about_gallery` em vez de substituir
+- Upload de imagem → append ao array
+- Adicionar vídeo → append ao array
+- Remover item → splice do array
+- Reordenar via drag ou posição
+
+### Comportamento do carrossel
+
+```text
+┌──────────────────────────────────┐
+│                                  │
+│     [Imagem/Vídeo principal]     │
+│                                  │
+└──────────────────────────────────┘
+ [thumb1] [thumb2] [thumb3] [ + ]
+```
+
+- Thumb selecionada tem borda/destaque
+- Vídeo no principal mostra overlay de play
+- Botão "+" abre modal de adicionar (admin only)
+- Sem thumbnails se apenas 1 item
 
 ### Arquivos alterados
-1. `src/components/circle/admin/AdminCommunityTab.tsx` — substituir input de texto por Popover + EmojiPicker
+1. Nova migration SQL — coluna `about_gallery` + migração de dados existentes
+2. `src/pages/circle/CircleAbout.tsx` — carrossel completo com thumbnails, navegação, modal atualizado
+
+### Resultado
+- Múltiplas imagens e vídeos no About, estilo Skool
+- Carrossel com thumbnails e botão "+"
+- Compatível com dados existentes (migração automática)
 
