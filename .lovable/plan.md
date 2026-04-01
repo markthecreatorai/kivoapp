@@ -1,26 +1,32 @@
 
 
-## Hotfix: Remover tab "Ranking" do header da comunidade
+## Hotfix: Botão "Excluir" live stream não funciona
 
-### Problema
-A tab "Ranking" ainda aparece no header de navegação da comunidade (CircleLayout.tsx, linha 78), mesmo após remoções anteriores do bloco de ranking da sidebar.
+### Causa raiz
+
+Dois problemas no código atual:
+
+1. **Erros do Supabase não são tratados**: O `delete()` do Supabase retorna `{ error }` mas o código não verifica — erros de RLS ou FK são silenciosamente ignorados (não lançam exceção, então o `catch` nunca é ativado).
+
+2. **`confirm()` dentro de Dialog Radix**: O `confirm()` nativo pode ser bloqueado/interferido pelo focus-trap do Radix Dialog, impedindo a execução do fluxo.
 
 ### Alterações
 
-**1. `src/components/circle/CircleLayout.tsx`**
-- Remover a entrada `{ label: "Ranking", icon: Trophy, path: /circles/${slug}/leaderboard }` do array de tabs (linha 78)
-- Remover import de `Trophy` se não for usado em outro lugar
+**`src/components/circle/LiveStreamFormModal.tsx`**
 
-**2. `src/App.tsx`** (ou router)
-- Manter a rota `/circles/:slug/leaderboard` como redirect para `/circles/:slug/feed` (para não quebrar deep links)
-- Ou remover completamente se preferir 404
-
-**3. Limpeza opcional**
-- Remover `src/components/circle/CircleRightSidebar.tsx` (arquivo legado não importado)
-- A página `CircleLeaderboard.tsx` pode ser mantida caso queira reativar no futuro, ou removida
+1. Substituir `confirm()` nativo por `AlertDialog` do Radix (já existe em `src/components/ui/alert-dialog.tsx`) — usar state `showDeleteConfirm` para controlar
+2. Verificar `{ error }` nas chamadas de delete e lançar exceção se houver erro:
+   ```tsx
+   const { error: evtErr } = await supabase.from("community_events").delete().eq("live_stream_id", stream.id);
+   if (evtErr) throw evtErr;
+   const { error: strErr } = await supabase.from("community_live_streams" as any).delete().eq("id", stream.id);
+   if (strErr) throw strErr;
+   ```
+3. Adicionar `console.error` no catch para facilitar debug futuro
+4. Trocar o botão "Excluir" para abrir o AlertDialog de confirmação em vez de chamar `confirm()`
 
 ### Resultado
-- Tab "Ranking" desaparece do header em todas as páginas da comunidade
-- Nenhuma outra tab é afetada
-- Layout permanece estável
+- Exclusão funciona corretamente com feedback visual
+- Erros de RLS/DB são capturados e mostrados ao usuário
+- Sem interferência do focus-trap do Dialog
 
