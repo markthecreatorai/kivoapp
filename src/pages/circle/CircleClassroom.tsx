@@ -735,7 +735,7 @@ export default function CircleClassroom() {
               key={course.id}
               onClick={() => {
                 if (isLocked) {
-                  toast.error(`Desbloqueia no nível ${course.min_level} (você está no ${memberLevel}).`);
+                  toast.error(lockMessage);
                   return;
                 }
                 setSelectedCourseId(course.id);
