@@ -517,7 +517,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                   <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings`)} className="gap-2 text-sm cursor-pointer">
                     <User className="h-4 w-4" /> Perfil da comunidade
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/settings?tab=profile")} className="gap-2 text-sm cursor-pointer">
+                  <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings?section=account`)} className="gap-2 text-sm cursor-pointer">
                     <Settings className="h-4 w-4" /> Configurações da conta
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
