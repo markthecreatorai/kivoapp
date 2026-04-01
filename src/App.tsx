@@ -286,8 +286,8 @@ const App = () => (
                 {/* /c/:slug/messages → redirect to feed (messages are now popup-only) */}
                 <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
-                {/* Legacy redirect: /c/:slug/settings → /circle-settings */}
-                <Route path="/c/:slug/settings" element={<CircleSettingsRedirect />} />
+                {/* Settings inside community layout */}
+                <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/about" element={<CircleLayout><CircleAbout /></CircleLayout>} />
                 <Route path="/c/:slug/profile" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/profile/:memberId" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
