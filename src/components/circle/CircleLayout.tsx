@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { useDailyLogin } from "@/hooks/useDailyLogin";
 import { notifyMemberJoined } from "@/lib/notifications";
 import CirclePaywall from "@/components/circle/CirclePaywall";
+import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import {
   MessageSquare,
   Users,
