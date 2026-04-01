@@ -20,7 +20,9 @@ interface PostCardProps {
   showSpace?: boolean;
   communityId?: string;
   memberId?: string;
+  memberRole?: string;
   onOpenPost?: (postId: string) => void;
+  onDeletePost?: (postId: string) => void;
 }
 
 function getVideoThumb(url: string | null) {
