@@ -85,7 +85,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const { currentWorkspace } = useWorkspace();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const queryClient = useQueryClient();
 
   const [showAdminModal, setShowAdminModal] = useState(false);
