@@ -1088,7 +1088,7 @@ export default function CircleSettings() {
                     placeholder="Mínimo 6 caracteres"
                   />
                   {newPassword.length > 0 && newPassword.length < 6 && (
-                    <p className="text-xs text-destructive">At least 6 characters required</p>
+                    <p className="text-xs text-destructive">Mínimo de 6 caracteres</p>
                   )}
                 </div>
                 <div className="space-y-1.5">
