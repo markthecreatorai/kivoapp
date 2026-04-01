@@ -2146,16 +2146,20 @@ export type Database = {
           current_streak: number
           customer_id: string | null
           display_name: string | null
+          hide_from_search: boolean | null
           id: string
           joined_at: string
           last_active_at: string | null
           level: number
+          location: string | null
           longest_streak: number
+          membership_visibility: Json | null
           muted_at: string | null
           muted_until: string | null
           notification_preferences: Json
           onboarding_dismissed: boolean
           role: Database["public"]["Enums"]["community_member_role"]
+          social_links: Json | null
           status: Database["public"]["Enums"]["community_member_status"]
           sync_with_kivo: boolean
           total_points: number
@@ -2173,16 +2177,20 @@ export type Database = {
           current_streak?: number
           customer_id?: string | null
           display_name?: string | null
+          hide_from_search?: boolean | null
           id?: string
           joined_at?: string
           last_active_at?: string | null
           level?: number
+          location?: string | null
           longest_streak?: number
+          membership_visibility?: Json | null
           muted_at?: string | null
           muted_until?: string | null
           notification_preferences?: Json
           onboarding_dismissed?: boolean
           role?: Database["public"]["Enums"]["community_member_role"]
+          social_links?: Json | null
           status?: Database["public"]["Enums"]["community_member_status"]
           sync_with_kivo?: boolean
           total_points?: number
@@ -2200,16 +2208,20 @@ export type Database = {
           current_streak?: number
           customer_id?: string | null
           display_name?: string | null
+          hide_from_search?: boolean | null
           id?: string
           joined_at?: string
           last_active_at?: string | null
           level?: number
+          location?: string | null
           longest_streak?: number
+          membership_visibility?: Json | null
           muted_at?: string | null
           muted_until?: string | null
           notification_preferences?: Json
           onboarding_dismissed?: boolean
           role?: Database["public"]["Enums"]["community_member_role"]
+          social_links?: Json | null
           status?: Database["public"]["Enums"]["community_member_status"]
           sync_with_kivo?: boolean
           total_points?: number
