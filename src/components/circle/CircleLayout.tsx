@@ -67,14 +67,36 @@ export function getLevelInfo(points: number) {
 
 // No more props — layout is persistent via Outlet
 
-function getTabItems(slug: string) {
-  return [
-    { label: "Comunidade", icon: MessageSquare, path: `/circles/${slug}/feed` },
-    { label: "Classroom", icon: BookOpen, path: `/circles/${slug}/classroom` },
-    { label: "Calendário", icon: Calendar, path: `/circles/${slug}/events` },
-    { label: "Membros", icon: Users, path: `/circles/${slug}/members` },
-    { label: "Sobre", icon: Star, path: `/circles/${slug}/about` },
-  ];
+const ALL_TABS: Record<string, { label: string; icon: typeof MessageSquare; pathSuffix: string }> = {
+  feed: { label: "Comunidade", icon: MessageSquare, pathSuffix: "feed" },
+  classroom: { label: "Classroom", icon: BookOpen, pathSuffix: "classroom" },
+  members: { label: "Membros", icon: Users, pathSuffix: "members" },
+  leaderboard: { label: "Ranking", icon: Trophy, pathSuffix: "leaderboard" },
+  events: { label: "Calendário", icon: Calendar, pathSuffix: "events" },
+  about: { label: "Sobre", icon: Star, pathSuffix: "about" },
+};
+
+const DEFAULT_TAB_ORDER = ["feed", "classroom", "members", "leaderboard", "events", "about"];
+
+function getTabItems(slug: string, community?: any) {
+  const tabsConfig = community?.tabs_config as Record<string, boolean> | null;
+  const tabsOrder = community?.tabs_order as string[] | null;
+
+  const order = tabsOrder?.length ? tabsOrder : DEFAULT_TAB_ORDER;
+
+  return order
+    .filter((key) => {
+      const tab = ALL_TABS[key];
+      if (!tab) return false;
+      // If tabs_config exists, respect it; otherwise default all to true
+      if (tabsConfig && typeof tabsConfig[key] === "boolean") return tabsConfig[key];
+      return true;
+    })
+    .map((key) => ({
+      label: ALL_TABS[key].label,
+      icon: ALL_TABS[key].icon,
+      path: `/circles/${slug}/${ALL_TABS[key].pathSuffix}`,
+    }));
 }
 
 export default function CircleLayout() {
