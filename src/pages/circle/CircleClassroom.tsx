@@ -8,7 +8,7 @@ import {
   BookOpen, Play, Crown, Plus,
   FileText, Circle, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
-  Lock, Copy, Trash2,
+  Lock, Copy, Trash2, GripVertical,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,21 @@ import { toast } from "sonner";
 import CourseFormModal from "@/components/circle/CourseFormModal";
 import CourseCardMenu from "@/components/circle/CourseCardMenu";
 import LessonEditor from "@/components/circle/LessonEditor";
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ─── Types ───────────────────────────────────────────────────
 interface CircleCourse {
