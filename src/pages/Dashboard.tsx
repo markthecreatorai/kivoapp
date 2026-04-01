@@ -94,8 +94,8 @@ export default function Dashboard() {
 
         const endDate = new Date();
 
-        // Fetch orders + source breakdown + top communities in parallel
-        const [ordersRes, prevRes, sourceRes, communitiesRes] = await Promise.all([
+        // Fetch orders + source breakdown + top communities + tier analytics in parallel
+        const [ordersRes, prevRes, sourceRes, communitiesRes, tiersRes, entitlementRes] = await Promise.all([
           supabase
             .from("orders")
             .select("total_amount, created_at, payment_method")
@@ -119,6 +119,15 @@ export default function Dashboard() {
             p_start_date: startDate.toISOString(),
             p_end_date: endDate.toISOString(),
             p_limit: 5,
+          }),
+          supabase.rpc("get_top_tiers_revenue" as any, {
+            p_workspace_id: currentWorkspace.id,
+            p_start_date: startDate.toISOString(),
+            p_end_date: endDate.toISOString(),
+            p_limit: 5,
+          }),
+          supabase.rpc("get_entitlement_source_breakdown" as any, {
+            p_workspace_id: currentWorkspace.id,
           }),
         ]);
 
