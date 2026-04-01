@@ -646,6 +646,22 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
                           ))}
                         </SelectContent>
                       </Select>
+                )}
+                  </div>
+                )}
+                {spaces.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="space" id="access-space" />
+                    <Label htmlFor="access-space" className="text-sm cursor-pointer">Members in group</Label>
+                    {accessRule === "space" && (
+                      <Select value={accessValue} onValueChange={setAccessValue}>
+                        <SelectTrigger className="w-32 h-7 text-xs"><SelectValue placeholder="Group" /></SelectTrigger>
+                        <SelectContent>
+                          {spaces.map((s: any) => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
                 )}
