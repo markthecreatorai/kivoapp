@@ -575,7 +575,6 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="flex items-center justify-around h-16">
           {navItems.map((item) => {
             const active = isActive(item.path);
-            const hasDmBadge = item.path === `/c/${slug}/messages` && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
@@ -585,12 +584,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <div className="relative">
-                  <item.icon className="h-5 w-5" />
-                  {hasDmBadge && (
-                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
-                  )}
-                </div>
+                <item.icon className="h-5 w-5" />
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
