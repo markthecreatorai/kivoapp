@@ -29,7 +29,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
   const [uploadingCover, setUploadingCover] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showInstagramSheet, setShowInstagramSheet] = useState(false);
-  const inviteLink = `${window.location.origin}/circles/${slug}/feed`;
+  const inviteLink = `${window.location.origin}/c/${slug}/feed`;
 
   // Simulated online count
   const [onlineCount, setOnlineCount] = useState(0);

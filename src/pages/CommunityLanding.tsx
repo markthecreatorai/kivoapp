@@ -65,7 +65,7 @@ export default function CommunityLanding() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [joinAnswers, setJoinAnswers] = useState<Record<string, string>>({});
 
-  const inviteLink = `${window.location.origin}/circles/${slug}`;
+  const inviteLink = `${window.location.origin}/c/${slug}`;
 
   const { fetchCommunity, signupAndJoin, joinAsExistingUser, isLoading } = useJoinCommunity(
     slug || "",
@@ -584,7 +584,7 @@ export default function CommunityLanding() {
 
                 <div>
                   <p className="font-bold text-gray-900 dark:text-gray-100">{community.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">kivo.com/circles/{community.slug}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">kivo.com/c/{community.slug}</p>
                 </div>
 
                 {community.description && (
@@ -770,7 +770,7 @@ export default function CommunityLanding() {
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Não é você?{" "}
-                <button onClick={() => { setShowJoinModal(false); navigate(`/login?redirect=/circles/${slug}`); }} className="text-primary hover:underline">
+                <button onClick={() => { setShowJoinModal(false); navigate(`/login?redirect=/c/${slug}`); }} className="text-primary hover:underline">
                   Trocar conta
                 </button>
               </p>

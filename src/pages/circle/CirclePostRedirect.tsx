@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 /**
- * Redirect /circles/:slug/post/:id → /circles/:slug/feed?post=:id
+ * Redirect /c/:slug/post/:id → /c/:slug/feed?post=:id
  * The feed will pick up the ?post= param, open the modal, and clean the URL.
  */
 export default function CirclePostRedirect() {
