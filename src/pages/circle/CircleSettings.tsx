@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import AffiliatesSettings from "@/components/circle/AffiliatesSettings";
 
 const DEFAULT_NOTIFICATIONS = {
   likes: true,
