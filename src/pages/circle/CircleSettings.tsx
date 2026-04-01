@@ -1180,46 +1180,7 @@ export default function CircleSettings() {
 
           {/* ═══ Chat ═══ */}
           {activeSection === "chat" && (
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Chat</h2>
-              <p className="text-sm text-muted-foreground mb-6">Manage your chat preferences</p>
-
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Chat notifications</p>
-                    <p className="text-xs text-muted-foreground">Receive notifications for new messages</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Email notifications for chat</p>
-                    <p className="text-xs text-muted-foreground">Receive email when you have unread messages</p>
-                  </div>
-                  <Switch />
-                </div>
-                <Separator />
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Who can message me</p>
-                  <p className="text-xs text-muted-foreground mb-3">Control who can start conversations with you</p>
-                  <Select defaultValue="everyone">
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="everyone">Everyone</SelectItem>
-                      <SelectItem value="members">Community members only</SelectItem>
-                      <SelectItem value="nobody">Nobody</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Blocked users</p>
-                  <p className="text-xs text-muted-foreground">You haven't blocked anyone.</p>
-                </div>
-              </div>
-            </Card>
+            <ChatSection userId={user?.id || ""} userCommunities={userCommunities} />
           )}
 
           {/* ═══ Payment methods ═══ */}
