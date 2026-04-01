@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Trash2, Video, MapPin, Link as LinkIcon } from "lucide-react";
+import { Upload, Trash2, Video, MapPin, Link as LinkIcon, Coffee, HelpCircle, Laptop, PartyPopper, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
