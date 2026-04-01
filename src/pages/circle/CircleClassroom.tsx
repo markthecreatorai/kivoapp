@@ -327,6 +327,34 @@ export default function CircleClassroom() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  // ─── Reorder courses via drag & drop ──────────────────
+  const reorderCoursesMutation = useMutation({
+    mutationFn: async (reordered: CircleCourse[]) => {
+      const updates = reordered.map((c, i) =>
+        supabase.from("circle_courses").update({ position: i }).eq("id", c.id)
+      );
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-courses", community?.id] });
+    },
+    onError: () => toast.error("Erro ao reordenar cursos"),
+  });
+
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleCourseDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = courses.findIndex((c) => c.id === active.id);
+    const newIndex = courses.findIndex((c) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove([...courses], oldIndex, newIndex);
+    // optimistic update
+    queryClient.setQueryData(["circle-courses", community?.id], reordered);
+    reorderCoursesMutation.mutate(reordered);
+  };
+
   const startRenaming = (item: CircleLesson) => {
     setRenamingModuleId(item.id);
     setRenameValue(item.title);
