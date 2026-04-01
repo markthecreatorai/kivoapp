@@ -32,14 +32,14 @@ type Section =
   | "discovery"
   | "billing";
 
-const NAV_ITEMS: { id: Section; label: string }[] = [
+const NAV_ITEMS: { id: Section; label: string; disabled?: boolean }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "invite", label: "Invite" },
   { id: "general", label: "General" },
   { id: "payouts", label: "Payouts" },
   { id: "pricing", label: "Pricing" },
   { id: "affiliates", label: "Affiliates" },
-  { id: "plugins", label: "Plugins" },
+  { id: "plugins", label: "Plugins", disabled: true },
   { id: "community", label: "Community" },
   { id: "discovery", label: "Discovery" },
   { id: "billing", label: "Billing" },
