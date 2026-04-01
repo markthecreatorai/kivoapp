@@ -263,10 +263,12 @@ export default function AdminCommunityTab({ community }: Props) {
 
   const saveCommunity = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("communities")
-        .update({ tabs_config: tabs, tabs_order: tabOrder, community_rules: rules } as any)
-        .eq("id", community.id);
+        .update({ tabs_config: tabs, tabs_order: tabOrder, community_rules: rules })
+        .eq("id", community.id)
+        .select("id")
+        .single();
       if (error) throw error;
     },
     onSuccess: () => {
