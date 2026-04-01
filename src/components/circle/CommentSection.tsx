@@ -19,6 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
 import { createNotification } from "@/lib/notifications";
+import { checkSpam } from "@/lib/antispam";
 
 interface CommentSectionProps {
   postId: string;
@@ -69,7 +70,6 @@ export default function CommentSection({
       if (!member || !community) throw new Error("Missing");
 
       // Anti-spam check
-      const { checkSpam } = await import("@/lib/antispam");
       const spamResult = await checkSpam(member.id, community.id, "comment", body.trim());
       if (!spamResult.allowed) throw new Error(spamResult.reason || "Spam detectado");
       const { data: comment, error } = await supabase.from("community_comments").insert({

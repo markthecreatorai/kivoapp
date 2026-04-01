@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthProvider";
 import EmojiPicker from "@/components/circle/EmojiPicker";
 import GifPicker from "@/components/circle/GifPicker";
+import { checkSpam } from "@/lib/antispam";
 
 interface PostComposerProps {
   communityId: string;
@@ -91,7 +92,6 @@ export default function PostComposer({
     mutationFn: async () => {
       if (!selectedSpace || !title.trim()) throw new Error("Preencha categoria e título");
 
-      const { checkSpam } = await import("@/lib/antispam");
       const spamResult = await checkSpam(memberId, communityId, "post", title.trim());
       if (!spamResult.allowed) throw new Error(spamResult.reason || "Spam detectado");
 

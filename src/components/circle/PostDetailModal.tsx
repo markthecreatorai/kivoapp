@@ -25,6 +25,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
 import { createNotification } from "@/lib/notifications";
+import { checkSpam } from "@/lib/antispam";
 
 interface PostDetailModalProps {
   postId: string;
@@ -230,7 +231,6 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const addComment = useMutation({
     mutationFn: async ({ body, parentId }: { body: string; parentId?: string }) => {
       if (!member || !community) throw new Error("Missing");
-      const { checkSpam } = await import("@/lib/antispam");
       const spam = await checkSpam(member.id, community.id, "comment", body.trim());
       if (!spam.allowed) throw new Error(spam.reason || "Spam detectado");
       const { data: comment, error } = await supabase.from("community_comments").insert({ post_id: postId, author_id: member.id, body: body.trim(), parent_id: parentId || null }).select().single();
