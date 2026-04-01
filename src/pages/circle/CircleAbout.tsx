@@ -15,8 +15,93 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type GalleryItem = { type: "image" | "video"; url: string; position: number };
+
+function SortableThumb({
+  item,
+  index,
+  isActive,
+  isAdminEditing,
+  onSelect,
+  onRemove,
+}: {
+  item: GalleryItem;
+  index: number;
+  isActive: boolean;
+  isAdminEditing: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `gallery-${index}`,
+    disabled: !isAdminEditing,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "relative group/thumb shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all",
+        isAdminEditing && "cursor-grab active:cursor-grabbing",
+        !isAdminEditing && "cursor-pointer",
+        isActive ? "border-primary ring-1 ring-primary/30" : "border-transparent hover:border-muted-foreground/30"
+      )}
+      onClick={onSelect}
+    >
+      {item.type === "image" ? (
+        <img src={item.url} alt="" className="w-full h-full object-cover pointer-events-none" />
+      ) : (
+        <div className="relative w-full h-full pointer-events-none">
+          {getVideoThumbnail(item.url) ? (
+            <img src={getVideoThumbnail(item.url)!} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+              <Play className="h-4 w-4 text-white/60" />
+            </div>
+          )}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Play className="h-4 w-4 text-white drop-shadow" />
+          </div>
+        </div>
+      )}
+
+      {isAdminEditing && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/70 hover:bg-destructive text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 function formatPrice(price: number, period?: string) {
   const fmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
@@ -53,6 +138,10 @@ export default function CircleAbout() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaImageInputRef = useRef<HTMLInputElement>(null);
   const previewMode = searchParams.get("preview") === "visitor";
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const { data: community, isLoading } = useQuery({
     queryKey: ["community-about", slug],
@@ -307,57 +396,53 @@ export default function CircleAbout() {
             )}
           </div>
 
-          {/* Thumbnails */}
+          {/* Thumbnails with drag & drop */}
           {(gallery.length > 1 || isAdminEditing) && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              {gallery.map((item, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "relative group/thumb shrink-0 w-20 h-14 rounded-lg overflow-hidden cursor-pointer border-2 transition-all",
-                    activeIndex === i ? "border-primary ring-1 ring-primary/30" : "border-transparent hover:border-muted-foreground/30"
-                  )}
-                  onClick={() => { setActiveIndex(i); setVideoPlaying(false); }}
-                >
-                  {item.type === "image" ? (
-                    <img src={item.url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="relative w-full h-full">
-                      {getVideoThumbnail(item.url) ? (
-                        <img src={getVideoThumbnail(item.url)!} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                          <Play className="h-4 w-4 text-white/60" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Play className="h-4 w-4 text-white drop-shadow" />
-                      </div>
-                    </div>
-                  )}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
+                const oldIndex = gallery.findIndex((_, i) => `gallery-${i}` === active.id);
+                const newIndex = gallery.findIndex((_, i) => `gallery-${i}` === over.id);
+                if (oldIndex === -1 || newIndex === -1) return;
+                const reordered = arrayMove(gallery, oldIndex, newIndex);
+                saveGallery(reordered);
+                // Update active index to follow the selected item
+                if (activeIndex === oldIndex) setActiveIndex(newIndex);
+                else if (activeIndex === newIndex) setActiveIndex(oldIndex);
+              }}
+            >
+              <SortableContext
+                items={gallery.map((_, i) => `gallery-${i}`)}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {gallery.map((item, i) => (
+                    <SortableThumb
+                      key={`gallery-${i}`}
+                      item={item}
+                      index={i}
+                      isActive={activeIndex === i}
+                      isAdminEditing={isAdminEditing}
+                      onSelect={() => { setActiveIndex(i); setVideoPlaying(false); }}
+                      onRemove={() => handleRemoveItem(i)}
+                    />
+                  ))}
 
-                  {/* Remove button (admin) */}
+                  {/* Add button */}
                   {isAdminEditing && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleRemoveItem(i); }}
-                      className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/70 hover:bg-destructive text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                      onClick={() => { setMediaVideoUrl(""); setShowMediaModal(true); }}
+                      className="shrink-0 w-20 h-14 rounded-lg border-2 border-dashed border-border hover:border-muted-foreground/40 bg-muted/30 hover:bg-muted/50 flex items-center justify-center transition-all"
                     >
-                      <X className="h-3 w-3" />
+                      <Plus className="h-5 w-5 text-muted-foreground" />
                     </button>
                   )}
                 </div>
-              ))}
-
-              {/* Add button */}
-              {isAdminEditing && (
-                <button
-                  onClick={() => { setMediaVideoUrl(""); setShowMediaModal(true); }}
-                  className="shrink-0 w-20 h-14 rounded-lg border-2 border-dashed border-border hover:border-muted-foreground/40 bg-muted/30 hover:bg-muted/50 flex items-center justify-center transition-all"
-                >
-                  <Plus className="h-5 w-5 text-muted-foreground" />
-                </button>
-              )}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       ) : isAdminEditing ? (
