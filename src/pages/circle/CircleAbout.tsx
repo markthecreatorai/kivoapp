@@ -17,12 +17,12 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
+  DragOverlay,
   pointerWithin,
   PointerSensor,
   TouchSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
