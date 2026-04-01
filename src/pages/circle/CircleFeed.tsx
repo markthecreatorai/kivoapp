@@ -541,7 +541,13 @@ export default function CircleFeed() {
               showSpace={!effectiveSpaceId}
               communityId={community?.id}
               memberId={member?.id}
+              memberRole={member?.role}
               onOpenPost={handleOpenPost}
+              onDeletePost={async (id) => {
+                await supabase.from("community_posts").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+                queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
+                toast.success("Post excluído");
+              }}
             />
           ))}
         </div>
