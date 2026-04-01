@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Video, Radio, Calendar, Link as LinkIcon } from "lucide-react";
+import { Video, Radio, Calendar, Link as LinkIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface LiveStreamFormModalProps {
