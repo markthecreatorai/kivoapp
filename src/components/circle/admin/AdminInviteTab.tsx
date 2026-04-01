@@ -159,7 +159,7 @@ export default function AdminInviteTab({ community, member }: Props) {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Invite</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">Convites</h2>
         <p className="text-sm text-gray-500">
           Gerencie como novos membros entram na sua comunidade.
         </p>

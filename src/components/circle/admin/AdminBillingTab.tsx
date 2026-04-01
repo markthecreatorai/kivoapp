@@ -61,7 +61,7 @@ export default function AdminBillingTab({ community }: Props) {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">Billing</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Cobrança</h2>
         <p className="text-sm text-gray-500 mt-0.5">
           Visão geral de assinaturas e receita da comunidade.
         </p>

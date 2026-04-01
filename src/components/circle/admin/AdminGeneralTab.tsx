@@ -99,7 +99,7 @@ export default function AdminGeneralTab({ community }: Props) {
       {/* Header with Save */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">General</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Geral</h2>
           <p className="text-sm text-gray-500 mt-0.5">Informações básicas da comunidade.</p>
         </div>
         <Button
@@ -108,7 +108,7 @@ export default function AdminGeneralTab({ community }: Props) {
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold tracking-wide text-sm"
           size="sm"
         >
-          SAVE
+          SALVAR
         </Button>
       </div>
 

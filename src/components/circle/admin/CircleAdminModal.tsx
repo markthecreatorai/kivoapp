@@ -33,16 +33,16 @@ type Section =
   | "billing";
 
 const NAV_ITEMS: { id: Section; label: string; disabled?: boolean }[] = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "invite", label: "Invite" },
-  { id: "general", label: "General" },
-  { id: "payouts", label: "Payouts" },
-  { id: "pricing", label: "Pricing" },
-  { id: "affiliates", label: "Affiliates" },
+  { id: "dashboard", label: "Painel" },
+  { id: "invite", label: "Convites" },
+  { id: "general", label: "Geral" },
+  { id: "payouts", label: "Recebimentos" },
+  { id: "pricing", label: "Preços" },
+  { id: "affiliates", label: "Afiliados" },
   { id: "plugins", label: "Plugins", disabled: true },
-  { id: "community", label: "Community" },
-  { id: "discovery", label: "Discovery" },
-  { id: "billing", label: "Billing" },
+  { id: "community", label: "Comunidade" },
+  { id: "discovery", label: "Descoberta" },
+  { id: "billing", label: "Cobrança" },
 ];
 
 export default function CircleAdminModal({ community, member, onClose }: Props) {

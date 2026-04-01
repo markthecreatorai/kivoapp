@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Layout, Grid3x3, BookOpen, Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
+import { Layout, Grid3x3, BookOpen, Plus, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -30,11 +30,11 @@ const DEFAULT_TAB_ORDER = ["feed", "classroom", "members", "leaderboard", "event
 
 const TAB_LABELS: Record<string, string> = {
   feed: "Feed",
-  classroom: "Classroom",
-  members: "Members",
-  leaderboard: "Leaderboard",
-  events: "Events",
-  about: "About",
+  classroom: "Sala de aula",
+  members: "Membros",
+  leaderboard: "Ranking",
+  events: "Eventos",
+  about: "Sobre",
 };
 
 /* ── Sortable row for tabs ── */
@@ -244,7 +244,7 @@ export default function AdminCommunityTab({ community }: Props) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Community</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Comunidade</h2>
         <Button
           onClick={() => saveCommunity.mutate()}
           disabled={saveCommunity.isPending}
@@ -269,8 +269,8 @@ export default function AdminCommunityTab({ community }: Props) {
             <Layout className="h-5 w-5 text-blue-800" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900">Tabs</p>
-            <p className="text-xs text-gray-500">Show/hide navigation tabs.</p>
+            <p className="text-sm font-semibold text-gray-900">Abas</p>
+            <p className="text-xs text-gray-500">Mostrar/ocultar abas de navegação.</p>
           </div>
         </button>
 
@@ -286,8 +286,8 @@ export default function AdminCommunityTab({ community }: Props) {
             <Grid3x3 className="h-5 w-5 text-green-800" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900">Categories</p>
-            <p className="text-xs text-gray-500">Manage feed categories.</p>
+            <p className="text-sm font-semibold text-gray-900">Categorias</p>
+            <p className="text-xs text-gray-500">Gerenciar categorias do feed.</p>
           </div>
         </button>
 
@@ -303,8 +303,8 @@ export default function AdminCommunityTab({ community }: Props) {
             <BookOpen className="h-5 w-5 text-amber-800" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900">Rules</p>
-            <p className="text-xs text-gray-500">Set guidelines for discussion.</p>
+            <p className="text-sm font-semibold text-gray-900">Regras</p>
+            <p className="text-xs text-gray-500">Definir diretrizes de discussão.</p>
           </div>
         </button>
       </div>

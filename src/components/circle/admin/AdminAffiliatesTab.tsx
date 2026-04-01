@@ -14,7 +14,7 @@ const COMMISSION_OPTIONS = [
   { value: 10, label: "10%", desc: null },
   { value: 20, label: "20%", desc: null },
   { value: 30, label: "30%", desc: null },
-  { value: 40, label: "40%", desc: "most effective" },
+  { value: 40, label: "40%", desc: "mais eficaz" },
   { value: 50, label: "50%", desc: null },
 ] as const;
 
@@ -43,19 +43,19 @@ export default function AdminAffiliatesTab({ community }: Props) {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Affiliates</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Afiliados</h2>
         <Button
           onClick={() => saveAffiliates.mutate()}
           disabled={saveAffiliates.isPending}
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold tracking-wide text-sm"
           size="sm"
         >
-          SAVE
+          SALVAR
         </Button>
       </div>
 
       <p className="text-sm text-gray-600">
-        Reward your members for referring their friends by offering recurring commissions.
+        Recompense seus membros por indicarem amigos oferecendo comissões recorrentes.
       </p>
 
       {/* Radio options */}

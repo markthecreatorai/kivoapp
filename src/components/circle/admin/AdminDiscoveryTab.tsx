@@ -14,18 +14,18 @@ interface Props {
 }
 
 const CATEGORIES = [
-  "Business",
-  "Technology",
-  "Health & Fitness",
-  "Education",
-  "Arts & Creativity",
-  "Sports",
-  "Spirituality",
-  "Finance",
-  "Marketing",
-  "Personal Development",
-  "Entertainment",
-  "Other",
+  { value: "Business", label: "Negócios" },
+  { value: "Technology", label: "Tecnologia" },
+  { value: "Health & Fitness", label: "Saúde & Fitness" },
+  { value: "Education", label: "Educação" },
+  { value: "Arts & Creativity", label: "Artes & Criatividade" },
+  { value: "Sports", label: "Esportes" },
+  { value: "Spirituality", label: "Espiritualidade" },
+  { value: "Finance", label: "Finanças" },
+  { value: "Marketing", label: "Marketing" },
+  { value: "Personal Development", label: "Desenvolvimento Pessoal" },
+  { value: "Entertainment", label: "Entretenimento" },
+  { value: "Other", label: "Outro" },
 ];
 
 export default function AdminDiscoveryTab({ community }: Props) {
@@ -95,7 +95,7 @@ export default function AdminDiscoveryTab({ community }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Discovery</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Descoberta</h2>
           <p className="text-sm text-gray-500 mt-0.5">
             Configure como sua comunidade aparece para novos membros.
           </p>
@@ -106,7 +106,7 @@ export default function AdminDiscoveryTab({ community }: Props) {
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold tracking-wide text-sm"
           size="sm"
         >
-          SAVE
+          SALVAR
         </Button>
       </div>
 
@@ -157,7 +157,7 @@ export default function AdminDiscoveryTab({ community }: Props) {
             <Compass className="h-4.5 w-4.5 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900">Aparecer no Discovery</p>
+            <p className="text-sm font-semibold text-gray-900">Aparecer na Descoberta</p>
             <p className="text-xs text-gray-500">
               Exibir sua comunidade na página de descoberta pública
             </p>
@@ -180,8 +180,8 @@ export default function AdminDiscoveryTab({ community }: Props) {
               </SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -241,7 +241,7 @@ export default function AdminDiscoveryTab({ community }: Props) {
           {/* Preview box */}
           <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Preview no Discovery
+              Prévia na Descoberta
             </p>
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {community.cover_image_url ? (

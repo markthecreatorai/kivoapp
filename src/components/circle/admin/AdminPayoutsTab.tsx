@@ -53,10 +53,10 @@ export default function AdminPayoutsTab({ community }: Props) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Payouts</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Recebimentos</h2>
         <button
           className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-          title="Configurações de payout"
+          title="Configurações de recebimento"
           onClick={() => setShowBankForm((v) => !v)}
         >
           <Settings className="h-4 w-4" />
@@ -68,19 +68,19 @@ export default function AdminPayoutsTab({ community }: Props) {
         {/* Balance card */}
         <div className="bg-gray-100 rounded-xl px-8 py-5 min-w-[180px] text-center">
           <p className="text-2xl font-bold text-gray-900">
-            ${balance.toFixed(2)}
+            R${balance.toFixed(2)}
           </p>
-          <p className="text-sm text-gray-500 mt-0.5">Account balance</p>
+          <p className="text-sm text-gray-500 mt-0.5">Saldo da conta</p>
         </div>
 
         {/* Next payout info */}
         <div className="space-y-1.5 pt-1">
           <p className="text-sm text-gray-700 font-medium">
-            Next payout will be ${balance.toFixed(0)} in {nextPayoutDays} days
+            Próximo pagamento de R${balance.toFixed(0)} em {nextPayoutDays} dias
           </p>
           <div className="flex items-center gap-1.5">
             <p className="text-sm text-gray-500">
-              ${pending.toFixed(0)} is pending
+              R${pending.toFixed(0)} pendente
             </p>
             <button title="O valor pendente é processado automaticamente no próximo ciclo de pagamento">
               <HelpCircle className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 transition-colors" />
@@ -91,7 +91,7 @@ export default function AdminPayoutsTab({ community }: Props) {
 
       {/* Divider + empty state */}
       <div className="border-t border-gray-100 pt-6">
-        <p className="text-sm text-gray-400">No payouts yet</p>
+        <p className="text-sm text-gray-400">Nenhum pagamento ainda</p>
       </div>
 
       {/* Bank details section — collapsible via settings icon */}
@@ -237,7 +237,7 @@ export default function AdminPayoutsTab({ community }: Props) {
               className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold tracking-wide text-sm"
               size="sm"
             >
-              SAVE
+              SALVAR
             </Button>
           </div>
         </div>
