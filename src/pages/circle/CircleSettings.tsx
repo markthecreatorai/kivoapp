@@ -1184,24 +1184,8 @@ export default function CircleSettings() {
             <ChatSection userId={user?.id || ""} userCommunities={userCommunities} />
           )}
 
-          {/* ═══ Payment methods ═══ */}
           {activeSection === "payment-methods" && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Payment methods</h2>
-                  <p className="text-sm text-muted-foreground">Manage your saved payment methods</p>
-                </div>
-                <Button size="sm" className="font-semibold">
-                  <CreditCard className="h-4 w-4 mr-1.5" />
-                  ADD PAYMENT METHOD
-                </Button>
-              </div>
-              <div className="text-center py-12">
-                <CreditCard className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">You have no payment methods.</p>
-              </div>
-            </Card>
+            <PaymentMethodsSection userId={user?.id || ""} />
           )}
 
           {/* ═══ Payment history ═══ */}
