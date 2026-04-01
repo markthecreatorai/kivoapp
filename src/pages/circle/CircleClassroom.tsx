@@ -8,6 +8,7 @@ import {
   BookOpen, Play, Crown, ArrowLeft, Plus,
   FileText, Circle, Trash2, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder, Pencil,
+  Lock,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
