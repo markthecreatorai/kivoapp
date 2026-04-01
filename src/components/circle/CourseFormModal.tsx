@@ -42,6 +42,8 @@ export default function CourseFormModal({
   const [accessType, setAccessType] = useState(course?.access_type || "free");
   const [isPublished, setIsPublished] = useState(course?.is_published ?? true);
   const [coverUrl, setCoverUrl] = useState(course?.cover_url || "");
+  const [accessMode, setAccessMode] = useState((course as any)?.access_mode || "OPEN");
+  const [minLevel, setMinLevel] = useState<number>((course as any)?.min_level || 2);
   const [uploading, setUploading] = useState(false);
 
   const handleUploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
