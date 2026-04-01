@@ -1,80 +1,26 @@
 
 
-## Restructure CircleSettings to Skool-like sidebar layout
+## Hotfix: Remover tab "Ranking" do header da comunidade
 
-### What changes
+### Problema
+A tab "Ranking" ainda aparece no header de navegação da comunidade (CircleLayout.tsx, linha 78), mesmo após remoções anteriores do bloco de ranking da sidebar.
 
-Refactor `src/pages/circle/CircleSettings.tsx` from horizontal pill tabs (5 items) to a **left sidebar + main content** layout matching the Skool screenshots, with 10 navigation items.
+### Alterações
 
-### Layout structure
+**1. `src/components/circle/CircleLayout.tsx`**
+- Remover a entrada `{ label: "Ranking", icon: Trophy, path: /circles/${slug}/leaderboard }` do array de tabs (linha 78)
+- Remover import de `Trophy` se não for usado em outro lugar
 
-```text
-┌──────────────────────────────────────────────────┐
-│  [Sidebar 220px]  │  [Main content card]         │
-│                   │                              │
-│  Communities  ◄───│  Content for active section  │
-│  Profile          │  inside a single Card        │
-│  Affiliates       │                              │
-│  Payouts          │                              │
-│  Account          │                              │
-│  Notifications    │                              │
-│  Chat             │                              │
-│  Payment methods  │                              │
-│  Payment history  │                              │
-│  Theme            │                              │
-└──────────────────────────────────────────────────┘
-```
+**2. `src/App.tsx`** (ou router)
+- Manter a rota `/circles/:slug/leaderboard` como redirect para `/circles/:slug/feed` (para não quebrar deep links)
+- Ou remover completamente se preferir 404
 
-On mobile: sidebar collapses to a horizontal scrollable list or dropdown at the top.
+**3. Limpeza opcional**
+- Remover `src/components/circle/CircleRightSidebar.tsx` (arquivo legado não importado)
+- A página `CircleLeaderboard.tsx` pode ser mantida caso queira reativar no futuro, ou removida
 
-### Sidebar items (10 tabs)
-
-| Tab | Content | Status |
-|---|---|---|
-| Communities | List user's communities with icon, name, SETTINGS button, visibility/pin toggles | New — stub with community list from `community_members` |
-| Profile | Existing profile form (already built) | Keep as-is |
-| Affiliates | Existing `AffiliatesSettings` component | Keep as-is |
-| Payouts | Existing `PayoutsSettings` component | Keep as-is |
-| Account | Existing account section (email, password, danger zone) | Keep as-is |
-| Notifications | Existing notifications toggles + per-community expandable list | Enhance with community-level toggles |
-| Chat | Chat preferences: master toggle, email notifications toggle, per-community ON/OFF, blocked users | New — placeholder/stub |
-| Payment methods | List saved payment methods, ADD button | New — placeholder/stub |
-| Payment history | Payment history table with empty state | New — placeholder/stub |
-| Theme | Theme selector (Light/Dark) with SAVE button | New — placeholder/stub |
-
-### Sidebar visual style (matching Skool)
-- No icons in sidebar — text only, like Skool screenshots
-- Active item: `bg-amber-100/80 text-foreground font-semibold` with left border radius (yellow/gold highlight like Skool)
-- Inactive: `text-foreground hover:bg-muted/30`
-- Font size: `text-sm`, padding: `px-4 py-2.5`
-- No card wrapper on sidebar — clean text list
-
-### Implementation details
-
-**Single file change**: `src/pages/circle/CircleSettings.tsx`
-
-1. Replace the horizontal tab bar (`flex gap-1.5 mb-6 bg-muted/30`) with a sidebar `<aside>` on the left
-2. Expand `sectionButtons` array from 5 to 10 items (remove icons, add new section IDs)
-3. Wrap layout in `flex` with sidebar (w-56) + main content area (flex-1)
-4. Add stub content blocks for the 5 new sections (communities, chat, payment-methods, payment-history, theme) — each renders a Card with title and placeholder content matching the Skool empty states
-5. Mobile: sidebar becomes a horizontal scroll strip at top (`flex md:flex-col`)
-6. Remove the `max-w-3xl mx-auto` constraint from the outer wrapper since the sidebar layout handles width
-
-### New stub sections content
-
-- **Communities**: Fetch user's communities, render each as a row with icon + name + "SETTINGS" button + eye icon + pin icon
-- **Chat**: Master notification toggle, email notifications toggle, "Who can message me?" with per-community ON/OFF dropdown, blocked users section
-- **Payment methods**: Title + "ADD PAYMENT METHOD" button + empty state
-- **Payment history**: Title + gear icon + "You have no payments." empty state
-- **Theme**: Theme select (Light default) + SAVE button
-
-### Files changed
-- `src/pages/circle/CircleSettings.tsx` — layout restructure + 5 new stub sections
-
-### What is NOT changed
-- Community admin settings (CircleAdminModal) — untouched
-- AffiliatesSettings component — untouched
-- PayoutsSettings component — untouched
-- No new routes or migrations needed
-- No permission changes
+### Resultado
+- Tab "Ranking" desaparece do header em todas as páginas da comunidade
+- Nenhuma outra tab é afetada
+- Layout permanece estável
 
