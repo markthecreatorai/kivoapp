@@ -441,15 +441,14 @@ export default function CircleSettings() {
 
   if (!member || !form) {
     return (
-      <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
-        <Skeleton className="h-7 w-40 mb-6" />
+      <div className="py-6 w-full">
         <div className="flex gap-8">
-          <div className="hidden md:block w-56 space-y-1">
+          <div className="hidden md:block w-52 shrink-0 space-y-1">
             {Array.from({ length: 10 }).map((_, i) => (
               <Skeleton key={i} className="h-9 w-full rounded-md" />
             ))}
           </div>
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 min-w-0 max-w-2xl space-y-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-40 w-full" />
           </div>
@@ -461,13 +460,11 @@ export default function CircleSettings() {
   const socialCount = Object.values(form.social_links).filter(Boolean).length;
 
   return (
-    <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
-      <h1 className="text-xl font-bold text-foreground mb-6">Settings</h1>
-
+    <div className="py-6 w-full">
       <div className="flex flex-col md:flex-row gap-8">
         {/* ─── Sidebar ─── */}
-        <aside className="md:w-56 shrink-0">
-          <nav className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
+        <aside className="md:w-52 shrink-0">
+          <nav className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 md:sticky md:top-28">
             {SECTION_ITEMS.map(({ id, label }) => (
               <button
                 key={id}
@@ -486,7 +483,7 @@ export default function CircleSettings() {
         </aside>
 
         {/* ─── Main Content ─── */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 max-w-2xl">
 
           {/* ═══ Communities ═══ */}
           {activeSection === "communities" && (
@@ -543,8 +540,7 @@ export default function CircleSettings() {
 
           {/* ═══ Profile ═══ */}
           {activeSection === "profile" && (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 min-w-0 space-y-4">
+            <div className="space-y-4">
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                   <p className="text-xs text-muted-foreground">
@@ -912,58 +908,6 @@ export default function CircleSettings() {
                       Perfil atualizado
                     </Button>
                   )}
-                </div>
-              </div>
-
-              {/* Live Preview sidebar */}
-              <div className="hidden lg:block w-[280px] shrink-0">
-                <div className="sticky top-20">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Preview do perfil</p>
-                  <Card className="overflow-hidden">
-                    <div className="h-14 bg-gradient-to-br from-primary/20 via-primary/10 to-muted" />
-                    <div className="px-4 pb-4 -mt-7">
-                      <Avatar className="h-14 w-14 border-4 border-card">
-                        <AvatarImage src={member.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
-                          {(form.display_name || "U").charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="mt-2">
-                        <p className="font-semibold text-foreground text-sm">
-                          {form.display_name || "Seu nome"}
-                        </p>
-                        {form.username && (
-                          <p className="text-xs text-muted-foreground">@{form.username}</p>
-                        )}
-                      </div>
-                      {form.bio && (
-                        <p className="text-xs text-muted-foreground mt-2 line-clamp-3">{form.bio}</p>
-                      )}
-                      {form.location && (
-                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {form.location}
-                        </p>
-                      )}
-                      {form.mbti && (
-                        <Badge variant="secondary" className="mt-1.5 text-[10px]">{form.mbti}</Badge>
-                      )}
-                      {socialCount > 0 && (
-                        <div className="flex items-center gap-2 mt-3">
-                          {SOCIAL_FIELDS.filter(f => form.social_links[f.key]?.trim()).map(({ key, icon: Icon }) => (
-                            <div key={key} className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
-                              <Icon className="h-3 w-3 text-muted-foreground" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {!form.display_name && !form.bio && socialCount === 0 && (
-                        <p className="text-[10px] text-muted-foreground mt-3 italic">
-                          Preencha os campos para ver o preview...
-                        </p>
-                      )}
-                    </div>
-                  </Card>
-                </div>
               </div>
             </div>
           )}
