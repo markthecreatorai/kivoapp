@@ -1111,6 +1111,7 @@ export type Database = {
       }
       circle_courses: {
         Row: {
+          access_mode: string
           access_rule: string
           access_type: string
           billing_period: string
@@ -1120,12 +1121,14 @@ export type Database = {
           description: string | null
           id: string
           is_published: boolean
+          min_level: number | null
           name: string
           position: number
           price_cents: number
           updated_at: string
         }
         Insert: {
+          access_mode?: string
           access_rule?: string
           access_type?: string
           billing_period?: string
@@ -1135,12 +1138,14 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean
+          min_level?: number | null
           name: string
           position?: number
           price_cents?: number
           updated_at?: string
         }
         Update: {
+          access_mode?: string
           access_rule?: string
           access_type?: string
           billing_period?: string
@@ -1150,6 +1155,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean
+          min_level?: number | null
           name?: string
           position?: number
           price_cents?: number
@@ -6463,6 +6469,15 @@ export type Database = {
           refund_ratio: number
           risk_flags: Json
           risk_score: number
+        }[]
+      }
+      can_access_classroom_course: {
+        Args: { p_community_id: string; p_course_id: string; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          current_level: number
+          reason: string
+          required_level: number
         }[]
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
