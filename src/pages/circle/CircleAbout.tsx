@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
-  closestCenter,
+  pointerWithin,
   PointerSensor,
   TouchSensor,
   useSensor,
