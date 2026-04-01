@@ -331,7 +331,11 @@ export default function CircleEvents() {
                   myRsvp={event._type === "stream" ? undefined : userRsvps?.[event.id]}
                   onRsvp={handleRsvp}
                   rsvpPending={rsvp.isPending}
-                  onClick={() => event._type !== "stream" && setDetailEvent(event)}
+                  onClick={() => {
+                    if (event._stream) { setWatchingStream(event._stream); }
+                    else if (event.live_stream_id) { handleOpenStream(event.live_stream_id); }
+                    else { setDetailEvent(event); }
+                  }}
                   isAdmin={isAdmin}
                   onEdit={() => event._type !== "stream" && setEditEvent(event)}
                 />
