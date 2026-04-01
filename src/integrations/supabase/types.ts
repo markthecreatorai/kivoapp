@@ -6505,6 +6505,16 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      set_community_pricing_model: {
+        Args: {
+          p_billing_period?: string
+          p_community_id: string
+          p_linked_product_id?: string
+          p_model: string
+          p_price_cents?: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       community_access_type: "FREE_WITH_PRODUCT" | "PAID_SUBSCRIPTION" | "OPEN"
