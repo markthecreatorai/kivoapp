@@ -1,38 +1,23 @@
 
-
-## Fix: Tabs dinâmicas no CircleLayout baseadas em tabs_config/tabs_order
+## Fix: Remover sidebar direita na página de Leaderboard
 
 ### Problema
-O `CircleLayout` usa uma lista hardcoded de tabs (`getTabItems`) que não inclui "Ranking" e ignora completamente os campos `tabs_config` e `tabs_order` salvos na comunidade pelo admin em AdminCommunityTab.
+A página `/circles/:slug/leaderboard` exibe a sidebar direita, reduzindo o espaço do ranking. Na Skool, o leaderboard ocupa 100% da largura.
 
-### Solução
+### Alteração
 
-**1. `src/components/circle/CircleLayout.tsx`**
+**`src/components/circle/CircleLayout.tsx` (linha 466)**
 
-Alterar `getTabItems` para receber o objeto `community` e montar as tabs dinamicamente:
+Adicionar `/leaderboard` à condição que esconde a sidebar:
 
-- Definir um mapa completo de tabs possíveis (incluindo `leaderboard` → `/circles/${slug}/leaderboard`):
-  ```
-  feed → /circles/${slug}/feed (MessageSquare, "Comunidade")
-  classroom → /circles/${slug}/classroom (BookOpen, "Classroom")
-  members → /circles/${slug}/members (Users, "Membros")
-  leaderboard → /circles/${slug}/leaderboard (Trophy, "Ranking")
-  events → /circles/${slug}/events (Calendar, "Calendário")
-  about → /circles/${slug}/about (Star, "Sobre")
-  ```
+```tsx
+// Antes
+const hideRightSidebar = location.pathname.includes("/settings") || location.pathname.includes("/profile") || location.pathname.includes("/classroom");
 
-- Ler `community.tabs_config` (objeto `{feed: true, leaderboard: true, ...}`) e `community.tabs_order` (array de keys ordenadas)
-- Filtrar apenas tabs onde `tabs_config[key] === true` (ou não definidas → default true)
-- Ordenar conforme `tabs_order`
-- Fallback: se ambos forem null, usar a lista default completa (incluindo leaderboard)
-
-- Importar `Trophy` de lucide-react (já não está sendo importado)
-
-**2. Garantir rota `/circles/:slug/leaderboard` existe no App.tsx**
-- Verificar que a rota aninhada para leaderboard está presente (provavelmente já existe)
+// Depois
+const hideRightSidebar = location.pathname.includes("/settings") || location.pathname.includes("/profile") || location.pathname.includes("/classroom") || location.pathname.includes("/leaderboard");
+```
 
 ### Resultado
-- Tabs refletem exatamente o que o admin configurou (habilitadas/desabilitadas e ordem)
-- "Ranking" aparece quando ativo no admin settings
-- Nenhuma outra alteração necessária
-
+- Leaderboard ocupa 100% da largura do conteúdo
+- Sidebar continua visível nas demais páginas (feed, events, about, members)
