@@ -1085,7 +1085,7 @@ export default function CircleSettings() {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimum 6 characters"
+                    placeholder="Mínimo 6 caracteres"
                   />
                   {newPassword.length > 0 && newPassword.length < 6 && (
                     <p className="text-xs text-destructive">At least 6 characters required</p>
