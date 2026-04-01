@@ -54,7 +54,7 @@ function getVideoEmbed(url: string | null) {
 }
 
 /* ── Render @mentions as styled spans ── */
-const renderMentions = (text: string) => {
+function renderMentions(text: string) {
   const parts = text.split(/(@\S+)/g);
   return parts.map((part, i) =>
     part.startsWith("@") ? (
@@ -63,7 +63,7 @@ const renderMentions = (text: string) => {
       <span key={i}>{part}</span>
     )
   );
-};
+}
 
 /* ── Main Component ──────────────────────────────── */
 
