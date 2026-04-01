@@ -319,6 +319,7 @@ export default function CircleFeed() {
           onWatch={(stream) => setWatchingStream(stream)}
           isAdmin={isAdminMember}
           onCreateLive={() => setShowLiveForm(true)}
+          onEdit={(stream) => { setEditingStream(stream); setShowLiveForm(true); }}
         />
       )}
 
