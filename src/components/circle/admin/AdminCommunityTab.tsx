@@ -137,27 +137,23 @@ function SortableCategoryRow({
             <GripVertical className="h-4 w-4 text-muted-foreground/50" />
           </button>
 
-          {isEditingEmoji ? (
-            <Input
-              ref={emojiInputRef}
-              value={editEmoji}
-              onChange={(e) => setEditEmoji(e.target.value)}
-              onBlur={saveEmojiEdit}
-              onKeyDown={(e) => { if (e.key === "Enter") saveEmojiEdit(); if (e.key === "Escape") { setEditEmoji(category.emoji || "📁"); setIsEditingEmoji(false); } }}
-              className="w-12 h-7 text-center text-sm p-0"
-              autoFocus
-              maxLength={4}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => { setIsEditingEmoji(true); setTimeout(() => emojiInputRef.current?.select(), 50); }}
-              className="text-sm hover:bg-muted rounded px-1 py-0.5 cursor-pointer"
-              title="Editar emoji"
-            >
-              {category.emoji || "📁"}
-            </button>
-          )}
+          <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="text-sm hover:bg-muted rounded px-1 py-0.5 cursor-pointer"
+                title="Editar emoji"
+              >
+                {category.emoji || "📁"}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <EmojiPicker onSelect={(emoji) => {
+                onUpdatePatch(category.id, { emoji });
+                setEmojiOpen(false);
+              }} />
+            </PopoverContent>
+          </Popover>
 
           {isEditingName ? (
             <Input
