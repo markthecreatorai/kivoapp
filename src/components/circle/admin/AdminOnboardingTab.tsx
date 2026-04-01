@@ -9,6 +9,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, GripVertical, Trash2, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Props {
   community: any;
@@ -30,9 +47,96 @@ const TEMPLATES = [
   { title: "Complete seu perfil", task_type: "visit_page", target_url: "/profile", description: "Adicione foto e bio" },
 ];
 
+function SortableTaskCard({ task, updateTask, deleteTask }: { task: any; updateTask: any; deleteTask: any }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.5 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card className={cn("p-4 space-y-3", !task.is_active && "opacity-50")}>
+        <div className="flex items-start gap-3">
+          <button
+            {...attributes}
+            {...listeners}
+            className="mt-1 shrink-0 cursor-grab active:cursor-grabbing touch-none"
+            type="button"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <div className="flex-1 space-y-2">
+            <Input
+              value={task.title}
+              onChange={(e) => updateTask.mutate({ id: task.id, title: e.target.value })}
+              className="font-medium text-sm h-8"
+              placeholder="Título da tarefa"
+            />
+            <div className="flex gap-2">
+              <Select
+                value={task.task_type}
+                onValueChange={(v) => updateTask.mutate({ id: task.id, task_type: v })}
+              >
+                <SelectTrigger className="w-36 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TASK_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                value={task.target_url || ""}
+                onChange={(e) => updateTask.mutate({ id: task.id, target_url: e.target.value })}
+                placeholder="URL ou caminho (opcional)"
+                className="flex-1 h-8 text-xs"
+              />
+            </div>
+            <Input
+              value={task.description || ""}
+              onChange={(e) => updateTask.mutate({ id: task.id, description: e.target.value })}
+              placeholder="Descrição curta (opcional)"
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="flex flex-col items-center gap-2 shrink-0">
+            <Switch
+              checked={task.is_active}
+              onCheckedChange={(v) => updateTask.mutate({ id: task.id, is_active: v })}
+            />
+            <button
+              onClick={() => deleteTask.mutate(task.id)}
+              className="text-muted-foreground hover:text-destructive transition-colors p-1"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminOnboardingTab({ community }: Props) {
   const queryClient = useQueryClient();
   const [showPreview, setShowPreview] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["admin-onboarding-tasks", community.id],
@@ -92,7 +196,35 @@ export default function AdminOnboardingTab({ community }: Props) {
     onError: () => toast.error("Erro ao remover"),
   });
 
+  const reorderTasks = useMutation({
+    mutationFn: async (reordered: any[]) => {
+      const updates = reordered.map((t: any, i: number) =>
+        supabase.from("community_onboarding_tasks").update({ position: i }).eq("id", t.id)
+      );
+      const results = await Promise.all(updates);
+      const err = results.find((r) => r.error);
+      if (err?.error) throw err.error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-onboarding-tasks"] }),
+    onError: () => toast.error("Erro ao reordenar"),
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !tasks) return;
+
+    const oldIndex = tasks.findIndex((t: any) => t.id === active.id);
+    const newIndex = tasks.findIndex((t: any) => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(tasks, oldIndex, newIndex);
+    // Optimistic update
+    queryClient.setQueryData(["admin-onboarding-tasks", community.id], reordered);
+    reorderTasks.mutate(reordered);
+  };
+
   const activeTasks = (tasks || []).filter((t: any) => t.is_active);
+  const taskIds = (tasks || []).map((t: any) => t.id);
 
   return (
     <div className="space-y-6">
@@ -140,62 +272,20 @@ export default function AdminOnboardingTab({ community }: Props) {
             <p className="text-sm text-muted-foreground">Nenhuma tarefa configurada. Use os templates acima ou adicione manualmente.</p>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {(tasks || []).map((task: any, idx: number) => (
-              <Card key={task.id} className={cn("p-4 space-y-3", !task.is_active && "opacity-50")}>
-                <div className="flex items-start gap-3">
-                  <GripVertical className="h-4 w-4 text-muted-foreground mt-1 shrink-0 cursor-grab" />
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      value={task.title}
-                      onChange={(e) => updateTask.mutate({ id: task.id, title: e.target.value })}
-                      className="font-medium text-sm h-8"
-                      placeholder="Título da tarefa"
-                    />
-                    <div className="flex gap-2">
-                      <Select
-                        value={task.task_type}
-                        onValueChange={(v) => updateTask.mutate({ id: task.id, task_type: v })}
-                      >
-                        <SelectTrigger className="w-36 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TASK_TYPES.map((t) => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        value={task.target_url || ""}
-                        onChange={(e) => updateTask.mutate({ id: task.id, target_url: e.target.value })}
-                        placeholder="URL ou caminho (opcional)"
-                        className="flex-1 h-8 text-xs"
-                      />
-                    </div>
-                    <Input
-                      value={task.description || ""}
-                      onChange={(e) => updateTask.mutate({ id: task.id, description: e.target.value })}
-                      placeholder="Descrição curta (opcional)"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div className="flex flex-col items-center gap-2 shrink-0">
-                    <Switch
-                      checked={task.is_active}
-                      onCheckedChange={(v) => updateTask.mutate({ id: task.id, is_active: v })}
-                    />
-                    <button
-                      onClick={() => deleteTask.mutate(task.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {(tasks || []).map((task: any) => (
+                  <SortableTaskCard
+                    key={task.id}
+                    task={task}
+                    updateTask={updateTask}
+                    deleteTask={deleteTask}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
