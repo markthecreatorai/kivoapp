@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Search, ArrowLeft, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,8 +22,10 @@ export default function CircleMessages() {
   const queryClient = useQueryClient();
   const [selectedConv, setSelectedConv] = useState<string | null>(null);
   const [messageBody, setMessageBody] = useState("");
+  const [convSearch, setConvSearch] = useState("");
   const [searchMembers, setSearchMembers] = useState("");
   const [showNewDM, setShowNewDM] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: community } = useQuery({
@@ -309,6 +312,25 @@ export default function CircleMessages() {
 
   const selectedConvData = conversations?.find((c: any) => c.id === selectedConv);
 
+  const filteredConversations = (conversations || []).filter((c: any) => {
+    const matchesUnread = !showUnreadOnly || c.hasUnread;
+    const matchesSearch = !convSearch.trim() || (c.otherMember?.display_name || "").toLowerCase().includes(convSearch.toLowerCase());
+    return matchesUnread && matchesSearch;
+  });
+
+  const markAllRead = async () => {
+    if (!member || !conversations?.length) return;
+    const ids = conversations.map((c: any) => c.id);
+    await supabase
+      .from("community_conversation_members" as any)
+      .update({ last_read_at: new Date().toISOString() } as any)
+      .eq("member_id", member.id)
+      .in("conversation_id", ids);
+    queryClient.invalidateQueries({ queryKey: ["circle-conversations"] });
+    queryClient.invalidateQueries({ queryKey: ["circle-dm-unread"] });
+    toast.success("Mensagens marcadas como lidas");
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 h-[calc(100vh-120px)]">
       <div className="flex h-full gap-4">
@@ -317,11 +339,31 @@ export default function CircleMessages() {
           "w-80 flex-shrink-0 flex flex-col bg-card rounded-xl border border-border",
           selectedConv && "hidden md:flex"
         )}>
-          <div className="p-3 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold text-sm text-foreground">Mensagens</h2>
-            <Button size="sm" variant="outline" onClick={() => setShowNewDM(!showNewDM)}>
-              Nova DM
-            </Button>
+          <div className="p-3 border-b border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-sm text-foreground">Mensagens</h2>
+              <div className="flex items-center gap-2">
+                {totalUnreadDMs > 0 && <Badge variant="secondary">{totalUnreadDMs} não lidas</Badge>}
+                <Button size="sm" variant="outline" onClick={() => setShowNewDM(!showNewDM)}>
+                  Nova DM
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                placeholder="Buscar conversa..."
+                value={convSearch}
+                onChange={(e) => setConvSearch(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <Button size="sm" variant={showUnreadOnly ? "default" : "outline"} onClick={() => setShowUnreadOnly((v) => !v)}>
+                Não lidas
+              </Button>
+              <Button size="sm" variant="outline" onClick={markAllRead} disabled={totalUnreadDMs === 0}>
+                Marcar lidas
+              </Button>
+            </div>
           </div>
 
           {showNewDM && (
@@ -360,7 +402,13 @@ export default function CircleMessages() {
                 <p className="text-sm text-muted-foreground">Nenhuma conversa ainda</p>
               </div>
             )}
-            {conversations?.map((conv: any) => (
+            {conversations && conversations.length > 0 && filteredConversations.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                <MessageSquare className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhuma conversa encontrada com esse filtro</p>
+              </div>
+            )}
+            {filteredConversations.map((conv: any) => (
               <button
                 key={conv.id}
                 onClick={() => setSelectedConv(conv.id)}

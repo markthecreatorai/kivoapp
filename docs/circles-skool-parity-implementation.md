@@ -66,6 +66,13 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - selos de confiança no sidebar da comunidade
   - microcopy de CTA contextual por tipo (free/trial/paid/aprovação)
 
+## Sprint 6 — Notifications/Messages polish (em andamento)
+- [x] `src/pages/circle/CircleMessages.tsx`
+  - busca rápida de conversas
+  - filtro "não lidas"
+  - ação de "marcar todas como lidas"
+  - indicador de unread no topo da inbox
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural
