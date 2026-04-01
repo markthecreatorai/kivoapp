@@ -70,6 +70,8 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [sourceData, setSourceData] = useState<SourceData[]>([]);
   const [topCommunities, setTopCommunities] = useState<CommunityRevenue[]>([]);
+  const [topTiers, setTopTiers] = useState<TierRevenue[]>([]);
+  const [entitlementSources, setEntitlementSources] = useState<SourceBreakdown[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { currentWorkspace } = useWorkspace();
