@@ -1019,8 +1019,8 @@ export default function CircleSettings() {
           <Dialog open={emailModalOpen} onOpenChange={(open) => { if (!open) { setNewEmail(""); setEmailConfirmPassword(""); } setEmailModalOpen(open); }}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Change email</DialogTitle>
-                <DialogDescription>A confirmation link will be sent to your new email address.</DialogDescription>
+                <DialogTitle>Alterar e-mail</DialogTitle>
+                <DialogDescription>Um link de confirmação será enviado para o novo endereço de e-mail.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
