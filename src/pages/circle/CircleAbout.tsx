@@ -406,7 +406,7 @@ export default function CircleAbout() {
           {(gallery.length > 1 || isAdminEditing) && (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={pointerWithin}
               onDragOver={(event) => {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
