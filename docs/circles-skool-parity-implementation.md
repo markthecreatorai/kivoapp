@@ -20,15 +20,17 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - trigger de composer/empty state mais orientado a criação de post
   - ajustes de microcopy para consistência de navegação
 
-## Sprint 2 — Classroom Progress UX (em andamento)
+## Sprint 2 — Classroom Progress UX (concluído)
 - [x] `src/pages/circle/CircleClassroom.tsx`
   - card de progresso mais evidente no topo da trilha
   - CTA de "Próxima aula" no painel de conteúdo
   - copy de navegação e ações principais em PT-BR
   - progresso real por curso na grade (em vez de 0% fixo)
   - empty states guiados para admin vs membro
+  - contador de aulas concluídas na trilha
 - [x] `src/components/circle/LessonEditor.tsx`
   - feedback visual mais forte quando aula é concluída
+  - botão de continuar para próxima aula após conclusão
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

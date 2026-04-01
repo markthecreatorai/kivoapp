@@ -306,6 +306,7 @@ export default function CircleSala de aula() {
   if (selectedCourseId && selectedCourse) {
     const totalPages = allPages.length;
     const percent = getCourseProgress(totalPages);
+    const completedPages = Object.values(progressMap).filter((p) => p.completed).length;
     const isMockCourse = selectedCourseId.startsWith("mock-");
 
     return (
@@ -350,6 +351,7 @@ export default function CircleSala de aula() {
                   <span className="text-[11px] text-muted-foreground font-medium">{percent}%</span>
                 </div>
                 <Progress value={percent} className="h-1.5 flex-1 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+                <p className="text-[10px] text-muted-foreground mt-1">{completedPages}/{totalPages} aulas concluídas</p>
               </div>
 
               {/* Items tree */}
@@ -581,6 +583,11 @@ export default function CircleSala de aula() {
                       markCompleted.mutate({ lessonId })
                     }
                     isCompleted={!!progressMap[activeLesson.id]?.completed}
+                    nextLessonTitle={nextLesson?.title || null}
+                    onGoToNextLesson={nextLesson ? () => {
+                      setSelectedLessonId(nextLesson.id);
+                      markStarted.mutate(nextLesson.id);
+                    } : undefined}
                   />
                 </div>
               ) : isMockCourse ? (

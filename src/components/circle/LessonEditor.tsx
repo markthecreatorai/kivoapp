@@ -70,6 +70,8 @@ interface LessonEditorProps {
   memberId?: string;
   onMarkCompleted?: (lessonId: string) => void;
   isCompleted?: boolean;
+  nextLessonTitle?: string | null;
+  onGoToNextLesson?: () => void;
 }
 
 // ─── Toolbar Button ──────────────────────────────────
@@ -135,7 +137,7 @@ function ResourcesList({ resources }: { resources: Resource[] }) {
 }
 
 // ─── Main Component ──────────────────────────────────
-export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMarkCompleted, isCompleted = false }: LessonEditorProps) {
+export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMarkCompleted, isCompleted = false, nextLessonTitle, onGoToNextLesson }: LessonEditorProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(lesson.title);
   const [isPublished, setIsPublished] = useState(lesson.is_published);
@@ -309,7 +311,14 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
               {isCompleted ? "Concluída!" : "Marcar como concluída"}
             </Button>
             {isCompleted && (
-              <p className="text-xs text-emerald-600 font-medium">✅ Aula concluída. Continue para a próxima aula.</p>
+              <div className="space-y-1.5">
+                <p className="text-xs text-emerald-600 font-medium">✅ Aula concluída. Continue para a próxima aula.</p>
+                {nextLessonTitle && onGoToNextLesson ? (
+                  <Button size="sm" variant="outline" onClick={onGoToNextLesson}>
+                    Próxima aula: {nextLessonTitle}
+                  </Button>
+                ) : null}
+              </div>
             )}
           </div>
         )}
