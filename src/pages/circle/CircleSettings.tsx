@@ -70,14 +70,20 @@ export default function CircleSettings() {
   const [form, setForm] = useState<{
     display_name: string;
     bio: string;
+    username: string;
+    sync_with_kivo: boolean;
     notifications: typeof DEFAULT_NOTIFICATIONS;
   } | null>(null);
+
+  const isOwnerOrAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
 
   // Initialize form when member loads
   if (member && !form) {
     setForm({
       display_name: member.display_name || "",
       bio: (member as any).bio || "",
+      username: (member as any).username || "",
+      sync_with_kivo: (member as any).sync_with_kivo ?? true,
       notifications: {
         ...DEFAULT_NOTIFICATIONS,
         ...((member as any).notification_preferences || {}),
