@@ -1079,7 +1079,7 @@ export default function CircleSettings() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="new-pwd">New password</Label>
+                  <Label htmlFor="new-pwd">Nova senha</Label>
                   <Input
                     id="new-pwd"
                     type="password"
