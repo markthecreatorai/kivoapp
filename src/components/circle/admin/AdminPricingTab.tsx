@@ -65,6 +65,14 @@ export default function AdminPricingTab({ community }: Props) {
 
   const hasPrice = model !== "free" && (parseFloat(priceMonthly) > 0 || parseFloat(priceYearly) > 0);
 
+  const modelPreview = {
+    free: "Jornada: visitante entra direto sem checkout.",
+    subscription: "Jornada: landing -> plano -> checkout recorrente.",
+    freemium: "Jornada: entrada grátis + upgrades pagos.",
+    tiers: "Jornada: escolha entre 2-3 planos pagos.",
+    one_time: "Jornada: pagamento único para acesso.",
+  }[model];
+
   const formatPrice = () => {
     if (!hasPrice) return null;
     const parts = [];
@@ -129,6 +137,11 @@ export default function AdminPricingTab({ community }: Props) {
             <span className="text-[11px] text-gray-400 leading-tight mt-0.5">{m.desc}</span>
           </button>
         ))}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+        <p className="text-xs text-gray-500">Prévia da jornada</p>
+        <p className="text-sm text-gray-800 mt-1">{modelPreview}</p>
       </div>
 
       {/* Set price button (shows when not free) */}

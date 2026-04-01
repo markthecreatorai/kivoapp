@@ -110,7 +110,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - top convites por uso e cópia em lote de links selecionados
   - convite por e-mail com abertura de composer (mailto) + fallback de link copiado
 
-## Sprint 10 — General Settings Pro (em andamento)
+## Sprint 10 — General Settings Pro (concluído)
 - [x] `src/components/circle/admin/AdminGeneralTab.tsx`
   - configuração de URL (slug) com preview + validação de unicidade
   - controle de visibilidade no discovery com explicação
@@ -118,6 +118,11 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - resumo do estado público (pública/oculta) com impacto em descoberta
 - [x] `src/components/circle/admin/AdminSettingsTab.tsx`
   - compatibilidade de controles gerais para fluxos legados
+
+## Sprint 11 — Pricing Model-First (em andamento)
+- [x] `src/components/circle/admin/AdminPricingTab.tsx`
+  - seleção de modelo de monetização no estilo Skool
+  - prévia textual da jornada de compra por modelo
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
