@@ -1106,13 +1106,13 @@ export default function CircleSettings() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setPasswordModalOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setPasswordModalOpen(false)}>Cancelar</Button>
                 <Button
                   onClick={handleChangePassword}
                   disabled={changingPassword || !currentPassword || newPassword.length < 6 || newPassword !== confirmNewPassword}
                 >
                   {changingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                  {changingPassword ? "Changing..." : "Change password"}
+                  {changingPassword ? "Alterando..." : "Alterar senha"}
                 </Button>
               </DialogFooter>
             </DialogContent>
