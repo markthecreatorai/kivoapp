@@ -176,6 +176,21 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
     enabled: !!communityId && open,
   });
 
+  // Fetch spaces/groups for access dropdown
+  const { data: spaces = [] } = useQuery({
+    queryKey: ["community-spaces-for-events", communityId],
+    queryFn: async () => {
+      if (!communityId) return [];
+      const { data } = await supabase
+        .from("community_spaces")
+        .select("id, name")
+        .eq("community_id", communityId)
+        .order("position");
+      return data || [];
+    },
+    enabled: !!communityId && open,
+  });
+
   const applyTemplate = (tpl: typeof EVENT_TEMPLATES[number]) => {
     setTitle(tpl.title);
     setDescription(tpl.description);
