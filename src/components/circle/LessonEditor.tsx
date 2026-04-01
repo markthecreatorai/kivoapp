@@ -426,8 +426,8 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           <ToolbarButton editor={editor} icon={ListOrdered} label="Numbered List" action={() => editor?.chain().focus().toggleOrderedList().run()} isActive={editor?.isActive("orderedList")} />
           <ToolbarButton editor={editor} icon={Quote} label="Blockquote" action={() => editor?.chain().focus().toggleBlockquote().run()} isActive={editor?.isActive("blockquote")} />
           <Separator orientation="vertical" className="h-4 mx-1.5" />
-          <ToolbarButton editor={editor} icon={ImageIcon} label="Image" action={promptAndInsertImage} />
-          <ToolbarButton editor={editor} icon={LinkIcon} label="Link" action={promptAndInsertLink} isActive={editor?.isActive("link")} />
+          <ToolbarButton editor={editor} icon={ImageIcon} label="Image" action={() => setImageDialogOpen(true)} />
+          <ToolbarButton editor={editor} icon={LinkIcon} label="Link" action={() => setInlineLinkDialogOpen(true)} isActive={editor?.isActive("link")} />
           <ToolbarButton editor={editor} icon={YoutubeIcon} label="YouTube" action={() => setVideoDialogOpen(true)} />
         </div>
 
