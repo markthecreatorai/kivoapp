@@ -283,7 +283,8 @@ const App = () => (
                 <Route path="/c/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/events" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/classroom" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/admin" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
+                {/* Legacy /c/:slug/admin → redirect to feed */}
+                <Route path="/c/:slug/admin" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 {/* /c/:slug/messages → redirect to feed (messages are now popup-only) */}
                 <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
