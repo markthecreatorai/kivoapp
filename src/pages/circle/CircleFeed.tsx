@@ -423,7 +423,7 @@ export default function CircleFeed() {
           </div>
           <div className="space-y-1.5 text-sm text-muted-foreground">
             {(() => {
-              const raw = community.community_rules as any;
+              const raw = (community as any).community_rules as any;
               const items = Array.isArray(raw)
                 ? raw
                 : String(raw || "")
