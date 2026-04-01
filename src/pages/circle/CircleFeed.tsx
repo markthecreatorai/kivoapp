@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Calendar, Lock, Video, SlidersHorizontal, ChevronDown, X, CheckCircle2, Circle, PlayCircle, MessageSquare, Smartphone, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -22,6 +24,29 @@ import LiveStreamFormModal from "@/components/circle/LiveStreamFormModal";
 import LiveStreamViewer from "@/components/circle/LiveStreamViewer";
 import LiveStreamBanner from "@/components/circle/LiveStreamBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import AdminSetupChecklist from "@/components/circle/AdminSetupChecklist";
+
+function InviteDialogBody({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false);
+  const link = `${window.location.origin}/circles/${slug}`;
+  const handleCopy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+  };
+  return (
+    <div className="pt-4 space-y-4">
+      <div className="flex">
+        <input type="text" readOnly value={link} className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-l-lg bg-background text-foreground truncate focus:outline-none select-all" />
+        <button onClick={handleCopy} className="px-4 py-2 text-sm font-bold rounded-r-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center gap-1.5">
+          {copied ? <><Check className="h-4 w-4" /> COPIADO</> : <><Copy className="h-4 w-4" /> COPIAR</>}
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <a href={`https://wa.me/?text=${encodeURIComponent(`Venha participar! ${link}`)}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">WhatsApp</a>
+        <a href={`https://instagram.com`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">Instagram</a>
+      </div>
+    </div>
+  );
+}
 
 export default function CircleFeed() {
   const { currentWorkspace } = useWorkspace();
@@ -36,6 +61,7 @@ export default function CircleFeed() {
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
   const [showLiveForm, setShowLiveForm] = useState(false);
   const [watchingStream, setWatchingStream] = useState<any>(null);
+  const [showInviteFromChecklist, setShowInviteFromChecklist] = useState(false);
   const [editingStream, setEditingStream] = useState<any>(null);
 
   // Post modal state — support both ?post=id (legacy) and direct open via prop/state
@@ -297,6 +323,17 @@ export default function CircleFeed() {
         </>
       )}
 
+      {/* Admin setup checklist — only for OWNER/ADMIN */}
+      {isAdminMember && community && member && communitySlug && (
+        <AdminSetupChecklist
+          community={community}
+          member={member}
+          slug={communitySlug}
+          onOpenComposer={() => setShowCompose(true)}
+          onOpenInvite={() => setShowInviteFromChecklist(true)}
+        />
+      )}
+
       {/* Event banner — only shows when event starts within 24h */}
       {nextEvent && (
         <div
@@ -531,6 +568,21 @@ export default function CircleFeed() {
         isAdmin={isAdminMember}
         onEdit={(stream) => { setWatchingStream(null); setEditingStream(stream); setShowLiveForm(true); }}
       />
+
+      {/* Invite modal triggered from admin checklist */}
+      {community && (
+        <Dialog open={showInviteFromChecklist} onOpenChange={setShowInviteFromChecklist}>
+          <DialogContent className="sm:max-w-md p-6">
+            <DialogHeader className="space-y-1.5">
+              <DialogTitle className="text-xl font-bold text-foreground">Convidar pessoas</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Convide seus amigos para <span className="font-medium text-foreground">{community.name}</span>
+              </p>
+            </DialogHeader>
+            <InviteDialogBody slug={communitySlug || community.slug} />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
