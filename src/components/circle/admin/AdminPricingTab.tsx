@@ -226,6 +226,10 @@ export default function AdminPricingTab({ community }: Props) {
 
   useEffect(() => {
     if (dbTiers && dbTiers.length > 0) {
+      // Derive correct model from DB tiers
+      const derivedModel = derivePricingModel(community, dbTiers);
+      setModel(derivedModel);
+
       setTiers(
         dbTiers.map((t: any) => ({
           key: t.id,
