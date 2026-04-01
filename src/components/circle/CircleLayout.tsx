@@ -498,12 +498,34 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
               </button>
             )}
             {member && (
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={member.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {(member.display_name || user?.email || "U").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={member.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {(member.display_name || user?.email || "U").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-sm font-medium text-foreground truncate">{member.display_name || user?.email?.split("@")[0]}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+                  </div>
+                  <DropdownMenuItem onClick={() => navigate(`/c/${slug}/settings`)} className="gap-2 text-sm cursor-pointer">
+                    <User className="h-4 w-4" /> Perfil da comunidade
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/settings?tab=profile")} className="gap-2 text-sm cursor-pointer">
+                    <Settings className="h-4 w-4" /> Configurações da conta
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="gap-2 text-sm text-destructive focus:text-destructive cursor-pointer">
+                    <LogOut className="h-4 w-4" /> Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
