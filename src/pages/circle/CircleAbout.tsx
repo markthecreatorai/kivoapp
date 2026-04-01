@@ -482,7 +482,7 @@ export default function CircleAbout() {
             ) : (
               <Users className="h-4 w-4" />
             )}
-            <span>By <span className="font-medium text-foreground">{owner.display_name || "Criador"}</span></span>
+            <span>Por <span className="font-medium text-foreground">{owner.display_name || "Criador"}</span></span>
           </span>
         )}
       </div>
