@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -64,6 +64,26 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [bulkReason, setBulkReason] = useState("");
   const [bulkConfirm, setBulkConfirm] = useState<{ type: "approve" | "reject"; count: number } | null>(null);
+
+  const FILTERS_KEY = `kivo-admin-members-filters-${community.id}`;
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FILTERS_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.roleFilter) setRoleFilter(saved.roleFilter);
+      if (saved.statusFilter) setStatusFilter(saved.statusFilter);
+      if (saved.lifecycleFilter) setLifecycleFilter(saved.lifecycleFilter);
+      if (saved.sortBy) setSortBy(saved.sortBy);
+    } catch {}
+  }, [FILTERS_KEY]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      FILTERS_KEY,
+      JSON.stringify({ roleFilter, statusFilter, lifecycleFilter, sortBy })
+    );
+  }, [FILTERS_KEY, roleFilter, statusFilter, lifecycleFilter, sortBy]);
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -507,6 +527,14 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
               <p className="text-sm font-semibold text-foreground">{item.count}</p>
             </button>
           ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={exportMembersCsv}>Exportar segmento atual</Button>
+          {lifecycleFilter === "RISK" && canBulkModerate && (
+            <Button size="sm" variant="outline" onClick={() => setSelectedPendingIds(filtered.filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).map((m: any) => m.id))}>
+              Selecionar membros em risco
+            </Button>
+          )}
         </div>
       </Card>
 
