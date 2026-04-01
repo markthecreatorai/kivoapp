@@ -95,10 +95,8 @@ function SortableCategoryRow({
 }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(category.name);
-  const [isEditingEmoji, setIsEditingEmoji] = useState(false);
-  const [editEmoji, setEditEmoji] = useState(category.emoji || "📁");
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const emojiInputRef = useRef<HTMLInputElement>(null);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: category.id,
