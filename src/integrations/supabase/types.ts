@@ -6457,6 +6457,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_payment_methods: {
+        Row: {
+          brand: string | null
+          created_at: string
+          exp_month: number | null
+          exp_year: number | null
+          id: string
+          is_default: boolean
+          label: string | null
+          last_four: string | null
+          linked_subscription_count: number
+          method_type: string
+          provider: string
+          provider_method_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          last_four?: string | null
+          linked_subscription_count?: number
+          method_type?: string
+          provider?: string
+          provider_method_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          last_four?: string | null
+          linked_subscription_count?: number
+          method_type?: string
+          provider?: string
+          provider_method_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallet_ledger: {
         Row: {
           amount: number
