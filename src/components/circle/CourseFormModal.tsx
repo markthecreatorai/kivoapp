@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, Globe, TrendingUp, ShoppingCart, Clock, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 interface CourseFormModalProps {
@@ -27,9 +27,21 @@ interface CourseFormModalProps {
     cover_url: string | null;
     is_published: boolean;
     position: number;
+    access_mode?: string;
+    min_level?: number | null;
+    unlock_after_days?: number | null;
+    course_price_cents?: number | null;
   } | null;
   nextPosition: number;
 }
+
+const ACCESS_MODE_OPTIONS = [
+  { value: "OPEN", label: "Aberto", icon: Globe, helper: "Todos os membros ativos podem acessar." },
+  { value: "LEVEL_UNLOCK", label: "Desbloquear por nível", icon: TrendingUp, helper: "Somente membros no nível mínimo definido podem acessar." },
+  { value: "BUY_NOW", label: "Compra avulsa", icon: ShoppingCart, helper: "O membro precisa comprar este curso para acessar." },
+  { value: "TIME_UNLOCK", label: "Liberar por tempo", icon: Clock, helper: "Libera automaticamente após X dias do ingresso do membro." },
+  { value: "PRIVATE", label: "Privado", icon: Lock, helper: "Acesso restrito por tier ou membros específicos." },
+];
 
 export default function CourseFormModal({
   open, onOpenChange, communityId, course, nextPosition,
@@ -42,8 +54,10 @@ export default function CourseFormModal({
   const [accessType, setAccessType] = useState(course?.access_type || "free");
   const [isPublished, setIsPublished] = useState(course?.is_published ?? true);
   const [coverUrl, setCoverUrl] = useState(course?.cover_url || "");
-  const [accessMode, setAccessMode] = useState((course as any)?.access_mode || "OPEN");
-  const [minLevel, setMinLevel] = useState<number>((course as any)?.min_level || 2);
+  const [accessMode, setAccessMode] = useState(course?.access_mode || "OPEN");
+  const [minLevel, setMinLevel] = useState<number>(course?.min_level || 2);
+  const [unlockDays, setUnlockDays] = useState<number>(course?.unlock_after_days || 7);
+  const [coursePriceCents, setCoursePriceCents] = useState<number>(course?.course_price_cents || 0);
   const [uploading, setUploading] = useState(false);
 
   const handleUploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +82,7 @@ export default function CourseFormModal({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Nome é obrigatório");
 
-      const payload = {
+      const payload: Record<string, any> = {
         community_id: communityId,
         name: name.trim(),
         description: description.trim() || null,
@@ -77,7 +91,9 @@ export default function CourseFormModal({
         is_published: isPublished,
         position: course?.position ?? nextPosition,
         access_mode: accessMode,
-        min_level: accessMode === "LEVEL_GATED" ? minLevel : null,
+        min_level: accessMode === "LEVEL_UNLOCK" ? minLevel : null,
+        unlock_after_days: accessMode === "TIME_UNLOCK" ? unlockDays : null,
+        course_price_cents: accessMode === "BUY_NOW" ? coursePriceCents : 0,
       };
 
       if (isEdit && course) {
@@ -98,9 +114,11 @@ export default function CourseFormModal({
     },
   });
 
+  const currentModeInfo = ACCESS_MODE_OPTIONS.find(o => o.value === accessMode) || ACCESS_MODE_OPTIONS[0];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Curso" : "Novo Curso"}</DialogTitle>
           <DialogDescription>
@@ -130,21 +148,6 @@ export default function CourseFormModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
-          </div>
-
-          {/* Access type */}
-          <div className="space-y-1.5">
-            <Label>Tipo de acesso</Label>
-            <Select value={accessType} onValueChange={setAccessType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="free">Gratuito</SelectItem>
-                <SelectItem value="premium">Premium (pago)</SelectItem>
-                <SelectItem value="members_only">Somente membros</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Cover upload */}
@@ -183,38 +186,100 @@ export default function CourseFormModal({
             )}
           </div>
 
-          {/* Access mode */}
-          <div className="space-y-1.5">
-            <Label>Modo de acesso</Label>
-            <Select value={accessMode} onValueChange={(v) => setAccessMode(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="OPEN">Aberto</SelectItem>
-                <SelectItem value="LEVEL_GATED">Desbloquear por nível</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {accessMode === "OPEN"
-                ? "Todos os membros ativos podem acessar."
-                : "Somente membros no nível mínimo definido podem acessar."}
-            </p>
+          {/* Access mode - card selector */}
+          <div className="space-y-2">
+            <Label>Tipo de acesso ao curso</Label>
+            <div className="grid grid-cols-1 gap-2">
+              {ACCESS_MODE_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const isSelected = accessMode === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setAccessMode(opt.value)}
+                    className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                    <div className="min-w-0">
+                      <p className={`text-sm font-medium ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
+                        {opt.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{opt.helper}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {accessMode === "LEVEL_GATED" && (
-            <div className="space-y-1.5">
-              <Label>Nível mínimo</Label>
-              <Input
-                type="number"
-                min={1}
-                max={9}
-                value={minLevel}
-                onChange={(e) => setMinLevel(Math.max(1, Math.min(9, parseInt(e.target.value) || 1)))}
-              />
-              <p className="text-xs text-muted-foreground">
-                Membros precisam estar no nível {minLevel} ou acima para acessar.
-              </p>
+          {/* Conditional fields per mode */}
+          {accessMode === "LEVEL_UNLOCK" && (
+            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
+              <Label className="pl-3">Nível mínimo</Label>
+              <div className="pl-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={9}
+                  value={minLevel}
+                  onChange={(e) => setMinLevel(Math.max(1, Math.min(9, parseInt(e.target.value) || 1)))}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Membros precisam estar no nível {minLevel} ou acima para acessar.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {accessMode === "BUY_NOW" && (
+            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
+              <Label className="pl-3">Preço do curso (R$)</Label>
+              <div className="pl-3">
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={(coursePriceCents / 100).toFixed(2)}
+                  onChange={(e) => setCoursePriceCents(Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100)))}
+                  placeholder="49.90"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  O membro paga uma vez para desbloquear este curso.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {accessMode === "TIME_UNLOCK" && (
+            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
+              <Label className="pl-3">Dias após ingresso</Label>
+              <div className="pl-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={unlockDays}
+                  onChange={(e) => setUnlockDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Libera automaticamente {unlockDays} {unlockDays === 1 ? "dia" : "dias"} após o membro entrar na comunidade.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {accessMode === "PRIVATE" && (
+            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
+              <div className="pl-3">
+                <p className="text-xs text-muted-foreground">
+                  Apenas membros autorizados manualmente ou por tier terão acesso. A gestão de permissões individuais estará disponível em breve.
+                </p>
+              </div>
             </div>
           )}
 
