@@ -1008,7 +1008,7 @@ export default function CircleSettings() {
                       window.location.href = "/dashboard";
                     }}
                   >
-                    LEAVE
+                    SAIR
                   </Button>
                 </div>
               </div>
