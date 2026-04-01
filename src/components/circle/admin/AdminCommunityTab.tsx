@@ -163,9 +163,9 @@ export default function AdminCommunityTab({ community }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("community_spaces")
-        .select("id,name,emoji,sort_order,is_private,only_admins_can_post")
+        .select("id,name,emoji,position,is_visible,only_admins_can_post")
         .eq("community_id", community.id)
-        .order("sort_order", { ascending: true });
+        .order("position", { ascending: true });
       if (error) throw error;
       return data || [];
     },
