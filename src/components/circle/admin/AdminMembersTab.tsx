@@ -57,6 +57,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [lifecycleFilter, setLifecycleFilter] = useState<"ALL" | "ACTIVE" | "RISK" | "LEFT" | "BANNED">("ALL");
   const [sortBy, setSortBy] = useState<string>("joined_at");
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingSort, setPendingSort] = useState<"newest" | "oldest" | "with_answers">("newest");
@@ -203,6 +204,13 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
 
   const canBulkModerate = currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
 
+  const lifecycleCounts = {
+    ACTIVE: (members || []).filter((m: any) => m.status === "ACTIVE").length,
+    RISK: (members || []).filter((m: any) => ["MUTED", "PENDING"].includes(m.status)).length,
+    LEFT: (members || []).filter((m: any) => m.status === "LEFT").length,
+    BANNED: (members || []).filter((m: any) => m.status === "BANNED").length,
+  };
+
   const filteredPending = [...pendingMembers]
     .filter((m: any) => {
       if (!pendingSearch.trim()) return true;
@@ -233,6 +241,15 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   }
   if (roleFilter !== "ALL") filtered = filtered.filter((m: any) => m.role === roleFilter);
   if (statusFilter !== "ALL") filtered = filtered.filter((m: any) => m.status === statusFilter);
+  if (lifecycleFilter !== "ALL") {
+    filtered = filtered.filter((m: any) => {
+      if (lifecycleFilter === "ACTIVE") return m.status === "ACTIVE";
+      if (lifecycleFilter === "RISK") return ["MUTED", "PENDING"].includes(m.status);
+      if (lifecycleFilter === "LEFT") return m.status === "LEFT";
+      if (lifecycleFilter === "BANNED") return m.status === "BANNED";
+      return true;
+    });
+  }
 
   filtered.sort((a: any, b: any) => {
     if (sortBy === "points") return (b.total_points || 0) - (a.total_points || 0);
@@ -259,6 +276,32 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     });
     setBanModal(null);
     setBanReason("");
+  };
+
+  const exportMembersCsv = () => {
+    const rows = filtered.map((m: any) => ({
+      Nome: m.display_name || "",
+      Role: m.role || "",
+      Status: m.status || "",
+      Pontos: m.total_points || 0,
+      Sequencia: m.current_streak || 0,
+      Entrada: m.joined_at || "",
+    }));
+
+    const header = ["Nome", "Role", "Status", "Pontos", "Sequencia", "Entrada"];
+    const csv = [
+      header.join(","),
+      ...rows.map((r: any) => header.map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `members-${community.slug || community.id}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV exportado");
   };
 
   return (
@@ -437,6 +480,29 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         </Card>
       )}
 
+      {/* Lifecycle segmentation */}
+      <Card className="p-4">
+        <h3 className="font-semibold text-sm text-foreground mb-3">Ciclo de membros</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          {[
+            { key: "ALL", label: "Todos", count: (members || []).length },
+            { key: "ACTIVE", label: "Ativos", count: lifecycleCounts.ACTIVE },
+            { key: "RISK", label: "Risco", count: lifecycleCounts.RISK },
+            { key: "LEFT", label: "Saíram", count: lifecycleCounts.LEFT },
+            { key: "BANNED", label: "Banidos", count: lifecycleCounts.BANNED },
+          ].map((item: any) => (
+            <button
+              key={item.key}
+              onClick={() => setLifecycleFilter(item.key)}
+              className={`rounded-lg border p-2 text-left transition-colors ${lifecycleFilter === item.key ? "border-primary bg-primary/5" : ""}`}
+            >
+              <p className="text-[11px] text-muted-foreground">{item.label}</p>
+              <p className="text-sm font-semibold text-foreground">{item.count}</p>
+            </button>
+          ))}
+        </div>
+      </Card>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -470,6 +536,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
             <SelectItem value="name">Nome</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={exportMembersCsv}>Exportar CSV</Button>
       </div>
 
       {/* Members list */}
