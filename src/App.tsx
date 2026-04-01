@@ -91,6 +91,7 @@ const CircleMessages = lazy(() => import("./pages/circle/CircleMessages"));
 const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
 const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
 const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
+const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
 
 // Public community pages
 const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
@@ -249,6 +250,7 @@ const App = () => (
 
                 {/* Public community landing (no auth required) */}
                 <Route path="/c/:slug" element={<CommunityLanding />} />
+                <Route path="/c/:slug/plans" element={<CommunitySelectPlan />} />
 
                 {/* Authenticated circle pages — all scoped to /c/:slug/* */}
                 <Route path="/c/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />

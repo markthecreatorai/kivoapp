@@ -153,6 +153,19 @@ export default function CommunityLanding() {
     enabled: !!community?.id,
   });
 
+  // Fetch community tiers for routing logic
+  const { data: communityTiers = [] } = useQuery({
+    queryKey: ["community-public-plans", community?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_community_public_plans" as any, {
+        p_community_id: community!.id,
+      });
+      if (error) return [];
+      return (data || []) as Array<{ id: string; is_free: boolean; price_cents: number }>;
+    },
+    enabled: !!community?.id,
+  });
+
   const { data: joinQuestions = [] } = useQuery({
     queryKey: ["community-join-questions", community?.id],
     queryFn: async () => {
@@ -236,10 +249,30 @@ export default function CommunityLanding() {
       setShowInviteModal(true);
       return;
     }
+
+    // If community has multiple active tiers → go to select plan page
+    const paidTiers = communityTiers.filter((t: any) => !t.is_free);
+    const freeTiers = communityTiers.filter((t: any) => t.is_free);
+    const hasMultipleTiers = communityTiers.length >= 2;
+
+    if (hasMultipleTiers && !inviteCode) {
+      navigate(`/c/${slug}/plans${inviteCode ? `?invite=${inviteCode}` : ""}`);
+      return;
+    }
+
+    // Single paid tier with linked product → checkout
     if (isPaid && !inviteCode && linkedProduct?.slug) {
       navigate(`/checkout/${linkedProduct.slug}`);
       return;
     }
+
+    // Single paid tier without linked product → select plan page
+    if (paidTiers.length === 1 && freeTiers.length === 0 && !inviteCode) {
+      navigate(`/c/${slug}/plans`);
+      return;
+    }
+
+    // Default: open join modal (free community)
     setModalMode("signup");
     setShowJoinModal(true);
   };

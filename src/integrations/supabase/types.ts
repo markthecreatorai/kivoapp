@@ -6715,6 +6715,19 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
+      get_community_public_plans: {
+        Args: { p_community_id: string }
+        Returns: {
+          benefits: Json
+          billing_period: string
+          id: string
+          is_free: boolean
+          linked_product_id: string
+          name: string
+          price_cents: number
+          sort_order: number
+        }[]
+      }
       get_creator_balance: {
         Args: { p_workspace_id: string }
         Returns: {
