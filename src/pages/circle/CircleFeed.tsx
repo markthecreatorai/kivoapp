@@ -22,6 +22,7 @@ import LiveStreamFormModal from "@/components/circle/LiveStreamFormModal";
 import LiveStreamViewer from "@/components/circle/LiveStreamViewer";
 import LiveStreamBanner from "@/components/circle/LiveStreamBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import AdminSetupChecklist from "@/components/circle/AdminSetupChecklist";
 
 export default function CircleFeed() {
   const { currentWorkspace } = useWorkspace();
