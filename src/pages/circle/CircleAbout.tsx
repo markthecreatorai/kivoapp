@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
-  closestCenter,
+  pointerWithin,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -143,7 +143,7 @@ export default function CircleAbout() {
   const previewMode = searchParams.get("preview") === "visitor";
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 0 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 
@@ -406,7 +406,7 @@ export default function CircleAbout() {
           {(gallery.length > 1 || isAdminEditing) && (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={pointerWithin}
               onDragOver={(event) => {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
@@ -418,14 +418,8 @@ export default function CircleAbout() {
                 if (activeIndex === oldIndex) setActiveIndex(newIndex);
                 else if (activeIndex === newIndex) setActiveIndex(oldIndex);
               }}
-              onDragEnd={(event: DragEndEvent) => {
-                const { active, over } = event;
-                if (!over || active.id === over.id) {
-                  setLocalGallery(null);
-                  return;
-                }
-                // Persist the current local order
-                saveGallery(gallery);
+              onDragEnd={() => {
+                if (localGallery) saveGallery(localGallery);
                 setLocalGallery(null);
               }}
             >
