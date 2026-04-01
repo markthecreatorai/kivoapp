@@ -1116,6 +1116,7 @@ export type Database = {
           access_type: string
           billing_period: string
           community_id: string
+          course_price_cents: number | null
           cover_url: string | null
           created_at: string
           description: string | null
@@ -1125,6 +1126,7 @@ export type Database = {
           name: string
           position: number
           price_cents: number
+          unlock_after_days: number | null
           updated_at: string
         }
         Insert: {
@@ -1133,6 +1135,7 @@ export type Database = {
           access_type?: string
           billing_period?: string
           community_id: string
+          course_price_cents?: number | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
@@ -1142,6 +1145,7 @@ export type Database = {
           name: string
           position?: number
           price_cents?: number
+          unlock_after_days?: number | null
           updated_at?: string
         }
         Update: {
@@ -1150,6 +1154,7 @@ export type Database = {
           access_type?: string
           billing_period?: string
           community_id?: string
+          course_price_cents?: number | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
@@ -1159,6 +1164,7 @@ export type Database = {
           name?: string
           position?: number
           price_cents?: number
+          unlock_after_days?: number | null
           updated_at?: string
         }
         Relationships: [
