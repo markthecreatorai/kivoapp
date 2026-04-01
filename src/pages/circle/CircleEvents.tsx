@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import EventFormModal from "@/components/circle/EventFormModal";
 import EventDetailModal from "@/components/circle/EventDetailModal";
+import LiveStreamViewer from "@/components/circle/LiveStreamViewer";
+import LiveStreamFormModal from "@/components/circle/LiveStreamFormModal";
 
 const PLATFORM_LABELS: Record<string, string> = {
   zoom: "Zoom",
@@ -47,6 +49,9 @@ export default function CircleEvents() {
   const [editEvent, setEditEvent] = useState<any>(null);
   const [detailEvent, setDetailEvent] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [watchingStream, setWatchingStream] = useState<any>(null);
+  const [showLiveForm, setShowLiveForm] = useState(false);
+  const [editingStream, setEditingStream] = useState<any>(null);
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
@@ -198,6 +203,15 @@ export default function CircleEvents() {
     }).length;
   }, [allItems]);
 
+  const handleOpenStream = async (liveStreamId: string) => {
+    const { data } = await supabase
+      .from("community_live_streams" as any)
+      .select("*, creator:created_by(display_name, avatar_url)")
+      .eq("id", liveStreamId)
+      .single();
+    if (data) setWatchingStream(data);
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -285,7 +299,11 @@ export default function CircleEvents() {
                   myRsvp={userRsvps?.[event.id]}
                   onRsvp={handleRsvp}
                   rsvpPending={rsvp.isPending}
-                  onClick={() => event._type !== "stream" && setDetailEvent(event)}
+                  onClick={() => {
+                    if (event._stream) { setWatchingStream(event._stream); }
+                    else if (event.live_stream_id) { handleOpenStream(event.live_stream_id); }
+                    else { setDetailEvent(event); }
+                  }}
                   isAdmin={isAdmin}
                   onEdit={() => event._type !== "stream" && setEditEvent(event)}
                 />
@@ -322,7 +340,11 @@ export default function CircleEvents() {
                   myRsvp={event._type === "stream" ? undefined : userRsvps?.[event.id]}
                   onRsvp={handleRsvp}
                   rsvpPending={rsvp.isPending}
-                  onClick={() => event._type !== "stream" && setDetailEvent(event)}
+                  onClick={() => {
+                    if (event._stream) { setWatchingStream(event._stream); }
+                    else if (event.live_stream_id) { handleOpenStream(event.live_stream_id); }
+                    else { setDetailEvent(event); }
+                  }}
                   isAdmin={isAdmin}
                   onEdit={() => event._type !== "stream" && setEditEvent(event)}
                 />
@@ -350,6 +372,27 @@ export default function CircleEvents() {
         myRsvp={detailEvent ? userRsvps?.[detailEvent.id] : undefined}
         onRsvp={handleRsvp}
         rsvpPending={rsvp.isPending}
+      />
+
+      {/* Live stream viewer */}
+      <LiveStreamViewer
+        stream={watchingStream}
+        open={!!watchingStream}
+        onClose={() => setWatchingStream(null)}
+        memberId={member?.id}
+        memberName={member?.display_name}
+        memberAvatar={member?.avatar_url}
+        isAdmin={isAdmin}
+        onEdit={(stream: any) => { setWatchingStream(null); setEditingStream(stream); setShowLiveForm(true); }}
+      />
+
+      {/* Live stream form (for editing from viewer) */}
+      <LiveStreamFormModal
+        open={showLiveForm}
+        onOpenChange={(open) => { if (!open) { setShowLiveForm(false); setEditingStream(null); } }}
+        communityId={community?.id || ""}
+        memberId={member?.id || ""}
+        stream={editingStream}
       />
     </div>
   );
