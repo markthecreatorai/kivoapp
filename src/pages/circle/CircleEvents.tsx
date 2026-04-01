@@ -49,6 +49,9 @@ export default function CircleEvents() {
   const [editEvent, setEditEvent] = useState<any>(null);
   const [detailEvent, setDetailEvent] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [watchingStream, setWatchingStream] = useState<any>(null);
+  const [showLiveForm, setShowLiveForm] = useState(false);
+  const [editingStream, setEditingStream] = useState<any>(null);
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
