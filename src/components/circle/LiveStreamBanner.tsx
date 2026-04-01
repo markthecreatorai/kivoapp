@@ -14,7 +14,7 @@ interface LiveStreamBannerProps {
   onEdit?: (stream: any) => void;
 }
 
-export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCreateLive }: LiveStreamBannerProps) {
+export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCreateLive, onEdit }: LiveStreamBannerProps) {
   const { data: streams } = useQuery({
     queryKey: ["live-streams", communityId],
     queryFn: async () => {
