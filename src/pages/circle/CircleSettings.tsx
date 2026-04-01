@@ -96,7 +96,9 @@ export default function CircleSettings() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeSection, setActiveSection] = useState("profile");
+  const [searchParams] = useSearchParams();
+  const initialSection = searchParams.get("section") || "profile";
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [socialOpen, setSocialOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
