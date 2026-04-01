@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Trash2, Video, MapPin, Link as LinkIcon } from "lucide-react";
+import { Upload, Trash2, Video, MapPin, Link as LinkIcon, Coffee, HelpCircle, Laptop, PartyPopper, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -71,6 +71,54 @@ const REPEAT_UNITS = [
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const EVENT_TEMPLATES = [
+  {
+    key: "coffee",
+    label: "Coffee hour",
+    icon: Coffee,
+    title: "Coffee hour",
+    description: "Casual hangout — grab your favorite drink and let's chat!",
+    duration: "60",
+    locationType: "zoom",
+  },
+  {
+    key: "qa",
+    label: "Q&A",
+    icon: HelpCircle,
+    title: "Q&A",
+    description: "Ask me anything! Bring your questions and let's dive in.",
+    duration: "60",
+    locationType: "zoom",
+  },
+  {
+    key: "coworking",
+    label: "Co-working session",
+    icon: Laptop,
+    title: "Co-working session",
+    description: "Work together in real-time. Stay focused, stay connected.",
+    duration: "120",
+    locationType: "zoom",
+  },
+  {
+    key: "happy",
+    label: "Happy hour",
+    icon: PartyPopper,
+    title: "Happy hour",
+    description: "Relax, socialize and celebrate wins with the community!",
+    duration: "60",
+    locationType: "zoom",
+  },
+  {
+    key: "custom",
+    label: "Create my own event",
+    icon: PenLine,
+    title: "",
+    description: "",
+    duration: "",
+    locationType: "zoom",
+  },
+];
+
 const TEMPLATE_SUGGESTIONS = [
   { label: "coffee hour", title: "Coffee hour" },
   { label: "Q&A", title: "Q&A" },
@@ -111,7 +159,7 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
   const [accessRule, setAccessRule] = useState("all_members");
   const [accessValue, setAccessValue] = useState("");
   const [remindEmail, setRemindEmail] = useState(false);
-
+  const [step, setStep] = useState<"template" | "form">("template");
   // Fetch tiers for access dropdown
   const { data: tiers = [] } = useQuery({
     queryKey: ["community-tiers-for-events", communityId],
@@ -127,6 +175,29 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
     },
     enabled: !!communityId && open,
   });
+
+  const applyTemplate = (tpl: typeof EVENT_TEMPLATES[number]) => {
+    setTitle(tpl.title);
+    setDescription(tpl.description);
+    setDuration(tpl.duration);
+    setLocationType(tpl.locationType);
+    setLocationValue("");
+    setDate(format(new Date(), "yyyy-MM-dd"));
+    setTime("");
+    setTimezone("America/Sao_Paulo");
+    setIsRecurring(false);
+    setRepeatEvery("1");
+    setRepeatUnit("week");
+    setRepeatDays([]);
+    setEndType("never");
+    setEndDate("");
+    setEndAfter("10");
+    setCoverImage(null);
+    setAccessRule("all_members");
+    setAccessValue("");
+    setRemindEmail(false);
+    setStep("form");
+  };
 
   useEffect(() => {
     if (event) {
@@ -144,26 +215,9 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
       setAccessRule(event.access_rule || "all_members");
       setAccessValue(event.access_value || "");
       setRemindEmail(!!event.remind_email_before);
+      setStep("form");
     } else {
-      setTitle("");
-      setDescription("");
-      setDate(format(new Date(), "yyyy-MM-dd"));
-      setTime("");
-      setDuration("");
-      setTimezone("America/Sao_Paulo");
-      setIsRecurring(false);
-      setRepeatEvery("1");
-      setRepeatUnit("week");
-      setRepeatDays([]);
-      setEndType("never");
-      setEndDate("");
-      setEndAfter("10");
-      setLocationType("zoom");
-      setLocationValue("");
-      setCoverImage(null);
-      setAccessRule("all_members");
-      setAccessValue("");
-      setRemindEmail(false);
+      setStep("template");
     }
   }, [event, open]);
 
@@ -282,27 +336,53 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        {step === "template" && !isEditing ? (
+          <div className="p-6 space-y-5">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Add event</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Choose a template or create your own
+              </p>
+            </div>
+            <div className="grid gap-2">
+              {EVENT_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.key}
+                  type="button"
+                  onClick={() => applyTemplate(tpl)}
+                  className="flex items-center gap-3 w-full rounded-lg border border-border p-3 text-left hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    <tpl.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{tpl.label}</p>
+                    {tpl.description && (
+                      <p className="text-xs text-muted-foreground truncate">{tpl.description}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="p-6 space-y-5">
           {/* Header */}
-          <div>
-            <h2 className="text-xl font-bold text-foreground">
-              {isEditing ? "Edit event" : "Add event"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Need ideas? Try one of these fun formats:{" "}
-              {TEMPLATE_SUGGESTIONS.map((t, i) => (
-                <span key={t.label}>
-                  <button
-                    type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => setTitle(t.title)}
-                  >
-                    {t.label}
-                  </button>
-                  {i < TEMPLATE_SUGGESTIONS.length - 1 && (i === TEMPLATE_SUGGESTIONS.length - 2 ? ", or " : ", ")}
-                </span>
-              ))}
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">
+                {isEditing ? "Edit event" : "Add event"}
+              </h2>
+              {!isEditing && (
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline mt-0.5"
+                  onClick={() => setStep("template")}
+                >
+                  ← Change template
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Title */}
@@ -595,6 +675,7 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
             </Button>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
