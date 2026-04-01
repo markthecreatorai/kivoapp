@@ -32,14 +32,14 @@ type Section =
   | "discovery"
   | "billing";
 
-const NAV_ITEMS: { id: Section; label: string }[] = [
+const NAV_ITEMS: { id: Section; label: string; disabled?: boolean }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "invite", label: "Invite" },
   { id: "general", label: "General" },
   { id: "payouts", label: "Payouts" },
   { id: "pricing", label: "Pricing" },
   { id: "affiliates", label: "Affiliates" },
-  { id: "plugins", label: "Plugins" },
+  { id: "plugins", label: "Plugins", disabled: true },
   { id: "community", label: "Community" },
   { id: "discovery", label: "Discovery" },
   { id: "billing", label: "Billing" },
@@ -115,15 +115,23 @@ export default function CircleAdminModal({ community, member, onClose }: Props) 
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveSection(item.id)}
+                onClick={() => !item.disabled && setActiveSection(item.id)}
+                disabled={item.disabled}
                 className={cn(
-                  "w-full text-left px-5 py-2.5 text-sm font-medium transition-colors",
-                  activeSection === item.id
-                    ? "bg-yellow-100 text-gray-900 font-semibold"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  "w-full text-left px-5 py-2.5 text-sm font-medium transition-colors flex items-center justify-between",
+                  item.disabled
+                    ? "text-gray-400 cursor-not-allowed"
+                    : activeSection === item.id
+                      ? "bg-yellow-100 text-gray-900 font-semibold"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
                 {item.label}
+                {item.disabled && (
+                  <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
+                    Em breve
+                  </span>
+                )}
               </button>
             ))}
           </nav>
