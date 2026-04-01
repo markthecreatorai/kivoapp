@@ -2557,6 +2557,92 @@ export type Database = {
           },
         ]
       }
+      community_onboarding_progress: {
+        Row: {
+          completed_at: string
+          id: string
+          member_id: string
+          task_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          member_id: string
+          task_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          member_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_onboarding_progress_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_onboarding_progress_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "community_onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_onboarding_tasks: {
+        Row: {
+          community_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          position: number
+          target_url: string | null
+          task_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          position?: number
+          target_url?: string | null
+          task_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          position?: number
+          target_url?: string | null
+          task_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_onboarding_tasks_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_points_log: {
         Row: {
           action: Database["public"]["Enums"]["point_action"]

@@ -25,6 +25,7 @@ import LiveStreamViewer from "@/components/circle/LiveStreamViewer";
 import LiveStreamBanner from "@/components/circle/LiveStreamBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminSetupChecklist from "@/components/circle/AdminSetupChecklist";
+import MemberWelcomeCard from "@/components/circle/MemberWelcomeCard";
 
 function InviteDialogBody({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
@@ -331,6 +332,15 @@ export default function CircleFeed() {
           slug={communitySlug}
           onOpenComposer={() => setShowCompose(true)}
           onOpenInvite={() => setShowInviteFromChecklist(true)}
+        />
+      )}
+
+      {/* Member welcome card — only for non-admin members */}
+      {!isAdminMember && community && member && communitySlug && (
+        <MemberWelcomeCard
+          communityId={community.id}
+          memberId={member.id}
+          slug={communitySlug}
         />
       )}
 

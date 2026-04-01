@@ -12,6 +12,7 @@ import AdminPluginsTab from "./AdminPluginsTab";
 import AdminCommunityTab from "./AdminCommunityTab";
 import AdminDiscoveryTab from "./AdminDiscoveryTab";
 import AdminBillingTab from "./AdminBillingTab";
+import AdminOnboardingTab from "./AdminOnboardingTab";
 
 
 interface Props {
@@ -24,6 +25,7 @@ type Section =
   | "dashboard"
   | "invite"
   | "general"
+  | "onboarding"
   | "payouts"
   | "pricing"
   | "affiliates"
@@ -36,6 +38,7 @@ const NAV_ITEMS: { id: Section; label: string; disabled?: boolean }[] = [
   { id: "dashboard", label: "Painel" },
   { id: "invite", label: "Convites" },
   { id: "general", label: "Geral" },
+  { id: "onboarding", label: "Onboarding" },
   { id: "payouts", label: "Recebimentos" },
   { id: "pricing", label: "Preços" },
   { id: "affiliates", label: "Afiliados" },
@@ -56,6 +59,8 @@ export default function CircleAdminModal({ community, member, onClose }: Props) 
         return <AdminInviteTab community={community} member={member} />;
       case "general":
         return <AdminGeneralTab community={community} />;
+      case "onboarding":
+        return <AdminOnboardingTab community={community} />;
       case "payouts":
         return <AdminPayoutsTab community={community} />;
       case "pricing":
