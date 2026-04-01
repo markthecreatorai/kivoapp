@@ -743,10 +743,17 @@ export default function CircleClassroom() {
                 }
                 break;
               }
-              case "PRIVATE":
-                isLocked = true;
-                lockMessage = "Acesso privado";
+              case "PRIVATE": {
+                // Check if member is in allowed_member_ids
+                const inMemberList = (course.allowed_member_ids || []).includes(member?.id || "");
+                // Check if member has an active tier that matches allowed_tier_ids
+                const hasTier = (course.allowed_tier_ids || []).some(tid => memberTierIds.includes(tid));
+                if (!inMemberList && !hasTier) {
+                  isLocked = true;
+                  lockMessage = "Acesso exclusivo para membros de tiers específicos";
+                }
                 break;
+              }
             }
           }
 
