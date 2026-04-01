@@ -2,10 +2,11 @@ import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, keepPreviousData, useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
-import { WorkspaceProvider } from "@/contexts/WorkspaceProvider";
+import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceProvider";
+import { supabase } from "@/integrations/supabase/client";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -99,11 +100,24 @@ const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
 
-/** Redirect /c/:slug/settings?section=X → /circle-settings?section=X */
+/** Redirect /circle-settings?section=X and /circle/settings?section=X → first community settings */
 function CircleSettingsRedirect() {
   const [searchParams] = useSearchParams();
   const section = searchParams.get("section");
-  const target = section ? `/circle-settings?section=${section}` : "/circle-settings";
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: community } = useQuery({
+    queryKey: ["community-for-redirect", currentWorkspace?.id],
+    queryFn: async () => {
+      if (!currentWorkspace) return null;
+      const { data } = await supabase.from("communities").select("slug").eq("workspace_id", currentWorkspace.id).maybeSingle();
+      return data;
+    },
+    enabled: !!currentWorkspace,
+  });
+
+  if (!community?.slug) return null;
+  const target = section ? `/c/${community.slug}/settings?section=${section}` : `/c/${community.slug}/settings`;
   return <Navigate to={target} replace />;
 }
 
@@ -273,8 +287,8 @@ const App = () => (
                 {/* /c/:slug/messages → redirect to feed (messages are now popup-only) */}
                 <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
-                {/* Legacy redirect: /c/:slug/settings → /circle-settings */}
-                <Route path="/c/:slug/settings" element={<CircleSettingsRedirect />} />
+                {/* Settings inside community layout */}
+                <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/about" element={<CircleLayout><CircleAbout /></CircleLayout>} />
                 <Route path="/c/:slug/profile" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/profile/:memberId" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
@@ -282,8 +296,9 @@ const App = () => (
                 {/* Legacy /join/:slug -> /c/:slug redirect */}
                 <Route path="/join/:slug" element={<JoinRedirect />} />
 
-                {/* Global circle settings — outside community layout */}
-                <Route path="/circle-settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettings /></ProtectedRoute>} />
+                {/* Legacy redirects to canonical /c/:slug/settings */}
+                <Route path="/circle-settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
+                <Route path="/circle/settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
 
                 {/* Public community discovery */}
                 <Route path="/communities" element={<CommunityDiscovery />} />
