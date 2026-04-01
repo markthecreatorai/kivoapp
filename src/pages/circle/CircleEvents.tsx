@@ -322,6 +322,17 @@ export default function CircleEvents() {
       {/* List view */}
       {view === "list" && (
         <>
+          {/* Filter tabs */}
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="upcoming" className="text-xs">
+                Próximos {upcomingCount > 0 && <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">{upcomingCount}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="past" className="text-xs">Passados</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2].map((i) => (
@@ -334,7 +345,7 @@ export default function CircleEvents() {
           ) : filteredEvents.length === 0 ? (
             <Card className="p-12 text-center">
               <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-              <h3 className="font-semibold text-foreground">Nenhum evento programado</h3>
+              <h3 className="font-semibold text-foreground">Nenhum evento {filter === "upcoming" ? "próximo" : filter === "past" ? "passado" : ""}</h3>
               <p className="text-sm text-muted-foreground mt-1">Fique ligado! 📅</p>
             </Card>
           ) : (
@@ -353,6 +364,11 @@ export default function CircleEvents() {
                   }}
                   isAdmin={isAdmin}
                   onEdit={() => event._type !== "stream" && setEditEvent(event)}
+                  onCancel={async (id: string) => {
+                    await supabase.from("community_events").update({ status: "CANCELLED" }).eq("id", id);
+                    queryClient.invalidateQueries({ queryKey: ["circle-events"] });
+                    toast.success("Evento cancelado");
+                  }}
                 />
               ))}
             </div>
