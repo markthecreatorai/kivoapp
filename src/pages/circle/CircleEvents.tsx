@@ -431,23 +431,32 @@ interface EventCardProps {
   onClick: () => void;
   isAdmin: boolean;
   onEdit: () => void;
+  onCancel?: (id: string) => void;
 }
 
-function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdit }: EventCardProps) {
+function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdit, onCancel }: EventCardProps) {
   const status = getEventStatus(event);
   const start = new Date(event.starts_at);
   const end = event.ends_at ? new Date(event.ends_at) : null;
-  const duration = end ? Math.round((end.getTime() - start.getTime()) / 60000) : null;
   const isEnded = status.key === "past";
+  const isCancelled = event.status === "CANCELLED";
   const isLive = status.key === "live";
   const isStream = event._type === "stream";
   const hasCover = !!event.cover_image_url;
+  const isRecurring = event.is_recurring;
+
+  const locationLabel = event.location_type === "zoom" ? "Zoom"
+    : event.location_type === "meet" ? "Google Meet"
+    : event.location_type === "address" ? event.location_value
+    : event.meeting_platform ? (PLATFORM_LABELS[event.meeting_platform] || "Link")
+    : null;
 
   return (
     <Card className={cn(
       "overflow-hidden group transition-shadow hover:shadow-md",
       isLive && "ring-2 ring-red-500/50",
-      isStream && "ring-1 ring-primary/30"
+      isStream && "ring-1 ring-primary/30",
+      isCancelled && "opacity-60"
     )}>
       {/* Cover image or gradient header */}
       <div
@@ -464,7 +473,10 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-3 left-4 right-4">
-          <h3 className="font-bold text-white text-lg leading-tight drop-shadow-md line-clamp-2">{event.title}</h3>
+          <h3 className="font-bold text-white text-lg leading-tight drop-shadow-md line-clamp-2">
+            {event.title}
+            {isCancelled && <span className="ml-2 text-red-300 text-sm">(Cancelado)</span>}
+          </h3>
           {event.description && (
             <p className="text-white/70 text-xs mt-0.5 line-clamp-1">{event.description}</p>
           )}
@@ -474,6 +486,12 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
             <Badge className="bg-red-600 text-white border-0 text-[10px] gap-1">
               <Radio className="h-2.5 w-2.5" />
               LIVE
+            </Badge>
+          )}
+          {isRecurring && (
+            <Badge variant="secondary" className="text-[10px] gap-1">
+              <Repeat className="h-2.5 w-2.5" />
+              Recorrente
             </Badge>
           )}
           <Badge className={cn(status.color, "text-[10px]")}>{status.label}</Badge>
@@ -499,11 +517,11 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
               {end && ` – ${format(end, "HH:mm")}`}
             </span>
           )}
-          {event.meeting_platform && (
-            <Badge variant="secondary" className="text-[10px] h-5">
-              <Video className="h-2.5 w-2.5 mr-1" />
-              {PLATFORM_LABELS[event.meeting_platform] || "Link"}
-            </Badge>
+          {locationLabel && (
+            <span className="flex items-center gap-1.5">
+              {event.location_type === "address" ? <MapPin className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}
+              <span className="text-xs">{locationLabel}</span>
+            </span>
           )}
           <span className="flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" />
@@ -512,7 +530,7 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
         </div>
 
         {/* RSVP & Actions */}
-        {!isEnded && event.status !== "CANCELLED" && !isStream && (
+        {!isEnded && !isCancelled && !isStream && (
           <div className="flex items-center gap-2 flex-wrap">
             {(["GOING", "MAYBE", "NOT_GOING"] as const).map((s) => (
               <Button
@@ -536,9 +554,26 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
             )}
 
             {isAdmin && (
-              <Button variant="ghost" size="sm" onClick={onEdit} className="ml-auto text-muted-foreground h-8 text-xs">
-                Editar
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 text-muted-foreground">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Pencil className="h-3.5 w-3.5 mr-2" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => onCancel?.(event.id)}
+                  >
+                    <Ban className="h-3.5 w-3.5 mr-2" />
+                    Cancelar evento
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         )}
