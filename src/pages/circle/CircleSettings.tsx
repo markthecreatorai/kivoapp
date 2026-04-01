@@ -1158,9 +1158,9 @@ export default function CircleSettings() {
                 </div>
                 <Button
                   className="font-semibold"
-                  onClick={() => toast.success("Theme saved!")}
+                  onClick={() => toast.success("Tema salvo!")}
                 >
-                  SAVE
+                  SALVAR
                 </Button>
               </div>
             </Card>
