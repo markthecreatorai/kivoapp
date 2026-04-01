@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
   const [goLiveNow, setGoLiveNow] = useState(false);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (stream) {
@@ -194,6 +196,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
   const canSave = title.trim().length > 0 && isValidUrl && (goLiveNow || scheduledAt);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -316,22 +319,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
             <Button
               variant="destructive"
               size="sm"
-              onClick={async () => {
-                if (!confirm("Tem certeza que deseja excluir esta live e o evento vinculado?")) return;
-                try {
-                  // Delete linked event first
-                  await supabase.from("community_events").delete().eq("live_stream_id", stream.id);
-                  // Delete the stream
-                  await supabase.from("community_live_streams" as any).delete().eq("id", stream.id);
-                  queryClient.invalidateQueries({ queryKey: ["live-streams"] });
-                  queryClient.invalidateQueries({ queryKey: ["community-events"] });
-                  queryClient.invalidateQueries({ queryKey: ["circle-events"] });
-                  toast.success("Live excluída");
-                  onOpenChange(false);
-                } catch {
-                  toast.error("Erro ao excluir");
-                }
-              }}
+              onClick={() => setShowDeleteConfirm(true)}
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Excluir
@@ -350,5 +338,41 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir transmissão</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja excluir esta live e o evento vinculado? Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={async () => {
+              try {
+                const { error: evtErr } = await supabase.from("community_events").delete().eq("live_stream_id", stream.id);
+                if (evtErr) throw evtErr;
+                const { error: strErr } = await supabase.from("community_live_streams" as any).delete().eq("id", stream.id);
+                if (strErr) throw strErr;
+                queryClient.invalidateQueries({ queryKey: ["live-streams"] });
+                queryClient.invalidateQueries({ queryKey: ["community-events"] });
+                queryClient.invalidateQueries({ queryKey: ["circle-events"] });
+                toast.success("Live excluída");
+                onOpenChange(false);
+              } catch (err) {
+                console.error("Erro ao excluir live:", err);
+                toast.error("Erro ao excluir");
+              }
+            }}
+          >
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
