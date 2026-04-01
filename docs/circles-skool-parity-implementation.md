@@ -104,6 +104,8 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/components/circle/admin/AdminInviteTab.tsx`
   - import de e-mails em massa (csv-like paste)
   - geração de convites em lote + export CSV com links
+  - painel de status de convites (total/ativos/desativados/usos)
+  - filtro por status e desativação em lote
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

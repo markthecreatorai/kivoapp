@@ -22,6 +22,8 @@ export default function AdminInviteTab({ community, member }: Props) {
 
   const [requireApproval, setRequireApproval] = useState(community.require_approval ?? false);
   const [csvEmails, setCsvEmails] = useState("");
+  const [selectedInviteIds, setSelectedInviteIds] = useState<string[]>([]);
+  const [inviteStatusFilter, setInviteStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   const parsedEmails = useMemo(() => {
     return Array.from(
@@ -53,6 +55,27 @@ export default function AdminInviteTab({ community, member }: Props) {
     setRequireApproval(val);
     saveApproval.mutate(val);
   };
+
+  const filteredInviteLinks = inviteLinks.filter((l: any) =>
+    inviteStatusFilter === "all" ? true : inviteStatusFilter === "active" ? !!l.is_active : !l.is_active
+  );
+
+  const bulkDeactivateInvites = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!ids.length) return;
+      const { error } = await (supabase as any)
+        .from("community_invite_links")
+        .update({ is_active: false })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setSelectedInviteIds([]);
+      queryClient.invalidateQueries({ queryKey: ["invite-links", community.id] });
+      toast.success("Links selecionados desativados");
+    },
+    onError: () => toast.error("Não foi possível desativar em lote"),
+  });
 
   const bulkInviteImport = useMutation({
     mutationFn: async () => {
@@ -133,7 +156,29 @@ export default function AdminInviteTab({ community, member }: Props) {
           Compartilhe links para que novos membros entrem sem precisar de aprovação manual.
         </p>
 
-        {inviteLinks.length === 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+          <div className="rounded-lg border p-2"><p className="text-[10px] text-gray-500">Total</p><p className="text-sm font-semibold">{inviteLinks.length}</p></div>
+          <div className="rounded-lg border p-2"><p className="text-[10px] text-gray-500">Ativos</p><p className="text-sm font-semibold">{inviteLinks.filter((l: any) => l.is_active).length}</p></div>
+          <div className="rounded-lg border p-2"><p className="text-[10px] text-gray-500">Desativados</p><p className="text-sm font-semibold">{inviteLinks.filter((l: any) => !l.is_active).length}</p></div>
+          <div className="rounded-lg border p-2"><p className="text-[10px] text-gray-500">Usos</p><p className="text-sm font-semibold">{inviteLinks.reduce((a: number, l: any) => a + (l.uses_count || 0), 0)}</p></div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Button size="sm" variant={inviteStatusFilter === "all" ? "default" : "outline"} onClick={() => setInviteStatusFilter("all")}>Todos</Button>
+          <Button size="sm" variant={inviteStatusFilter === "active" ? "default" : "outline"} onClick={() => setInviteStatusFilter("active")}>Ativos</Button>
+          <Button size="sm" variant={inviteStatusFilter === "inactive" ? "default" : "outline"} onClick={() => setInviteStatusFilter("inactive")}>Desativados</Button>
+
+          <Button size="sm" variant="outline" onClick={() => setSelectedInviteIds(filteredInviteLinks.map((l: any) => l.id))}>Selecionar visíveis</Button>
+          <Button size="sm" variant="outline" onClick={() => setSelectedInviteIds([])}>Limpar seleção</Button>
+
+          {selectedInviteIds.length > 0 && (
+            <Button size="sm" variant="destructive" onClick={() => bulkDeactivateInvites.mutate(selectedInviteIds)}>
+              Desativar selecionados ({selectedInviteIds.length})
+            </Button>
+          )}
+        </div>
+
+        {filteredInviteLinks.length === 0 ? (
           <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
             <Link2 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-400">Nenhum link de convite criado ainda.</p>
@@ -149,7 +194,7 @@ export default function AdminInviteTab({ community, member }: Props) {
           </div>
         ) : (
           <div className="space-y-2">
-            {inviteLinks.map((link: any) => (
+            {filteredInviteLinks.map((link: any) => (
               <div
                 key={link.id}
                 className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
@@ -158,6 +203,15 @@ export default function AdminInviteTab({ community, member }: Props) {
                     : "bg-gray-50 border-gray-100 opacity-60"
                 }`}
               >
+                <input
+                  type="checkbox"
+                  checked={selectedInviteIds.includes(link.id)}
+                  onChange={(e) => {
+                    setSelectedInviteIds((prev) =>
+                      e.target.checked ? Array.from(new Set([...prev, link.id])) : prev.filter((id) => id !== link.id)
+                    );
+                  }}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <code className="text-xs font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded-lg">
