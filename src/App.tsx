@@ -83,7 +83,7 @@ const CircleMembers = lazy(() => import("./pages/circle/CircleMembers"));
 const CircleLeaderboard = lazy(() => import("./pages/circle/CircleLeaderboard"));
 const CircleEvents = lazy(() => import("./pages/circle/CircleEvents"));
 const CircleClassroom = lazy(() => import("./pages/circle/CircleClassroom"));
-const CircleAdmin = lazy(() => import("./pages/circle/CircleAdmin"));
+
 const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 
 // Redirect /c/:slug/post/:id → /c/:slug/feed?post=:id
@@ -283,7 +283,8 @@ const App = () => (
                 <Route path="/c/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/events" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/classroom" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/admin" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleAdmin /></CircleLayout></ProtectedRoute>} />
+                {/* Legacy /c/:slug/admin → redirect to feed */}
+                <Route path="/c/:slug/admin" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 {/* /c/:slug/messages → redirect to feed (messages are now popup-only) */}
                 <Route path="/c/:slug/messages" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />

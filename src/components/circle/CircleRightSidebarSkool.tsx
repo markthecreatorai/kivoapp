@@ -262,7 +262,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
             <div className="space-y-2">
               {isAdmin && isAboutPage && (
                 <button
-                  onClick={() => onOpenAdmin ? onOpenAdmin() : navigate(`/c/${slug}/admin`)}
+                  onClick={() => onOpenAdmin?.()}
                   className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-semibold text-sm border border-foreground/20 bg-transparent hover:bg-muted transition-colors text-foreground"
                   id="sidebar-settings-btn"
                 >
