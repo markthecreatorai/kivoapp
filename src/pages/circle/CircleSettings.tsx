@@ -1190,22 +1190,8 @@ export default function CircleSettings() {
           )}
 
           {/* ═══ Payment history ═══ */}
-          {activeSection === "payment-history" && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Payment history</h2>
-                  <p className="text-sm text-muted-foreground">View your past transactions</p>
-                </div>
-                <button className="p-2 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors">
-                  <Settings className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="text-center py-12">
-                <Receipt className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">You have no payments.</p>
-              </div>
-            </Card>
+          {activeSection === "payment-history" && user && (
+            <PaymentHistorySection userId={user.id} />
           )}
 
           {/* ═══ Theme ═══ */}
