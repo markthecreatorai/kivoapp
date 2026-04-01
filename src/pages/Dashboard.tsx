@@ -44,6 +44,20 @@ interface CommunityRevenue {
   order_count: number;
 }
 
+interface TierRevenue {
+  tier_id: string;
+  tier_name: string;
+  community_name: string;
+  total_revenue: number;
+  member_count: number;
+}
+
+interface SourceBreakdown {
+  source_type: string;
+  active_count: number;
+  percentage: number;
+}
+
 export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<number | "custom">(30);
   const [metrics, setMetrics] = useState<Metrics>({
