@@ -673,14 +673,14 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                             </div>
 
                             {editingCommentId === comment.id ? (
-                              <div className="mt-1 flex gap-2 items-center">
-                                <input
-                                  type="text"
+                              <div className="mt-1 space-y-2">
+                                <textarea
                                   value={editingCommentBody}
                                   onChange={(e) => setEditingCommentBody(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter" && editingCommentBody.trim()) {
-                                      supabase.from("community_comments").update({ body: editingCommentBody.trim(), edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
+                                    if (e.key === "Enter" && !e.shiftKey && (editingCommentBody.trim() || editingCommentImages.length > 0)) {
+                                      e.preventDefault();
+                                      supabase.from("community_comments").update({ body: editingCommentBody.trim() || "📷", images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
                                         queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
                                         toast.success("Editado");
                                         setEditingCommentId(null);
@@ -689,31 +689,74 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                       setEditingCommentId(null);
                                     }
                                   }}
-                                  className="flex-1 text-sm bg-muted/50 border border-border rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
+                                  rows={2}
+                                  className="w-full text-sm bg-muted/50 border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary resize-none"
                                   autoFocus
                                 />
-                                <button onClick={() => {
-                                  if (editingCommentBody.trim()) {
-                                    supabase.from("community_comments").update({ body: editingCommentBody.trim(), edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
-                                      queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
-                                      toast.success("Editado");
-                                      setEditingCommentId(null);
-                                    });
-                                  }
-                                }} className="text-primary hover:text-primary/80 text-xs font-medium">Salvar</button>
-                                <button onClick={() => setEditingCommentId(null)} className="text-muted-foreground hover:text-foreground text-xs">Cancelar</button>
+                                {/* Editing images preview */}
+                                {editingCommentImages.length > 0 && (
+                                  <div className="flex gap-2 flex-wrap">
+                                    {editingCommentImages.map((img, i) => (
+                                      <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                        <button
+                                          onClick={() => setEditingCommentImages((prev) => prev.filter((_, idx) => idx !== i))}
+                                          className="absolute top-0.5 right-0.5 bg-foreground/60 text-background rounded-full p-0.5"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    ref={editImageRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onload = () => {
+                                        if (reader.result) setEditingCommentImages((prev) => [...prev, reader.result as string]);
+                                      };
+                                      reader.readAsDataURL(file);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                  <button onClick={() => editImageRef.current?.click()} className="p-1 text-muted-foreground hover:text-foreground transition-colors" title="Adicionar imagem">
+                                    <Paperclip className="h-3.5 w-3.5" />
+                                  </button>
+                                  <div className="ml-auto flex gap-2">
+                                    <button onClick={() => setEditingCommentId(null)} className="text-muted-foreground hover:text-foreground text-xs px-2 py-1 rounded hover:bg-muted">Cancelar</button>
+                                    <button
+                                      disabled={!editingCommentBody.trim() && editingCommentImages.length === 0}
+                                      onClick={() => {
+                                        supabase.from("community_comments").update({ body: editingCommentBody.trim() || "📷", images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
+                                          queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
+                                          toast.success("Editado");
+                                          setEditingCommentId(null);
+                                        });
+                                      }}
+                                      className="text-primary hover:text-primary/80 text-xs font-medium px-2 py-1 rounded hover:bg-primary/10 disabled:opacity-30"
+                                    >Salvar</button>
+                                  </div>
+                                </div>
                               </div>
                             ) : (
-                              <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
-                            )}
-
-                            {/* Comment images */}
-                            {comment.images && (comment.images as string[]).length > 0 && (
-                              <div className="mt-2 flex gap-2">
-                                {(comment.images as string[]).map((url: string, i: number) => (
-                                  <img key={i} src={url} alt="" className="max-h-32 rounded-lg object-cover border border-border cursor-pointer" onClick={() => setLightboxImg(url)} />
-                                ))}
-                              </div>
+                              <>
+                                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
+                                {/* Comment images */}
+                                {comment.images && (comment.images as string[]).length > 0 && (
+                                  <div className="mt-2 flex gap-2">
+                                    {(comment.images as string[]).map((url: string, i: number) => (
+                                      <img key={i} src={url} alt="" className="max-h-32 rounded-lg object-cover border border-border cursor-pointer" onClick={() => setLightboxImg(url)} />
+                                    ))}
+                                  </div>
+                                )}
+                              </>
                             )}
 
                             <div className="flex items-center gap-3 mt-2">
