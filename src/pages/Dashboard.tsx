@@ -164,6 +164,8 @@ export default function Dashboard() {
         setChartData(chart);
         setSourceData((sourceRes.data as any) || []);
         setTopCommunities((communitiesRes.data as any) || []);
+        setTopTiers((tiersRes.data as any) || []);
+        setEntitlementSources((entitlementRes.data as any) || []);
       } catch (error) {
         console.error("Erro ao buscar métricas:", error);
       } finally {
