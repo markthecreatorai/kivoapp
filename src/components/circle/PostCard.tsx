@@ -126,7 +126,7 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
   );
 }
 
-export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, onOpenPost }: PostCardProps) {
+export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, memberRole, onOpenPost, onDeletePost }: PostCardProps) {
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
   const thumbnail = firstImage || videoThumb;
