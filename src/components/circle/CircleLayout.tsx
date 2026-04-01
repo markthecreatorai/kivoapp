@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import MessagesPopover from "@/components/circle/MessagesPopover";
 import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
 import CircleAdminModal from "@/components/circle/admin/CircleAdminModal";
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -70,7 +71,6 @@ function getTabItems(slug: string) {
     { label: "Calendário", icon: Calendar, path: `/c/${slug}/events` },
     { label: "Membros", icon: Users, path: `/c/${slug}/members` },
     { label: "Ranking", icon: Trophy, path: `/c/${slug}/leaderboard` },
-    { label: "Mensagens", icon: Mail, path: `/c/${slug}/messages` },
     { label: "Sobre", icon: Star, path: `/c/${slug}/about` },
   ];
 }
@@ -476,6 +476,14 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 unreadCount={unreadCount ?? 0}
               />
             )}
+            {member && community && (
+              <MessagesPopover
+                memberId={member.id}
+                communityId={community.id}
+                memberDisplayName={member.display_name || undefined}
+                unreadCount={dmUnreadCount ?? 0}
+              />
+            )}
             {member && isAdmin && !isPreviewVisitor && (
               <button
                 onClick={() => setShowAdminModal(true)}
@@ -507,7 +515,6 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="hidden md:flex items-center gap-0 max-w-5xl mx-auto px-4 border-t border-border">
           {navItems.map((item) => {
             const active = isActive(item.path);
-            const hasDmBadge = item.path === `/c/${slug}/messages` && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
@@ -521,11 +528,6 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
-                {hasDmBadge && (
-                  <Badge className="h-4 min-w-[16px] flex items-center justify-center p-0 px-1 text-[9px] ml-1">
-                    {dmUnreadCount! > 99 ? "99+" : dmUnreadCount}
-                  </Badge>
-                )}
               </Link>
             );
           })}
@@ -573,7 +575,6 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
         <nav className="flex items-center justify-around h-16">
           {navItems.map((item) => {
             const active = isActive(item.path);
-            const hasDmBadge = item.path === `/c/${slug}/messages` && (dmUnreadCount ?? 0) > 0;
             return (
               <Link
                 key={item.path}
@@ -583,12 +584,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <div className="relative">
-                  <item.icon className="h-5 w-5" />
-                  {hasDmBadge && (
-                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
-                  )}
-                </div>
+                <item.icon className="h-5 w-5" />
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
