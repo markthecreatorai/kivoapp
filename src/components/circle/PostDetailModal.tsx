@@ -253,7 +253,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
       queryClient.invalidateQueries({ queryKey: ["circle-post", postId] });
       queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
       queryClient.invalidateQueries({ queryKey: ["circle-member"] });
-      setCommentBody(""); setReplyTo(null); setReplyBody("");
+      setCommentBody(""); setReplyTo(null); setReplyBody(""); setCommentImages([]); setShowEmojiPicker(false); setShowGifPicker(false);
       toast.success(`Comentário publicado! +${community?.points_per_comment || 1} pt`);
       // Notifications
       if (parentId) {
