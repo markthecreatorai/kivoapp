@@ -409,24 +409,24 @@ export default function CircleAbout() {
               onDragEnd={(event: DragEndEvent) => {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
-                const oldIndex = gallery.findIndex((_, i) => `gallery-${i}` === active.id);
-                const newIndex = gallery.findIndex((_, i) => `gallery-${i}` === over.id);
+                const oldIndex = galleryIds.indexOf(String(active.id));
+                const newIndex = galleryIds.indexOf(String(over.id));
                 if (oldIndex === -1 || newIndex === -1) return;
                 const reordered = arrayMove(gallery, oldIndex, newIndex);
                 saveGallery(reordered);
-                // Update active index to follow the selected item
                 if (activeIndex === oldIndex) setActiveIndex(newIndex);
                 else if (activeIndex === newIndex) setActiveIndex(oldIndex);
               }}
             >
               <SortableContext
-                items={gallery.map((_, i) => `gallery-${i}`)}
+                items={galleryIds}
                 strategy={horizontalListSortingStrategy}
               >
                 <div className="flex items-center gap-2 overflow-x-auto pb-1">
                   {gallery.map((item, i) => (
                     <SortableThumb
-                      key={`gallery-${i}`}
+                      key={galleryIds[i]}
+                      sortId={galleryIds[i]}
                       item={item}
                       index={i}
                       isActive={activeIndex === i}
