@@ -207,6 +207,7 @@ export default function CircleAbout() {
   })();
 
   const [localGallery, setLocalGallery] = useState<GalleryItem[] | null>(null);
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   const gallery = localGallery ?? serverGallery;
   const galleryIds = gallery.map((item) => `g-${item.url}`);
   const activeItem = gallery[activeIndex] || null;
