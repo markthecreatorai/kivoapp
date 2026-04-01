@@ -32,7 +32,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - feedback visual mais forte quando aula é concluída
   - botão de continuar para próxima aula após conclusão
 
-## Sprint 3 — Admin Moderation / Applications (em andamento)
+## Sprint 3 — Admin Moderation / Applications (concluído)
 - [x] `src/components/circle/admin/AdminMembersTab.tsx`
   - filtros rápidos para pendentes (busca + ordenação)
   - atualização de status da application ao aprovar/rejeitar
@@ -40,6 +40,8 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - matriz visual de permissões (owner/admin/moderador)
   - ações em lote para pendências (aprovar/rejeitar selecionados)
   - guardrail de motivo opcional em rejeição em lote
+  - confirmação para ações em lote sensíveis
+  - bloqueio visual de lote para roles sem permissão
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

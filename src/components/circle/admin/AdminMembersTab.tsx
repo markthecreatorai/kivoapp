@@ -62,6 +62,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [pendingSort, setPendingSort] = useState<"newest" | "oldest" | "with_answers">("newest");
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [bulkReason, setBulkReason] = useState("");
+  const [bulkConfirm, setBulkConfirm] = useState<{ type: "approve" | "reject"; count: number } | null>(null);
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -200,6 +201,8 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     },
   });
 
+  const canBulkModerate = currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
+
   const filteredPending = [...pendingMembers]
     .filter((m: any) => {
       if (!pendingSearch.trim()) return true;
@@ -295,9 +298,9 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
               Limpar seleção
             </Button>
 
-            {selectedPendingIds.length > 0 && (
+            {selectedPendingIds.length > 0 && canBulkModerate && (
               <>
-                <Button size="sm" onClick={() => bulkApprovePending.mutate(selectedPendingIds)}>
+                <Button size="sm" onClick={() => setBulkConfirm({ type: "approve", count: selectedPendingIds.length })}>
                   Aprovar selecionados ({selectedPendingIds.length})
                 </Button>
                 <Input
@@ -306,10 +309,13 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                   onChange={(e) => setBulkReason(e.target.value)}
                   className="max-w-[180px] h-8"
                 />
-                <Button size="sm" variant="destructive" onClick={() => bulkRejectPending.mutate(selectedPendingIds)}>
+                <Button size="sm" variant="destructive" onClick={() => setBulkConfirm({ type: "reject", count: selectedPendingIds.length })}>
                   Rejeitar selecionados
                 </Button>
               </>
+            )}
+            {selectedPendingIds.length > 0 && !canBulkModerate && (
+              <Badge variant="outline">Sem permissão para moderação em lote</Badge>
             )}
           </div>
           <div className="space-y-2">
@@ -618,6 +624,34 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={handleBan}>Banir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Bulk confirm */}
+      {bulkConfirm && (
+        <AlertDialog open onOpenChange={() => setBulkConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {bulkConfirm.type === "approve" ? "Aprovar em lote" : "Rejeitar em lote"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Você está prestes a {bulkConfirm.type === "approve" ? "aprovar" : "rejeitar"} {bulkConfirm.count} solicitação(ões).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (bulkConfirm.type === "approve") bulkApprovePending.mutate(selectedPendingIds);
+                  else bulkRejectPending.mutate(selectedPendingIds);
+                  setBulkConfirm(null);
+                }}
+              >
+                Confirmar
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
