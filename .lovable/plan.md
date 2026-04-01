@@ -1,44 +1,61 @@
 
 
-## Mover /communities para /circles/explore com header de Circles
+## Fix: Eliminar "flash" duplo ao navegar entre páginas do Circle
 
-### Objetivo
-A página de descoberta de comunidades deve viver em `/circles/explore` e usar o mesmo header/shell do CircleLayout, mas com o logo da Kivo no lugar do nome/ícone da comunidade no switcher.
+### Causa raiz
+
+Cada rota de Circle (`/circles/:slug/feed`, `/circles/:slug/classroom`, etc.) cria uma **instância separada** de `<CircleLayout>`, diferente do dashboard que usa `<Outlet>` para persistir o layout. Ao trocar de tab, o React **desmonta** o CircleLayout inteiro (header, sidebar, queries) e **remonta** do zero — causando o flash/piscar.
+
+### Solução
+
+Aplicar o mesmo padrão do `DashboardShell`: usar rota aninhada com `<Outlet>` para que o CircleLayout monte **uma única vez** por comunidade.
 
 ### Alterações
 
-**1. `src/App.tsx` — Rotas**
-- Manter `/circles/explore` apontando para `CommunityDiscovery`
-- Mudar `/communities` para redirect legado: `<Navigate to="/circles/explore" replace />`
+**1. `src/components/circle/CircleLayout.tsx`**
+- Mudar de `children: ReactNode` para usar `<Outlet />` do react-router-dom
+- Manter a prop `showRightSidebar` funcional (pode ser controlada via route state ou contexto)
+- Renderizar `<Suspense fallback={<PageSkeleton />}><Outlet /></Suspense>` no lugar de `{children}`
 
-**2. `src/pages/CommunityDiscovery.tsx` — Envolver com header de Circles**
-- Remover o hero/header próprio da página (gradient com "Encontre sua comunidade")
-- Envolver o conteúdo com o header padrão de Circles (reutilizar estrutura do CircleLayout header)
-- No header: usar `CommunitySwitcher` passando `currentCommunity={null}` — quando null, mostrar logo Kivo em vez de ícone de comunidade
-- Manter search, filtros e grid de cards como estão, mas dentro do shell padrão
+**2. `src/App.tsx` — Reestruturar rotas Circle como aninhadas**
 
-**3. `src/components/circle/CommunitySwitcher.tsx` — Logo Kivo quando sem comunidade**
-- Quando `currentCommunity` é `null`, renderizar o logo Kivo (importar de `@/assets/kivo-logo.svg`) no lugar do ícone/nome
-- Manter o dropdown funcional (lista de comunidades, criar, descobrir)
-- O texto ao lado do logo pode ser omitido (só logo) — seguindo padrão Skool
+Antes (cada rota monta CircleLayout separadamente):
+```
+<Route path="/circles/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />
+<Route path="/circles/:slug/classroom" element={<CircleLayout><CircleClassroom /></CircleLayout>} />
+```
 
-**4. Atualizar referências `/communities` em outros arquivos**
-- `src/pages/circle/MyCommunities.tsx` — botão "Explorar" → `/circles/explore`
-- `src/pages/CommunityLanding.tsx` — link "Ver outras comunidades" → `/circles/explore`
-- `src/pages/circle/CommunitySelectPlan.tsx` — link → `/circles/explore`
-- `src/pages/JoinRedirect.tsx` — fallback → `/circles/explore`
-- `src/components/circle/CommunitySwitcher.tsx` — `handleDiscover` → `/circles/explore`
+Depois (layout persistente com Outlet):
+```
+<Route path="/circles/:slug" element={<CircleLayout />}>
+  <Route path="feed" element={<CircleFeed />} />
+  <Route path="classroom" element={<CircleClassroom />} />
+  <Route path="members" element={<CircleMembers />} />
+  <Route path="events" element={<CircleEvents />} />
+  <Route path="about" element={<CircleAbout />} />
+  <Route path="settings" element={<CircleSettings />} />
+  <Route path="profile" element={<CircleProfile />} />
+  <Route path="profile/:memberId" element={<CircleProfile />} />
+  <Route path="spaces/:spaceSlug" element={<CircleFeed />} />
+  <Route path="post/:id" element={<CirclePostRedirect />} />
+  <Route path="admin" element={<CircleFeed />} />
+  <Route path="messages" element={<CircleFeed />} />
+  <Route index element={<Navigate to="feed" replace />} />
+</Route>
+```
 
-**5. Header da página Explore**
-- Replicar a barra do CircleLayout (sticky header com CommunitySwitcher, notificações, avatar, mensagens)
-- Tabs de navegação NÃO aparecem (não há comunidade selecionada)
-- Abaixo do header: título "Descubra comunidades" + subtítulo "ou crie a sua" (link para criar)
-- Search bar centralizada
-- Filtros em pills (categorias) + grid de cards
+- Rotas que precisam de `ProtectedRoute` serão envolvidas individualmente no element
+- Rotas que precisam de `showRightSidebar={false}` (settings, profile) usarão um wrapper ou route context
+
+**3. Controle de `showRightSidebar` por rota**
+- CircleLayout detecta a rota atual via `useLocation()` para decidir se mostra a sidebar direita
+- Rotas `/settings` e `/profile` → `showRightSidebar = false`
+- Demais → `showRightSidebar = true`
+- Isso elimina a necessidade de passar prop por rota
 
 ### Resultado
-- `/circles/explore` funciona com o mesmo shell visual das páginas de comunidade
-- Logo Kivo aparece no switcher quando não há comunidade ativa
-- `/communities` redireciona para `/circles/explore`
-- Dropdown do switcher continua funcional
+- Header, sidebar, queries de comunidade/membro montam **uma única vez**
+- Navegação entre tabs é instantânea (só o conteúdo interno troca)
+- Elimina o flash/piscar completamente
+- Mesmo padrão já usado com sucesso no DashboardShell
 
