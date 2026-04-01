@@ -111,12 +111,13 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - convite por e-mail com abertura de composer (mailto) + fallback de link copiado
 
 ## Sprint 10 — General Settings Pro (em andamento)
-- [x] `src/components/circle/admin/AdminSettingsTab.tsx`
+- [x] `src/components/circle/admin/AdminGeneralTab.tsx`
   - configuração de URL (slug) com preview + validação de unicidade
-  - botão de validação de URL disponível (slug)
   - controle de visibilidade no discovery com explicação
   - recomendações de dimensões para capa/ícone
   - resumo do estado público (pública/oculta) com impacto em descoberta
+- [x] `src/components/circle/admin/AdminSettingsTab.tsx`
+  - compatibilidade de controles gerais para fluxos legados
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

@@ -29,6 +29,8 @@ export default function AdminGeneralTab({ community }: Props) {
 
   const [form, setForm] = useState({
     name: community.name || "",
+    slug: community.slug || "",
+    is_listed: community.is_listed ?? true,
     description: community.description || "",
     long_description: community.long_description || "",
     about_video_url: community.about_video_url || "",
@@ -40,9 +42,20 @@ export default function AdminGeneralTab({ community }: Props) {
 
   const saveSettings = useMutation({
     mutationFn: async () => {
+      const payload: any = { ...form };
+      if (payload.slug && payload.slug !== community.slug) {
+        const { data: conflict } = await supabase
+          .from("communities")
+          .select("id")
+          .eq("slug", payload.slug)
+          .neq("id", community.id)
+          .maybeSingle();
+        if (conflict) throw new Error("Slug já está em uso");
+      }
+
       const { error } = await supabase
         .from("communities")
-        .update(form)
+        .update(payload)
         .eq("id", community.id);
       if (error) throw error;
     },
@@ -50,7 +63,7 @@ export default function AdminGeneralTab({ community }: Props) {
       queryClient.invalidateQueries({ queryKey: ["community"] });
       toast.success("Configurações gerais salvas!");
     },
-    onError: () => toast.error("Erro ao salvar"),
+    onError: (e: any) => toast.error(e?.message || "Erro ao salvar"),
   });
 
   const uploadImage = async (file: File, type: "cover" | "icon") => {
@@ -107,6 +120,16 @@ export default function AdminGeneralTab({ community }: Props) {
           onChange={(e) => set("name", e.target.value)}
           className="border-gray-200 focus:border-gray-400"
         />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium text-gray-700">URL (slug)</Label>
+        <Input
+          value={form.slug}
+          onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+          className="border-gray-200 focus:border-gray-400"
+        />
+        <p className="text-xs text-gray-400">URL pública: /c/{form.slug}</p>
       </div>
 
       {/* Description */}
@@ -168,6 +191,7 @@ export default function AdminGeneralTab({ community }: Props) {
               onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "cover")}
             />
           </label>
+          <p className="text-[11px] text-gray-400">Recomendado: 1280x720</p>
         </div>
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Ícone / Logo</Label>
@@ -188,11 +212,22 @@ export default function AdminGeneralTab({ community }: Props) {
               onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "icon")}
             />
           </label>
+          <p className="text-[11px] text-gray-400">Recomendado: 256x256</p>
         </div>
       </div>
 
       {/* Toggles */}
       <div className="space-y-0 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3.5 bg-white">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Visível no discovery</p>
+            <p className="text-xs text-gray-400">Desative para manter acesso só por link/convite</p>
+          </div>
+          <Switch
+            checked={form.is_listed}
+            onCheckedChange={(v) => set("is_listed", v)}
+          />
+        </div>
         <div className="flex items-center justify-between px-4 py-3.5 bg-white">
           <div>
             <p className="text-sm font-medium text-gray-900">Membros podem criar posts</p>
