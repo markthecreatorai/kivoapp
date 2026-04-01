@@ -110,7 +110,7 @@ export default function CircleLayout() {
 
   const [showAdminModal, setShowAdminModal] = useState(false);
 
-  // tabItems computed below after community loads
+  // tabItems defined below after community query
 
   // Load community by slug from URL
   const { data: community, isLoading: communityLoading } = useQuery({
