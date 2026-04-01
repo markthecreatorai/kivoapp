@@ -335,6 +335,15 @@ export default function CircleFeed() {
         />
       )}
 
+      {/* Member welcome card — only for non-admin members */}
+      {!isAdminMember && community && member && communitySlug && (
+        <MemberWelcomeCard
+          communityId={community.id}
+          memberId={member.id}
+          slug={communitySlug}
+        />
+      )}
+
       {/* Event banner — only shows when event starts within 24h */}
       {nextEvent && (
         <div
