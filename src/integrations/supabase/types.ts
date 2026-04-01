@@ -1593,6 +1593,7 @@ export type Database = {
           billing_period: string
           category: string | null
           community_links: Json | null
+          community_rules: Json | null
           cover_image_url: string | null
           created_at: string
           description: string | null
@@ -1614,6 +1615,8 @@ export type Database = {
           price_cents: number
           require_approval: boolean
           slug: string
+          tabs_config: Json | null
+          tabs_order: Json | null
           updated_at: string
           workspace_id: string
         }
@@ -1625,6 +1628,7 @@ export type Database = {
           billing_period?: string
           category?: string | null
           community_links?: Json | null
+          community_rules?: Json | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -1646,6 +1650,8 @@ export type Database = {
           price_cents?: number
           require_approval?: boolean
           slug: string
+          tabs_config?: Json | null
+          tabs_order?: Json | null
           updated_at?: string
           workspace_id: string
         }
@@ -1657,6 +1663,7 @@ export type Database = {
           billing_period?: string
           category?: string | null
           community_links?: Json | null
+          community_rules?: Json | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -1678,6 +1685,8 @@ export type Database = {
           price_cents?: number
           require_approval?: boolean
           slug?: string
+          tabs_config?: Json | null
+          tabs_order?: Json | null
           updated_at?: string
           workspace_id?: string
         }
@@ -7433,6 +7442,10 @@ export type Database = {
         Returns: Json
       }
       soft_delete_post: { Args: { p_post_id: string }; Returns: boolean }
+      update_community_space: {
+        Args: { p_community_id: string; p_patch: Json; p_space_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       community_access_type: "FREE_WITH_PRODUCT" | "PAID_SUBSCRIPTION" | "OPEN"
