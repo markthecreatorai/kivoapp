@@ -197,10 +197,9 @@ export default function CircleAbout() {
   const isAdminEditing = isAdmin && !previewMode;
 
   // Parse gallery from community data
-  const gallery: GalleryItem[] = (() => {
+  const serverGallery: GalleryItem[] = (() => {
     const raw = (community as any)?.about_gallery;
     if (Array.isArray(raw) && raw.length > 0) return raw;
-    // Fallback to legacy fields
     const items: GalleryItem[] = [];
     if (community?.cover_image_url) items.push({ type: "image", url: community.cover_image_url, position: 0 });
     const videoUrl = (community as any)?.about_video_url;
@@ -208,6 +207,8 @@ export default function CircleAbout() {
     return items;
   })();
 
+  const [localGallery, setLocalGallery] = useState<GalleryItem[] | null>(null);
+  const gallery = localGallery ?? serverGallery;
   const galleryIds = gallery.map((item) => `g-${item.url}`);
   const activeItem = gallery[activeIndex] || null;
 
