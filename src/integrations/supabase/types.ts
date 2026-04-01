@@ -1989,6 +1989,70 @@ export type Database = {
           },
         ]
       }
+      community_member_tiers: {
+        Row: {
+          community_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          member_id: string
+          source_id: string | null
+          source_type: string
+          started_at: string
+          status: string
+          tier_id: string
+          updated_at: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          member_id: string
+          source_id?: string | null
+          source_type?: string
+          started_at?: string
+          status?: string
+          tier_id: string
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          member_id?: string
+          source_id?: string | null
+          source_type?: string
+          started_at?: string
+          status?: string
+          tier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_member_tiers_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_member_tiers_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_member_tiers_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "community_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_members: {
         Row: {
           avatar_url: string | null
@@ -2765,6 +2829,95 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_tier_benefits: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+          tier_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          sort_order?: number
+          tier_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          tier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_tier_benefits_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "community_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_tiers: {
+        Row: {
+          billing_period: string | null
+          community_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_free: boolean
+          linked_product_id: string | null
+          name: string
+          price_cents: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          billing_period?: string | null
+          community_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_free?: boolean
+          linked_product_id?: string | null
+          name: string
+          price_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_period?: string | null
+          community_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_free?: boolean
+          linked_product_id?: string | null
+          name?: string
+          price_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_tiers_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_tiers_linked_product_id_fkey"
+            columns: ["linked_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
