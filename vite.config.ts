@@ -3,18 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
-function getPackageName(id: string) {
-  const match = id.split("node_modules/")[1];
-  if (!match) return null;
-
-  const parts = match.split("/");
-  if (parts[0].startsWith("@")) {
-    return `${parts[0]}-${parts[1]}`;
-  }
-
-  return parts[0];
-}
-
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -37,15 +25,13 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
 
-          const pkg = getPackageName(id);
-          if (!pkg) return "vendor";
+          if (id.includes("react") || id.includes("scheduler")) return "vendor-react";
+          if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+          if (id.includes("@supabase") || id.includes("@tanstack/react-query")) return "vendor-data";
+          if (id.includes("zxcvbn")) return "vendor-zxcvbn";
+          if (id.includes("@radix-ui")) return "vendor-radix";
 
-          if (pkg.includes("react") || pkg.includes("scheduler")) return "vendor-react";
-          if (pkg.includes("recharts") || pkg.includes("d3")) return "vendor-charts";
-          if (pkg.includes("supabase") || pkg.includes("tanstack-react-query")) return "vendor-data";
-          if (pkg.includes("radix-ui")) return "vendor-radix";
-
-          return `vendor-${pkg.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+          return "vendor";
         },
       },
     },
