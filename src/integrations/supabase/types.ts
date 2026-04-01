@@ -1989,6 +1989,78 @@ export type Database = {
           },
         ]
       }
+      community_live_streams: {
+        Row: {
+          chat_enabled: boolean
+          community_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          embed_type: string
+          embed_url: string
+          ended_at: string | null
+          id: string
+          recording_url: string | null
+          scheduled_at: string | null
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          viewer_count: number
+        }
+        Insert: {
+          chat_enabled?: boolean
+          community_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          embed_type?: string
+          embed_url: string
+          ended_at?: string | null
+          id?: string
+          recording_url?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          viewer_count?: number
+        }
+        Update: {
+          chat_enabled?: boolean
+          community_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          embed_type?: string
+          embed_url?: string
+          ended_at?: string | null
+          id?: string
+          recording_url?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          viewer_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_live_streams_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_live_streams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_member_tiers: {
         Row: {
           community_id: string
@@ -4132,6 +4204,84 @@ export type Database = {
             columns: ["member_content_id"]
             isOneToOne: false
             referencedRelation: "member_content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_stream_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          member_id: string
+          stream_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          member_id: string
+          stream_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          member_id?: string
+          stream_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_stream_messages_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_stream_messages_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "community_live_streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_stream_viewers: {
+        Row: {
+          id: string
+          joined_at: string
+          left_at: string | null
+          member_id: string
+          stream_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          member_id: string
+          stream_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          member_id?: string
+          stream_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_stream_viewers_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_stream_viewers_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "community_live_streams"
             referencedColumns: ["id"]
           },
         ]
