@@ -196,6 +196,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
   const canSave = title.trim().length > 0 && isValidUrl && (goLiveNow || scheduledAt);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
