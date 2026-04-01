@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ChevronDown, ChevronUp, Search, Plus, Compass, MessageSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import KivoLogo from "@/assets/kivo-logo.svg";
 
 interface CommunitySwitcherProps {
   currentCommunity: {
@@ -77,27 +78,33 @@ export default function CommunitySwitcher({ currentCommunity }: CommunitySwitche
   const handleDiscover = () => {
     setOpen(false);
     setSearch("");
-    navigate("/communities");
+    navigate("/circles/explore");
   };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="flex items-center gap-2.5 min-w-0 rounded-lg px-2 py-1.5 hover:bg-muted/60 transition-colors">
-          {currentCommunity?.icon_url ? (
-            <img
-              src={currentCommunity.icon_url}
-              alt=""
-              className="h-8 w-8 rounded-lg object-cover shrink-0"
-            />
+          {currentCommunity ? (
+            <>
+              {currentCommunity.icon_url ? (
+                <img
+                  src={currentCommunity.icon_url}
+                  alt=""
+                  className="h-8 w-8 rounded-lg object-cover shrink-0"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                </div>
+              )}
+              <span className="font-semibold text-foreground text-sm truncate hidden sm:block max-w-[160px]">
+                {currentCommunity.name}
+              </span>
+            </>
           ) : (
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <MessageSquare className="h-4 w-4 text-primary" />
-            </div>
+            <img src={KivoLogo} alt="Kivo" className="h-6 w-auto shrink-0" />
           )}
-          <span className="font-semibold text-foreground text-sm truncate hidden sm:block max-w-[160px]">
-            {currentCommunity?.name || "Comunidade"}
-          </span>
           {open ? (
             <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           ) : (

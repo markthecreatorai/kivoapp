@@ -5,7 +5,7 @@ export default function JoinRedirect() {
   const [search] = useSearchParams();
   const invite = search.get("invite");
 
-  if (!slug) return <Navigate to="/communities" replace />;
+  if (!slug) return <Navigate to="/circles/explore" replace />;
 
   return <Navigate to={`/circles/${slug}${invite ? `?invite=${invite}` : ""}`} replace />;
 }

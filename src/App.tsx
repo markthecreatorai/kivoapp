@@ -309,8 +309,10 @@ const App = () => (
                 <Route path="/circle/settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
 
                 {/* Public community discovery */}
-                <Route path="/communities" element={<CommunityDiscovery />} />
-                <Route path="/circles/discover" element={<CommunityDiscovery />} />
+                <Route path="/circles/explore" element={<CommunityDiscovery />} />
+                {/* Legacy redirects */}
+                <Route path="/communities" element={<Navigate to="/circles/explore" replace />} />
+                <Route path="/circles/discover" element={<Navigate to="/circles/explore" replace />} />
 
                 {/* Landing page */}
                 <Route path="/" element={<GlobalTrackingWrapper><LandingPage /></GlobalTrackingWrapper>} />
