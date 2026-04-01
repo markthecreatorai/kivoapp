@@ -315,7 +315,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const handleCommentKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (commentBody.trim() || commentImages.length > 0) addComment.mutate({ body: commentBody || "📷" });
+      if (commentBody.trim() || commentImages.length > 0) addComment.mutate({ body: commentBody });
     }
   };
 
@@ -680,7 +680,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey && (editingCommentBody.trim() || editingCommentImages.length > 0)) {
                                       e.preventDefault();
-                                      supabase.from("community_comments").update({ body: editingCommentBody.trim() || "📷", images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
+                                       supabase.from("community_comments").update({ body: editingCommentBody.trim(), images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
                                         queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
                                         toast.success("Editado");
                                         setEditingCommentId(null);
@@ -734,7 +734,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                     <button
                                       disabled={!editingCommentBody.trim() && editingCommentImages.length === 0}
                                       onClick={() => {
-                                        supabase.from("community_comments").update({ body: editingCommentBody.trim() || "📷", images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
+                                        supabase.from("community_comments").update({ body: editingCommentBody.trim(), images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
                                           queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
                                           toast.success("Editado");
                                           setEditingCommentId(null);
@@ -747,7 +747,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                               </div>
                             ) : (
                               <>
-                                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
+                                {comment.body && comment.body.trim() && comment.body.trim() !== "📷" && <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>}
                                 {/* Comment images */}
                                 {comment.images && (comment.images as string[]).length > 0 && (
                                   <div className="mt-2 flex gap-2">
@@ -990,7 +990,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                           </Popover>
                         </div>
                         <button
-                          onClick={() => (commentBody.trim() || commentImages.length > 0) && addComment.mutate({ body: commentBody || "📷" })}
+                          onClick={() => (commentBody.trim() || commentImages.length > 0) && addComment.mutate({ body: commentBody })}
                           disabled={(!commentBody.trim() && commentImages.length === 0) || addComment.isPending}
                           className="text-primary hover:text-primary/80 disabled:opacity-30 transition-opacity"
                         >
