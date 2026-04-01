@@ -192,7 +192,7 @@ export default function MyCommunities() {
               <Button onClick={() => setShowCreateModal(true)} className="gap-2">
                 <Plus className="h-4 w-4" /> Criar comunidade
               </Button>
-              <Button variant="outline" onClick={() => navigate("/communities")} className="gap-2">
+              <Button variant="outline" onClick={() => navigate("/circles/explore")} className="gap-2">
                 <Globe className="h-4 w-4" /> Explorar
               </Button>
             </div>

@@ -327,7 +327,7 @@ export default function CommunityLanding() {
           </div>
           <h1 className="text-2xl font-bold text-foreground">Comunidade não encontrada</h1>
           <p className="text-muted-foreground">O link pode estar inválido ou a comunidade foi desativada.</p>
-          <Button onClick={() => navigate("/communities")} variant="outline">Ver outras comunidades</Button>
+          <Button onClick={() => navigate("/circles/explore")} variant="outline">Ver outras comunidades</Button>
         </div>
       </div>
     );

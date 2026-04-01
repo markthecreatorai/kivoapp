@@ -219,7 +219,7 @@ export default function CommunitySelectPlan() {
           <AlertCircle className="h-12 w-12 text-muted-foreground/40 mx-auto" />
           <h2 className="text-lg font-semibold text-foreground">Comunidade não encontrada</h2>
           <p className="text-sm text-muted-foreground">O link pode estar inválido ou a comunidade foi desativada.</p>
-          <Button variant="outline" onClick={() => navigate("/communities")}>Ver comunidades</Button>
+          <Button variant="outline" onClick={() => navigate("/circles/explore")}>Ver comunidades</Button>
         </div>
       </div>
     );
