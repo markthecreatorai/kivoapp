@@ -76,6 +76,8 @@ export default function CourseFormModal({
         cover_url: coverUrl || null,
         is_published: isPublished,
         position: course?.position ?? nextPosition,
+        access_mode: accessMode,
+        min_level: accessMode === "LEVEL_GATED" ? minLevel : null,
       };
 
       if (isEdit && course) {
