@@ -1092,7 +1092,7 @@ export default function CircleSettings() {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="confirm-new-pwd">Confirm new password</Label>
+                  <Label htmlFor="confirm-new-pwd">Confirmar nova senha</Label>
                   <Input
                     id="confirm-new-pwd"
                     type="password"
