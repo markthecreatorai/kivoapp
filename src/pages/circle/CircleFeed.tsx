@@ -513,9 +513,10 @@ export default function CircleFeed() {
       {community && member && (
         <LiveStreamFormModal
           open={showLiveForm}
-          onOpenChange={setShowLiveForm}
+          onOpenChange={(open) => { setShowLiveForm(open); if (!open) setEditingStream(null); }}
           communityId={community.id}
           memberId={member.id}
+          stream={editingStream}
         />
       )}
 

@@ -90,6 +90,9 @@ export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCrea
               {" · "}{scheduled[0].creator?.display_name || "Admin"}
             </p>
           </div>
+          {isAdmin && onEdit && (
+            <span className="text-xs font-medium text-primary shrink-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); onEdit(scheduled[0]); }}>Editar</span>
+          )}
           <span className="text-xs font-medium text-primary shrink-0">Ver detalhes →</span>
         </div>
       )}
