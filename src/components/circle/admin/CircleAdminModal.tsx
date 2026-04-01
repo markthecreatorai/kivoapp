@@ -12,6 +12,7 @@ import AdminPluginsTab from "./AdminPluginsTab";
 import AdminCommunityTab from "./AdminCommunityTab";
 import AdminDiscoveryTab from "./AdminDiscoveryTab";
 import AdminBillingTab from "./AdminBillingTab";
+import AdminOnboardingTab from "./AdminOnboardingTab";
 
 
 interface Props {
