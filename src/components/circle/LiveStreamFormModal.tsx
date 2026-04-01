@@ -318,22 +318,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
             <Button
               variant="destructive"
               size="sm"
-              onClick={async () => {
-                if (!confirm("Tem certeza que deseja excluir esta live e o evento vinculado?")) return;
-                try {
-                  // Delete linked event first
-                  await supabase.from("community_events").delete().eq("live_stream_id", stream.id);
-                  // Delete the stream
-                  await supabase.from("community_live_streams" as any).delete().eq("id", stream.id);
-                  queryClient.invalidateQueries({ queryKey: ["live-streams"] });
-                  queryClient.invalidateQueries({ queryKey: ["community-events"] });
-                  queryClient.invalidateQueries({ queryKey: ["circle-events"] });
-                  toast.success("Live excluída");
-                  onOpenChange(false);
-                } catch {
-                  toast.error("Erro ao excluir");
-                }
-              }}
+              onClick={() => setShowDeleteConfirm(true)}
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Excluir
