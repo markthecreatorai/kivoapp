@@ -1933,6 +1933,7 @@ export type Database = {
           max_attendees: number | null
           meeting_platform: string | null
           meeting_url: string | null
+          parent_event_id: string | null
           recurrence_rule: string | null
           remind_email_before: number | null
           rsvp_count: number
@@ -1961,6 +1962,7 @@ export type Database = {
           max_attendees?: number | null
           meeting_platform?: string | null
           meeting_url?: string | null
+          parent_event_id?: string | null
           recurrence_rule?: string | null
           remind_email_before?: number | null
           rsvp_count?: number
@@ -1989,6 +1991,7 @@ export type Database = {
           max_attendees?: number | null
           meeting_platform?: string | null
           meeting_url?: string | null
+          parent_event_id?: string | null
           recurrence_rule?: string | null
           remind_email_before?: number | null
           rsvp_count?: number
@@ -2018,6 +2021,13 @@ export type Database = {
             columns: ["live_stream_id"]
             isOneToOne: false
             referencedRelation: "community_live_streams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "community_events"
             referencedColumns: ["id"]
           },
         ]
@@ -7210,6 +7220,10 @@ export type Database = {
         }[]
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      generate_recurring_occurrences: {
+        Args: { p_event_id: string }
+        Returns: number
+      }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
       get_community_ids_for_user: {
         Args: { _user_id: string }
