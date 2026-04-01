@@ -6,19 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Layout, Grid3x3, BookOpen, Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Props {
   community: any;
 }
 
-const DEFAULT_TABS = {
-  feed: true,
-  classroom: true,
-  members: true,
-  leaderboard: true,
-  events: true,
-  about: true,
-};
+const DEFAULT_TAB_ORDER = ["feed", "classroom", "members", "leaderboard", "events", "about"];
 
 const TAB_LABELS: Record<string, string> = {
   feed: "Feed",
@@ -29,16 +37,126 @@ const TAB_LABELS: Record<string, string> = {
   about: "About",
 };
 
+/* ── Sortable row for tabs ── */
+function SortableTabRow({
+  tabKey,
+  checked,
+  onToggle,
+}: {
+  tabKey: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: tabKey,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between px-4 py-3.5 bg-white"
+    >
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="cursor-grab active:cursor-grabbing touch-none"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4 text-gray-300" />
+        </button>
+        <span className="text-sm font-medium text-gray-700">{TAB_LABELS[tabKey]}</span>
+      </div>
+      <Switch checked={checked} onCheckedChange={onToggle} />
+    </div>
+  );
+}
+
+/* ── Sortable row for categories ── */
+function SortableCategoryRow({
+  category,
+  index,
+  onUpdatePatch,
+}: {
+  category: any;
+  index: number;
+  onUpdatePatch: (id: string, patch: any) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: category.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="rounded-xl border bg-white p-3 space-y-2"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="cursor-grab active:cursor-grabbing touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-gray-300" />
+          </button>
+          <p className="text-sm font-medium text-gray-900">{category.emoji || "📁"} {category.name}</p>
+        </div>
+        <p className="text-[11px] text-gray-400 w-7 text-right shrink-0">#{index + 1}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+        <div className="flex items-center justify-between rounded-lg border p-2">
+          <span>Categoria privada</span>
+          <Switch
+            checked={!!category.is_private}
+            onCheckedChange={(v) => onUpdatePatch(category.id, { is_private: v })}
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-2">
+          <span>Apenas admin pode postar</span>
+          <Switch
+            checked={!!category.only_admins_can_post}
+            onCheckedChange={(v) => onUpdatePatch(category.id, { only_admins_can_post: v })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminCommunityTab({ community }: Props) {
   const queryClient = useQueryClient();
 
-  const savedTabs = (community.tabs_config as Record<string, boolean>) || DEFAULT_TABS;
-  const savedRules = (community.community_rules as string[]) || [];
+  const savedTabs = (community.tabs_config as Record<string, boolean>) || Object.fromEntries(DEFAULT_TAB_ORDER.map((k) => [k, true]));
+  const savedTabOrder: string[] = (community.tabs_order as string[]) || DEFAULT_TAB_ORDER;
 
   const [tabs, setTabs] = useState<Record<string, boolean>>(savedTabs);
-  const [rules, setRules] = useState<string[]>(savedRules);
+  const [tabOrder, setTabOrder] = useState<string[]>(savedTabOrder);
+  const [rules, setRules] = useState<string[]>((community.community_rules as string[]) || []);
   const [newRule, setNewRule] = useState("");
   const [activeSection, setActiveSection] = useState<"tabs" | "categories" | "rules">("tabs");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const { data: categories = [] } = useQuery({
     queryKey: ["community-categories-admin", community.id],
@@ -48,8 +166,8 @@ export default function AdminCommunityTab({ community }: Props) {
         .select("id,name,emoji,sort_order,is_private,only_admins_can_post")
         .eq("community_id", community.id)
         .order("sort_order", { ascending: true });
-      if (error) return [];
-      return (data || []) as any[];
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -72,7 +190,7 @@ export default function AdminCommunityTab({ community }: Props) {
     mutationFn: async () => {
       const { error } = await supabase
         .from("communities")
-        .update({ tabs_config: tabs, community_rules: rules } as any)
+        .update({ tabs_config: tabs, tabs_order: tabOrder, community_rules: rules } as any)
         .eq("id", community.id);
       if (error) throw error;
     },
@@ -97,6 +215,31 @@ export default function AdminCommunityTab({ community }: Props) {
     setRules((r) => r.filter((_, idx) => idx !== i));
   };
 
+  /* ── DnD handlers ── */
+  const handleTabDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setTabOrder((prev) => {
+      const oldIdx = prev.indexOf(String(active.id));
+      const newIdx = prev.indexOf(String(over.id));
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
+
+  const handleCategoryDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !categories.length) return;
+
+    const oldIdx = categories.findIndex((c: any) => c.id === active.id);
+    const newIdx = categories.findIndex((c: any) => c.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+
+    const reordered = arrayMove([...categories], oldIdx, newIdx);
+    reordered.forEach((c: any, i: number) => {
+      updateCategory.mutate({ id: c.id, patch: { sort_order: i } });
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -108,54 +251,49 @@ export default function AdminCommunityTab({ community }: Props) {
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold tracking-wide text-sm"
           size="sm"
         >
-          SAVE
+          {saveCommunity.isPending ? "Salvando..." : "Salvar"}
         </Button>
       </div>
 
-      {/* Sub-navigation */}
-      <div className="space-y-2">
-        {/* Tabs */}
+      {/* Section selector */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
           onClick={() => setActiveSection("tabs")}
-          className={`flex items-center gap-4 w-full p-4 rounded-xl border text-left transition-all ${
+          className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-colors ${
             activeSection === "tabs"
               ? "border-gray-300 bg-gray-50"
               : "border-transparent hover:bg-gray-50"
           }`}
         >
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-            <Layout className="h-5 w-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-xl bg-blue-800/20 flex items-center justify-center shrink-0">
+            <Layout className="h-5 w-5 text-blue-800" />
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-900">Tabs</p>
-            <p className="text-xs text-gray-500">Show/hide tabs in your community.</p>
+            <p className="text-xs text-gray-500">Show/hide navigation tabs.</p>
           </div>
         </button>
 
-        {/* Categories */}
         <button
           onClick={() => setActiveSection("categories")}
-          className={`flex items-center gap-4 w-full p-4 rounded-xl border text-left transition-all ${
+          className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-colors ${
             activeSection === "categories"
               ? "border-gray-300 bg-gray-50"
               : "border-transparent hover:bg-gray-50"
           }`}
         >
-          <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
-            <Grid3x3 className="h-5 w-5 text-purple-600" />
+          <div className="w-10 h-10 rounded-xl bg-green-800/20 flex items-center justify-center shrink-0">
+            <Grid3x3 className="h-5 w-5 text-green-800" />
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-900">Categories</p>
-            <p className="text-xs text-gray-500">
-              Organize posts with categories, permissions, and sort methods.
-            </p>
+            <p className="text-xs text-gray-500">Manage feed categories.</p>
           </div>
         </button>
 
-        {/* Rules */}
         <button
           onClick={() => setActiveSection("rules")}
-          className={`flex items-center gap-4 w-full p-4 rounded-xl border text-left transition-all ${
+          className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-colors ${
             activeSection === "rules"
               ? "border-gray-300 bg-gray-50"
               : "border-transparent hover:bg-gray-50"
@@ -173,90 +311,48 @@ export default function AdminCommunityTab({ community }: Props) {
 
       {/* Section content */}
       {activeSection === "tabs" && (
-        <div className="space-y-0 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-          {Object.entries(TAB_LABELS).map(([key, label]) => (
-            <div
-              key={key}
-              className="flex items-center justify-between px-4 py-3.5 bg-white"
-            >
-              <div className="flex items-center gap-2">
-                <GripVertical className="h-4 w-4 text-gray-300" />
-                <span className="text-sm font-medium text-gray-700">{label}</span>
-              </div>
-              <Switch
-                checked={tabs[key] ?? true}
-                onCheckedChange={() => toggleTab(key)}
-              />
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
+          <SortableContext items={tabOrder} strategy={verticalListSortingStrategy}>
+            <div className="space-y-0 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+              {tabOrder.map((key) => (
+                <SortableTabRow
+                  key={key}
+                  tabKey={key}
+                  checked={tabs[key] ?? true}
+                  onToggle={() => toggleTab(key)}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {activeSection === "categories" && (
-        <div className="space-y-3">
-          {categories.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-              <Grid3x3 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-400 mb-1">Nenhuma categoria ainda.</p>
-              <p className="text-xs text-gray-400">Crie espaços na comunidade para organizar o feed.</p>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
+          <SortableContext
+            items={categories.map((c: any) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {categories.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <Grid3x3 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400 mb-1">Nenhuma categoria ainda.</p>
+                  <p className="text-xs text-gray-400">Crie espaços na comunidade para organizar o feed.</p>
+                </div>
+              ) : (
+                categories.map((c: any, idx: number) => (
+                  <SortableCategoryRow
+                    key={c.id}
+                    category={c}
+                    index={idx}
+                    onUpdatePatch={(id, patch) => updateCategory.mutate({ id, patch })}
+                  />
+                ))
+              )}
             </div>
-          ) : (
-            categories.map((c: any, idx: number) => (
-              <div key={c.id} className="rounded-xl border bg-white p-3 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="h-4 w-4 text-gray-300" />
-                    <p className="text-sm font-medium text-gray-900">{c.emoji || "📁"} {c.name}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
-                      disabled={idx === 0}
-                      onClick={() => {
-                        const prev = categories[idx - 1];
-                        if (!prev) return;
-                        updateCategory.mutate({ id: c.id, patch: { sort_order: prev.sort_order } });
-                        updateCategory.mutate({ id: prev.id, patch: { sort_order: c.sort_order } });
-                      }}
-                    >
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
-                      disabled={idx === categories.length - 1}
-                      onClick={() => {
-                        const next = categories[idx + 1];
-                        if (!next) return;
-                        updateCategory.mutate({ id: c.id, patch: { sort_order: next.sort_order } });
-                        updateCategory.mutate({ id: next.id, patch: { sort_order: c.sort_order } });
-                      }}
-                    >
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </button>
-                    <p className="text-[11px] text-gray-400 w-7 text-right">#{idx + 1}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center justify-between rounded-lg border p-2">
-                    <span>Categoria privada</span>
-                    <Switch
-                      checked={!!c.is_private}
-                      onCheckedChange={(v) => updateCategory.mutate({ id: c.id, patch: { is_private: v } })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border p-2">
-                    <span>Apenas admin pode postar</span>
-                    <Switch
-                      checked={!!c.only_admins_can_post}
-                      onCheckedChange={(v) => updateCategory.mutate({ id: c.id, patch: { only_admins_can_post: v } })}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {activeSection === "rules" && (
