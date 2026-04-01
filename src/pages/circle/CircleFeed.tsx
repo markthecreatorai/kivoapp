@@ -416,7 +416,7 @@ export default function CircleFeed() {
       )}
 
       {/* Community rules */}
-      {community?.community_rules && (
+      {(community as any)?.community_rules && (
         <Card className="p-4 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-semibold text-foreground">Regras da comunidade</p>
