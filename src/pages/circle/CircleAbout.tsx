@@ -139,6 +139,10 @@ export default function CircleAbout() {
   const mediaImageInputRef = useRef<HTMLInputElement>(null);
   const previewMode = searchParams.get("preview") === "visitor";
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
   const { data: community, isLoading } = useQuery({
     queryKey: ["community-about", slug],
     queryFn: async () => {
