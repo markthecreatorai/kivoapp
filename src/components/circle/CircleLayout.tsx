@@ -80,7 +80,7 @@ function getTabItems(slug: string) {
   ];
 }
 
-export default function CircleLayout({ children }: CircleLayoutProps) {
+export default function CircleLayout({ children, showRightSidebar = true }: CircleLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
