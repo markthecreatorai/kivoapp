@@ -26,6 +26,10 @@ import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
 import { createNotification } from "@/lib/notifications";
 import { checkSpam } from "@/lib/antispam";
+import EmojiPicker from "@/components/circle/EmojiPicker";
+import GifPicker from "@/components/circle/GifPicker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { X as XIcon, Image as ImageIcon } from "lucide-react";
 
 interface PostDetailModalProps {
   postId: string;
