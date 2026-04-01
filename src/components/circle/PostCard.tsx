@@ -141,9 +141,9 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
     >
       {/* Pinned badge */}
       {post.is_pinned && (
-        <div className="absolute top-3 right-4 flex items-center gap-1">
-          <Pin className="h-3 w-3 text-muted-foreground" />
-          <span className="text-[11px] font-medium text-muted-foreground">Fixado</span>
+        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1">
+          <Pin className="h-3 w-3" />
+          <span className="text-[11px] font-semibold">Post importante</span>
         </div>
       )}
 

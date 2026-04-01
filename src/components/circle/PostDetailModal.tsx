@@ -364,7 +364,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     </span>
                     {post.space && (
                       <span className="text-xs text-muted-foreground">
-                        · in {post.space.emoji} {post.space.name}
+                        · em {post.space.emoji} {post.space.name}
                       </span>
                     )}
                   </div>
@@ -465,7 +465,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     <h1 className="text-lg font-bold text-foreground leading-snug">{post.title}</h1>
                     {post.is_pinned && (
                       <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground font-medium">
-                        📌 Pinned
+                        📌 Fixado
                       </span>
                     )}
                     {post.is_locked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -593,7 +593,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     return (
                       <div key={comment.id} className="group/comment py-3 first:pt-0">
                         {/* Top-level comment */}
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 rounded-lg p-2 hover:bg-muted/20 transition-colors">
                           <div className="relative shrink-0">
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={comment.author?.avatar_url || ""} />
@@ -677,7 +677,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                   }
                                 }}
                                   className="text-xs font-medium text-muted-foreground hover:text-foreground">
-                                  Reply
+                                  Responder
                                 </button>
                               )}
                             </div>
@@ -784,7 +784,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                 <button onClick={jumpToLatest}
                   className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground text-background text-xs font-medium shadow-lg hover:opacity-90 transition-opacity">
                   <ArrowDown className="h-3.5 w-3.5" />
-                  Jump to latest comment
+                  Ir para o último comentário
                 </button>
               )}
 
