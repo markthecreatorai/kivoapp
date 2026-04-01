@@ -1868,6 +1868,7 @@ export type Database = {
           id: string
           is_all_day: boolean
           is_recurring: boolean
+          live_stream_id: string | null
           max_attendees: number | null
           meeting_platform: string | null
           meeting_url: string | null
@@ -1889,6 +1890,7 @@ export type Database = {
           id?: string
           is_all_day?: boolean
           is_recurring?: boolean
+          live_stream_id?: string | null
           max_attendees?: number | null
           meeting_platform?: string | null
           meeting_url?: string | null
@@ -1910,6 +1912,7 @@ export type Database = {
           id?: string
           is_all_day?: boolean
           is_recurring?: boolean
+          live_stream_id?: string | null
           max_attendees?: number | null
           meeting_platform?: string | null
           meeting_url?: string | null
@@ -1934,6 +1937,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_events_live_stream_id_fkey"
+            columns: ["live_stream_id"]
+            isOneToOne: false
+            referencedRelation: "community_live_streams"
             referencedColumns: ["id"]
           },
         ]
