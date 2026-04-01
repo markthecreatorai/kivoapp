@@ -540,8 +540,7 @@ export default function CircleSettings() {
 
           {/* ═══ Profile ═══ */}
           {activeSection === "profile" && (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 min-w-0 space-y-4">
+            <div className="space-y-4">
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                   <p className="text-xs text-muted-foreground">
