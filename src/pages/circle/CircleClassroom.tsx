@@ -802,7 +802,7 @@ export default function CircleClassroom() {
                 {isLocked && (
                   <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
                     <Lock className="h-3 w-3" />
-                    <span>Desbloqueia no nível {course.min_level} (você está no {memberLevel})</span>
+                    <span>{lockMessage}</span>
                   </div>
                 )}
               </div>
