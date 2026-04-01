@@ -24,10 +24,11 @@ import {
   User, Bell, Shield, Camera, Save, Loader2,
   Lock, Mail, AlertTriangle, ChevronDown, AlertCircle, CheckCircle2,
   Globe, Instagram, Youtube, Linkedin, Facebook, Link2, Eye, EyeOff,
-  MapPin, Trash2, X,
+  MapPin, Trash2, X, DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import AffiliatesSettings from "@/components/circle/AffiliatesSettings";
 
 const DEFAULT_NOTIFICATIONS = {
   likes: true,
@@ -334,6 +335,7 @@ export default function CircleSettings() {
 
   const sectionButtons = [
     { id: "profile", label: "Perfil", icon: User },
+    { id: "affiliates", label: "Afiliados", icon: DollarSign },
     { id: "notifications", label: "Notificações", icon: Bell },
     { id: "account", label: "Conta", icon: Shield },
   ];
@@ -796,6 +798,9 @@ export default function CircleSettings() {
           </div>
         </div>
       )}
+
+      {/* ─── Affiliates Section ─── */}
+      {activeSection === "affiliates" && <AffiliatesSettings />}
 
       {/* ─── Notifications Section ─── */}
       {activeSection === "notifications" && (
