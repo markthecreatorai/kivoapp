@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThumbsUp, MessageCircle, Pin, BarChart3, Play, Flag } from "lucide-react";
+import { ThumbsUp, MessageCircle, Pin, BarChart3, Play, Flag, MoreHorizontal, Trash2 } from "lucide-react";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -20,7 +20,9 @@ interface PostCardProps {
   showSpace?: boolean;
   communityId?: string;
   memberId?: string;
+  memberRole?: string;
   onOpenPost?: (postId: string) => void;
+  onDeletePost?: (postId: string) => void;
 }
 
 function getVideoThumb(url: string | null) {
@@ -124,7 +126,7 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
   );
 }
 
-export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, onOpenPost }: PostCardProps) {
+export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, memberRole, onOpenPost, onDeletePost }: PostCardProps) {
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
   const thumbnail = firstImage || videoThumb;
@@ -241,7 +243,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
                 onClick={(e) => e.stopPropagation()}
                 className="text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50"
               >
-                <Flag className="h-[14px] w-[14px]" />
+                <MoreHorizontal className="h-[14px] w-[14px]" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -259,6 +261,20 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
               >
                 <Flag className="h-3.5 w-3.5 mr-2" />Denunciar post
               </DropdownMenuItem>
+              {(post.author_id === memberId || memberRole === 'OWNER' || memberRole === 'ADMIN') && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeletePost?.(post.id);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir post
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
