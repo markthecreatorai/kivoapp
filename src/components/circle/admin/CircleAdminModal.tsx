@@ -122,7 +122,7 @@ export default function CircleAdminModal({ community, member, onClose }: Props) 
                   item.disabled
                     ? "text-gray-400 cursor-not-allowed"
                     : activeSection === item.id
-                      ? "bg-yellow-100 text-gray-900 font-semibold"
+                      ? "bg-primary/10 text-primary font-semibold"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
