@@ -243,7 +243,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
                 onClick={(e) => e.stopPropagation()}
                 className="text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50"
               >
-                <Flag className="h-[14px] w-[14px]" />
+                <MoreHorizontal className="h-[14px] w-[14px]" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -261,6 +261,20 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
               >
                 <Flag className="h-3.5 w-3.5 mr-2" />Denunciar post
               </DropdownMenuItem>
+              {(post.author_id === memberId || memberRole === 'OWNER' || memberRole === 'ADMIN') && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeletePost?.(post.id);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir post
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
