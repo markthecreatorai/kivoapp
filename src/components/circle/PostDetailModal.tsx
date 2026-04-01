@@ -858,26 +858,55 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                           </button>
 
                           {/* Link insert */}
-                          <button
-                            className="p-1 hover:text-foreground transition-colors"
-                            onClick={() => {
-                              const url = prompt("Cole o link:");
-                              if (url?.trim()) setCommentBody((prev) => prev + (prev ? " " : "") + url.trim());
-                            }}
-                          >
-                            <Link2 className="h-3.5 w-3.5" />
-                          </button>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="p-1 hover:text-foreground transition-colors">
+                                <Link2 className="h-3.5 w-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-3" align="end" side="top">
+                              <p className="text-xs font-medium mb-2">Inserir link</p>
+                              <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const input = (e.currentTarget.elements.namedItem('linkUrl') as HTMLInputElement);
+                                const url = input?.value?.trim();
+                                if (url) {
+                                  setCommentBody((prev) => prev + (prev ? " " : "") + url);
+                                  input.value = "";
+                                  // close popover by blurring
+                                  (document.activeElement as HTMLElement)?.blur();
+                                }
+                              }} className="flex gap-2">
+                                <Input name="linkUrl" placeholder="Cole o link" className="h-8 text-xs" autoFocus />
+                                <Button type="submit" size="sm" className="h-8 text-xs px-3">Inserir</Button>
+                              </form>
+                            </PopoverContent>
+                          </Popover>
 
                           {/* Video embed */}
-                          <button
-                            className="p-1 hover:text-foreground transition-colors"
-                            onClick={() => {
-                              const url = prompt("Cole o link do vídeo (YouTube, Vimeo, Loom):");
-                              if (url?.trim()) setCommentBody((prev) => prev + (prev ? " " : "") + url.trim());
-                            }}
-                          >
-                            <Video className="h-3.5 w-3.5" />
-                          </button>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="p-1 hover:text-foreground transition-colors">
+                                <Video className="h-3.5 w-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-72 p-3" align="end" side="top">
+                              <p className="text-xs font-medium mb-2">Inserir vídeo</p>
+                              <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const input = (e.currentTarget.elements.namedItem('videoUrl') as HTMLInputElement);
+                                const url = input?.value?.trim();
+                                if (url) {
+                                  setCommentBody((prev) => prev + (prev ? " " : "") + url);
+                                  input.value = "";
+                                  (document.activeElement as HTMLElement)?.blur();
+                                }
+                              }} className="flex gap-2">
+                                <Input name="videoUrl" placeholder="YouTube, Vimeo, Loom..." className="h-8 text-xs" autoFocus />
+                                <Button type="submit" size="sm" className="h-8 text-xs px-3">Inserir</Button>
+                              </form>
+                            </PopoverContent>
+                          </Popover>
 
                           {/* Emoji picker */}
                           <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
