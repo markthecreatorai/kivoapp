@@ -67,6 +67,10 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const [replyBody, setReplyBody] = useState("");
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [isNotified, setIsNotified] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [commentImages, setCommentImages] = useState<string[]>([]);
+  const commentImageRef = useRef<HTMLInputElement>(null);
 
   /* ── Queries ─────── */
   const { data: community } = useQuery({
