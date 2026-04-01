@@ -32,6 +32,8 @@ interface CircleCourse {
   cover_url: string | null;
   is_published: boolean;
   position: number;
+  access_mode?: string;
+  min_level?: number | null;
 }
 
 interface CircleLesson {
