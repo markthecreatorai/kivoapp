@@ -407,10 +407,10 @@ export default function CourseFormModal({
                             checked={selectedTierIds.includes(tier.id)}
                             onCheckedChange={() => toggleTierId(tier.id)}
                           />
-                          <span className="text-foreground flex-1">{tier.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            R$ {(tier.price_cents / 100).toFixed(2).replace(".", ",")} / {tier.interval === "monthly" ? "mês" : tier.interval === "yearly" ? "ano" : tier.interval}
-                          </span>
+                           <span className="text-foreground flex-1">{tier.name}</span>
+                           <span className="text-xs text-muted-foreground">
+                             {tier.is_free ? "Grátis" : `R$ ${(tier.price_cents / 100).toFixed(2).replace(".", ",")} / ${tier.billing_period === "monthly" ? "mês" : tier.billing_period === "yearly" ? "ano" : tier.billing_period || ""}`}
+                           </span>
                         </label>
                       ))}
                     </div>
