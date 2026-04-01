@@ -75,6 +75,9 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - priorização visual e ordenação de conversas não lidas
 - [x] `src/pages/circle/CircleSettings.tsx`
   - presets rápidos de preferências (ativar tudo / somente importantes)
+- [x] `src/components/circle/NotificationPanel.tsx`
+  - filtros por tipo no painel (todas / não lidas / interações / DMs)
+  - empty state contextual por filtro
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

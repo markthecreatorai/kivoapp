@@ -62,6 +62,7 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
   const { slug: communitySlug } = useParams();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<"all" | "unread" | "interactions" | "dms">("all");
 
   // Fetch notifications with pagination
   const {
@@ -90,6 +91,13 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
   });
 
   const allNotifications = data?.pages.flat() || [];
+
+  const filteredNotifications = allNotifications.filter((n: any) => {
+    if (typeFilter === "unread") return !n.is_read;
+    if (typeFilter === "dms") return n.type === "NEW_DM";
+    if (typeFilter === "interactions") return ["POST_REPLY", "COMMENT_REPLY", "POST_LIKE", "COMMENT_LIKE", "MENTION"].includes(n.type);
+    return true;
+  });
 
   // Mark all as read
   const markAllRead = useMutation({
@@ -188,16 +196,23 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
         )}
       </div>
 
+      <div className="px-3 py-2 border-b border-border flex gap-2 flex-wrap">
+        <Button size="sm" variant={typeFilter === "all" ? "default" : "outline"} onClick={() => setTypeFilter("all")}>Todas</Button>
+        <Button size="sm" variant={typeFilter === "unread" ? "default" : "outline"} onClick={() => setTypeFilter("unread")}>Não lidas</Button>
+        <Button size="sm" variant={typeFilter === "interactions" ? "default" : "outline"} onClick={() => setTypeFilter("interactions")}>Interações</Button>
+        <Button size="sm" variant={typeFilter === "dms" ? "default" : "outline"} onClick={() => setTypeFilter("dms")}>DMs</Button>
+      </div>
+
       {/* List */}
       <div className="flex-1 overflow-y-auto" onScroll={handleScroll}>
-        {allNotifications.length === 0 ? (
+        {filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Inbox className="h-10 w-10 mb-3 text-muted-foreground/40" />
-            <p className="text-sm">Nenhuma notificação por agora 🤫</p>
+            <p className="text-sm">Nenhuma notificação nesse filtro 🤫</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {allNotifications.map((n: any) => {
+            {filteredNotifications.map((n: any) => {
               const actorName = n.actor?.display_name || "";
               const typeText = NOTIFICATION_TEXTS[n.type];
               const displayText = typeText ? typeText(n) : n.title;
