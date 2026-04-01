@@ -573,6 +573,124 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Image Dialog ── */}
+      <Dialog open={imageDialogOpen} onOpenChange={(open) => { setImageDialogOpen(open); if (!open) { setImageUrl(""); setImagePreview(null); setImageTab("url"); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Inserir imagem</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Tabs */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setImageTab("url")}
+                className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-colors", imageTab === "url" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}
+              >
+                URL da imagem
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageTab("upload")}
+                className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-colors", imageTab === "upload" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}
+              >
+                Upload de arquivo
+              </button>
+            </div>
+
+            {imageTab === "url" && (
+              <Input
+                value={imageUrl}
+                onChange={(e) => { setImageUrl(e.target.value); setImagePreview(e.target.value); }}
+                placeholder="https://exemplo.com/imagem.jpg"
+                onKeyDown={(e) => { if (e.key === "Enter") handleInsertImageConfirm(); }}
+              />
+            )}
+
+            {imageTab === "upload" && (
+              <div>
+                <input
+                  ref={imageFileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFileSelect(f); e.target.value = ""; }}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageFileRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center gap-2 text-center hover:bg-muted/50 transition-colors"
+                >
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">{uploadingImage ? "Enviando..." : "Clique para selecionar imagem"}</p>
+                  <p className="text-xs text-muted-foreground/60">JPG, PNG, GIF, WebP ou SVG · Máx 10MB</p>
+                </button>
+              </div>
+            )}
+
+            {/* Preview */}
+            {imagePreview && (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full max-h-48 object-contain bg-muted/30"
+                  onError={() => setImagePreview(null)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setImageDialogOpen(false); setImageUrl(""); setImagePreview(null); }}>Cancelar</Button>
+            <Button onClick={handleInsertImageConfirm} disabled={!imageUrl.trim()}>Inserir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Inline Link Dialog ── */}
+      <Dialog open={inlineLinkDialogOpen} onOpenChange={(open) => { setInlineLinkDialogOpen(open); if (!open) { setInlineLinkUrl(""); setInlineLinkText(""); setInlineLinks([]); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Inserir link</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm">URL</Label>
+                <Input value={inlineLinkUrl} onChange={(e) => setInlineLinkUrl(e.target.value)} placeholder="https://..." className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm">Texto do link (opcional)</Label>
+                <Input value={inlineLinkText} onChange={(e) => setInlineLinkText(e.target.value)} placeholder="Ex: Saiba mais" className="mt-1" onKeyDown={(e) => { if (e.key === "Enter") handleAddInlineLinkToList(); }} />
+              </div>
+              <Button variant="outline" size="sm" onClick={handleAddInlineLinkToList} disabled={!inlineLinkUrl.trim()} className="w-full">
+                + Adicionar link
+              </Button>
+            </div>
+
+            {/* Links list */}
+            {inlineLinks.length > 0 && (
+              <div className="space-y-1.5 border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground font-medium">Links a inserir:</p>
+                {inlineLinks.map((link, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 group">
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground truncate">{link.text}</p>
+                      <p className="text-xs text-muted-foreground truncate">{link.url}</p>
+                    </div>
+                    <button onClick={() => handleRemoveInlineLink(i)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setInlineLinkDialogOpen(false); setInlineLinkUrl(""); setInlineLinkText(""); setInlineLinks([]); }}>Cancelar</Button>
+            <Button onClick={handleInsertInlineLinks} disabled={inlineLinks.length === 0}>Inserir {inlineLinks.length > 0 ? `(${inlineLinks.length})` : ""}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
