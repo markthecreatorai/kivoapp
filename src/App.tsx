@@ -288,7 +288,7 @@ const App = () => (
                 <Route path="/circles/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />
                 <Route path="/circles/:slug/spaces/:spaceSlug" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circles/:slug/members" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
-                <Route path="/circles/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
+                <Route path="/circles/:slug/leaderboard" element={<Navigate to={`/circles`} replace />} />
                 <Route path="/circles/:slug/events" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
                 <Route path="/circles/:slug/classroom" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
                 {/* Admin → feed (admin is popup-only) */}

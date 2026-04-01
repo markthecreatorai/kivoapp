@@ -14,7 +14,6 @@ import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import {
   MessageSquare,
   Users,
-  Trophy,
   Calendar,
   BookOpen,
   Bell,
@@ -75,7 +74,6 @@ function getTabItems(slug: string) {
     { label: "Classroom", icon: BookOpen, path: `/circles/${slug}/classroom` },
     { label: "Calendário", icon: Calendar, path: `/circles/${slug}/events` },
     { label: "Membros", icon: Users, path: `/circles/${slug}/members` },
-    { label: "Ranking", icon: Trophy, path: `/circles/${slug}/leaderboard` },
     { label: "Sobre", icon: Star, path: `/circles/${slug}/about` },
   ];
 }
