@@ -1039,7 +1039,7 @@ export default function CircleSettings() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="email-confirm-pwd">Current password</Label>
+                  <Label htmlFor="email-confirm-pwd">Senha atual</Label>
                   <Input
                     id="email-confirm-pwd"
                     type="password"
