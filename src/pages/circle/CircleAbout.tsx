@@ -206,6 +206,7 @@ export default function CircleAbout() {
     return items;
   })();
 
+  const galleryIds = gallery.map((item) => `g-${item.url}`);
   const activeItem = gallery[activeIndex] || null;
 
   const updateCommunity = useMutation({
