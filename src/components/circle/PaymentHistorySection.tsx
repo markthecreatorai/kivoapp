@@ -146,7 +146,7 @@ export default function PaymentHistorySection({ userId }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Payment history</h2>
+            <h2 className="text-lg font-semibold text-foreground">Histórico de pagamentos</h2>
             <p className="text-sm text-muted-foreground">Veja suas transações anteriores</p>
           </div>
           <Button
