@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const TENOR_KEY = "AIzaSyBqRDEHMOaYVOysmVL7HJW4fPn82sBDaHo"; // Public / publishable Tenor API key
-const TENOR_BASE = "https://tenor.googleapis.com/v2";
+const TENOR_V2_KEY = (import.meta as any).env?.VITE_TENOR_API_KEY || "";
+const TENOR_V2_BASE = "https://tenor.googleapis.com/v2";
+const TENOR_V1_BASE = "https://g.tenor.com/v1";
+const TENOR_FALLBACK_KEY = "LIVDSRZULELA"; // public demo key (fallback)
 
 interface GifResult {
   id: string;
@@ -26,19 +28,46 @@ export default function GifPicker({ onSelect }: GifPickerProps) {
   const fetchGifs = useCallback(async (query: string) => {
     setLoading(true);
     try {
-      const endpoint = query.trim()
-        ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=30&media_filter=gif,tinygif&client_key=kivo`
-        : `${TENOR_BASE}/featured?key=${TENOR_KEY}&limit=30&media_filter=gif,tinygif&client_key=kivo`;
-      const res = await fetch(endpoint);
-      const data = await res.json();
-      const results: GifResult[] = (data.results || []).map((r: any) => ({
+      // Try Tenor v2 first when a valid key is provided
+      if (TENOR_V2_KEY) {
+        const endpoint = query.trim()
+          ? `${TENOR_V2_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_V2_KEY}&limit=30&media_filter=gif,tinygif&client_key=kivo`
+          : `${TENOR_V2_BASE}/featured?key=${TENOR_V2_KEY}&limit=30&media_filter=gif,tinygif&client_key=kivo`;
+
+        const res = await fetch(endpoint);
+        const data = await res.json();
+
+        if (res.ok && Array.isArray(data.results)) {
+          const results: GifResult[] = data.results.map((r: any) => ({
+            id: r.id,
+            url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url || "",
+            preview: r.media_formats?.tinygif?.url || r.media_formats?.gif?.url || "",
+            width: r.media_formats?.tinygif?.dims?.[0] || 200,
+            height: r.media_formats?.tinygif?.dims?.[1] || 200,
+          }));
+          setGifs(results.filter((g) => !!g.url));
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fallback: Tenor v1 public demo key
+      const endpointV1 = query.trim()
+        ? `${TENOR_V1_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_FALLBACK_KEY}&limit=30`
+        : `${TENOR_V1_BASE}/trending?key=${TENOR_FALLBACK_KEY}&limit=30`;
+
+      const resV1 = await fetch(endpointV1);
+      const dataV1 = await resV1.json();
+
+      const resultsV1: GifResult[] = (dataV1.results || []).map((r: any) => ({
         id: r.id,
-        url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url || "",
-        preview: r.media_formats?.tinygif?.url || r.media_formats?.gif?.url || "",
-        width: r.media_formats?.tinygif?.dims?.[0] || 200,
-        height: r.media_formats?.tinygif?.dims?.[1] || 200,
+        url: r.media?.[0]?.gif?.url || r.media?.[0]?.tinygif?.url || "",
+        preview: r.media?.[0]?.tinygif?.url || r.media?.[0]?.gif?.url || "",
+        width: r.media?.[0]?.tinygif?.dims?.[0] || 200,
+        height: r.media?.[0]?.tinygif?.dims?.[1] || 200,
       }));
-      setGifs(results);
+
+      setGifs(resultsV1.filter((g) => !!g.url));
     } catch {
       setGifs([]);
     } finally {
