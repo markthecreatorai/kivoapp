@@ -365,10 +365,10 @@ export default function CircleMessages() {
                 onChange={(e) => setConvSearch(e.target.value)}
                 className="h-8 text-xs"
               />
-              <Button size="sm" variant={showUnreadOnly ? "default" : "outline"} onClick={() => setShowUnreadOnly((v) => !v)}>
+              <Button size="sm" className="h-8" variant={showUnreadOnly ? "default" : "outline"} onClick={() => setShowUnreadOnly((v) => !v)}>
                 Não lidas
               </Button>
-              <Button size="sm" variant="outline" onClick={markAllRead} disabled={totalUnreadDMs === 0}>
+              <Button size="sm" className="h-8" variant="outline" onClick={markAllRead} disabled={totalUnreadDMs === 0}>
                 Marcar lidas
               </Button>
             </div>
@@ -495,7 +495,7 @@ export default function CircleMessages() {
                   return (
                     <div key={msg.id} className={cn("flex", isMine ? "justify-end" : "justify-start")}>
                       <div className={cn(
-                        "max-w-[70%] rounded-2xl px-4 py-2",
+                        "max-w-[82%] md:max-w-[70%] rounded-2xl px-4 py-2.5",
                         isMine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                       )}>
                         <p className="text-sm whitespace-pre-wrap">{msg.body}</p>

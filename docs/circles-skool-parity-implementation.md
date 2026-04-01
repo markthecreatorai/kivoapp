@@ -86,6 +86,9 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/pages/CommunityLanding.tsx`
   - tabs com hit area maior no mobile
   - CTA principal com altura maior para toque
+- [x] `src/pages/circle/CircleMessages.tsx`
+  - bolhas de mensagem mais confortáveis no mobile
+  - botões de filtros com touch target consistente
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
