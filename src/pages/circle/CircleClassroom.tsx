@@ -36,6 +36,9 @@ interface CircleCourse {
   min_level?: number | null;
   unlock_after_days?: number | null;
   course_price_cents?: number | null;
+  allowed_tier_ids?: string[] | null;
+  allowed_member_ids?: string[] | null;
+  private_mode?: string | null;
 }
 
 interface CircleLesson {
