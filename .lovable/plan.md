@@ -1,40 +1,41 @@
+## Mover /communities para /circles/explore com header de Circles
 
+### Objetivo
+A página de descoberta de comunidades deve viver em `/circles/explore` e usar o mesmo header/shell do CircleLayout, mas com o logo da Kivo no lugar do nome/ícone da comunidade no switcher.
 
-## Hotfix: "Erro ao salvar" na aba Geral do Admin
+### Alterações
 
-### Causa raiz
+**1. `src/App.tsx` — Rotas**
+- Manter `/circles/explore` apontando para `CommunityDiscovery`
+- Mudar `/communities` para redirect legado: `<Navigate to="/circles/explore" replace />`
 
-O formulário da aba Geral envia o campo `long_description` no payload de update, mas **essa coluna não existe** na tabela `communities`. O Supabase retorna erro ao tentar atualizar uma coluna inexistente.
+**2. `src/pages/CommunityDiscovery.tsx` — Envolver com header de Circles**
+- Remover o hero/header próprio da página (gradient com "Encontre sua comunidade")
+- Envolver o conteúdo com o header padrão de Circles (reutilizar estrutura do CircleLayout header)
+- No header: usar `CommunitySwitcher` passando `currentCommunity={null}` — quando null, mostrar logo Kivo em vez de ícone de comunidade
+- Manter search, filtros e grid de cards como estão, mas dentro do shell padrão
 
-Colunas que existem: `name`, `slug`, `is_listed`, `description`, `about_video_url`, `allow_member_posts`, `allow_member_events`.
+**3. `src/components/circle/CommunitySwitcher.tsx` — Logo Kivo quando sem comunidade**
+- Quando `currentCommunity` é `null`, renderizar o logo Kivo (importar de `@/assets/kivo-logo.svg`) no lugar do ícone/nome
+- Manter o dropdown funcional (lista de comunidades, criar, descobrir)
+- O texto ao lado do logo pode ser omitido (só logo) ou "Kivo" — seguindo padrão Skool
 
-Coluna que NÃO existe: `long_description`.
+**4. Atualizar referências `/communities` em outros arquivos**
+- `src/pages/circle/MyCommunities.tsx` — botão "Explorar" → `/circles/explore`
+- `src/pages/CommunityLanding.tsx` — link "Ver outras comunidades" → `/circles/explore`
+- `src/pages/circle/CommunitySelectPlan.tsx` — link → `/circles/explore`
+- `src/pages/JoinRedirect.tsx` — fallback → `/circles/explore`
+- `src/components/circle/CommunitySwitcher.tsx` — `handleDiscover` → `/circles/explore`
 
-### Solução
-
-Duas opções — a mais segura é a Opção A:
-
-**Opção A — Criar a coluna no banco (recomendada)**
-
-1. Migration: `ALTER TABLE communities ADD COLUMN long_description text;`
-2. Nenhuma mudança no frontend necessária — o formulário já usa o campo corretamente
-
-**Opção B — Remover o campo do formulário**
-
-1. Remover `long_description` do state `form` e do payload em `AdminGeneralTab.tsx`
-2. Remover o campo "Descrição completa" do JSX
-
-### Alterações (Opção A)
-
-**1. Nova migration SQL**
-```sql
-ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS long_description text;
-```
-
-**2. Nenhuma alteração em `AdminGeneralTab.tsx`** — o código já está correto, só faltava a coluna.
+**5. Header da página Explore**
+- Replicar a barra do CircleLayout (sticky header com CommunitySwitcher, notificações, avatar, mensagens)
+- Tabs de navegação NÃO aparecem (não há comunidade selecionada)
+- Abaixo do header: título "Descubra comunidades" + subtítulo "ou crie a sua" (link para criar)
+- Search bar centralizada
+- Filtros em pills (categorias) + grid de cards
 
 ### Resultado
-- Save na aba Geral funciona sem erro
-- Campo "Descrição completa" persiste no banco
-- Build sem erros
-
+- `/circles/explore` funciona com o mesmo shell visual das páginas de comunidade
+- Logo Kivo aparece no switcher quando não há comunidade ativa
+- `/communities` redireciona para `/circles/explore`
+- Dropdown do switcher continua funcional
