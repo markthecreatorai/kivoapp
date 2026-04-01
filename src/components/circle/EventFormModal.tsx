@@ -159,7 +159,7 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
   const [accessRule, setAccessRule] = useState("all_members");
   const [accessValue, setAccessValue] = useState("");
   const [remindEmail, setRemindEmail] = useState(false);
-
+  const [step, setStep] = useState<"template" | "form">("template");
   // Fetch tiers for access dropdown
   const { data: tiers = [] } = useQuery({
     queryKey: ["community-tiers-for-events", communityId],
