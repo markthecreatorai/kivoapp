@@ -59,6 +59,7 @@ export default function AdminDiscoveryTab({ community }: Props) {
     { label: "Posts (>=10)", done: (community.post_count || 0) >= 10, weight: 10 },
   ];
   const discoveryScore = discoverySignals.reduce((sum, s) => sum + (s.done ? s.weight : 0), 0);
+  const discoveryTier = discoveryScore >= 85 ? "Alto" : discoveryScore >= 60 ? "Médio" : "Baixo";
   const missingSignals = discoverySignals.filter((s) => !s.done).slice(0, 3);
 
   const saveDiscovery = useMutation({
@@ -129,7 +130,10 @@ export default function AdminDiscoveryTab({ community }: Props) {
       <div className="p-4 bg-white border border-gray-100 rounded-xl space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-900">Score de descoberta</p>
-          <span className="text-sm font-bold text-gray-900">{discoveryScore}/100</span>
+          <div className="text-right">
+            <p className="text-sm font-bold text-gray-900">{discoveryScore}/100</p>
+            <p className="text-[11px] text-gray-500">Nível: {discoveryTier}</p>
+          </div>
         </div>
         <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
           <div className="h-full bg-primary" style={{ width: `${discoveryScore}%` }} />

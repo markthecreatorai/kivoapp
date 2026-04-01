@@ -137,6 +137,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 ## Sprint 13 — Discovery Intelligence (em andamento)
 - [x] `src/components/circle/admin/AdminDiscoveryTab.tsx`
   - score de descoberta (0-100) com sinais explicáveis
+  - nível de rank (alto/médio/baixo)
   - recomendações acionáveis para melhorar rank
 
 ## Fase B — Paridade de navegação e estados de visita
