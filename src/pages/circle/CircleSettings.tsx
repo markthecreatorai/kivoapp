@@ -975,8 +975,8 @@ export default function CircleSettings() {
                 {/* Log out everywhere */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Log out of all devices</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">This will end all active sessions including this one</p>
+                    <p className="text-sm font-medium text-foreground">Sair de todos os dispositivos</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Todas as sessões ativas serão encerradas, incluindo esta</p>
                   </div>
                   <Button
                     variant="outline"
@@ -986,7 +986,7 @@ export default function CircleSettings() {
                     disabled={loggingOutAll}
                   >
                     {loggingOutAll ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <LogOut className="h-4 w-4 mr-1.5" />}
-                    LOG OUT EVERYWHERE
+                    ENCERRAR SESSÕES
                   </Button>
                 </div>
                 <Separator />
