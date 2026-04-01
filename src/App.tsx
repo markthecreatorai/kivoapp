@@ -280,7 +280,7 @@ const App = () => (
                 <Route path="/c/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />
                 <Route path="/c/:slug/spaces/:spaceSlug" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/members" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
-                <Route path="/c/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/events" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleEvents /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/classroom" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleClassroom /></CircleLayout></ProtectedRoute>} />
                 {/* Legacy /c/:slug/admin → redirect to feed */}
