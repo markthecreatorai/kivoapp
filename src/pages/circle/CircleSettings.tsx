@@ -1034,7 +1034,7 @@ export default function CircleSettings() {
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="your-new@email.com"
+                    placeholder="seu-novo@email.com"
                     autoFocus
                   />
                 </div>
