@@ -245,17 +245,20 @@ export default function AdminCommunityTab({ community }: Props) {
 
   const updateCategory = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: any }) => {
-      const { error } = await (supabase as any)
-        .from("community_spaces")
-        .update(patch)
-        .eq("id", id)
-        .eq("community_id", community.id);
+      const { data, error } = await supabase.rpc("update_community_space" as any, {
+        p_space_id: id,
+        p_community_id: community.id,
+        p_patch: patch,
+      });
       if (error) throw error;
+      if (!data) throw new Error("Falha ao atualizar categoria");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["community-categories-admin", community.id] });
       queryClient.invalidateQueries({ queryKey: ["circle-spaces"] });
+      toast.success("Categoria atualizada");
     },
+    onError: () => toast.error("Erro ao atualizar categoria"),
   });
 
   const saveCommunity = useMutation({
