@@ -128,6 +128,8 @@ export default function CircleLayout() {
     enabled: !!slug,
   });
 
+  const tabItems = slug ? getTabItems(slug, community) : [];
+
   const { data: member, isLoading: memberLoading } = useQuery({
     queryKey: ["circle-member", community?.id, user?.id],
     queryFn: async () => {
