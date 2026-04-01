@@ -153,6 +153,19 @@ export default function CommunityLanding() {
     enabled: !!community?.id,
   });
 
+  // Fetch community tiers for routing logic
+  const { data: communityTiers = [] } = useQuery({
+    queryKey: ["community-public-plans", community?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_community_public_plans" as any, {
+        p_community_id: community!.id,
+      });
+      if (error) return [];
+      return (data || []) as Array<{ id: string; is_free: boolean; price_cents: number }>;
+    },
+    enabled: !!community?.id,
+  });
+
   const { data: joinQuestions = [] } = useQuery({
     queryKey: ["community-join-questions", community?.id],
     queryFn: async () => {
