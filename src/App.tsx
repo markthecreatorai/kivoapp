@@ -250,6 +250,7 @@ const App = () => (
 
                 {/* Public community landing (no auth required) */}
                 <Route path="/c/:slug" element={<CommunityLanding />} />
+                <Route path="/c/:slug/plans" element={<CommunitySelectPlan />} />
 
                 {/* Authenticated circle pages — all scoped to /c/:slug/* */}
                 <Route path="/c/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />
