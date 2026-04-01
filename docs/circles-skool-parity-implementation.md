@@ -60,6 +60,9 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/pages/CommunityDiscovery.tsx`
   - badges de confiança/prova social (atividade, popularidade, curadoria)
   - reforço de sinais de conversão por card
+- [x] `src/pages/CommunityLanding.tsx`
+  - selos de confiança no sidebar da comunidade
+  - microcopy de CTA contextual por tipo (free/trial/paid/aprovação)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

@@ -308,6 +308,12 @@ export default function CommunityLanding() {
   const requireApproval = community.require_approval && !inviteCode;
   const isAlreadyMember = existingMember != null;
   const memberCount = community.member_count || 0;
+  const activityScore = (community.member_count || 0) * 0.7 + (community.post_count || 0) * 0.3;
+  const trustSeals = [
+    activityScore >= 120 ? "Alta atividade" : null,
+    memberCount >= 100 ? "Comunidade popular" : null,
+    requireApproval ? "Curadoria ativa" : "Entrada imediata",
+  ].filter(Boolean) as string[];
 
   const joinBtnLabel = isAlreadyMember
     ? "Ir para a Comunidade"
@@ -602,6 +608,12 @@ export default function CommunityLanding() {
                 </div>
               )}
 
+              <div className="mx-4 mb-3 flex flex-wrap gap-1.5">
+                {trustSeals.slice(0, 3).map((seal) => (
+                  <Badge key={seal} variant="outline" className="text-[10px]">{seal}</Badge>
+                ))}
+              </div>
+
               {/* Price block */}
               {isPaid && !inviteCode && (
                 <div className="mx-4 mb-3 p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
@@ -631,6 +643,11 @@ export default function CommunityLanding() {
                   <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-emerald-500" />Seguro</span>
                   <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-emerald-500" />Sem compromisso</span>
                 </div>
+                <p className="text-[10px] text-center text-gray-400 mt-1">
+                  {isPaid && !inviteCode
+                    ? (trialDays > 0 ? "Comece grátis hoje e decida depois." : "Assinatura recorrente com cancelamento quando quiser.")
+                    : (requireApproval ? "Solicitação analisada pela equipe da comunidade." : "Acesso rápido em menos de 1 minuto.")}
+                </p>
               </div>
 
               {/* Powered by */}
