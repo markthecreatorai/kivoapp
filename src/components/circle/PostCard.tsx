@@ -133,9 +133,10 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
   return (
     <div
+      onClick={() => onOpenPost?.(post.id)}
       className={cn(
-        "bg-card rounded-xl shadow-sm p-5 relative group",
-        post.is_pinned && "border border-primary"
+        "bg-card rounded-xl shadow-sm p-5 relative cursor-pointer hover:border-primary/40 border border-transparent transition-colors",
+        post.is_pinned && "border-primary"
       )}
     >
       {/* Pinned badge */}
@@ -148,45 +149,42 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
       {/* Header */}
       <div className="flex items-center gap-2.5">
-        <div className="shrink-0 cursor-pointer" onClick={() => onOpenPost?.(post.id)}>
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={post.author?.avatar_url || undefined} />
-            <AvatarFallback className="bg-muted text-muted-foreground text-[11px] font-medium">
-              {(post.author?.display_name || "U").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap min-w-0 leading-none">
-          <span className="text-[13px] font-bold text-foreground whitespace-nowrap">
-            {post.author?.display_name || "Membro"}
-          </span>
-          {(post.author as any)?.username && (
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarImage src={post.author?.avatar_url || undefined} />
+          <AvatarFallback className="bg-muted text-muted-foreground text-[11px] font-medium">
+            {(post.author?.display_name || "U").charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col min-w-0 leading-none">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-bold text-foreground whitespace-nowrap">
+              {post.author?.display_name || "Membro"}
+            </span>
+            {roleLabel && (
+              <span className="text-[10px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded whitespace-nowrap">
+                {roleLabel}
+              </span>
+            )}
+            <LevelBadge points={post.author?.total_points || 0} size="sm" />
+          </div>
+          <div className="flex items-center gap-1 mt-0.5">
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-              @{(post.author as any).username}
+              {timeAgo(post.created_at)}
             </span>
-          )}
-          {roleLabel && (
-            <span className="text-[10px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded whitespace-nowrap">
-              {roleLabel}
-            </span>
-          )}
-          <LevelBadge points={post.author?.total_points || 0} size="sm" />
-          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-            · {timeAgo(post.created_at)}
-          </span>
-          {showSpace && post.space && (
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-              · em {post.space.emoji} {post.space.name}
-            </span>
-          )}
+            {showSpace && post.space && (
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                · {post.space.emoji} {post.space.name}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Title + body + thumbnail */}
-      <div className="block mt-3 cursor-pointer" onClick={() => onOpenPost?.(post.id)}>
+      <div className="mt-3">
         <div className="flex gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
+            <h3 className="text-base font-bold text-foreground leading-snug">
               {post.title}
             </h3>
             {post.body && (
@@ -211,12 +209,12 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
       </div>
 
       {/* Interactive Poll */}
-      {isPoll && <PollSection post={post} memberId={memberId} />}
+      {isPoll && <div onClick={(e) => e.stopPropagation()}><PollSection post={post} memberId={memberId} /></div>}
 
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-border flex items-center gap-1">
         <button
-          onClick={() => !isMuted && onToggleLike(post.id)}
+          onClick={(e) => { e.stopPropagation(); if (!isMuted) onToggleLike(post.id); }}
           disabled={isMuted}
           className={cn(
             "flex items-center gap-1 text-[13px] transition-colors px-1.5 py-0.5 rounded-md",
@@ -229,7 +227,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         </button>
 
         <button
-          onClick={() => onOpenPost?.(post.id)}
+          onClick={(e) => { e.stopPropagation(); onOpenPost?.(post.id); }}
           className="flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50"
         >
           <MessageCircle className="h-[14px] w-[14px]" />
@@ -239,13 +237,17 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         {communityId && memberId && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50">
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-muted/50"
+              >
                 <Flag className="h-[14px] w-[14px]" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   supabase.from("community_reports" as any).insert({
                     community_id: communityId, reporter_id: memberId,
                     post_id: post.id, target_member_id: post.author_id,
@@ -264,7 +266,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         <div className="flex-1" />
 
         {post.comment_count > 0 && (
-          <button onClick={() => onOpenPost?.(post.id)} className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="flex items-center">
               {[0, 1, 2].slice(0, Math.min(post.comment_count, 3)).map((idx) => (
                 <div
@@ -278,10 +280,10 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
                 </div>
               ))}
             </div>
-            <span className="text-[12px] text-primary hover:underline whitespace-nowrap hidden sm:block">
-Novo comentário há {timeAgo(post.updated_at)}
+            <span className="text-[12px] text-primary whitespace-nowrap hidden sm:block">
+              Novo comentário há {timeAgo(post.updated_at)}
             </span>
-          </button>
+          </div>
         )}
       </div>
     </div>
