@@ -43,7 +43,7 @@ export default function CircleEvents() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [view, setView] = useState<"list" | "calendar">("list");
+  const [view, setView] = useState<"list" | "calendar">("calendar");
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
   const [showCreate, setShowCreate] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
@@ -52,6 +52,7 @@ export default function CircleEvents() {
   const [watchingStream, setWatchingStream] = useState<any>(null);
   const [showLiveForm, setShowLiveForm] = useState(false);
   const [editingStream, setEditingStream] = useState<any>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(new Date()));
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
