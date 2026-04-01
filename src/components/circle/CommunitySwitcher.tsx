@@ -78,7 +78,7 @@ export default function CommunitySwitcher({ currentCommunity }: CommunitySwitche
   const handleDiscover = () => {
     setOpen(false);
     setSearch("");
-    navigate("/communities");
+    navigate("/circles/explore");
   };
 
   return (
