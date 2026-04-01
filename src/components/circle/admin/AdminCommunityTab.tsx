@@ -91,6 +91,13 @@ function SortableCategoryRow({
   index: number;
   onUpdatePatch: (id: string, patch: any) => void;
 }) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState(category.name);
+  const [isEditingEmoji, setIsEditingEmoji] = useState(false);
+  const [editEmoji, setEditEmoji] = useState(category.emoji || "📁");
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const emojiInputRef = useRef<HTMLInputElement>(null);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: category.id,
   });
@@ -102,6 +109,26 @@ function SortableCategoryRow({
     opacity: isDragging ? 0.8 : 1,
   };
 
+  const saveNameEdit = () => {
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== category.name) {
+      onUpdatePatch(category.id, { name: trimmed });
+    } else {
+      setEditName(category.name);
+    }
+    setIsEditingName(false);
+  };
+
+  const saveEmojiEdit = () => {
+    const trimmed = editEmoji.trim();
+    if (trimmed && trimmed !== (category.emoji || "📁")) {
+      onUpdatePatch(category.id, { emoji: trimmed });
+    } else {
+      setEditEmoji(category.emoji || "📁");
+    }
+    setIsEditingEmoji(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -109,18 +136,61 @@ function SortableCategoryRow({
       className="rounded-xl border bg-white p-3 space-y-2"
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
-            className="cursor-grab active:cursor-grabbing touch-none"
+            className="cursor-grab active:cursor-grabbing touch-none shrink-0"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="h-4 w-4 text-gray-300" />
+            <GripVertical className="h-4 w-4 text-muted-foreground/50" />
           </button>
-          <p className="text-sm font-medium text-gray-900">{category.emoji || "📁"} {category.name}</p>
+
+          {isEditingEmoji ? (
+            <Input
+              ref={emojiInputRef}
+              value={editEmoji}
+              onChange={(e) => setEditEmoji(e.target.value)}
+              onBlur={saveEmojiEdit}
+              onKeyDown={(e) => { if (e.key === "Enter") saveEmojiEdit(); if (e.key === "Escape") { setEditEmoji(category.emoji || "📁"); setIsEditingEmoji(false); } }}
+              className="w-12 h-7 text-center text-sm p-0"
+              autoFocus
+              maxLength={4}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setIsEditingEmoji(true); setTimeout(() => emojiInputRef.current?.select(), 50); }}
+              className="text-sm hover:bg-muted rounded px-1 py-0.5 cursor-pointer"
+              title="Editar emoji"
+            >
+              {category.emoji || "📁"}
+            </button>
+          )}
+
+          {isEditingName ? (
+            <Input
+              ref={nameInputRef}
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={saveNameEdit}
+              onKeyDown={(e) => { if (e.key === "Enter") saveNameEdit(); if (e.key === "Escape") { setEditName(category.name); setIsEditingName(false); } }}
+              className="h-7 text-sm flex-1"
+              autoFocus
+              maxLength={30}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setIsEditingName(true); setTimeout(() => nameInputRef.current?.select(), 50); }}
+              className="text-sm font-medium text-foreground hover:bg-muted rounded px-1 py-0.5 cursor-pointer truncate"
+              title="Editar nome"
+            >
+              {category.name}
+            </button>
+          )}
         </div>
-        <p className="text-[11px] text-gray-400 w-7 text-right shrink-0">#{index + 1}</p>
+        <p className="text-[11px] text-muted-foreground w-7 text-right shrink-0">#{index + 1}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
