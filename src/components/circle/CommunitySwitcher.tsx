@@ -67,11 +67,9 @@ export default function CommunitySwitcher({ currentCommunity }: CommunitySwitche
   const handleCreate = () => {
     setOpen(false);
     setSearch("");
-    // If user has a workspace, they can create a community
     if (currentWorkspace) {
-      navigate("/dashboard");
+      navigate("/circles");
     } else {
-      // Fallback to onboarding
       navigate("/onboarding");
     }
   };
