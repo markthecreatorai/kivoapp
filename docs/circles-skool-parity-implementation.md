@@ -49,6 +49,10 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - card explicativo de "como ganhar pontos"
 - [x] `src/pages/circle/CircleLeaderboard.tsx`
   - dica contextual de origem dos pontos no topo do ranking
+  - alternância clara de período (7d / 30d / geral)
+- [x] `src/components/circle/MemberProfileModal.tsx`
+  - seção de links externos (quando disponíveis)
+  - atividade recente mais explícita
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

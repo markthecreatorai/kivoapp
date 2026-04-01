@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { Flame, MessageCircle, Heart, FileText, Calendar } from "lucide-react";
+import { Flame, MessageCircle, Heart, FileText, Calendar, Link2 } from "lucide-react";
 import LevelBadge from "@/components/circle/LevelBadge";
 import { getLevelInfo } from "@/components/circle/CircleLayout";
 import { format, formatDistanceToNow } from "date-fns";
@@ -82,6 +82,11 @@ export default function MemberProfileModal({ memberId, communityId, open, onOpen
   if (!member) return null;
 
   const level = getLevelInfo(member.total_points);
+  const externalLinks = [
+    (member as any).website_url,
+    (member as any).instagram_url,
+    (member as any).linkedin_url,
+  ].filter(Boolean) as string[];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,9 +139,20 @@ export default function MemberProfileModal({ memberId, communityId, open, onOpen
             Membro desde {format(new Date(member.joined_at || member.created_at), "dd/MM/yyyy", { locale: ptBR })}
           </p>
 
+          {externalLinks.length > 0 && (
+            <div className="w-full text-left space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Links</p>
+              {externalLinks.slice(0, 2).map((u) => (
+                <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                  <Link2 className="h-3.5 w-3.5" /> {u}
+                </a>
+              ))}
+            </div>
+          )}
+
           {recentPosts && recentPosts.length > 0 && (
             <div className="w-full text-left space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Últimos posts</p>
+              <p className="text-xs font-medium text-muted-foreground">Atividade recente</p>
               {recentPosts.map((p: any) => (
                 <Link
                   key={p.id}

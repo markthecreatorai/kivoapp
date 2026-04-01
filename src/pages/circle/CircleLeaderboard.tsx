@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -20,6 +20,7 @@ export default function CircleLeaderboard() {
   const { user } = useAuth();
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [periodView, setPeriodView] = useState<"7d" | "30d" | "all">("7d");
   const [levelNames, setLevelNames] = useState<Record<number, string>>({});
   const [savingNames, setSavingNames] = useState(false);
   const queryClient = useQueryClient();
@@ -133,6 +134,12 @@ export default function CircleLeaderboard() {
     const count = allMembers?.filter((m: any) => getLevelInfo(m.total_points).level === l.level).length || 0;
     return { ...l, percent: Math.round((count / totalMembers) * 100) };
   });
+
+  const activeLeaderboardData = useMemo(() => {
+    if (periodView === "30d") return { title: "Ranking (30 dias)", data: monthly, field: "period_points" as const };
+    if (periodView === "all") return { title: "Ranking (geral)", data: allMembers?.slice(0, 10), field: "total_points" as const };
+    return { title: "Ranking (7 dias)", data: weekly, field: "period_points" as const };
+  }, [periodView, weekly, monthly, allMembers]);
 
   const renderLeaderboardList = (data: any[] | undefined, useField: string) => {
     if (!data || data.length === 0) {
@@ -283,27 +290,18 @@ export default function CircleLeaderboard() {
         <p className="text-xs text-muted-foreground flex items-center gap-2"><Info className="h-3.5 w-3.5" /> Pontos vêm de posts, comentários, curtidas e conclusão de aulas.</p>
       </Card>
 
-      {/* 3 Leaderboard columns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-5 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-          <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Ranking (7 dias)
-          </h3>
-          {renderLeaderboardList(weekly, "period_points")}
-        </Card>
-        <Card className="p-5 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-          <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Ranking (30 dias)
-          </h3>
-          {renderLeaderboardList(monthly, "period_points")}
-        </Card>
-        <Card className="p-5 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-          <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
-            Ranking (geral)
-          </h3>
-          {renderLeaderboardList(allMembers?.slice(0, 10), "total_points")}
-        </Card>
+      <div className="flex gap-2 flex-wrap">
+        <button className={`px-3 py-1.5 text-xs rounded-full border ${periodView === "7d" ? "bg-primary text-primary-foreground border-primary" : ""}`} onClick={() => setPeriodView("7d")}>7 dias</button>
+        <button className={`px-3 py-1.5 text-xs rounded-full border ${periodView === "30d" ? "bg-primary text-primary-foreground border-primary" : ""}`} onClick={() => setPeriodView("30d")}>30 dias</button>
+        <button className={`px-3 py-1.5 text-xs rounded-full border ${periodView === "all" ? "bg-primary text-primary-foreground border-primary" : ""}`} onClick={() => setPeriodView("all")}>Geral</button>
       </div>
+
+      <Card className="p-5 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+        <h3 className="text-base font-bold text-foreground border-b pb-3 border-border">
+          {activeLeaderboardData.title}
+        </h3>
+        {renderLeaderboardList(activeLeaderboardData.data as any[], activeLeaderboardData.field)}
+      </Card>
 
       {/* Member profile modal */}
       <MemberProfileModal
