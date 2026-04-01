@@ -176,6 +176,21 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
     enabled: !!communityId && open,
   });
 
+  // Fetch spaces/groups for access dropdown
+  const { data: spaces = [] } = useQuery({
+    queryKey: ["community-spaces-for-events", communityId],
+    queryFn: async () => {
+      if (!communityId) return [];
+      const { data } = await supabase
+        .from("community_spaces")
+        .select("id, name")
+        .eq("community_id", communityId)
+        .order("position");
+      return data || [];
+    },
+    enabled: !!communityId && open,
+  });
+
   const applyTemplate = (tpl: typeof EVENT_TEMPLATES[number]) => {
     setTitle(tpl.title);
     setDescription(tpl.description);
@@ -628,6 +643,22 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
                         <SelectContent>
                           {tiers.map((t: any) => (
                             <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                )}
+                  </div>
+                )}
+                {spaces.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="space" id="access-space" />
+                    <Label htmlFor="access-space" className="text-sm cursor-pointer">Members in group</Label>
+                    {accessRule === "space" && (
+                      <Select value={accessValue} onValueChange={setAccessValue}>
+                        <SelectTrigger className="w-32 h-7 text-xs"><SelectValue placeholder="Group" /></SelectTrigger>
+                        <SelectContent>
+                          {spaces.map((s: any) => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

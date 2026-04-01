@@ -376,6 +376,7 @@ export default function CircleEvents() {
         myRsvp={detailEvent ? userRsvps?.[detailEvent.id] : undefined}
         onRsvp={handleRsvp}
         rsvpPending={rsvp.isPending}
+        communityId={community?.id}
       />
 
       {/* Live stream viewer */}

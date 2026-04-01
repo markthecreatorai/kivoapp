@@ -7201,6 +7201,14 @@ export type Database = {
         Args: { p_community_id: string; p_course_id: string; p_user_id: string }
         Returns: Json
       }
+      can_access_event: {
+        Args: { p_community_id: string; p_event_id: string; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          display_message: string
+          reason: string
+        }[]
+      }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
       get_community_ids_for_user: {

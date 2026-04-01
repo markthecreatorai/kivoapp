@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthProvider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Video, Users, ExternalLink, MapPin } from "lucide-react";
+import { Calendar, Clock, Video, Users, ExternalLink, MapPin, Lock } from "lucide-react";
 import { format, differenceInMinutes, isPast, isFuture, isWithinInterval, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -15,6 +16,7 @@ interface EventDetailModalProps {
   myRsvp?: string;
   onRsvp: (eventId: string, status: "GOING" | "MAYBE" | "NOT_GOING") => void;
   rsvpPending?: boolean;
+  communityId?: string;
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -43,7 +45,9 @@ function getEventStatus(event: any) {
   return { label: "Em breve", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300", isLive: false };
 }
 
-export default function EventDetailModal({ event, open, onOpenChange, myRsvp, onRsvp, rsvpPending }: EventDetailModalProps) {
+export default function EventDetailModal({ event, open, onOpenChange, myRsvp, onRsvp, rsvpPending, communityId }: EventDetailModalProps) {
+  const { user } = useAuth();
+
   const { data: attendees } = useQuery({
     queryKey: ["circle-event-attendees", event?.id],
     queryFn: async () => {
@@ -65,6 +69,22 @@ export default function EventDetailModal({ event, open, onOpenChange, myRsvp, on
     enabled: !!event && open,
   });
 
+  // Access check via DB function
+  const { data: accessCheck } = useQuery({
+    queryKey: ["event-access-check", event?.id, user?.id],
+    queryFn: async () => {
+      if (!event || !user || !communityId) return { allowed: true, reason: "", display_message: "" };
+      const { data, error } = await supabase.rpc("can_access_event", {
+        p_community_id: communityId,
+        p_event_id: event.id,
+        p_user_id: user.id,
+      });
+      if (error || !data || data.length === 0) return { allowed: true, reason: "", display_message: "" };
+      return data[0];
+    },
+    enabled: !!event && !!user && !!communityId && open,
+  });
+
   if (!event) return null;
 
   const status = getEventStatus(event);
@@ -75,6 +95,7 @@ export default function EventDetailModal({ event, open, onOpenChange, myRsvp, on
   const showRsvp = !isEnded && event.status !== "CANCELLED";
   const maxVisible = 8;
   const extraCount = (attendees?.length || 0) - maxVisible;
+  const isBlocked = accessCheck && !accessCheck.allowed;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,6 +117,19 @@ export default function EventDetailModal({ event, open, onOpenChange, myRsvp, on
             <h2 className="text-xl font-bold text-foreground">{event.title}</h2>
             <Badge className={status.color}>{status.label}</Badge>
           </div>
+
+          {/* Access blocked banner */}
+          {isBlocked && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <Lock className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-destructive">Acesso restrito</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {accessCheck?.display_message || "Você não tem acesso a este evento."}
+                </p>
+              </div>
+            </div>
+          )}
 
           {event.description && (
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{event.description}</p>
@@ -156,8 +190,8 @@ export default function EventDetailModal({ event, open, onOpenChange, myRsvp, on
 
           {/* Action buttons */}
           <div className="space-y-2 pt-2">
-            {/* RSVP */}
-            {showRsvp && (
+            {/* RSVP — hidden if blocked */}
+            {showRsvp && !isBlocked && (
               <div className="flex items-center gap-2">
                 {(["GOING", "MAYBE", "NOT_GOING"] as const).map((s) => (
                   <Button
@@ -174,8 +208,8 @@ export default function EventDetailModal({ event, open, onOpenChange, myRsvp, on
               </div>
             )}
 
-            {/* Live: join meeting */}
-            {status.isLive && event.meeting_url && (
+            {/* Live: join meeting — hidden if blocked */}
+            {status.isLive && event.meeting_url && !isBlocked && (
               <Button className="w-full bg-red-600 hover:bg-red-700 text-white" asChild>
                 <a href={event.meeting_url} target="_blank" rel="noopener noreferrer">
                   <Video className="h-4 w-4 mr-2" />
@@ -184,8 +218,8 @@ export default function EventDetailModal({ event, open, onOpenChange, myRsvp, on
               </Button>
             )}
 
-            {/* Future: Google Calendar */}
-            {!isEnded && (
+            {/* Future: Google Calendar — hidden if blocked */}
+            {!isEnded && !isBlocked && (
               <Button variant="outline" className="w-full" asChild>
                 <a href={buildGCalUrl(event)} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-2" />
