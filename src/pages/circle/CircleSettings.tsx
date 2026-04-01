@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import AffiliatesSettings from "@/components/circle/AffiliatesSettings";
+import PayoutsSettings from "@/components/circle/PayoutsSettings";
 
 const DEFAULT_NOTIFICATIONS = {
   likes: true,
