@@ -460,13 +460,11 @@ export default function CircleSettings() {
   const socialCount = Object.values(form.social_links).filter(Boolean).length;
 
   return (
-    <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
-      <h1 className="text-xl font-bold text-foreground mb-6">Settings</h1>
-
+    <div className="py-6 w-full">
       <div className="flex flex-col md:flex-row gap-8">
         {/* ─── Sidebar ─── */}
-        <aside className="md:w-56 shrink-0">
-          <nav className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
+        <aside className="md:w-52 shrink-0">
+          <nav className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 md:sticky md:top-28">
             {SECTION_ITEMS.map(({ id, label }) => (
               <button
                 key={id}
@@ -485,7 +483,7 @@ export default function CircleSettings() {
         </aside>
 
         {/* ─── Main Content ─── */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 max-w-2xl">
 
           {/* ═══ Communities ═══ */}
           {activeSection === "communities" && (
