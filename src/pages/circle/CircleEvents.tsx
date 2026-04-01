@@ -312,6 +312,11 @@ export default function CircleEvents() {
                   }}
                   isAdmin={isAdmin}
                   onEdit={() => event._type !== "stream" && setEditEvent(event)}
+                  onCancel={async (id: string) => {
+                    await supabase.from("community_events").update({ status: "CANCELLED" }).eq("id", id);
+                    queryClient.invalidateQueries({ queryKey: ["circle-events"] });
+                    toast.success("Evento cancelado");
+                  }}
                 />
               ))}
             </div>
