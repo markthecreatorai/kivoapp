@@ -111,6 +111,7 @@ export default function CircleSettings() {
         display_name: form.display_name,
         bio: form.bio,
         notification_preferences: form.notifications,
+        ...(({ username: form.username, sync_with_kivo: form.sync_with_kivo }) as any),
       });
     } finally {
       setSaving(false);
