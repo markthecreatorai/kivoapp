@@ -1,45 +1,75 @@
 
 
-## Fix: PostDetailModal ainda usa `.update()` em vez do RPC `soft_delete_post`
+## Fix: "Erro ao salvar" — colunas ausentes na tabela `communities`
 
 ### Causa raiz
-O fix anterior corrigiu apenas o `CircleFeed.tsx`. Porém, o **PostDetailModal.tsx** (modal de detalhe do post) tem seu próprio `deletePost` mutation na **linha 238** que ainda usa o método antigo:
+O código tenta salvar `tabs_config`, `tabs_order` e `community_rules` na tabela `communities`, mas **essas colunas não existem no banco**. O cast `as any` esconde o erro do TypeScript, e o Supabase retorna erro real no UPDATE.
 
-```tsx
-// ANTIGO (linha 238) — bloqueado silenciosamente por RLS
-await supabase.from("community_posts").update({ deleted_at: ... }).eq("id", postId);
-```
-
-O session replay confirma que o usuário está excluindo posts pelo modal de detalhe (menu ⋯ → Excluir), não pelo card do feed. Por isso o fix anterior nunca foi acionado.
+Para categorias (`community_spaces`), o `.update()` direto pode ser bloqueado silenciosamente por RLS (mesmo problema dos posts).
 
 ### Solução
 
-**`src/components/circle/PostDetailModal.tsx` — linha 237-240**
+**1. Migration — adicionar colunas faltantes + RPC para categorias**
 
-Trocar o `.update()` pelo `.rpc("soft_delete_post")` com tratamento correto de erro:
+```sql
+-- Adicionar colunas à tabela communities
+ALTER TABLE public.communities
+  ADD COLUMN IF NOT EXISTS tabs_config jsonb DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS tabs_order jsonb DEFAULT '["feed","classroom","members","leaderboard","events","about"]',
+  ADD COLUMN IF NOT EXISTS community_rules jsonb DEFAULT '[]';
 
-```tsx
-const deletePost = useMutation({
-  mutationFn: async () => {
-    const { data, error } = await supabase.rpc("soft_delete_post", { p_post_id: postId });
-    if (error || !data) throw new Error("Falha ao excluir");
-  },
-  onSuccess: () => {
-    toast.success("Post excluído");
-    queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
-    onClose();
-  },
-  onError: () => {
-    toast.error("Erro ao excluir post");
-  },
-});
+-- RPC para atualizar categoria (bypass RLS seguro)
+CREATE OR REPLACE FUNCTION public.update_community_space(
+  p_space_id uuid,
+  p_community_id uuid,
+  p_patch jsonb
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_workspace_id uuid;
+BEGIN
+  SELECT c.workspace_id INTO v_workspace_id
+  FROM communities c WHERE c.id = p_community_id;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM workspace_members
+    WHERE workspace_id = v_workspace_id
+      AND user_id = auth.uid()
+      AND role IN ('OWNER','ADMIN')
+  ) THEN
+    RAISE EXCEPTION 'forbidden';
+  END IF;
+
+  UPDATE community_spaces
+  SET name = COALESCE(p_patch->>'name', name),
+      emoji = COALESCE(p_patch->>'emoji', emoji),
+      position = COALESCE((p_patch->>'position')::int, position),
+      is_visible = COALESCE((p_patch->>'is_visible')::boolean, is_visible),
+      only_admins_can_post = COALESCE((p_patch->>'only_admins_can_post')::boolean, only_admins_can_post),
+      updated_at = now()
+  WHERE id = p_space_id AND community_id = p_community_id;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'not_found'; END IF;
+  RETURN true;
+END;
+$$;
 ```
 
+**2. `src/components/circle/admin/AdminCommunityTab.tsx`**
+
+- `saveCommunity`: remover `as any`, usar colunas reais (agora existem)
+- `updateCategory`: trocar `.update()` por `.rpc("update_community_space")` com tratamento de erro adequado
+- Adicionar `onError` com `toast.error` ao `updateCategory`
+
 ### Arquivos alterados
-1. `src/components/circle/PostDetailModal.tsx` — substituir mutation `deletePost`
+1. Nova migration SQL — colunas + RPC
+2. `src/components/circle/admin/AdminCommunityTab.tsx` — usar RPC para categorias, remover `as any`
 
 ### Resultado
-- Exclusão funciona tanto pelo card no feed quanto pelo modal de detalhe
-- Toast de erro aparece quando a exclusão falha de verdade
-- Post desaparece do feed após exclusão bem-sucedida
+- "Salvar" persiste tabs, ordem e regras corretamente
+- Edição de nome/emoji de categorias funciona via RPC seguro
+- Erros reais são exibidos ao usuário
 
