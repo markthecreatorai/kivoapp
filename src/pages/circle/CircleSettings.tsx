@@ -804,6 +804,9 @@ export default function CircleSettings() {
       {/* ─── Affiliates Section ─── */}
       {activeSection === "affiliates" && <AffiliatesSettings />}
 
+      {/* ─── Payouts Section ─── */}
+      {activeSection === "payouts" && <PayoutsSettings />}
+
       {/* ─── Notifications Section ─── */}
       {activeSection === "notifications" && (
         <Card className="p-6 space-y-0">
