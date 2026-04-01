@@ -116,6 +116,52 @@ export default function CircleSala de aula() {
   const isMock = circleCourses.length === 0 && !isLoading;
   const courses = isMock ? MOCK_COURSES : circleCourses;
 
+  const { data: courseProgressById = {} } = useQuery({
+    queryKey: ["classroom-progress-by-course", member?.id, courses.map((c) => c.id).join(",")],
+    queryFn: async () => {
+      if (!member?.id || !courses.length) return {} as Record<string, number>;
+
+      const realCourses = courses.filter((c) => !c.id.startsWith("mock-"));
+      if (!realCourses.length) return {} as Record<string, number>;
+
+      const { data: lessons } = await supabase
+        .from("circle_lessons")
+        .select("id, course_id, type")
+        .in("course_id", realCourses.map((c) => c.id))
+        .eq("type", "page");
+
+      const pages = (lessons || []) as Array<{ id: string; course_id: string; type: string }>;
+      if (!pages.length) return {} as Record<string, number>;
+
+      const lessonIds = pages.map((p) => p.id);
+      const { data: progressRows } = await (supabase as any)
+        .from("circle_lesson_progress")
+        .select("lesson_id, completed_at")
+        .eq("member_id", member.id)
+        .in("lesson_id", lessonIds);
+
+      const completedSet = new Set(
+        ((progressRows || []) as any[]).filter((r) => !!r.completed_at).map((r) => r.lesson_id)
+      );
+
+      const byCourse: Record<string, { total: number; completed: number }> = {};
+      for (const page of pages) {
+        byCourse[page.course_id] ||= { total: 0, completed: 0 };
+        byCourse[page.course_id].total += 1;
+        if (completedSet.has(page.id)) byCourse[page.course_id].completed += 1;
+      }
+
+      const pct: Record<string, number> = {};
+      for (const c of realCourses) {
+        const v = byCourse[c.id];
+        pct[c.id] = !v || v.total === 0 ? 0 : Math.round((v.completed / v.total) * 100);
+      }
+
+      return pct;
+    },
+    enabled: !!member?.id && courses.length > 0,
+  });
+
   // ─── All items (pages + modules) for selected course ──
   const { data: allItems = [] } = useQuery({
     queryKey: ["circle-lessons", selectedCourseId],
@@ -629,6 +675,7 @@ export default function CircleSala de aula() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {courses.map((course, index) => {
           const isPremium = course.access_type === "premium";
+          const coursePct = course.id.startsWith("mock-") ? 0 : (courseProgressById[course.id] || 0);
           return (
             <div
               key={course.id}
@@ -682,8 +729,8 @@ export default function CircleSala de aula() {
                 )}
               </div>
               <div className="mt-auto px-4 mb-4 pt-3">
-                <Progress value={0} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
-                <p className="text-[10px] text-muted-foreground mt-1">0% concluído</p>
+                <Progress value={coursePct} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+                <p className="text-[10px] text-muted-foreground mt-1">{coursePct}% concluído</p>
               </div>
             </div>
           );

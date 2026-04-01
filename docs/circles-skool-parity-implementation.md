@@ -25,6 +25,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - card de progresso mais evidente no topo da trilha
   - CTA de "Próxima aula" no painel de conteúdo
   - copy de navegação e ações principais em PT-BR
+  - progresso real por curso na grade (em vez de 0% fixo)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
