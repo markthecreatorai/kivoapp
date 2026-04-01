@@ -129,7 +129,7 @@ export default function AdminGeneralTab({ community }: Props) {
           onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
           className="border-gray-200 focus:border-gray-400"
         />
-        <p className="text-xs text-gray-400">URL pública: /c/{form.slug}</p>
+        <p className="text-xs text-gray-400">URL pública: /circles/{form.slug}</p>
       </div>
 
       {/* Description */}
