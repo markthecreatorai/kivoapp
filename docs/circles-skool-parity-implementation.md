@@ -126,6 +126,11 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - status de prontidão do modelo (pronto vs pendente de configuração)
   - validação de prontidão respeitando billing options (monthly/annual/both)
 
+## Sprint 12 — Community Governance (em andamento)
+- [x] `src/components/circle/admin/AdminCommunityTab.tsx`
+  - categorias reais (spaces) no admin
+  - controles por categoria: privada / apenas admin posta
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural

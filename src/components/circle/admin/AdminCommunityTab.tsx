@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,34 @@ export default function AdminCommunityTab({ community }: Props) {
   const [rules, setRules] = useState<string[]>(savedRules);
   const [newRule, setNewRule] = useState("");
   const [activeSection, setActiveSection] = useState<"tabs" | "categories" | "rules">("tabs");
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["community-categories-admin", community.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_spaces" as any)
+        .select("id,name,emoji,sort_order,is_private,only_admins_can_post")
+        .eq("community_id", community.id)
+        .order("sort_order", { ascending: true });
+      if (error) return [];
+      return (data || []) as any[];
+    },
+  });
+
+  const updateCategory = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: any }) => {
+      const { error } = await (supabase as any)
+        .from("community_spaces")
+        .update(patch)
+        .eq("id", id)
+        .eq("community_id", community.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["community-categories-admin", community.id] });
+      queryClient.invalidateQueries({ queryKey: ["circle-spaces"] });
+    },
+  });
 
   const saveCommunity = useMutation({
     mutationFn: async () => {
@@ -165,10 +193,43 @@ export default function AdminCommunityTab({ community }: Props) {
       )}
 
       {activeSection === "categories" && (
-        <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-          <Grid3x3 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-400 mb-1">Categorias ainda não implementadas.</p>
-          <p className="text-xs text-gray-400">Em breve você poderá organizar posts em categorias.</p>
+        <div className="space-y-3">
+          {categories.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <Grid3x3 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-400 mb-1">Nenhuma categoria ainda.</p>
+              <p className="text-xs text-gray-400">Crie espaços na comunidade para organizar o feed.</p>
+            </div>
+          ) : (
+            categories.map((c: any, idx: number) => (
+              <div key={c.id} className="rounded-xl border bg-white p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="h-4 w-4 text-gray-300" />
+                    <p className="text-sm font-medium text-gray-900">{c.emoji || "📁"} {c.name}</p>
+                  </div>
+                  <p className="text-[11px] text-gray-400">#{idx + 1}</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center justify-between rounded-lg border p-2">
+                    <span>Categoria privada</span>
+                    <Switch
+                      checked={!!c.is_private}
+                      onCheckedChange={(v) => updateCategory.mutate({ id: c.id, patch: { is_private: v } })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-2">
+                    <span>Apenas admin pode postar</span>
+                    <Switch
+                      checked={!!c.only_admins_can_post}
+                      onCheckedChange={(v) => updateCategory.mutate({ id: c.id, patch: { only_admins_can_post: v } })}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
