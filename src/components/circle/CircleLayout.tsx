@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
 import CircleAdminModal from "@/components/circle/admin/CircleAdminModal";
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -284,8 +284,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
 
   // Not logged in — redirect to community landing
   if (!user) {
-    navigate(`/c/${slug}`, { replace: true });
-    return null;
+    return <Navigate to={`/c/${slug}`} replace />;
   }
 
   // No community
