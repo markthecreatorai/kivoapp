@@ -314,9 +314,11 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
                       {(m.display_name || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-[13px] font-medium text-foreground flex-1 truncate">
-                    {m.display_name || "Membro"}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[13px] font-medium text-foreground block truncate">
+                      {m.display_name || "Membro"}
+                    </span>
+                  </div>
                   <span className="text-[12px] font-semibold text-primary shrink-0">
                     +{m.total_points}
                   </span>

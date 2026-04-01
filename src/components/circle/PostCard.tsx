@@ -161,6 +161,11 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           <span className="text-[13px] font-bold text-foreground whitespace-nowrap">
             {post.author?.display_name || "Membro"}
           </span>
+          {(post.author as any)?.username && (
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              @{(post.author as any).username}
+            </span>
+          )}
           {roleLabel && (
             <span className="text-[10px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded whitespace-nowrap">
               {roleLabel}
