@@ -58,6 +58,8 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<string>("joined_at");
+  const [pendingSearch, setPendingSearch] = useState("");
+  const [pendingSort, setPendingSort] = useState<"newest" | "oldest" | "with_answers">("newest");
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -141,6 +143,27 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   });
 
   const appByMemberId = new Map<string, any>(applications.map((a: any) => [a.member_id, a]));
+
+  const filteredPending = [...pendingMembers]
+    .filter((m: any) => {
+      if (!pendingSearch.trim()) return true;
+      const q = pendingSearch.toLowerCase();
+      return (m.display_name || "").toLowerCase().includes(q) || (m.bio || "").toLowerCase().includes(q);
+    })
+    .sort((a: any, b: any) => {
+      const appA = appByMemberId.get(a.id);
+      const appB = appByMemberId.get(b.id);
+
+      if (pendingSort === "with_answers") {
+        const aa = Array.isArray(appA?.answers) ? appA.answers.length : 0;
+        const bb = Array.isArray(appB?.answers) ? appB.answers.length : 0;
+        return bb - aa;
+      }
+
+      const da = new Date(a.joined_at || 0).getTime();
+      const db = new Date(b.joined_at || 0).getTime();
+      return pendingSort === "oldest" ? da - db : db - da;
+    });
   
   let filtered = members?.filter((m: any) => m.status !== "PENDING") || [];
   if (search) {
@@ -185,8 +208,24 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       {pendingMembers.length > 0 && (
         <Card className="p-4 border-yellow-300/50 bg-yellow-50/10">
           <h3 className="font-semibold text-sm text-foreground mb-3">Aguardando aprovação ({pendingMembers.length})</h3>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <Input
+              placeholder="Buscar pendentes..."
+              value={pendingSearch}
+              onChange={(e) => setPendingSearch(e.target.value)}
+              className="max-w-xs"
+            />
+            <Select value={pendingSort} onValueChange={(v: any) => setPendingSort(v)}>
+              <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Mais recentes</SelectItem>
+                <SelectItem value="oldest">Mais antigos</SelectItem>
+                <SelectItem value="with_answers">Mais respostas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2">
-            {pendingMembers.map((m: any) => {
+            {filteredPending.map((m: any) => {
               const app = appByMemberId.get(m.id);
               const answers = Array.isArray(app?.answers) ? app.answers : [];
 
@@ -215,10 +254,24 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                   ) : null}
 
                   <div className="flex gap-1">
-                    <Button size="sm" onClick={() => updateMember.mutate({ memberId: m.id, updates: { status: "ACTIVE" } })}>
+                    <Button size="sm" onClick={async () => {
+                      await updateMember.mutateAsync({ memberId: m.id, updates: { status: "ACTIVE" } });
+                      await (supabase as any)
+                        .from("community_join_applications")
+                        .update({ status: "APPROVED", reviewed_at: new Date().toISOString(), reviewed_by: currentMember.user_id })
+                        .eq("community_id", community.id)
+                        .eq("member_id", m.id);
+                      queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
+                    }}>
                       <UserCheck className="h-3.5 w-3.5 mr-1" />Aprovar
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => {
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      await (supabase as any)
+                        .from("community_join_applications")
+                        .update({ status: "REJECTED", reviewed_at: new Date().toISOString(), reviewed_by: currentMember.user_id })
+                        .eq("community_id", community.id)
+                        .eq("member_id", m.id);
+
                       supabase.from("community_members").delete().eq("id", m.id).then(() => {
                         queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
                         queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });

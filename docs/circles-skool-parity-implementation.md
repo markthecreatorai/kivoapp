@@ -32,6 +32,11 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - feedback visual mais forte quando aula é concluída
   - botão de continuar para próxima aula após conclusão
 
+## Sprint 3 — Admin Moderation / Applications (em andamento)
+- [x] `src/components/circle/admin/AdminMembersTab.tsx`
+  - filtros rápidos para pendentes (busca + ordenação)
+  - atualização de status da application ao aprovar/rejeitar
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural
