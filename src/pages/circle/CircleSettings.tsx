@@ -1068,7 +1068,7 @@ export default function CircleSettings() {
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="current-pwd">Current password</Label>
+                  <Label htmlFor="current-pwd">Senha atual</Label>
                   <Input
                     id="current-pwd"
                     type="password"
