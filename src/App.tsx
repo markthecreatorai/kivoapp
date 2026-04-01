@@ -89,6 +89,7 @@ const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 const CirclePostRedirect = lazy(() => import("./pages/circle/CirclePostRedirect"));
 
 const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
+const CircleProfile = lazy(() => import("./pages/circle/CircleProfile"));
 const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
 const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
 const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
@@ -265,6 +266,8 @@ const App = () => (
                 <Route path="/c/:slug/post/:id" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CirclePostRedirect /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/settings" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleSettings /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/about" element={<CircleLayout><CircleAbout /></CircleLayout>} />
+                <Route path="/c/:slug/profile" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/profile/:memberId" element={<ProtectedRoute requireWorkspace={false}><CircleLayout showRightSidebar={false}><CircleProfile /></CircleLayout></ProtectedRoute>} />
 
                 {/* Legacy /join/:slug -> /c/:slug redirect */}
                 <Route path="/join/:slug" element={<JoinRedirect />} />
