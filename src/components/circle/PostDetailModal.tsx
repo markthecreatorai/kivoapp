@@ -734,7 +734,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                     <button
                                       disabled={!editingCommentBody.trim() && editingCommentImages.length === 0}
                                       onClick={() => {
-                                        supabase.from("community_comments").update({ body: editingCommentBody.trim() || "📷", images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
+                                        supabase.from("community_comments").update({ body: editingCommentBody.trim(), images: editingCommentImages.length > 0 ? editingCommentImages : null, edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
                                           queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
                                           toast.success("Editado");
                                           setEditingCommentId(null);
