@@ -291,7 +291,7 @@ export default function AffiliatesSettings() {
             <div className="mx-auto h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
               <AlertCircle className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-sm font-medium text-foreground">Nenhum referral ainda</p>
+            <p className="text-sm font-medium text-foreground">Nenhuma indicação ainda</p>
             <p className="text-xs text-muted-foreground mt-1">
               Compartilhe seu link de afiliado para começar a ganhar comissões.
             </p>

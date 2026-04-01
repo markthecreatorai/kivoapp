@@ -193,7 +193,7 @@ export default function PaymentHistorySection({ userId }: Props) {
         {payments.length === 0 ? (
           <div className="text-center py-12">
             <Receipt className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">You have no payments.</p>
+            <p className="text-sm text-muted-foreground">Você não possui pagamentos.</p>
           </div>
         ) : (
           <div className="space-y-1">

@@ -217,8 +217,8 @@ export default function ChatSection({ userId, userCommunities }: Props) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="on">Chat on</SelectItem>
-                    <SelectItem value="off">Chat off</SelectItem>
+                    <SelectItem value="on">Ativado</SelectItem>
+                    <SelectItem value="off">Desativado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

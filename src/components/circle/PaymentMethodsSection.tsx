@@ -125,12 +125,12 @@ export default function PaymentMethodsSection({ userId }: Props) {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="font-semibold text-foreground">Payment methods</h3>
+            <h3 className="font-semibold text-foreground">Métodos de pagamento</h3>
             <p className="text-sm text-muted-foreground mt-0.5">Gerencie seus métodos de pagamento salvos</p>
           </div>
           <Button size="sm" className="font-semibold" onClick={() => setAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-1.5" />
-            ADD PAYMENT METHOD
+            ADICIONAR MÉTODO
           </Button>
         </div>
 

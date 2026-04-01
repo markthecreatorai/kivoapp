@@ -180,8 +180,8 @@ export default function NotificationsSection({ userId, userCommunities }: Props)
     <div className="space-y-6">
       {/* Global toggles */}
       <Card className="p-6">
-        <h3 className="font-semibold text-foreground mb-1">Notifications</h3>
-        <p className="text-sm text-muted-foreground mb-4">Manage your notification preferences</p>
+        <h3 className="font-semibold text-foreground mb-1">Notificações</h3>
+        <p className="text-sm text-muted-foreground mb-4">Gerencie suas preferências de notificação</p>
 
         {GLOBAL_TOGGLES.map((item, i) => (
           <div key={item.key}>
