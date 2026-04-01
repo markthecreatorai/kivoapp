@@ -119,15 +119,6 @@ function SortableCategoryRow({
     setIsEditingName(false);
   };
 
-  const saveEmojiEdit = () => {
-    const trimmed = editEmoji.trim();
-    if (trimmed && trimmed !== (category.emoji || "📁")) {
-      onUpdatePatch(category.id, { emoji: trimmed });
-    } else {
-      setEditEmoji(category.emoji || "📁");
-    }
-    setIsEditingEmoji(false);
-  };
 
   return (
     <div
