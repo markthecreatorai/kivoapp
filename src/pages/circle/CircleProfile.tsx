@@ -415,7 +415,7 @@ export default function CircleProfile() {
               variant="outline"
               size="sm"
               className="w-full text-xs"
-              onClick={() => navigate(`/c/${slug}/settings`)}
+              onClick={() => navigate(`/circle-settings?section=profile`)}
             >
               <Pencil className="h-3 w-3 mr-1.5" /> EDIT PROFILE
             </Button>
