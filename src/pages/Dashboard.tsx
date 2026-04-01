@@ -224,8 +224,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top communities */}
-      <TopCommunitiesCard data={topCommunities} formatCurrency={formatCurrency} />
+      {/* Top communities + top tiers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TopCommunitiesCard data={topCommunities} formatCurrency={formatCurrency} />
+        <RevenueByTierCard data={topTiers} formatCurrency={formatCurrency} />
+      </div>
+
+      {/* Entitlement source breakdown */}
+      <EntitlementSourceCard data={entitlementSources} />
 
       {/* Payment methods block */}
       <PaymentMethodsCard />
