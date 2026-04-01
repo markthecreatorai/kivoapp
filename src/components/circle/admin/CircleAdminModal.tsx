@@ -38,6 +38,7 @@ const NAV_ITEMS: { id: Section; label: string; disabled?: boolean }[] = [
   { id: "dashboard", label: "Painel" },
   { id: "invite", label: "Convites" },
   { id: "general", label: "Geral" },
+  { id: "onboarding", label: "Onboarding" },
   { id: "payouts", label: "Recebimentos" },
   { id: "pricing", label: "Preços" },
   { id: "affiliates", label: "Afiliados" },
