@@ -451,7 +451,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                           <Link2 className="h-3.5 w-3.5 mr-2" />Copiar link
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm("Excluir este post?")) deletePost.mutate(); }}>
+                        <DropdownMenuItem className="text-destructive" onClick={() => deletePost.mutate()}>
                           <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
