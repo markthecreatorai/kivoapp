@@ -407,16 +407,26 @@ export default function CircleAbout() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
-              onDragEnd={(event: DragEndEvent) => {
+              onDragOver={(event) => {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
-                const oldIndex = galleryIds.indexOf(String(active.id));
-                const newIndex = galleryIds.indexOf(String(over.id));
+                const ids = gallery.map((item) => `g-${item.url}`);
+                const oldIndex = ids.indexOf(String(active.id));
+                const newIndex = ids.indexOf(String(over.id));
                 if (oldIndex === -1 || newIndex === -1) return;
-                const reordered = arrayMove(gallery, oldIndex, newIndex);
-                saveGallery(reordered);
+                setLocalGallery(arrayMove(gallery, oldIndex, newIndex));
                 if (activeIndex === oldIndex) setActiveIndex(newIndex);
                 else if (activeIndex === newIndex) setActiveIndex(oldIndex);
+              }}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) {
+                  setLocalGallery(null);
+                  return;
+                }
+                // Persist the current local order
+                saveGallery(gallery);
+                setLocalGallery(null);
               }}
             >
               <SortableContext
