@@ -89,6 +89,7 @@ const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
 const CirclePostRedirect = lazy(() => import("./pages/circle/CirclePostRedirect"));
 
 const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
+const CircleProfile = lazy(() => import("./pages/circle/CircleProfile"));
 const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
 const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
 const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
