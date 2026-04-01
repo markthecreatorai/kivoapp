@@ -86,7 +86,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
       if (authError) {
         if (authError.message?.includes("already registered") || authError.message?.includes("User already registered")) {
           toast.error("Este email já está cadastrado. Faça login.");
-          navigate(`/member/login?redirect=/c/${communitySlug}`);
+          navigate(`/member/login?redirect=/circles/${communitySlug}`);
           return;
         }
         throw authError;
