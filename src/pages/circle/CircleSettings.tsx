@@ -927,11 +927,11 @@ export default function CircleSettings() {
                 {/* Email */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Email</p>
+                    <p className="text-sm font-medium text-foreground">E-mail</p>
                     <p className="text-sm text-muted-foreground mt-0.5">{user?.email}</p>
                   </div>
                   <Button variant="outline" size="sm" className="font-semibold" onClick={() => setEmailModalOpen(true)}>
-                    CHANGE EMAIL
+                    ALTERAR E-MAIL
                   </Button>
                 </div>
                 <Separator />
