@@ -79,7 +79,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
             display_name: formData.display_name,
             is_creator: false, // ← member, not a creator
           },
-          emailRedirectTo: `${window.location.origin}/c/${communitySlug}/feed`,
+          emailRedirectTo: `${window.location.origin}/circles/${communitySlug}/feed`,
         },
       });
 
