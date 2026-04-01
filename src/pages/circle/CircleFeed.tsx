@@ -37,6 +37,7 @@ export default function CircleFeed() {
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
   const [showLiveForm, setShowLiveForm] = useState(false);
   const [watchingStream, setWatchingStream] = useState<any>(null);
+  const [showInviteFromChecklist, setShowInviteFromChecklist] = useState(false);
   const [editingStream, setEditingStream] = useState<any>(null);
 
   // Post modal state — support both ?post=id (legacy) and direct open via prop/state
