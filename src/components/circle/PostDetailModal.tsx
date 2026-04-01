@@ -299,7 +299,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const handleCommentKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (commentBody.trim()) addComment.mutate({ body: commentBody });
+      if (commentBody.trim() || commentImages.length > 0) addComment.mutate({ body: commentBody || "📷" });
     }
   };
 
