@@ -1,32 +1,40 @@
 
 
-## Hotfix: Botão "Excluir" live stream não funciona
+## Hotfix: "Erro ao salvar" na aba Geral do Admin
 
 ### Causa raiz
 
-Dois problemas no código atual:
+O formulário da aba Geral envia o campo `long_description` no payload de update, mas **essa coluna não existe** na tabela `communities`. O Supabase retorna erro ao tentar atualizar uma coluna inexistente.
 
-1. **Erros do Supabase não são tratados**: O `delete()` do Supabase retorna `{ error }` mas o código não verifica — erros de RLS ou FK são silenciosamente ignorados (não lançam exceção, então o `catch` nunca é ativado).
+Colunas que existem: `name`, `slug`, `is_listed`, `description`, `about_video_url`, `allow_member_posts`, `allow_member_events`.
 
-2. **`confirm()` dentro de Dialog Radix**: O `confirm()` nativo pode ser bloqueado/interferido pelo focus-trap do Radix Dialog, impedindo a execução do fluxo.
+Coluna que NÃO existe: `long_description`.
 
-### Alterações
+### Solução
 
-**`src/components/circle/LiveStreamFormModal.tsx`**
+Duas opções — a mais segura é a Opção A:
 
-1. Substituir `confirm()` nativo por `AlertDialog` do Radix (já existe em `src/components/ui/alert-dialog.tsx`) — usar state `showDeleteConfirm` para controlar
-2. Verificar `{ error }` nas chamadas de delete e lançar exceção se houver erro:
-   ```tsx
-   const { error: evtErr } = await supabase.from("community_events").delete().eq("live_stream_id", stream.id);
-   if (evtErr) throw evtErr;
-   const { error: strErr } = await supabase.from("community_live_streams" as any).delete().eq("id", stream.id);
-   if (strErr) throw strErr;
-   ```
-3. Adicionar `console.error` no catch para facilitar debug futuro
-4. Trocar o botão "Excluir" para abrir o AlertDialog de confirmação em vez de chamar `confirm()`
+**Opção A — Criar a coluna no banco (recomendada)**
+
+1. Migration: `ALTER TABLE communities ADD COLUMN long_description text;`
+2. Nenhuma mudança no frontend necessária — o formulário já usa o campo corretamente
+
+**Opção B — Remover o campo do formulário**
+
+1. Remover `long_description` do state `form` e do payload em `AdminGeneralTab.tsx`
+2. Remover o campo "Descrição completa" do JSX
+
+### Alterações (Opção A)
+
+**1. Nova migration SQL**
+```sql
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS long_description text;
+```
+
+**2. Nenhuma alteração em `AdminGeneralTab.tsx`** — o código já está correto, só faltava a coluna.
 
 ### Resultado
-- Exclusão funciona corretamente com feedback visual
-- Erros de RLS/DB são capturados e mostrados ao usuário
-- Sem interferência do focus-trap do Dialog
+- Save na aba Geral funciona sem erro
+- Campo "Descrição completa" persiste no banco
+- Build sem erros
 
