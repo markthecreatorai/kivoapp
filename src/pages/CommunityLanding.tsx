@@ -584,7 +584,7 @@ export default function CommunityLanding() {
 
                 <div>
                   <p className="font-bold text-gray-900 dark:text-gray-100">{community.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">kivo.com/c/{community.slug}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">kivo.com/circles/{community.slug}</p>
                 </div>
 
                 {community.description && (
