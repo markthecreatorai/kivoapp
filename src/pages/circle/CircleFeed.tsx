@@ -544,7 +544,12 @@ export default function CircleFeed() {
               memberRole={member?.role}
               onOpenPost={handleOpenPost}
               onDeletePost={async (id) => {
-                await supabase.from("community_posts").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+                const { error } = await supabase.from("community_posts").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+                if (error) {
+                  console.error("Delete post error:", error);
+                  toast.error("Erro ao excluir post");
+                  return;
+                }
                 queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
                 toast.success("Post excluído");
               }}
