@@ -1,8 +1,9 @@
-import { ReactNode, useState } from "react";
+import { Suspense, useState } from "react";
 import MessagesPopover from "@/components/circle/MessagesPopover";
 import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
 import CircleAdminModal from "@/components/circle/admin/CircleAdminModal";
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, Outlet, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -63,10 +64,7 @@ export function getLevelInfo(points: number) {
   return LEVEL_THRESHOLDS[0];
 }
 
-interface CircleLayoutProps {
-  children: ReactNode;
-  showRightSidebar?: boolean;
-}
+// No more props — layout is persistent via Outlet
 
 function getTabItems(slug: string) {
   return [
@@ -78,7 +76,7 @@ function getTabItems(slug: string) {
   ];
 }
 
-export default function CircleLayout({ children, showRightSidebar = true }: CircleLayoutProps) {
+export default function CircleLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
@@ -292,7 +290,7 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
 
   // No community
   if (!community) {
-    return children;
+    return <Suspense fallback={<PageSkeleton />}><Outlet /></Suspense>;
   }
 
   // Member status gates
@@ -439,6 +437,9 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
 
   const navItems = tabItems;
 
+  // Determine showRightSidebar based on current route
+  const hideRightSidebar = location.pathname.includes("/settings") || location.pathname.includes("/profile") || location.pathname.includes("/classroom");
+
   return (
     <div className="min-h-screen bg-muted/40 flex flex-col">
       {/* Fixed Header */}
@@ -551,10 +552,12 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
         <div className="max-w-5xl mx-auto flex gap-0">
           {/* Main feed column ~65% */}
           <div className="flex-1 min-w-0">
-            {children}
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
           </div>
-          {/* Right sidebar ~35% — desktop only, hidden on classroom and settings */}
-          {showRightSidebar && !location.pathname.includes("/classroom") && !location.pathname.includes("/settings") && (
+          {/* Right sidebar ~35% — desktop only, hidden on classroom/settings/profile */}
+          {!hideRightSidebar && (
             <div className="hidden lg:block w-[340px] shrink-0">
               <div className="sticky top-[108px]">
                 <CircleRightSidebarSkool
