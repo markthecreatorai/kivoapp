@@ -506,6 +506,26 @@ export default function CircleFeed() {
           onClose={handleClosePost}
         />
       )}
+
+      {/* Live stream form modal */}
+      {community && member && (
+        <LiveStreamFormModal
+          open={showLiveForm}
+          onOpenChange={setShowLiveForm}
+          communityId={community.id}
+          memberId={member.id}
+        />
+      )}
+
+      {/* Live stream viewer */}
+      <LiveStreamViewer
+        stream={watchingStream}
+        open={!!watchingStream}
+        onClose={() => setWatchingStream(null)}
+        memberId={member?.id}
+        memberName={member?.display_name}
+        memberAvatar={member?.avatar_url}
+      />
     </div>
   );
 }
