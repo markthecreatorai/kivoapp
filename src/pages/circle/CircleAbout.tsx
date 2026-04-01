@@ -37,6 +37,7 @@ type GalleryItem = { type: "image" | "video"; url: string; position: number };
 function SortableThumb({
   item,
   index,
+  sortId,
   isActive,
   isAdminEditing,
   onSelect,
@@ -44,13 +45,14 @@ function SortableThumb({
 }: {
   item: GalleryItem;
   index: number;
+  sortId: string;
   isActive: boolean;
   isAdminEditing: boolean;
   onSelect: () => void;
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: `gallery-${index}`,
+    id: sortId,
     disabled: !isAdminEditing,
   });
 
