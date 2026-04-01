@@ -12,3 +12,9 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /admin
+Disallow: /onboarding
+
+Sitemap: https://kivostore.lovable.app/sitemap.xml
