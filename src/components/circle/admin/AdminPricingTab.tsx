@@ -65,6 +65,11 @@ export default function AdminPricingTab({ community }: Props) {
 
   const hasPrice = model !== "free" && (parseFloat(priceMonthly) > 0 || parseFloat(priceYearly) > 0);
 
+  const pricingReady =
+    model === "free" ||
+    (model === "subscription" && parseFloat(priceMonthly) > 0) ||
+    ((model === "tiers" || model === "freemium" || model === "one_time") && hasPrice);
+
   const modelPreview = {
     free: "Jornada: visitante entra direto sem checkout.",
     subscription: "Jornada: landing -> plano -> checkout recorrente.",
@@ -139,9 +144,12 @@ export default function AdminPricingTab({ community }: Props) {
         ))}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-1">
         <p className="text-xs text-gray-500">Prévia da jornada</p>
-        <p className="text-sm text-gray-800 mt-1">{modelPreview}</p>
+        <p className="text-sm text-gray-800">{modelPreview}</p>
+        <p className={`text-xs ${pricingReady ? "text-emerald-600" : "text-amber-600"}`}>
+          {pricingReady ? "Configuração pronta para publicar." : "Complete preços/regras para publicar esse modelo."}
+        </p>
       </div>
 
       {/* Set price button (shows when not free) */}

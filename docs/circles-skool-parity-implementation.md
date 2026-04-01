@@ -123,6 +123,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/components/circle/admin/AdminPricingTab.tsx`
   - seleção de modelo de monetização no estilo Skool
   - prévia textual da jornada de compra por modelo
+  - status de prontidão do modelo (pronto vs pendente de configuração)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
