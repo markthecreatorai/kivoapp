@@ -966,7 +966,7 @@ export default function CircleSettings() {
                       </SelectContent>
                     </Select>
                     <Button size="sm" onClick={handleSaveTimezone} disabled={savingTimezone} className="font-semibold">
-                      {savingTimezone ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+                      {savingTimezone ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR"}
                     </Button>
                   </div>
                 </div>
