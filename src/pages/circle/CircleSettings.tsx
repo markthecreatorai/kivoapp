@@ -994,8 +994,8 @@ export default function CircleSettings() {
                 {/* Leave community — danger zone */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-destructive">Leave community</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Remove your access to feed, courses, and events</p>
+                    <p className="text-sm font-medium text-destructive">Sair da comunidade</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Remove seu acesso ao feed, cursos e eventos</p>
                   </div>
                   <Button
                     variant="destructive"
