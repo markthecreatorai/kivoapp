@@ -336,27 +336,53 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        {step === "template" && !isEditing ? (
+          <div className="p-6 space-y-5">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Add event</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Choose a template or create your own
+              </p>
+            </div>
+            <div className="grid gap-2">
+              {EVENT_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.key}
+                  type="button"
+                  onClick={() => applyTemplate(tpl)}
+                  className="flex items-center gap-3 w-full rounded-lg border border-border p-3 text-left hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    <tpl.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{tpl.label}</p>
+                    {tpl.description && (
+                      <p className="text-xs text-muted-foreground truncate">{tpl.description}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="p-6 space-y-5">
           {/* Header */}
-          <div>
-            <h2 className="text-xl font-bold text-foreground">
-              {isEditing ? "Edit event" : "Add event"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Need ideas? Try one of these fun formats:{" "}
-              {TEMPLATE_SUGGESTIONS.map((t, i) => (
-                <span key={t.label}>
-                  <button
-                    type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => setTitle(t.title)}
-                  >
-                    {t.label}
-                  </button>
-                  {i < TEMPLATE_SUGGESTIONS.length - 1 && (i === TEMPLATE_SUGGESTIONS.length - 2 ? ", or " : ", ")}
-                </span>
-              ))}
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">
+                {isEditing ? "Edit event" : "Add event"}
+              </h2>
+              {!isEditing && (
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline mt-0.5"
+                  onClick={() => setStep("template")}
+                >
+                  ← Change template
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Title */}
