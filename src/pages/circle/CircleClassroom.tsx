@@ -5,16 +5,16 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
 import {
-  BookOpen, Play, Crown, ArrowLeft, Plus,
-  FileText, Circle, Trash2, Loader2, CheckCircle2,
-  MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder, Pencil,
-  Lock,
+  BookOpen, Play, Crown, Plus,
+  FileText, Circle, Loader2, CheckCircle2,
+  MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
+  Lock, Copy, Trash2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -53,16 +53,6 @@ interface CircleLesson {
   parent_id: string | null;
   resources?: any[] | null;
 }
-
-// ─── Mock data ───────────────────────────────────────────────
-const MOCK_COURSES: CircleCourse[] = [
-  { id: "mock-1", community_id: "", name: "Foundations of Growth", description: "Learn the core principles of scaling your online business from zero to six figures.", cover_url: null, access_type: "free", is_published: true, position: 0 },
-  { id: "mock-2", community_id: "", name: "Content Marketing Mastery", description: "Create content that converts — strategy, copywriting, and distribution.", cover_url: null, access_type: "free", is_published: true, position: 1 },
-  { id: "mock-3", community_id: "", name: "Community Building Blueprint", description: "Build and engage a thriving community around your brand.", cover_url: null, access_type: "free", is_published: true, position: 2 },
-  { id: "mock-4", community_id: "", name: "Sales Funnel Secrets", description: "Design high-converting funnels that sell on autopilot.", cover_url: null, access_type: "premium", is_published: true, position: 3 },
-  { id: "mock-5", community_id: "", name: "Email Marketing Pro", description: "Master email sequences, automations, and deliverability.", cover_url: null, access_type: "free", is_published: true, position: 4 },
-  { id: "mock-6", community_id: "", name: "Launch Like a Pro", description: "Step-by-step launch playbook for digital products.", cover_url: null, access_type: "premium", is_published: true, position: 5 },
-];
 
 // ─── Component ───────────────────────────────────────────────
 export default function CircleClassroom() {
@@ -123,7 +113,7 @@ export default function CircleClassroom() {
   );
 
   // ─── Circle courses query ────────────────────────────
-  const { data: circleCourses = [], isLoading } = useQuery({
+  const { data: courses = [], isLoading } = useQuery({
     queryKey: ["circle-courses", community?.id],
     queryFn: async () => {
       if (!community) return [];
@@ -137,21 +127,15 @@ export default function CircleClassroom() {
     enabled: !!community,
   });
 
-  const isMock = circleCourses.length === 0 && !isLoading;
-  const courses = isMock ? MOCK_COURSES : circleCourses;
-
   const { data: courseProgressById = {} } = useQuery({
     queryKey: ["classroom-progress-by-course", member?.id, courses.map((c) => c.id).join(",")],
     queryFn: async () => {
       if (!member?.id || !courses.length) return {} as Record<string, number>;
 
-      const realCourses = courses.filter((c) => !c.id.startsWith("mock-"));
-      if (!realCourses.length) return {} as Record<string, number>;
-
       const { data: lessons } = await supabase
         .from("circle_lessons")
         .select("id, course_id, type")
-        .in("course_id", realCourses.map((c) => c.id))
+        .in("course_id", courses.map((c) => c.id))
         .eq("type", "page");
 
       const pages = (lessons || []) as Array<{ id: string; course_id: string; type: string }>;
@@ -176,7 +160,7 @@ export default function CircleClassroom() {
       }
 
       const pct: Record<string, number> = {};
-      for (const c of realCourses) {
+      for (const c of courses) {
         const v = byCourse[c.id];
         pct[c.id] = !v || v.total === 0 ? 0 : Math.round((v.completed / v.total) * 100);
       }
@@ -190,7 +174,7 @@ export default function CircleClassroom() {
   const { data: allItems = [] } = useQuery({
     queryKey: ["circle-lessons", selectedCourseId],
     queryFn: async () => {
-      if (!selectedCourseId || selectedCourseId.startsWith("mock-")) return [];
+      if (!selectedCourseId) return [];
       const { data } = await supabase
         .from("circle_lessons")
         .select("*")
@@ -198,16 +182,15 @@ export default function CircleClassroom() {
         .order("position");
       return (data || []) as CircleLesson[];
     },
-    enabled: !!selectedCourseId && !selectedCourseId.startsWith("mock-"),
+    enabled: !!selectedCourseId,
   });
 
   // Separate modules and pages
   const modules = useMemo(() => allItems.filter(i => i.type === "module" && !i.parent_id), [allItems]);
-  const rootPages = useMemo(() => allItems.filter(i => i.type === "page" && !i.parent_id), [allItems]);
-  const getChildPages = (moduleId: string) => allItems.filter(i => i.type === "page" && i.parent_id === moduleId);
   const allPages = useMemo(() => allItems.filter(i => i.type === "page"), [allItems]);
+  const getChildPages = (moduleId: string) => allItems.filter(i => i.type === "page" && i.parent_id === moduleId);
 
-  // Build ordered tree (must be top-level hook)
+  // Build ordered tree
   const orderedItems = useMemo(() => {
     const items: Array<{ type: "page" | "module"; item: CircleLesson; children?: CircleLesson[] }> = [];
     const rootLevel = allItems.filter(i => !i.parent_id).sort((a, b) => a.position - b.position);
@@ -286,6 +269,49 @@ export default function CircleClassroom() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const duplicateModuleMutation = useMutation({
+    mutationFn: async (moduleId: string) => {
+      const module = allItems.find(i => i.id === moduleId);
+      if (!module || !selectedCourseId) throw new Error("Módulo não encontrado");
+
+      // Create module copy
+      const { data: newModule, error: modErr } = await supabase
+        .from("circle_lessons")
+        .insert({
+          course_id: selectedCourseId,
+          title: module.title + " (cópia)",
+          position: allItems.length,
+          is_published: module.is_published,
+          type: "module",
+        })
+        .select("id")
+        .single();
+      if (modErr) throw modErr;
+
+      // Copy child pages
+      const children = getChildPages(moduleId);
+      if (children.length > 0) {
+        const copies = children.map((child, i) => ({
+          course_id: selectedCourseId,
+          title: child.title,
+          content: child.content,
+          position: i,
+          is_published: child.is_published,
+          type: "page" as const,
+          parent_id: newModule.id,
+          resources: child.resources,
+        }));
+        const { error: childErr } = await supabase.from("circle_lessons").insert(copies as any);
+        if (childErr) throw childErr;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-lessons", selectedCourseId] });
+      toast.success("Pasta duplicada!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const startRenaming = (item: CircleLesson) => {
     setRenamingModuleId(item.id);
     setRenameValue(item.title);
@@ -331,7 +357,6 @@ export default function CircleClassroom() {
     const totalPages = allPages.length;
     const percent = getCourseProgress(totalPages);
     const completedPages = Object.values(progressMap).filter((p) => p.completed).length;
-    const isMockCourse = selectedCourseId.startsWith("mock-");
 
     return (
       <div className="flex flex-col h-[calc(100vh-120px)]">
@@ -349,7 +374,7 @@ export default function CircleClassroom() {
                     {selectedCourse.name}
                   </button>
                 </div>
-                {isAdmin && !isMockCourse && (
+                {isAdmin && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
@@ -379,176 +404,167 @@ export default function CircleClassroom() {
               </div>
 
               {/* Items tree */}
-              {isMockCourse ? (
-                <div className="space-y-0.5">
-                  {["Welcome & Overview", "Setting Up", "Mindset for Success", "Finding Your Niche", "Building Your Audience"].map((t, i) => (
-                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground">
-                      <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                      <span className="truncate">{t}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-0.5">
-                  {orderedItems.map(({ type, item, children }) => {
-                    if (type === "module") {
-                      const isExpanded = expandedModules.has(item.id);
-                      const childPages = children || [];
-                      return (
-                        <div key={item.id}>
-                          {/* Module header */}
-                          <div className="flex items-center group/mod">
-                            {renamingModuleId === item.id ? (
-                              <div className="flex items-center gap-2 px-3 py-1.5 flex-1 min-w-0">
-                                <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                <input
-                                  autoFocus
-                                  value={renameValue}
-                                  onChange={(e) => setRenameValue(e.target.value)}
-                                  onBlur={() => commitRename(item.id)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") commitRename(item.id);
-                                    if (e.key === "Escape") setRenamingModuleId(null);
-                                  }}
-                                  className="text-[13px] font-semibold bg-transparent border-b border-primary outline-none flex-1 min-w-0 text-foreground"
-                                />
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => toggleModule(item.id)}
-                                onDoubleClick={() => isAdmin && startRenaming(item)}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 min-w-0 hover:bg-muted/50 transition-colors"
-                              >
-                                {isExpanded
-                                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                }
-                                {isExpanded
-                                  ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
-                                }
-                                <span className="text-[13px] font-semibold text-foreground truncate">
-                                  {item.title}
-                                </span>
-                              </button>
-                            )}
-                            {isAdmin && renamingModuleId !== item.id && (
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover/mod:opacity-100 transition-opacity pr-1">
-                                <button
-                                  onClick={() => startRenaming(item)}
-                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
-                                  title="Renomear"
-                                >
-                                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+              <div className="space-y-0.5">
+                {orderedItems.map(({ type, item, children }) => {
+                  if (type === "module") {
+                    const isExpanded = expandedModules.has(item.id);
+                    const childPages = children || [];
+                    return (
+                      <div key={item.id}>
+                        {/* Module header */}
+                        <div className="flex items-center group/mod">
+                          {renamingModuleId === item.id ? (
+                            <div className="flex items-center gap-2 px-3 py-1.5 flex-1 min-w-0">
+                              <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <input
+                                autoFocus
+                                value={renameValue}
+                                onChange={(e) => setRenameValue(e.target.value)}
+                                onBlur={() => commitRename(item.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") commitRename(item.id);
+                                  if (e.key === "Escape") setRenamingModuleId(null);
+                                }}
+                                className="text-[13px] font-semibold bg-transparent border-b border-primary outline-none flex-1 min-w-0 text-foreground"
+                              />
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => toggleModule(item.id)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 min-w-0 hover:bg-muted/50 transition-colors"
+                            >
+                              {isExpanded
+                                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              }
+                              {isExpanded
+                                ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                              }
+                              <span className="text-[13px] font-semibold text-foreground truncate">
+                                {item.title}
+                              </span>
+                            </button>
+                          )}
+                          {isAdmin && renamingModuleId !== item.id && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted opacity-0 group-hover/mod:opacity-100 transition-opacity mr-1 shrink-0">
+                                  <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                                 </button>
-                                <button
-                                  onClick={() => addPageMutation.mutate(item.id)}
-                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
-                                  title="Adicionar página to folder"
-                                >
-                                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-                                </button>
-                                <button
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => startRenaming(item)}>
+                                  <FileText className="h-4 w-4 mr-2" /> Editar pasta
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => addPageMutation.mutate(item.id)}>
+                                  <Plus className="h-4 w-4 mr-2" /> Adicionar página na pasta
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => duplicateModuleMutation.mutate(item.id)}>
+                                  <Copy className="h-4 w-4 mr-2" /> Duplicar pasta
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
                                   onClick={() => {
                                     if (confirm("Excluir este módulo e suas páginas?")) deleteItemMutation.mutate(item.id);
                                   }}
-                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" /> Excluir pasta
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+
+                        {/* Child pages */}
+                        {isExpanded && childPages.map((page) => {
+                          const isActive = page.id === selectedLessonId;
+                          const prog = progressMap[page.id];
+                          return (
+                            <div
+                              key={page.id}
+                              onClick={() => { setSelectedLessonId(page.id); markStarted.mutate(page.id); }}
+                              className={cn(
+                                "flex items-center gap-2 pl-11 pr-3 py-2 rounded-lg cursor-pointer transition-colors group/page ml-1",
+                                isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
+                              )}
+                            >
+                              {prog?.completed ? (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                              ) : (
+                                <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                              )}
+                              <span className={cn(
+                                "text-[13px] flex-1 truncate",
+                                isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                              )}>
+                                {page.title}
+                              </span>
+                              {!page.is_published && (
+                                <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
+                              )}
+                              {isAdmin && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(page.id); }}
+                                  className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
                                 >
                                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                 </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Child pages */}
-                          {isExpanded && childPages.map((page) => {
-                            const isActive = page.id === selectedLessonId;
-                            const prog = progressMap[page.id];
-                            return (
-                              <div
-                                key={page.id}
-                                onClick={() => { setSelectedLessonId(page.id); markStarted.mutate(page.id); }}
-                                className={cn(
-                                  "flex items-center gap-2 pl-11 pr-3 py-2 rounded-lg cursor-pointer transition-colors group/page ml-1",
-                                  isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
-                                )}
-                              >
-                                {prog?.completed ? (
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                ) : (
-                                  <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                                )}
-                                <span className={cn(
-                                  "text-[13px] flex-1 truncate",
-                                  isActive ? "font-medium text-foreground" : "text-muted-foreground"
-                                )}>
-                                  {page.title}
-                                </span>
-                                {!page.is_published && (
-                                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
-                                )}
-                                {isAdmin && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(page.id); }}
-                                    className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {isExpanded && childPages.length === 0 && (
-                            <div className="pl-11 pr-3 py-2 text-[12px] text-muted-foreground/60 italic">
-                              Pasta vazia
+                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    }
+                          );
+                        })}
 
-                    // Root page
-                    const isActive = item.id === selectedLessonId;
-                    const prog = progressMap[item.id];
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => { setSelectedLessonId(item.id); markStarted.mutate(item.id); }}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group/page",
-                          isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
-                        )}
-                      >
-                        {prog?.completed ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        ) : (
-                          <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                        )}
-                        <span className={cn(
-                          "text-[13px] flex-1 truncate",
-                          isActive ? "font-medium text-foreground" : "text-muted-foreground"
-                        )}>
-                          {item.title}
-                        </span>
-                        {!item.is_published && (
-                          <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
-                        )}
-                        {isAdmin && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(item.id); }}
-                            className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </button>
+                        {isExpanded && childPages.length === 0 && (
+                          <div className="pl-11 pr-3 py-2 text-[12px] text-muted-foreground/60 italic">
+                            Pasta vazia
+                          </div>
                         )}
                       </div>
                     );
-                  })}
-                </div>
-              )}
+                  }
 
-              {allItems.length === 0 && !isMockCourse && (
+                  // Root page
+                  const isActive = item.id === selectedLessonId;
+                  const prog = progressMap[item.id];
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => { setSelectedLessonId(item.id); markStarted.mutate(item.id); }}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group/page",
+                        isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
+                      )}
+                    >
+                      {prog?.completed ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                      )}
+                      <span className={cn(
+                        "text-[13px] flex-1 truncate",
+                        isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                      )}>
+                        {item.title}
+                      </span>
+                      {!item.is_published && (
+                        <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(item.id); }}
+                          className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {allItems.length === 0 && (
                 <div className="text-center py-8">
                   <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
                   <p className="text-sm text-muted-foreground mb-1">Nenhum conteúdo ainda</p>
@@ -573,7 +589,7 @@ export default function CircleClassroom() {
           {/* ── Right: Lesson Editor / Content ── */}
           <ScrollArea className="flex-1 bg-muted/30">
             <div className="max-w-3xl mx-auto px-4 md:px-8 py-6">
-              {activeLesson && !isMockCourse ? (
+              {activeLesson ? (
                 <div className="space-y-3">
                   <div className="rounded-lg border bg-card p-3 flex items-center justify-between gap-3">
                     <div>
@@ -614,14 +630,6 @@ export default function CircleClassroom() {
                     } : undefined}
                   />
                 </div>
-              ) : isMockCourse ? (
-                <div className="flex items-center justify-center h-64 text-muted-foreground">
-                  <div className="text-center">
-                    <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                    <p className="text-sm">Este é um curso de demonstração.</p>
-                    <p className="text-xs text-muted-foreground mt-1">Crie cursos reais para gerenciar lições.</p>
-                  </div>
-                </div>
               ) : (
                 <div className="flex items-center justify-center h-64 text-muted-foreground">
                   <div className="text-center">
@@ -660,7 +668,7 @@ export default function CircleClassroom() {
   }
 
   // Empty state
-  if (circleCourses.length === 0) {
+  if (courses.length === 0) {
     return (
       <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -712,7 +720,7 @@ export default function CircleClassroom() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {courses.map((course, index) => {
           const isPremium = course.access_type === "premium";
-          const coursePct = course.id.startsWith("mock-") ? 0 : (courseProgressById[course.id] || 0);
+          const coursePct = courseProgressById[course.id] || 0;
           const memberLevel = member?.level ?? 1;
           const memberJoinedAt = member?.joined_at ? new Date(member.joined_at) : null;
           const daysSinceJoin = memberJoinedAt ? Math.floor((Date.now() - memberJoinedAt.getTime()) / 86400000) : 0;
@@ -744,9 +752,7 @@ export default function CircleClassroom() {
                 break;
               }
               case "PRIVATE": {
-                // Check if member is in allowed_member_ids
                 const inMemberList = (course.allowed_member_ids || []).includes(member?.id || "");
-                // Check if member has an active tier that matches allowed_tier_ids
                 const hasTier = (course.allowed_tier_ids || []).some(tid => memberTierIds.includes(tid));
                 if (!inMemberList && !hasTier) {
                   isLocked = true;
@@ -773,7 +779,7 @@ export default function CircleClassroom() {
                 isLocked && "opacity-80"
               )}
             >
-              {isAdmin && !course.id.startsWith("mock-") && (
+              {isAdmin && (
                 <div className="absolute top-2.5 right-2.5 z-10">
                   <CourseCardMenu
                     course={course}
