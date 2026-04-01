@@ -18,6 +18,9 @@ import PostCard from "@/components/circle/PostCard";
 import PostComposer from "@/components/circle/PostComposer";
 import SpaceFormModal from "@/components/circle/SpaceFormModal";
 import PostDetailModal from "@/components/circle/PostDetailModal";
+import LiveStreamFormModal from "@/components/circle/LiveStreamFormModal";
+import LiveStreamViewer from "@/components/circle/LiveStreamViewer";
+import LiveStreamBanner from "@/components/circle/LiveStreamBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function CircleFeed() {
@@ -31,6 +34,8 @@ export default function CircleFeed() {
   const [showCompose, setShowCompose] = useState(false);
   const [filter, setFilter] = useState<"recent" | "popular">("recent");
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
+  const [showLiveForm, setShowLiveForm] = useState(false);
+  const [watchingStream, setWatchingStream] = useState<any>(null);
 
   // Post modal state — support both ?post=id (legacy) and direct open via prop/state
   const [activePostId, setActivePostId] = useState<string | null>(searchParams.get("post"));
@@ -257,16 +262,18 @@ export default function CircleFeed() {
                  <div className="flex-1 rounded-xl bg-muted/40 px-4 py-2.5">
                    <span className="text-muted-foreground text-sm">Escreva algo...</span>
                  </div>
-                 <button
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     toast.info("Transmissão ao vivo em breve!");
-                   }}
-                   className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 px-3 py-1.5 rounded-lg hover:bg-muted/50"
-                 >
-                   <Video className="h-4 w-4" />
-                   <span className="hidden sm:inline">Ao vivo</span>
-                 </button>
+                 {isAdminMember && (
+                   <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowLiveForm(true);
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 px-3 py-1.5 rounded-lg hover:bg-muted/50"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span className="hidden sm:inline">Ao vivo</span>
+                  </button>
+                 )}
                </div>
              </Card>
            ) : community && member && (
@@ -302,6 +309,16 @@ export default function CircleFeed() {
             {" "}acontece em {formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}
           </span>
         </div>
+      )}
+
+      {/* Live stream banner */}
+      {community && (
+        <LiveStreamBanner
+          communityId={community.id}
+          onWatch={(stream) => setWatchingStream(stream)}
+          isAdmin={isAdminMember}
+          onCreateLive={() => setShowLiveForm(true)}
+        />
       )}
 
       {/* Category pills + filter */}
@@ -489,6 +506,26 @@ export default function CircleFeed() {
           onClose={handleClosePost}
         />
       )}
+
+      {/* Live stream form modal */}
+      {community && member && (
+        <LiveStreamFormModal
+          open={showLiveForm}
+          onOpenChange={setShowLiveForm}
+          communityId={community.id}
+          memberId={member.id}
+        />
+      )}
+
+      {/* Live stream viewer */}
+      <LiveStreamViewer
+        stream={watchingStream}
+        open={!!watchingStream}
+        onClose={() => setWatchingStream(null)}
+        memberId={member?.id}
+        memberName={member?.display_name}
+        memberAvatar={member?.avatar_url}
+      />
     </div>
   );
 }
