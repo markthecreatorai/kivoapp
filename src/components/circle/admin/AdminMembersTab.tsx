@@ -162,7 +162,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   });
 
   const bulkLifecycleAction = useMutation({
-    mutationFn: async ({ memberIds, action }: { memberIds: string[]; action: "reactivate" | "mute24h" }) => {
+    mutationFn: async ({ memberIds, action }: { memberIds: string[]; action: "reactivate" | "mute24h" | "recover_left" }) => {
       if (!memberIds.length) return;
       if (action === "reactivate") {
         await supabase
@@ -175,6 +175,13 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
           .from("community_members")
           .update({ status: "MUTED", muted_at: new Date().toISOString(), muted_until: new Date(Date.now() + 86400000).toISOString() })
           .in("id", memberIds);
+      }
+      if (action === "recover_left") {
+        await supabase
+          .from("community_members")
+          .update({ status: "ACTIVE" })
+          .in("id", memberIds)
+          .eq("status", "LEFT");
       }
     },
     onSuccess: () => {
@@ -365,7 +372,8 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `members-${community.slug || community.id}.csv`;
+    const segment = `${lifecycleFilter}-${roleFilter}-${statusFilter}`.toLowerCase();
+    a.download = `members-${community.slug || community.id}-${segment}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV exportado");
@@ -596,6 +604,19 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                 Silenciar inativos 24h
               </Button>
             </>
+          )}
+
+          {lifecycleFilter === "LEFT" && canBulkModerate && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const ids = filtered.filter((m: any) => m.status === "LEFT").map((m: any) => m.id);
+                bulkLifecycleAction.mutate({ memberIds: ids, action: "recover_left" });
+              }}
+            >
+              Recuperar membros que saíram
+            </Button>
           )}
         </div>
       </Card>

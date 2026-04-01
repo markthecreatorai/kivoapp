@@ -105,6 +105,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - ações operacionais rápidas por segmento (reativar / silenciar inativos 24h)
   - tendência rápida (delta ativos/risco) e "saved views" de CRM
   - remoção de saved view e badges de motivo de risco por membro
+  - export nomeado por segmento e playbook de recuperação para membros que saíram
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
