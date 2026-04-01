@@ -1,40 +1,32 @@
 
 
-## Fix: GIF/Image Lightbox closing the entire post modal
+## Simplify PostCard layout + make entire card clickable
 
-### Problem
-The lightbox overlay `div` (line 1011) uses `onClick={() => setLightboxImg(null)}`, but the click event **propagates up** to the `Dialog` component, which interprets it as an outside click and closes the entire post modal — sending the user back to the feed.
+### Changes to `src/components/circle/PostCard.tsx`
 
-### Solution — single file change
+1. **Make the entire card clickable**: Add `onClick={() => onOpenPost?.(post.id)}` and `cursor-pointer` to the outer `<div>`. Remove the separate clickable wrappers on the avatar and title/body sections.
 
-**`src/components/circle/PostDetailModal.tsx`** (lines 1010-1014):
+2. **Stop propagation on interactive elements**: Add `e.stopPropagation()` to the like button, comment button, report dropdown trigger, and poll vote buttons so they don't trigger the card click.
 
-1. Add `e.stopPropagation()` to the overlay click handler so the event doesn't reach the Dialog
-2. Add `e.stopPropagation()` to the inner `<img>` so clicking the image itself doesn't dismiss the lightbox
-3. Add an **X close button** (top-right corner) for explicit dismissal
+3. **Simplify header to match reference image**:
+   - Move the date/time below the display name (second line) instead of inline with badges
+   - Show category/space info on the same line as the date
+   - Remove `@username` display
+   - Layout: name + role badge + level on first line; date + space on second line
 
-```tsx
-{lightboxImg && (
-  <div
-    className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
-    onClick={(e) => { e.stopPropagation(); setLightboxImg(null); }}
-  >
-    <button
-      onClick={(e) => { e.stopPropagation(); setLightboxImg(null); }}
-      className="absolute top-4 right-4 text-white/80 hover:text-white ..."
-    >
-      <X className="h-6 w-6" />
-    </button>
-    <img
-      src={lightboxImg}
-      alt=""
-      className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg"
-      onClick={(e) => e.stopPropagation()}
-    />
-  </div>
-)}
+4. **Simplify title rendering**: Remove the `group-hover:text-primary` since the whole card is now the click target — keep a subtle hover on the card border instead.
+
+### Visual reference (target layout)
+```text
+[Avatar]  Name  [Role badge] [Level]
+          just now · 💬 Discussion
+
+● Title text here bold
+Body preview text truncated...
+
+👍 1   💬 0
 ```
 
-### Files to change
-- `src/components/circle/PostDetailModal.tsx` — ~5 lines modified around line 1010
+### Single file change
+- `src/components/circle/PostCard.tsx` — ~30 lines modified
 
