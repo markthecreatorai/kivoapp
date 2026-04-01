@@ -26,6 +26,28 @@ import LiveStreamBanner from "@/components/circle/LiveStreamBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminSetupChecklist from "@/components/circle/AdminSetupChecklist";
 
+function InviteDialogBody({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false);
+  const link = `${window.location.origin}/circles/${slug}`;
+  const handleCopy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+  };
+  return (
+    <div className="pt-4 space-y-4">
+      <div className="flex">
+        <input type="text" readOnly value={link} className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-l-lg bg-background text-foreground truncate focus:outline-none select-all" />
+        <button onClick={handleCopy} className="px-4 py-2 text-sm font-bold rounded-r-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center gap-1.5">
+          {copied ? <><Check className="h-4 w-4" /> COPIADO</> : <><Copy className="h-4 w-4" /> COPIAR</>}
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <a href={`https://wa.me/?text=${encodeURIComponent(`Venha participar! ${link}`)}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">WhatsApp</a>
+        <a href={`https://instagram.com`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">Instagram</a>
+      </div>
+    </div>
+  );
+}
+
 export default function CircleFeed() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
