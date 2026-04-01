@@ -58,15 +58,30 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
       setScheduledAt(stream.scheduled_at ? new Date(stream.scheduled_at).toISOString().slice(0, 16) : "");
       setChatEnabled(stream.chat_enabled ?? true);
       setGoLiveNow(false);
+      setCoverImage(stream.cover_image_url || null);
     } else {
-      setTitle("");
-      setDescription("");
-      setEmbedUrl("");
-      setScheduledAt("");
-      setChatEnabled(true);
-      setGoLiveNow(false);
+      setTitle(""); setDescription(""); setEmbedUrl(""); setScheduledAt("");
+      setChatEnabled(true); setGoLiveNow(false); setCoverImage(null);
     }
   }, [stream, open]);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `live-covers/${communityId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("community").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("community").getPublicUrl(path);
+      setCoverImage(urlData.publicUrl);
+    } catch {
+      toast.error("Erro ao enviar imagem");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const embedType = detectEmbedType(embedUrl);
   const isValidUrl = embedUrl.trim().length > 0 && (
