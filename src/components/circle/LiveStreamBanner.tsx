@@ -59,6 +59,11 @@ export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCrea
             <Users className="h-3.5 w-3.5" />
             <span className="text-xs">{stream.viewer_count}</span>
           </div>
+          {isAdmin && onEdit && (
+            <Button size="sm" variant="ghost" className="shrink-0 h-8 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(stream); }}>
+              Editar
+            </Button>
+          )}
           <Button size="sm" variant="destructive" className="shrink-0 h-8 text-xs font-semibold">
             <Play className="h-3 w-3 mr-1" />
             Assistir
