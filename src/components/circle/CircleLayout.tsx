@@ -14,7 +14,6 @@ import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import {
   MessageSquare,
   Users,
-  Trophy,
   Calendar,
   BookOpen,
   Bell,
