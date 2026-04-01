@@ -249,6 +249,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
             )}
           </div>
 
+          <div>
             <Label htmlFor="live-url" className="flex items-center gap-1.5">
               <LinkIcon className="h-3.5 w-3.5" />
               URL do YouTube ou Twitch *
