@@ -196,6 +196,11 @@ export default function LiveStreamViewer({ stream, open, onClose, memberId, memb
                     <MessageCircle className="h-4 w-4" />
                   </Button>
                 )}
+                {isAdmin && onEdit && (
+                  <Button variant="ghost" size="sm" onClick={() => { onEdit(stream); onClose(); }}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={onClose}>
                   <X className="h-4 w-4" />
                 </Button>
