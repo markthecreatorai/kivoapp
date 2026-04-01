@@ -747,7 +747,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                               </div>
                             ) : (
                               <>
-                                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
+                                {comment.body && comment.body.trim() && comment.body.trim() !== "📷" && <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>}
                                 {/* Comment images */}
                                 {comment.images && (comment.images as string[]).length > 0 && (
                                   <div className="mt-2 flex gap-2">
