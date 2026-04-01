@@ -769,13 +769,22 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                         </DropdownMenuContent>
                                       </DropdownMenu>
                                     </div>
-                                    <p className="text-xs text-foreground mt-0.5 whitespace-pre-wrap">{reply.body}</p>
+                                    <p className="text-xs text-foreground mt-0.5 whitespace-pre-wrap">{renderMentions(reply.body)}</p>
                                     <div className="flex items-center gap-3 mt-1">
                                       <button onClick={() => !isMuted && toggleCommentLike.mutate(reply.id)} disabled={isMuted}
                                         className={cn("flex items-center gap-1 text-[10px]", rLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}>
                                         <ThumbsUp className={cn("h-3 w-3", rLiked && "fill-current")} />
                                         {reply.like_count > 0 && <span>{reply.like_count}</span>}
                                       </button>
+                                      {!post.is_locked && !isMuted && (
+                                        <button onClick={() => {
+                                          setReplyTo(comment.id);
+                                          setReplyBody(`@${reply.author?.display_name || "Membro"} `);
+                                        }}
+                                          className="text-[10px] font-medium text-muted-foreground hover:text-foreground">
+                                          Responder
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
