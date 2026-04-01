@@ -382,7 +382,7 @@ export default function CommunityLanding() {
                   setActiveTab(tab.key);
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0",
+                  "flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0",
                   activeTab === tab.key
                     ? "border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100"
                     : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -484,7 +484,7 @@ export default function CommunityLanding() {
                 <div className="md:hidden bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
                   <Button
                     size="lg"
-                    className="w-full font-bold text-sm h-11 bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+                    className="w-full font-bold text-sm h-12 bg-primary hover:bg-primary/90 text-primary-foreground border-0"
                     onClick={handleJoinClick}
                     id="join-btn-mobile"
                   >
@@ -626,7 +626,7 @@ export default function CommunityLanding() {
               <div className="px-4 pb-4">
                 <Button
                   size="lg"
-                  className="w-full font-bold text-sm h-11 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+                  className="w-full font-bold text-sm h-12 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-0"
                   onClick={handleJoinClick}
                   id="join-btn-sidebar"
                 >

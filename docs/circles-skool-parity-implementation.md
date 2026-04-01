@@ -66,7 +66,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - selos de confiança no sidebar da comunidade
   - microcopy de CTA contextual por tipo (free/trial/paid/aprovação)
 
-## Sprint 6 — Notifications/Messages polish (em andamento)
+## Sprint 6 — Notifications/Messages polish (concluído)
 - [x] `src/pages/circle/CircleMessages.tsx`
   - busca rápida de conversas
   - filtro "não lidas"
@@ -78,6 +78,14 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/components/circle/NotificationPanel.tsx`
   - filtros por tipo no painel (todas / não lidas / interações / DMs)
   - empty state contextual por filtro
+
+## Sprint 7 — Mobile polish final (em andamento)
+- [x] `src/components/circle/CircleLayout.tsx`
+  - aumento da barra inferior mobile (touch target maior)
+  - espaçamento maior nos botões da navegação mobile
+- [x] `src/pages/CommunityLanding.tsx`
+  - tabs com hit area maior no mobile
+  - CTA principal com altura maior para toque
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
