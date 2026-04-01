@@ -22,64 +22,64 @@ interface PluginDef {
 const PLUGINS: PluginDef[] = [
   {
     key: "membership_questions",
-    label: "Membership questions",
-    desc: "Ask members questions when they request access to your group.",
+    label: "Perguntas de entrada",
+    desc: "Faça perguntas aos membros quando solicitarem acesso ao grupo.",
     isPro: false,
     icon: "❓",
     iconBg: "bg-blue-500",
   },
   {
     key: "unlock_chat_at_level",
-    label: "Unlock chat at a level",
-    desc: "Reduce DM spam by requiring members to be at a certain level to chat.",
+    label: "Desbloquear chat por nível",
+    desc: "Reduza spam no chat exigindo que membros atinjam um nível mínimo para conversar.",
     isPro: false,
     icon: "💬",
     iconBg: "bg-purple-500",
   },
   {
     key: "unlock_posting_at_level",
-    label: "Unlock posting at Level 2 or 3",
-    desc: "Reduce low quality posts by requiring members to be at Level 2 to post.",
+    label: "Desbloquear posts no nível 2 ou 3",
+    desc: "Reduza posts de baixa qualidade exigindo nível 2 para publicar.",
     isPro: false,
     icon: "✏️",
     iconBg: "bg-red-700",
   },
   {
     key: "auto_dm_new_members",
-    label: "Auto DM new members",
-    desc: "Send an automated DM to new group members.",
+    label: "DM automática para novos membros",
+    desc: "Envie uma mensagem automática para novos membros do grupo.",
     isPro: true,
     icon: "💌",
     iconBg: "bg-gray-800",
   },
   {
     key: "onboarding_video",
-    label: "Onboarding video",
-    desc: "Welcome new members with a custom onboarding video.",
+    label: "Vídeo de boas-vindas",
+    desc: "Receba novos membros com um vídeo personalizado de onboarding.",
     isPro: true,
     icon: "👋",
     iconBg: "bg-yellow-500",
   },
   {
     key: "zapier_integration",
-    label: "Zapier integration",
-    desc: "Invite members, unlock courses, and send membership questions to your CRM.",
+    label: "Integração Zapier",
+    desc: "Convide membros, desbloqueie cursos e envie dados para seu CRM.",
     isPro: true,
     icon: "⚡",
     iconBg: "bg-orange-500",
   },
   {
     key: "meta_pixel",
-    label: "Meta pixel tracking",
-    desc: "Run FB/IG ads to your about page, retarget visitors, and track signups with precision.",
+    label: "Rastreamento Meta Pixel",
+    desc: "Anuncie no FB/IG, faça retargeting de visitantes e rastreie inscrições com precisão.",
     isPro: true,
     icon: "∞",
     iconBg: "bg-blue-600",
   },
   {
     key: "cancellation_video",
-    label: "Cancellation video",
-    desc: "Retain members by showing them a video on the cancel page.",
+    label: "Vídeo de cancelamento",
+    desc: "Retenha membros mostrando um vídeo na página de cancelamento.",
     isPro: true,
     icon: "🎬",
     iconBg: "bg-red-500",
@@ -146,7 +146,7 @@ export default function AdminPluginsTab({ community }: Props) {
                   <span
                     className={`text-[11px] font-medium ${isOn ? "text-green-600" : "text-gray-400"}`}
                   >
-                    ({isOn ? "On" : "Off"})
+                    ({isOn ? "Ativo" : "Inativo"})
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{plugin.desc}</p>
