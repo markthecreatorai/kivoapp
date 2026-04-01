@@ -3151,6 +3151,7 @@ export type Database = {
       community_tiers: {
         Row: {
           billing_period: string | null
+          circle_plan_id: string | null
           community_id: string
           created_at: string
           id: string
@@ -3164,6 +3165,7 @@ export type Database = {
         }
         Insert: {
           billing_period?: string | null
+          circle_plan_id?: string | null
           community_id: string
           created_at?: string
           id?: string
@@ -3177,6 +3179,7 @@ export type Database = {
         }
         Update: {
           billing_period?: string | null
+          circle_plan_id?: string | null
           community_id?: string
           created_at?: string
           id?: string
@@ -3189,6 +3192,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "community_tiers_circle_plan_id_fkey"
+            columns: ["circle_plan_id"]
+            isOneToOne: false
+            referencedRelation: "circle_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "community_tiers_community_id_fkey"
             columns: ["community_id"]
