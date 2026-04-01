@@ -145,8 +145,6 @@ export default function CircleAbout() {
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 
-  const galleryIds = gallery.map((item) => `g-${item.url}`);
-
   const { data: community, isLoading } = useQuery({
     queryKey: ["community-about", slug],
     queryFn: async () => {
