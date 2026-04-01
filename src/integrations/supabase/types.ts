@@ -6825,6 +6825,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_community_pricing_model_v2: {
+        Args: { p_community_id: string; p_model: string; p_tiers?: Json }
+        Returns: Json
+      }
     }
     Enums: {
       community_access_type: "FREE_WITH_PRODUCT" | "PAID_SUBSCRIPTION" | "OPEN"
