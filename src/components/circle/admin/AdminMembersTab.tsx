@@ -158,6 +158,29 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     },
   });
 
+  const bulkLifecycleAction = useMutation({
+    mutationFn: async ({ memberIds, action }: { memberIds: string[]; action: "reactivate" | "mute24h" }) => {
+      if (!memberIds.length) return;
+      if (action === "reactivate") {
+        await supabase
+          .from("community_members")
+          .update({ status: "ACTIVE", muted_until: null, muted_at: null })
+          .in("id", memberIds);
+      }
+      if (action === "mute24h") {
+        await supabase
+          .from("community_members")
+          .update({ status: "MUTED", muted_at: new Date().toISOString(), muted_until: new Date(Date.now() + 86400000).toISOString() })
+          .in("id", memberIds);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
+      toast.success("Ação aplicada no segmento");
+    },
+  });
+
   const givePoints = useMutation({
     mutationFn: async ({ memberId, points, reason, type }: { memberId: string; points: number; reason: string; type: "bonus" | "penalty" }) => {
       const actualPoints = type === "penalty" ? -points : points;
@@ -531,9 +554,31 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={exportMembersCsv}>Exportar segmento atual</Button>
           {lifecycleFilter === "RISK" && canBulkModerate && (
-            <Button size="sm" variant="outline" onClick={() => setSelectedPendingIds(filtered.filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).map((m: any) => m.id))}>
-              Selecionar membros em risco
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={() => setSelectedPendingIds(filtered.filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).map((m: any) => m.id))}>
+                Selecionar membros em risco
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const ids = filtered.filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).map((m: any) => m.id);
+                  bulkLifecycleAction.mutate({ memberIds: ids, action: "reactivate" });
+                }}
+              >
+                Reativar em risco
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const ids = filtered.filter((m: any) => m.status === "ACTIVE" && isInactive(m)).map((m: any) => m.id);
+                  bulkLifecycleAction.mutate({ memberIds: ids, action: "mute24h" });
+                }}
+              >
+                Silenciar inativos 24h
+              </Button>
+            </>
           )}
         </div>
       </Card>
