@@ -11,6 +11,7 @@ interface LiveStreamBannerProps {
   onWatch: (stream: any) => void;
   isAdmin?: boolean;
   onCreateLive?: () => void;
+  onEdit?: (stream: any) => void;
 }
 
 export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCreateLive }: LiveStreamBannerProps) {
