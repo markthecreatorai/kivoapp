@@ -183,6 +183,41 @@ export default function CourseFormModal({
             )}
           </div>
 
+          {/* Access mode */}
+          <div className="space-y-1.5">
+            <Label>Modo de acesso</Label>
+            <Select value={accessMode} onValueChange={(v) => setAccessMode(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OPEN">Aberto</SelectItem>
+                <SelectItem value="LEVEL_GATED">Desbloquear por nível</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {accessMode === "OPEN"
+                ? "Todos os membros ativos podem acessar."
+                : "Somente membros no nível mínimo definido podem acessar."}
+            </p>
+          </div>
+
+          {accessMode === "LEVEL_GATED" && (
+            <div className="space-y-1.5">
+              <Label>Nível mínimo</Label>
+              <Input
+                type="number"
+                min={1}
+                max={9}
+                value={minLevel}
+                onChange={(e) => setMinLevel(Math.max(1, Math.min(9, parseInt(e.target.value) || 1)))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Membros precisam estar no nível {minLevel} ou acima para acessar.
+              </p>
+            </div>
+          )}
+
           {/* Published toggle */}
           <div className="flex items-center justify-between">
             <Label htmlFor="course-published">Publicado</Label>
