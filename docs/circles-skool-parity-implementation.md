@@ -72,6 +72,9 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - filtro "não lidas"
   - ação de "marcar todas como lidas"
   - indicador de unread no topo da inbox
+  - priorização visual e ordenação de conversas não lidas
+- [x] `src/pages/circle/CircleSettings.tsx`
+  - presets rápidos de preferências (ativar tudo / somente importantes)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

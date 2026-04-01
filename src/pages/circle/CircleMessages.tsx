@@ -312,11 +312,19 @@ export default function CircleMessages() {
 
   const selectedConvData = conversations?.find((c: any) => c.id === selectedConv);
 
-  const filteredConversations = (conversations || []).filter((c: any) => {
-    const matchesUnread = !showUnreadOnly || c.hasUnread;
-    const matchesSearch = !convSearch.trim() || (c.otherMember?.display_name || "").toLowerCase().includes(convSearch.toLowerCase());
-    return matchesUnread && matchesSearch;
-  });
+  const filteredConversations = (conversations || [])
+    .filter((c: any) => {
+      const matchesUnread = !showUnreadOnly || c.hasUnread;
+      const matchesSearch = !convSearch.trim() || (c.otherMember?.display_name || "").toLowerCase().includes(convSearch.toLowerCase());
+      return matchesUnread && matchesSearch;
+    })
+    .sort((a: any, b: any) => {
+      if (a.hasUnread && !b.hasUnread) return -1;
+      if (!a.hasUnread && b.hasUnread) return 1;
+      const aTime = new Date(a.lastMessage?.created_at || 0).getTime();
+      const bTime = new Date(b.lastMessage?.created_at || 0).getTime();
+      return bTime - aTime;
+    });
 
   const markAllRead = async () => {
     if (!member || !conversations?.length) return;
@@ -442,7 +450,10 @@ export default function CircleMessages() {
                   )}
                 </div>
                 {conv.hasUnread && (
-                  <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">novo</Badge>
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                  </div>
                 )}
               </button>
             ))}

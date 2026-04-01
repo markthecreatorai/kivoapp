@@ -230,6 +230,24 @@ export default function CircleSettings() {
         <TabsContent value="notifications" className="space-y-4">
           <Card className="p-6 space-y-0">
             <h3 className="font-semibold text-foreground mb-4">Preferências de notificação</h3>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForm((p) => p && ({ ...p, notifications: { likes: true, comments: true, dms: true, events: true, announcements: true } }))}
+              >
+                Ativar tudo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForm((p) => p && ({ ...p, notifications: { likes: false, comments: true, dms: true, events: false, announcements: true } }))}
+              >
+                Somente importantes
+              </Button>
+            </div>
             {(
               [
                 { key: "likes", label: "Curtidas", description: "Quando alguém curtir seus posts ou comentários" },
