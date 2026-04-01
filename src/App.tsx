@@ -251,7 +251,7 @@ const App = () => (
                 <Route path="/c/:slug" element={<CommunityLanding />} />
 
                 {/* Authenticated circle pages — all scoped to /c/:slug/* */}
-                <Route path="/c/:slug/feed" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
+                <Route path="/c/:slug/feed" element={<CircleLayout><CircleFeed /></CircleLayout>} />
                 <Route path="/c/:slug/spaces/:spaceSlug" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleFeed /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/members" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleMembers /></CircleLayout></ProtectedRoute>} />
                 <Route path="/c/:slug/leaderboard" element={<ProtectedRoute requireWorkspace={false}><CircleLayout><CircleLeaderboard /></CircleLayout></ProtectedRoute>} />
