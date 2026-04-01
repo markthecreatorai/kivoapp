@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -21,12 +21,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, MoreHorizontal, UserCheck, ShieldCheck, Shield, ShieldOff,
   VolumeX, Ban, UserMinus, Gift, Minus, X, Users, Crown, Lock,
-  CheckCircle2, XCircle, Download, Info,
+  CheckCircle2, XCircle, Download, Info, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import LevelBadge from "@/components/circle/LevelBadge";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/tracking";
+import { useSearchParams } from "react-router-dom";
 
 interface Props {
   community: any;
@@ -63,7 +65,6 @@ const MUTE_DURATIONS = [
   { label: "Permanente", ms: 0 },
 ];
 
-// Permission matrix data
 const PERMISSIONS = [
   { action: "Criar posts e comentários", owner: true, admin: true, mod: true, member: true },
   { action: "Editar/excluir próprio conteúdo", owner: true, admin: true, mod: true, member: true },
@@ -75,18 +76,276 @@ const PERMISSIONS = [
   { action: "Acesso ao financeiro (Kivo)", owner: false, admin: false, mod: false, member: false, workspace: true },
 ];
 
+// ── Debounce hook ──
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
+// ── Memoized member row ──
+const MemberRow = memo(function MemberRow({
+  m, currentMemberId, onAction, actionLoadingId,
+}: {
+  m: any;
+  currentMemberId: string;
+  onAction: (action: string, member: any, payload?: any) => void;
+  actionLoadingId: string | null;
+}) {
+  const isOwner = m.role === "OWNER";
+  const isSelf = m.id === currentMemberId;
+  const canManage = !isOwner && !isSelf;
+  const isActioning = actionLoadingId === m.id;
+
+  return (
+    <div className={cn(
+      "flex items-center gap-3 px-5 py-3 transition-colors duration-150",
+      isActioning ? "opacity-60 pointer-events-none" : "hover:bg-muted/30"
+    )}>
+      <Avatar className="h-10 w-10 shrink-0">
+        <AvatarImage src={m.avatar_url || undefined} />
+        <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+          {(m.display_name || "U")[0].toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-sm text-foreground truncate">{m.display_name || "Sem nome"}</span>
+          {(m as any).username && <span className="text-xs text-muted-foreground">@{(m as any).username}</span>}
+          <LevelBadge points={m.total_points || 0} size="sm" />
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {m.total_points || 0} pts · 🔥 {m.current_streak || 0} · Desde {m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yy") : "—"}
+        </p>
+      </div>
+      <Badge variant="outline" className={cn("text-[10px] font-semibold border", ROLE_STYLES[m.role] || ROLE_STYLES.MEMBER)}>
+        {m.role === "OWNER" && <Crown className="h-2.5 w-2.5 mr-1" />}
+        {ROLE_LABELS[m.role] || m.role}
+      </Badge>
+      {m.status !== "ACTIVE" && (
+        <Badge variant={m.status === "BANNED" ? "destructive" : "secondary"} className="text-[10px]">
+          {STATUS_LABELS[m.status] || m.status}
+        </Badge>
+      )}
+      {isActioning && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
+      {canManage && !isActioning ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {m.role === "MEMBER" && (
+              <>
+                <DropdownMenuItem onClick={() => onAction("role", m, { role: "MODERATOR" })}>
+                  <Shield className="h-3.5 w-3.5 mr-2" />Promover a Moderador
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAction("role", m, { role: "ADMIN" })}>
+                  <ShieldCheck className="h-3.5 w-3.5 mr-2" />Promover a Admin
+                </DropdownMenuItem>
+              </>
+            )}
+            {m.role === "MODERATOR" && (
+              <>
+                <DropdownMenuItem onClick={() => onAction("role", m, { role: "ADMIN" })}>
+                  <ShieldCheck className="h-3.5 w-3.5 mr-2" />Promover a Admin
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAction("role", m, { role: "MEMBER" })}>
+                  <ShieldOff className="h-3.5 w-3.5 mr-2" />Rebaixar a Membro
+                </DropdownMenuItem>
+              </>
+            )}
+            {m.role === "ADMIN" && (
+              <DropdownMenuItem onClick={() => onAction("role", m, { role: "MEMBER" })}>
+                <ShieldOff className="h-3.5 w-3.5 mr-2" />Rebaixar a Membro
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            {m.status === "ACTIVE" && (
+              <DropdownMenuItem onClick={() => onAction("mute", m)}>
+                <VolumeX className="h-3.5 w-3.5 mr-2" />Silenciar
+              </DropdownMenuItem>
+            )}
+            {m.status === "MUTED" && (
+              <DropdownMenuItem onClick={() => onAction("unmute", m)}>
+                <UserCheck className="h-3.5 w-3.5 mr-2" />Remover silêncio
+              </DropdownMenuItem>
+            )}
+            {m.status !== "BANNED" && (
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onAction("ban", m)}>
+                <Ban className="h-3.5 w-3.5 mr-2" />Banir
+              </DropdownMenuItem>
+            )}
+            {m.status === "BANNED" && (
+              <DropdownMenuItem onClick={() => onAction("unban", m)}>
+                <UserCheck className="h-3.5 w-3.5 mr-2" />Desbanir
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => onAction("remove", m)}>
+              <UserMinus className="h-3.5 w-3.5 mr-2" />Remover da comunidade
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onAction("bonus", m)}>
+              <Gift className="h-3.5 w-3.5 mr-2" />Dar pontos bônus
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAction("penalty", m)}>
+              <Minus className="h-3.5 w-3.5 mr-2" />Remover pontos
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : !isActioning ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="h-8 w-8 shrink-0 flex items-center justify-center">
+              {isSelf ? (
+                <span className="text-[10px] text-muted-foreground font-medium">Você</span>
+              ) : (
+                <Lock className="h-3.5 w-3.5 text-muted-foreground/50" />
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isSelf ? "Você não pode moderar a si mesmo" : "Sem permissão nesta comunidade"}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+    </div>
+  );
+});
+
+// ── Permission Matrix (static, extracted) ──
+const PermissionMatrix = memo(function PermissionMatrix() {
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-sm text-foreground">Permissões por função</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Somente permissões da comunidade</p>
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center cursor-help">
+              <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[260px]">
+            Permissões da comunidade não concedem acesso ao financeiro global da Kivo. O acesso ao workspace é controlado separadamente.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              <th className="text-left py-2.5 px-5 font-medium text-muted-foreground text-xs">Ação</th>
+              <th className="text-center py-2.5 px-3 font-medium text-xs">
+                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.OWNER)}>
+                  <Crown className="h-2.5 w-2.5" />Dono
+                </span>
+              </th>
+              <th className="text-center py-2.5 px-3 font-medium text-xs">
+                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.ADMIN)}>Admin</span>
+              </th>
+              <th className="text-center py-2.5 px-3 font-medium text-xs">
+                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.MODERATOR)}>Mod</span>
+              </th>
+              <th className="text-center py-2.5 px-3 font-medium text-xs">
+                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.MEMBER)}>Membro</span>
+              </th>
+              <th className="text-center py-2.5 px-3 font-medium text-xs">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
+                  <Lock className="h-2.5 w-2.5" />Workspace
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {PERMISSIONS.map((p) => (
+              <tr key={p.action} className="hover:bg-muted/20 transition-colors duration-150">
+                <td className="py-2.5 px-5 text-xs text-foreground">{p.action}</td>
+                <td className="text-center py-2.5 px-3">
+                  {p.owner ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
+                </td>
+                <td className="text-center py-2.5 px-3">
+                  {p.admin ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
+                </td>
+                <td className="text-center py-2.5 px-3">
+                  {p.mod ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
+                </td>
+                <td className="text-center py-2.5 px-3">
+                  {p.member ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
+                </td>
+                <td className="text-center py-2.5 px-3">
+                  {p.workspace ? (
+                    <Tooltip>
+                      <TooltipTrigger><Lock className="h-4 w-4 text-muted-foreground/50 mx-auto" /></TooltipTrigger>
+                      <TooltipContent>Disponível apenas no workspace</TooltipContent>
+                    </Tooltip>
+                  ) : <span className="text-muted-foreground/30 text-xs">—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="md:hidden p-4 space-y-2">
+        {PERMISSIONS.map((p) => (
+          <div key={p.action} className="rounded-lg border p-3 space-y-2">
+            <p className="text-xs font-medium text-foreground">{p.action}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {p.owner && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.OWNER)}>Dono</Badge>}
+              {p.admin && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.ADMIN)}>Admin</Badge>}
+              {p.mod && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.MODERATOR)}>Mod</Badge>}
+              {p.member && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.MEMBER)}>Membro</Badge>}
+              {p.workspace && (
+                <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground">
+                  <Lock className="h-2 w-2 mr-0.5" />Workspace
+                </Badge>
+              )}
+              {!p.owner && !p.admin && !p.mod && !p.member && !p.workspace && (
+                <span className="text-[10px] text-muted-foreground">Nenhuma função</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-5 py-3 border-t border-border bg-muted/20">
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+          <Lock className="h-3 w-3 shrink-0" />
+          Permissões da comunidade não concedem acesso ao financeiro global da Kivo.
+        </p>
+      </div>
+    </Card>
+  );
+});
+
+// ── Main Component ──
 export default function AdminMembersTab({ community, currentMember }: Props) {
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [lifecycleFilter, setLifecycleFilter] = useState<"ALL" | "ACTIVE" | "RISK" | "LEFT" | "BANNED">("ALL");
-  const [sortBy, setSortBy] = useState<string>("joined_at");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mountTime = useRef(performance.now());
+
+  // Restore filters from URL
+  const [search, setSearch] = useState(searchParams.get("ms") || "");
+  const [roleFilter, setRoleFilter] = useState(searchParams.get("mr") || "ALL");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("mst") || "ALL");
+  const [lifecycleFilter, setLifecycleFilter] = useState<"ALL" | "ACTIVE" | "RISK" | "LEFT" | "BANNED">(
+    (searchParams.get("mlc") as any) || "ALL"
+  );
+  const [sortBy, setSortBy] = useState(searchParams.get("msb") || "joined_at");
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingSort, setPendingSort] = useState<"newest" | "oldest" | "with_answers">("newest");
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [bulkReason, setBulkReason] = useState("");
   const [bulkConfirm, setBulkConfirm] = useState<{ type: "approve" | "reject"; count: number } | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -98,6 +357,30 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [pointsAmount, setPointsAmount] = useState(10);
   const [pointsReason, setPointsReason] = useState("");
 
+  const debouncedSearch = useDebounce(search, 200);
+  const debouncedPendingSearch = useDebounce(pendingSearch, 200);
+
+  // Persist filters to URL (without navigation)
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    // preserve existing tab param
+    const updates: Record<string, string> = {};
+    if (debouncedSearch) updates.ms = debouncedSearch; else params.delete("ms");
+    if (roleFilter !== "ALL") updates.mr = roleFilter; else params.delete("mr");
+    if (statusFilter !== "ALL") updates.mst = statusFilter; else params.delete("mst");
+    if (lifecycleFilter !== "ALL") updates.mlc = lifecycleFilter; else params.delete("mlc");
+    if (sortBy !== "joined_at") updates.msb = sortBy; else params.delete("msb");
+    Object.entries(updates).forEach(([k, v]) => params.set(k, v));
+    setSearchParams(params, { replace: true });
+  }, [debouncedSearch, roleFilter, statusFilter, lifecycleFilter, sortBy]);
+
+  // Telemetry: track load time
+  useEffect(() => {
+    const elapsed = Math.round(performance.now() - mountTime.current);
+    trackEvent("admin_members_loaded", { load_ms: elapsed, community_id: community.id });
+  }, [community.id]);
+
+  // ── Data fetching with staleTime + prefetch ──
   const { data: members, isLoading } = useQuery({
     queryKey: ["circle-admin-members", community.id],
     queryFn: async () => {
@@ -105,21 +388,40 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         .eq("community_id", community.id).order("joined_at", { ascending: false });
       return data || [];
     },
+    staleTime: 30_000,
   });
 
+  // ── Optimistic update mutation ──
   const updateMember = useMutation({
     mutationFn: async ({ memberId, updates }: { memberId: string; updates: any }) => {
       const { error } = await supabase.from("community_members").update(updates).eq("id", memberId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
-      queryClient.invalidateQueries({ queryKey: ["community"] });
-      queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
-      queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
+    onMutate: async ({ memberId, updates }) => {
+      setActionLoadingId(memberId);
+      await queryClient.cancelQueries({ queryKey: ["circle-admin-members", community.id] });
+      const prev = queryClient.getQueryData<any[]>(["circle-admin-members", community.id]);
+      queryClient.setQueryData(["circle-admin-members", community.id], (old: any[] | undefined) =>
+        (old || []).map((m) => m.id === memberId ? { ...m, ...updates } : m)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["circle-admin-members", community.id], ctx.prev);
+      toast.error("Erro ao atualizar. Tente novamente.", {
+        action: { label: "Tentar de novo", onClick: () => updateMember.mutate(_vars) },
+      });
+    },
+    onSuccess: (_data, vars) => {
+      trackEvent("admin_member_action", { action: "update", member_id: vars.memberId, community_id: community.id });
       toast.success("Membro atualizado!");
     },
-    onError: () => toast.error("Erro ao atualizar"),
+    onSettled: () => {
+      setActionLoadingId(null);
+      queryClient.invalidateQueries({ queryKey: ["circle-admin-members", community.id] });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
+    },
   });
 
   const bulkApprovePending = useMutation({
@@ -132,12 +434,26 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         .eq("community_id", community.id)
         .in("member_id", memberIds);
     },
+    onMutate: async (memberIds) => {
+      await queryClient.cancelQueries({ queryKey: ["circle-admin-members", community.id] });
+      const prev = queryClient.getQueryData<any[]>(["circle-admin-members", community.id]);
+      queryClient.setQueryData(["circle-admin-members", community.id], (old: any[] | undefined) =>
+        (old || []).map((m) => memberIds.includes(m.id) ? { ...m, status: "ACTIVE" } : m)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["circle-admin-members", community.id], ctx.prev);
+      toast.error("Erro ao aprovar em lote");
+    },
     onSuccess: () => {
       setSelectedPendingIds([]);
+      toast.success("Pendências aprovadas em lote");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
       queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
-      toast.success("Pendências aprovadas em lote");
     },
   });
 
@@ -151,18 +467,33 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         .in("member_id", memberIds);
       await supabase.from("community_members").delete().in("id", memberIds);
     },
+    onMutate: async (memberIds) => {
+      await queryClient.cancelQueries({ queryKey: ["circle-admin-members", community.id] });
+      const prev = queryClient.getQueryData<any[]>(["circle-admin-members", community.id]);
+      queryClient.setQueryData(["circle-admin-members", community.id], (old: any[] | undefined) =>
+        (old || []).filter((m) => !memberIds.includes(m.id))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["circle-admin-members", community.id], ctx.prev);
+      toast.error("Erro ao rejeitar em lote");
+    },
     onSuccess: () => {
       setSelectedPendingIds([]);
       setBulkReason("");
+      toast.success("Pendências rejeitadas em lote");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
       queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
-      toast.success("Pendências rejeitadas em lote");
     },
   });
 
   const givePoints = useMutation({
     mutationFn: async ({ memberId, points, reason, type }: { memberId: string; points: number; reason: string; type: "bonus" | "penalty" }) => {
+      const start = performance.now();
       const actualPoints = type === "penalty" ? -points : points;
       const action = type === "bonus" ? "ADMIN_BONUS" : "ADMIN_PENALTY";
       
@@ -179,17 +510,37 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         const newTotal = Math.max(0, (member.total_points || 0) + actualPoints);
         await supabase.from("community_members").update({ total_points: newTotal }).eq("id", memberId);
       }
+      trackEvent("admin_points_action", { type, points: actualPoints, elapsed_ms: Math.round(performance.now() - start) });
+    },
+    onMutate: async ({ memberId, points, type }) => {
+      const actualPoints = type === "penalty" ? -points : points;
+      await queryClient.cancelQueries({ queryKey: ["circle-admin-members", community.id] });
+      const prev = queryClient.getQueryData<any[]>(["circle-admin-members", community.id]);
+      queryClient.setQueryData(["circle-admin-members", community.id], (old: any[] | undefined) =>
+        (old || []).map((m) => m.id === memberId
+          ? { ...m, total_points: Math.max(0, (m.total_points || 0) + actualPoints) }
+          : m
+        )
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["circle-admin-members", community.id], ctx.prev);
+      toast.error("Erro ao atualizar pontos");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
       setPointsModal(null);
       setPointsAmount(10);
       setPointsReason("");
       toast.success("Pontos atualizados!");
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
+    },
   });
 
-  const pendingMembers = members?.filter((m: any) => m.status === "PENDING") || [];
+  // ── Derived data (memoized) ──
+  const pendingMembers = useMemo(() => members?.filter((m: any) => m.status === "PENDING") || [], [members]);
 
   const { data: applications = [] } = useQuery({
     queryKey: ["circle-join-applications", community.id, pendingMembers.map((m: any) => m.id).join(",")],
@@ -206,9 +557,13 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       return (data || []) as any[];
     },
     enabled: pendingMembers.length > 0,
+    staleTime: 30_000,
   });
 
-  const appByMemberId = new Map<string, any>(applications.map((a: any) => [a.member_id, a]));
+  const appByMemberId = useMemo(
+    () => new Map<string, any>(applications.map((a: any) => [a.member_id, a])),
+    [applications]
+  );
 
   const { data: reviewedApplications = [] } = useQuery({
     queryKey: ["circle-reviewed-applications", community.id],
@@ -223,64 +578,99 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       if (error) return [];
       return (data || []) as any[];
     },
+    staleTime: 60_000,
   });
 
   const canBulkModerate = currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
 
-  const lifecycleCounts = {
+  const lifecycleCounts = useMemo(() => ({
     ACTIVE: (members || []).filter((m: any) => m.status === "ACTIVE").length,
     RISK: (members || []).filter((m: any) => ["MUTED", "PENDING"].includes(m.status)).length,
     LEFT: (members || []).filter((m: any) => m.status === "LEFT").length,
     BANNED: (members || []).filter((m: any) => m.status === "BANNED").length,
-  };
+  }), [members]);
 
-  const filteredPending = [...pendingMembers]
-    .filter((m: any) => {
-      if (!pendingSearch.trim()) return true;
-      const q = pendingSearch.toLowerCase();
-      return (m.display_name || "").toLowerCase().includes(q) || (m.bio || "").toLowerCase().includes(q);
-    })
-    .sort((a: any, b: any) => {
-      const appA = appByMemberId.get(a.id);
-      const appB = appByMemberId.get(b.id);
-      if (pendingSort === "with_answers") {
-        const aa = Array.isArray(appA?.answers) ? appA.answers.length : 0;
-        const bb = Array.isArray(appB?.answers) ? appB.answers.length : 0;
-        return bb - aa;
-      }
-      const da = new Date(a.joined_at || 0).getTime();
-      const db = new Date(b.joined_at || 0).getTime();
-      return pendingSort === "oldest" ? da - db : db - da;
-    });
+  const filteredPending = useMemo(() => {
+    return [...pendingMembers]
+      .filter((m: any) => {
+        if (!debouncedPendingSearch.trim()) return true;
+        const q = debouncedPendingSearch.toLowerCase();
+        return (m.display_name || "").toLowerCase().includes(q) || (m.bio || "").toLowerCase().includes(q);
+      })
+      .sort((a: any, b: any) => {
+        const appA = appByMemberId.get(a.id);
+        const appB = appByMemberId.get(b.id);
+        if (pendingSort === "with_answers") {
+          const aa = Array.isArray(appA?.answers) ? appA.answers.length : 0;
+          const bb = Array.isArray(appB?.answers) ? appB.answers.length : 0;
+          return bb - aa;
+        }
+        const da = new Date(a.joined_at || 0).getTime();
+        const db = new Date(b.joined_at || 0).getTime();
+        return pendingSort === "oldest" ? da - db : db - da;
+      });
+  }, [pendingMembers, debouncedPendingSearch, pendingSort, appByMemberId]);
   
-  let filtered = members?.filter((m: any) => m.status !== "PENDING") || [];
-  if (search) {
-    const q = search.toLowerCase();
-    filtered = filtered.filter((m: any) =>
-      (m.display_name || "").toLowerCase().includes(q) ||
-      ((m as any).username || "").toLowerCase().includes(q) ||
-      (m.bio || "").toLowerCase().includes(q)
-    );
-  }
-  if (roleFilter !== "ALL") filtered = filtered.filter((m: any) => m.role === roleFilter);
-  if (statusFilter !== "ALL") filtered = filtered.filter((m: any) => m.status === statusFilter);
-  if (lifecycleFilter !== "ALL") {
-    filtered = filtered.filter((m: any) => {
-      if (lifecycleFilter === "ACTIVE") return m.status === "ACTIVE";
-      if (lifecycleFilter === "RISK") return ["MUTED", "PENDING"].includes(m.status);
-      if (lifecycleFilter === "LEFT") return m.status === "LEFT";
-      if (lifecycleFilter === "BANNED") return m.status === "BANNED";
-      return true;
+  const filtered = useMemo(() => {
+    let result = members?.filter((m: any) => m.status !== "PENDING") || [];
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      result = result.filter((m: any) =>
+        (m.display_name || "").toLowerCase().includes(q) ||
+        ((m as any).username || "").toLowerCase().includes(q) ||
+        (m.bio || "").toLowerCase().includes(q)
+      );
+    }
+    if (roleFilter !== "ALL") result = result.filter((m: any) => m.role === roleFilter);
+    if (statusFilter !== "ALL") result = result.filter((m: any) => m.status === statusFilter);
+    if (lifecycleFilter !== "ALL") {
+      result = result.filter((m: any) => {
+        if (lifecycleFilter === "ACTIVE") return m.status === "ACTIVE";
+        if (lifecycleFilter === "RISK") return ["MUTED", "PENDING"].includes(m.status);
+        if (lifecycleFilter === "LEFT") return m.status === "LEFT";
+        if (lifecycleFilter === "BANNED") return m.status === "BANNED";
+        return true;
+      });
+    }
+    result.sort((a: any, b: any) => {
+      if (sortBy === "points") return (b.total_points || 0) - (a.total_points || 0);
+      if (sortBy === "name") return (a.display_name || "").localeCompare(b.display_name || "");
+      return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
     });
-  }
+    return result;
+  }, [members, debouncedSearch, roleFilter, statusFilter, lifecycleFilter, sortBy]);
 
-  filtered.sort((a: any, b: any) => {
-    if (sortBy === "points") return (b.total_points || 0) - (a.total_points || 0);
-    if (sortBy === "name") return (a.display_name || "").localeCompare(b.display_name || "");
-    return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
-  });
+  // ── Centralized action handler for MemberRow ──
+  const handleRowAction = useCallback((action: string, member: any, payload?: any) => {
+    switch (action) {
+      case "role":
+        updateMember.mutate({ memberId: member.id, updates: { role: payload.role } });
+        break;
+      case "mute":
+        setMuteModal(member);
+        break;
+      case "unmute":
+        updateMember.mutate({ memberId: member.id, updates: { status: "ACTIVE", muted_at: null, muted_until: null } });
+        break;
+      case "ban":
+        setBanModal(member);
+        break;
+      case "unban":
+        updateMember.mutate({ memberId: member.id, updates: { status: "ACTIVE", banned_at: null, ban_reason: null } });
+        break;
+      case "remove":
+        updateMember.mutate({ memberId: member.id, updates: { status: "LEFT" } });
+        break;
+      case "bonus":
+        setPointsModal({ member, type: "bonus" });
+        break;
+      case "penalty":
+        setPointsModal({ member, type: "penalty" });
+        break;
+    }
+  }, [updateMember]);
 
-  const handleMute = () => {
+  const handleMute = useCallback(() => {
     if (!muteModal) return;
     const mutedUntil = muteDuration > 0 ? new Date(Date.now() + muteDuration).toISOString() : null;
     updateMember.mutate({
@@ -289,9 +679,9 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     });
     setMuteModal(null);
     setMuteReason("");
-  };
+  }, [muteModal, muteDuration, updateMember]);
 
-  const handleBan = () => {
+  const handleBan = useCallback(() => {
     if (!banModal) return;
     updateMember.mutate({
       memberId: banModal.id,
@@ -299,9 +689,9 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     });
     setBanModal(null);
     setBanReason("");
-  };
+  }, [banModal, banReason, updateMember]);
 
-  const exportMembersCsv = () => {
+  const exportMembersCsv = useCallback(() => {
     const rows = filtered.map((m: any) => ({
       Nome: m.display_name || "",
       Username: (m as any).username || "",
@@ -324,9 +714,26 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV exportado");
-  };
+  }, [filtered, community]);
 
-  const adminCount = (members || []).filter((m: any) => ["OWNER", "ADMIN"].includes(m.role)).length;
+  const adminCount = useMemo(
+    () => (members || []).filter((m: any) => ["OWNER", "ADMIN"].includes(m.role)).length,
+    [members]
+  );
+
+  // Keyboard: Escape closes modals
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (muteModal) setMuteModal(null);
+        if (banModal) setBanModal(null);
+        if (pointsModal) setPointsModal(null);
+        if (bulkConfirm) setBulkConfirm(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [muteModal, banModal, pointsModal, bulkConfirm]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -339,50 +746,68 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
 
         {/* ── Summary Cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{(members || []).length}</p>
-                <p className="text-[11px] text-muted-foreground">Total</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{lifecycleCounts.ACTIVE}</p>
-                <p className="text-[11px] text-muted-foreground">Ativos</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Crown className="h-4 w-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{adminCount}</p>
-                <p className="text-[11px] text-muted-foreground">Admins</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                <UserCheck className="h-4 w-4 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{pendingMembers.length}</p>
-                <p className="text-[11px] text-muted-foreground">Pendentes</p>
-              </div>
-            </div>
-          </Card>
+          {isLoading ? (
+            <>
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-8 rounded-lg" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-6 w-10" />
+                      <Skeleton className="h-3 w-14" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </>
+          ) : (
+            <>
+              <Card className="p-4 space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{(members || []).length}</p>
+                    <p className="text-[11px] text-muted-foreground">Total</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4 space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{lifecycleCounts.ACTIVE}</p>
+                    <p className="text-[11px] text-muted-foreground">Ativos</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4 space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{adminCount}</p>
+                    <p className="text-[11px] text-muted-foreground">Admins</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4 space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                    <UserCheck className="h-4 w-4 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{pendingMembers.length}</p>
+                    <p className="text-[11px] text-muted-foreground">Pendentes</p>
+                  </div>
+                </div>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* ── Pending Approvals ── */}
@@ -525,11 +950,11 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
           <div className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
               {[
-                { key: "ALL", label: "Todos", count: (members || []).length, color: "bg-muted" },
-                { key: "ACTIVE", label: "Ativos", count: lifecycleCounts.ACTIVE, color: "bg-green-500/10" },
-                { key: "RISK", label: "Em risco", count: lifecycleCounts.RISK, color: "bg-yellow-500/10" },
-                { key: "LEFT", label: "Saíram", count: lifecycleCounts.LEFT, color: "bg-muted" },
-                { key: "BANNED", label: "Banidos", count: lifecycleCounts.BANNED, color: "bg-destructive/10" },
+                { key: "ALL", label: "Todos", count: (members || []).length },
+                { key: "ACTIVE", label: "Ativos", count: lifecycleCounts.ACTIVE },
+                { key: "RISK", label: "Em risco", count: lifecycleCounts.RISK },
+                { key: "LEFT", label: "Saíram", count: lifecycleCounts.LEFT },
+                { key: "BANNED", label: "Banidos", count: lifecycleCounts.BANNED },
               ].map((item: any) => (
                 <button
                   key={item.key}
@@ -559,6 +984,12 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 h-9"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setSearch("");
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
               />
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -617,129 +1048,16 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
           {/* ── Members List ── */}
           {!isLoading && (
             <div className="divide-y divide-border">
-              {filtered.map((m: any) => {
-                const isOwner = m.role === "OWNER";
-                const isSelf = m.id === currentMember.id;
-                const canManage = !isOwner && !isSelf;
-
-                return (
-                  <div key={m.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors duration-150">
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarImage src={m.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                        {(m.display_name || "U")[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm text-foreground truncate">{m.display_name || "Sem nome"}</span>
-                        {(m as any).username && (
-                          <span className="text-xs text-muted-foreground">@{(m as any).username}</span>
-                        )}
-                        <LevelBadge points={m.total_points || 0} size="sm" />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {m.total_points || 0} pts · 🔥 {m.current_streak || 0} · Desde {m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yy") : "—"}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className={cn("text-[10px] font-semibold border", ROLE_STYLES[m.role] || ROLE_STYLES.MEMBER)}>
-                      {m.role === "OWNER" && <Crown className="h-2.5 w-2.5 mr-1" />}
-                      {ROLE_LABELS[m.role] || m.role}
-                    </Badge>
-                    {m.status !== "ACTIVE" && (
-                      <Badge
-                        variant={m.status === "BANNED" ? "destructive" : "secondary"}
-                        className="text-[10px]"
-                      >
-                        {STATUS_LABELS[m.status] || m.status}
-                      </Badge>
-                    )}
-                    {canManage ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          {m.role === "MEMBER" && (
-                            <>
-                              <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { role: "MODERATOR" } })}>
-                                <Shield className="h-3.5 w-3.5 mr-2" />Promover a Moderador
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { role: "ADMIN" } })}>
-                                <ShieldCheck className="h-3.5 w-3.5 mr-2" />Promover a Admin
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {m.role === "MODERATOR" && (
-                            <>
-                              <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { role: "ADMIN" } })}>
-                                <ShieldCheck className="h-3.5 w-3.5 mr-2" />Promover a Admin
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { role: "MEMBER" } })}>
-                                <ShieldOff className="h-3.5 w-3.5 mr-2" />Rebaixar a Membro
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {m.role === "ADMIN" && (
-                            <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { role: "MEMBER" } })}>
-                              <ShieldOff className="h-3.5 w-3.5 mr-2" />Rebaixar a Membro
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          {m.status === "ACTIVE" && (
-                            <DropdownMenuItem onClick={() => setMuteModal(m)}>
-                              <VolumeX className="h-3.5 w-3.5 mr-2" />Silenciar
-                            </DropdownMenuItem>
-                          )}
-                          {m.status === "MUTED" && (
-                            <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { status: "ACTIVE", muted_at: null, muted_until: null } })}>
-                              <UserCheck className="h-3.5 w-3.5 mr-2" />Remover silêncio
-                            </DropdownMenuItem>
-                          )}
-                          {m.status !== "BANNED" && (
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setBanModal(m)}>
-                              <Ban className="h-3.5 w-3.5 mr-2" />Banir
-                            </DropdownMenuItem>
-                          )}
-                          {m.status === "BANNED" && (
-                            <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { status: "ACTIVE", banned_at: null, ban_reason: null } })}>
-                              <UserCheck className="h-3.5 w-3.5 mr-2" />Desbanir
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={() => updateMember.mutate({ memberId: m.id, updates: { status: "LEFT" } })}>
-                            <UserMinus className="h-3.5 w-3.5 mr-2" />Remover da comunidade
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setPointsModal({ member: m, type: "bonus" })}>
-                            <Gift className="h-3.5 w-3.5 mr-2" />Dar pontos bônus
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setPointsModal({ member: m, type: "penalty" })}>
-                            <Minus className="h-3.5 w-3.5 mr-2" />Remover pontos
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="h-8 w-8 shrink-0 flex items-center justify-center">
-                            {isSelf ? (
-                              <span className="text-[10px] text-muted-foreground font-medium">Você</span>
-                            ) : (
-                              <Lock className="h-3.5 w-3.5 text-muted-foreground/50" />
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {isSelf ? "Você não pode moderar a si mesmo" : "Sem permissão nesta comunidade"}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                );
-              })}
-              {filtered.length === 0 && !isLoading && (
+              {filtered.map((m: any) => (
+                <MemberRow
+                  key={m.id}
+                  m={m}
+                  currentMemberId={currentMember.id}
+                  onAction={handleRowAction}
+                  actionLoadingId={actionLoadingId}
+                />
+              ))}
+              {filtered.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Users className="h-10 w-10 text-muted-foreground/30 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">Nenhum membro encontrado</p>
@@ -751,115 +1069,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
         </Card>
 
         {/* ── Permissions Matrix ── */}
-        <Card className="overflow-hidden">
-          <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-sm text-foreground">Permissões por função</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Somente permissões da comunidade</p>
-            </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center cursor-help">
-                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[260px]">
-                Permissões da comunidade não concedem acesso ao financeiro global da Kivo. O acesso ao workspace é controlado separadamente.
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left py-2.5 px-5 font-medium text-muted-foreground text-xs">Ação</th>
-                  <th className="text-center py-2.5 px-3 font-medium text-xs">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.OWNER)}>
-                      <Crown className="h-2.5 w-2.5" />Dono
-                    </span>
-                  </th>
-                  <th className="text-center py-2.5 px-3 font-medium text-xs">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.ADMIN)}>Admin</span>
-                  </th>
-                  <th className="text-center py-2.5 px-3 font-medium text-xs">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.MODERATOR)}>Mod</span>
-                  </th>
-                  <th className="text-center py-2.5 px-3 font-medium text-xs">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", ROLE_STYLES.MEMBER)}>Membro</span>
-                  </th>
-                  <th className="text-center py-2.5 px-3 font-medium text-xs">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
-                      <Lock className="h-2.5 w-2.5" />Workspace
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {PERMISSIONS.map((p) => (
-                  <tr key={p.action} className="hover:bg-muted/20 transition-colors duration-150">
-                    <td className="py-2.5 px-5 text-xs text-foreground">{p.action}</td>
-                    <td className="text-center py-2.5 px-3">
-                      {p.owner ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
-                    </td>
-                    <td className="text-center py-2.5 px-3">
-                      {p.admin ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
-                    </td>
-                    <td className="text-center py-2.5 px-3">
-                      {p.mod ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
-                    </td>
-                    <td className="text-center py-2.5 px-3">
-                      {p.member ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />}
-                    </td>
-                    <td className="text-center py-2.5 px-3">
-                      {p.workspace ? (
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Lock className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                          </TooltipTrigger>
-                          <TooltipContent>Disponível apenas no workspace</TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span className="text-muted-foreground/30 text-xs">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile: compact cards */}
-          <div className="md:hidden p-4 space-y-2">
-            {PERMISSIONS.map((p) => (
-              <div key={p.action} className="rounded-lg border p-3 space-y-2">
-                <p className="text-xs font-medium text-foreground">{p.action}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.owner && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.OWNER)}>Dono</Badge>}
-                  {p.admin && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.ADMIN)}>Admin</Badge>}
-                  {p.mod && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.MODERATOR)}>Mod</Badge>}
-                  {p.member && <Badge variant="outline" className={cn("text-[9px]", ROLE_STYLES.MEMBER)}>Membro</Badge>}
-                  {p.workspace && (
-                    <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground">
-                      <Lock className="h-2 w-2 mr-0.5" />Workspace
-                    </Badge>
-                  )}
-                  {!p.owner && !p.admin && !p.mod && !p.member && !p.workspace && (
-                    <span className="text-[10px] text-muted-foreground">Nenhuma função</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="px-5 py-3 border-t border-border bg-muted/20">
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <Lock className="h-3 w-3 shrink-0" />
-              Permissões da comunidade não concedem acesso ao financeiro global da Kivo.
-            </p>
-          </div>
-        </Card>
+        <PermissionMatrix />
 
         {/* ── Recent Decisions ── */}
         {reviewedApplications.length > 0 && (
