@@ -528,6 +528,8 @@ export default function CircleFeed() {
         memberId={member?.id}
         memberName={member?.display_name}
         memberAvatar={member?.avatar_url}
+        isAdmin={isAdminMember}
+        onEdit={(stream) => { setWatchingStream(null); setEditingStream(stream); setShowLiveForm(true); }}
       />
     </div>
   );
