@@ -649,12 +649,8 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 <DropdownMenuContent align="end">
                                   {comment.author_id === member?.id && (
                                     <DropdownMenuItem onClick={() => {
-                                      const newBody = prompt("Editar comentário:", comment.body);
-                                      if (newBody?.trim()) {
-                                        supabase.from("community_comments").update({ body: newBody.trim(), edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
-                                          queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] }); toast.success("Editado");
-                                        });
-                                      }
+                                      setEditingCommentId(comment.id);
+                                      setEditingCommentBody(comment.body);
                                     }}>✏️ Editar</DropdownMenuItem>
                                   )}
                                   {(isAdmin || comment.author_id === member?.id) && (
