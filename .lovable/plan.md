@@ -1,77 +1,43 @@
 
 
-## Audit: "FREE_WITH_PRODUCT requires linked_product_id" Error
+## Fix: Lives Integration with Events Calendar + Edit Functionality
 
-### Root Cause
+### Problems Identified
 
-The error originates from the **trigger `fn_validate_community_pricing`** on the `communities` table. It enforces:
+1. **Lives not linked to Events calendar**: When a live is scheduled via `LiveStreamFormModal`, it only inserts into `community_live_streams` but does NOT create a corresponding entry in `community_events`. The Events page (`CircleEvents.tsx`) only queries `community_events`, so scheduled lives never appear there.
 
-```sql
-IF NEW.access_type = 'FREE_WITH_PRODUCT' THEN
-  IF NEW.linked_product_id IS NULL THEN
-    RAISE EXCEPTION 'FREE_WITH_PRODUCT requires linked_product_id';
-  END IF;
-END IF;
-```
+2. **Cannot edit live stream**: The `LiveStreamFormModal` is always opened without a `stream` prop in `CircleFeed.tsx` (line 512-517). There's no UI path to pass an existing stream for editing (no edit button on the banner or viewer).
 
-The **`set_community_pricing_model_v2` RPC** backward-compat section maps two models to `FREE_WITH_PRODUCT`:
+### Plan
 
-- **`freemium`** → sets `linked_product_id` from the first paid tier's `linked_product_id`, which may be `NULL` if the user didn't pick a product.
-- **`tiers`** → sets `linked_product_id = NULL` **always**, guaranteed to fail.
+#### 1. Link lives to events calendar (LiveStreamFormModal.tsx)
+When saving a new live stream, also insert/update a `community_events` record:
+- `title` = live title
+- `starts_at` = `scheduled_at`
+- `ends_at` = `scheduled_at + 2 hours` (default)
+- `meeting_url` = embed_url
+- `meeting_platform` = embed_type mapped (youtube/twitch → "custom")
+- Add a `live_stream_id` reference concept by storing it in the event description or via a new column
 
-So any save of "tiers" model fails, and "freemium" without a linked product also fails.
+Since adding a column to `community_events` requires a migration:
 
-### Fix Plan
+**Migration**: Add `live_stream_id uuid REFERENCES community_live_streams(id)` column to `community_events` (nullable). This links events to their live stream source.
 
-**1. Migration: Update `set_community_pricing_model_v2` backward-compat logic**
+**LiveStreamFormModal.tsx**: After inserting/updating `community_live_streams`, also upsert a `community_events` row with matching data. On edit, update the linked event too. On the existing `onSuccess`, invalidate `circle-events` query (already done).
 
-For models that use the new tier system, stop forcing legacy `access_type` values that trigger validation errors:
+#### 2. Enable editing lives (LiveStreamBanner.tsx + CircleFeed.tsx)
+- **LiveStreamBanner.tsx**: Add an "Editar" button for admins on each live/scheduled banner item
+- **CircleFeed.tsx**: Add state `editingStream` and pass it to `LiveStreamFormModal` as the `stream` prop
+- **LiveStreamViewer.tsx**: Add "Editar" button for admin while viewing a live
 
-| Model | Current mapping | Fixed mapping |
-|-------|----------------|---------------|
-| `tiers` | `FREE_WITH_PRODUCT`, `linked_product_id = NULL` | `PAID_SUBSCRIPTION`, `price_cents = 0`, `linked_product_id = NULL` |
-| `freemium` | `FREE_WITH_PRODUCT`, `linked_product_id = first_paid` | Keep if product exists; use `OPEN` if no product linked |
-
-Alternatively (simpler and more future-proof): **relax the trigger** to allow `FREE_WITH_PRODUCT` without `linked_product_id` when `community_tiers` exist for that community. This avoids fragile mapping logic.
-
-**Recommended approach**: Update the trigger to skip the `linked_product_id` check when active `community_tiers` exist:
-
-```sql
-IF NEW.access_type = 'FREE_WITH_PRODUCT' THEN
-  IF NEW.linked_product_id IS NULL THEN
-    -- Allow if community has active tiers (new system)
-    IF NOT EXISTS (
-      SELECT 1 FROM community_tiers
-      WHERE community_id = NEW.id AND is_active = true
-    ) THEN
-      RAISE EXCEPTION 'FREE_WITH_PRODUCT requires linked_product_id';
-    END IF;
-  END IF;
-END IF;
-```
-
-**2. Additionally fix `set_community_pricing_model_v2` 'tiers' case**
-
-Change the `tiers` backward-compat to use `OPEN` instead of `FREE_WITH_PRODUCT` when no single linked product exists, since access is now governed entirely by the tier system:
-
-```sql
-WHEN 'tiers' THEN
-  UPDATE communities SET
-    access_type = 'OPEN',
-    price_cents = 0,
-    billing_period = 'monthly',
-    linked_product_id = NULL,
-    updated_at = now()
-  WHERE id = p_community_id;
-```
+#### 3. Sync edits bidirectionally
+- When editing an event that has a `live_stream_id`, show it's linked to a live (read-only indicator)
+- When editing a live, update the linked event's title/datetime automatically
 
 ### Files to Change
-
-- **New migration**: 
-  - Replace `fn_validate_community_pricing` trigger function with the relaxed version
-  - Replace `set_community_pricing_model_v2` with fixed backward-compat for `tiers` and `freemium`
-
-### No frontend changes needed
-
-The UI code in `AdminPricingTab.tsx` correctly builds the payload. The bug is entirely server-side.
+- **New migration**: Add `live_stream_id` column to `community_events`
+- **`src/components/circle/LiveStreamFormModal.tsx`**: Create/update linked `community_events` record on save
+- **`src/components/circle/LiveStreamBanner.tsx`**: Add edit callback for admins
+- **`src/pages/circle/CircleFeed.tsx`**: Wire `editingStream` state, pass `stream` prop to modal
+- **`src/components/circle/LiveStreamViewer.tsx`**: Add edit button for admins
 
