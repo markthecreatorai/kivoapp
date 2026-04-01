@@ -86,6 +86,60 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 1b. Grant community tier if product is linked to a tier
+    if (order.product_id) {
+      try {
+        const { data: linkedTiers } = await supabase
+          .from("community_tiers")
+          .select("id, community_id")
+          .eq("linked_product_id", order.product_id)
+          .eq("is_active", true);
+
+        if (linkedTiers && linkedTiers.length > 0) {
+          // Find member by customer_id link in community_members
+          for (const lt of linkedTiers) {
+            const { data: members } = await supabase
+              .from("community_members")
+              .select("id")
+              .eq("community_id", lt.community_id)
+              .eq("customer_id", order.customer_id)
+              .eq("status", "ACTIVE");
+
+            for (const member of (members || [])) {
+              const { data: existing } = await supabase
+                .from("community_member_tiers")
+                .select("id")
+                .eq("member_id", member.id)
+                .eq("tier_id", lt.id)
+                .eq("status", "ACTIVE")
+                .maybeSingle();
+
+              if (!existing) {
+                await supabase
+                  .from("community_member_tiers")
+                  .update({ status: "INACTIVE", updated_at: new Date().toISOString() })
+                  .eq("member_id", member.id)
+                  .eq("community_id", lt.community_id)
+                  .eq("status", "ACTIVE");
+
+                await supabase.from("community_member_tiers").insert({
+                  community_id: lt.community_id,
+                  member_id: member.id,
+                  tier_id: lt.id,
+                  source_type: "PRODUCT",
+                  source_id: order.id,
+                  status: "ACTIVE",
+                });
+                console.log(`Tier ${lt.id} granted to member ${member.id} via product ${order.product_id}`);
+              }
+            }
+          }
+        }
+      } catch (tierErr) {
+        console.error("Tier entitlement error (non-fatal):", tierErr);
+      }
+    }
+
     // 2. Create order item if not exists
     if (order.product_id) {
       const { data: existingItem } = await supabase
