@@ -21,16 +21,42 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
   User, Bell, Shield, Camera, Save, Loader2,
   Lock, Mail, AlertTriangle, ChevronDown, AlertCircle, CheckCircle2,
   Globe, Instagram, Youtube, Linkedin, Facebook, Link2, Eye, EyeOff,
   MapPin, Trash2, X, DollarSign, Wallet, Settings, CreditCard,
-  Receipt, Palette, MessageCircle, Pin,
+  Receipt, Palette, MessageCircle, Pin, LogOut, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import AffiliatesSettings from "@/components/circle/AffiliatesSettings";
 import PayoutsSettings from "@/components/circle/PayoutsSettings";
+
+const COMMON_TIMEZONES = [
+  { value: "America/New_York", label: "(GMT-05:00) America/New_York" },
+  { value: "America/Chicago", label: "(GMT-06:00) America/Chicago" },
+  { value: "America/Denver", label: "(GMT-07:00) America/Denver" },
+  { value: "America/Los_Angeles", label: "(GMT-08:00) America/Los_Angeles" },
+  { value: "America/Sao_Paulo", label: "(GMT-03:00) America/Sao_Paulo" },
+  { value: "America/Argentina/Buenos_Aires", label: "(GMT-03:00) America/Buenos_Aires" },
+  { value: "America/Bogota", label: "(GMT-05:00) America/Bogota" },
+  { value: "America/Mexico_City", label: "(GMT-06:00) America/Mexico_City" },
+  { value: "Europe/London", label: "(GMT+00:00) Europe/London" },
+  { value: "Europe/Paris", label: "(GMT+01:00) Europe/Paris" },
+  { value: "Europe/Berlin", label: "(GMT+01:00) Europe/Berlin" },
+  { value: "Europe/Lisbon", label: "(GMT+00:00) Europe/Lisbon" },
+  { value: "Europe/Madrid", label: "(GMT+01:00) Europe/Madrid" },
+  { value: "Asia/Tokyo", label: "(GMT+09:00) Asia/Tokyo" },
+  { value: "Asia/Shanghai", label: "(GMT+08:00) Asia/Shanghai" },
+  { value: "Asia/Dubai", label: "(GMT+04:00) Asia/Dubai" },
+  { value: "Asia/Kolkata", label: "(GMT+05:30) Asia/Kolkata" },
+  { value: "Australia/Sydney", label: "(GMT+11:00) Australia/Sydney" },
+  { value: "Pacific/Auckland", label: "(GMT+13:00) Pacific/Auckland" },
+  { value: "UTC", label: "(GMT+00:00) UTC" },
+];
 
 const DEFAULT_NOTIFICATIONS = {
   likes: true,
