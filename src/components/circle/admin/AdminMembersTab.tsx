@@ -64,6 +64,8 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [bulkReason, setBulkReason] = useState("");
   const [bulkConfirm, setBulkConfirm] = useState<{ type: "approve" | "reject"; count: number } | null>(null);
+  const [savedViews, setSavedViews] = useState<Array<{ name: string; roleFilter: string; statusFilter: string; lifecycleFilter: string; sortBy: string }>>([]);
+  const [newViewName, setNewViewName] = useState("");
 
   const FILTERS_KEY = `kivo-admin-members-filters-${community.id}`;
   useEffect(() => {
@@ -75,15 +77,16 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       if (saved.statusFilter) setStatusFilter(saved.statusFilter);
       if (saved.lifecycleFilter) setLifecycleFilter(saved.lifecycleFilter);
       if (saved.sortBy) setSortBy(saved.sortBy);
+      if (Array.isArray(saved.savedViews)) setSavedViews(saved.savedViews);
     } catch {}
   }, [FILTERS_KEY]);
 
   useEffect(() => {
     localStorage.setItem(
       FILTERS_KEY,
-      JSON.stringify({ roleFilter, statusFilter, lifecycleFilter, sortBy })
+      JSON.stringify({ roleFilter, statusFilter, lifecycleFilter, sortBy, savedViews })
     );
-  }, [FILTERS_KEY, roleFilter, statusFilter, lifecycleFilter, sortBy]);
+  }, [FILTERS_KEY, roleFilter, statusFilter, lifecycleFilter, sortBy, savedViews]);
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -260,6 +263,20 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     LEFT: (members || []).filter((m: any) => m.status === "LEFT").length,
     BANNED: (members || []).filter((m: any) => m.status === "BANNED").length,
   };
+
+  const SNAP_KEY = `kivo-admin-members-snapshot-${community.id}`;
+  const [prevSnapshot, setPrevSnapshot] = useState<{ active: number; risk: number } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SNAP_KEY);
+      if (raw) setPrevSnapshot(JSON.parse(raw));
+      localStorage.setItem(SNAP_KEY, JSON.stringify({ active: lifecycleCounts.ACTIVE, risk: lifecycleCounts.RISK }));
+    } catch {}
+  }, [SNAP_KEY, lifecycleCounts.ACTIVE, lifecycleCounts.RISK]);
+
+  const activeDelta = prevSnapshot ? lifecycleCounts.ACTIVE - prevSnapshot.active : 0;
+  const riskDelta = prevSnapshot ? lifecycleCounts.RISK - prevSnapshot.risk : 0;
 
   const filteredPending = [...pendingMembers]
     .filter((m: any) => {
@@ -581,6 +598,59 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
             </>
           )}
         </div>
+      </Card>
+
+      {/* CRM trends + saved views */}
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h3 className="font-semibold text-sm text-foreground">Tendência rápida</h3>
+          <div className="text-xs text-muted-foreground flex gap-3">
+            <span>Ativos {activeDelta === 0 ? "=" : activeDelta > 0 ? `+${activeDelta}` : activeDelta}</span>
+            <span>Risco {riskDelta === 0 ? "=" : riskDelta > 0 ? `+${riskDelta}` : riskDelta}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Input
+            placeholder="Salvar visão atual..."
+            value={newViewName}
+            onChange={(e) => setNewViewName(e.target.value)}
+            className="max-w-[220px] h-8"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const n = newViewName.trim();
+              if (!n) return;
+              const next = [{ name: n, roleFilter, statusFilter, lifecycleFilter, sortBy }, ...savedViews].slice(0, 8);
+              setSavedViews(next);
+              setNewViewName("");
+              toast.success("Visão salva");
+            }}
+          >
+            Salvar visão
+          </Button>
+        </div>
+
+        {savedViews.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {savedViews.map((v) => (
+              <button
+                key={v.name}
+                className="text-xs rounded-full border px-2.5 py-1 hover:bg-muted"
+                onClick={() => {
+                  setRoleFilter(v.roleFilter);
+                  setStatusFilter(v.statusFilter);
+                  setLifecycleFilter(v.lifecycleFilter as any);
+                  setSortBy(v.sortBy);
+                }}
+              >
+                {v.name}
+              </button>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Filters */}

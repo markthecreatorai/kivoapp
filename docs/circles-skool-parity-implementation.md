@@ -103,6 +103,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - persistência local de filtros de CRM
   - seleção rápida de membros em risco
   - ações operacionais rápidas por segmento (reativar / silenciar inativos 24h)
+  - tendência rápida (delta ativos/risco) e "saved views" de CRM
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
