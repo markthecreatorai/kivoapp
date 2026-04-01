@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -95,7 +96,9 @@ export default function CircleSettings() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeSection, setActiveSection] = useState("profile");
+  const [searchParams] = useSearchParams();
+  const initialSection = searchParams.get("section") || "profile";
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [socialOpen, setSocialOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
