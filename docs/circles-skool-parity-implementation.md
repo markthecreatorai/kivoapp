@@ -131,6 +131,8 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - categorias reais (spaces) no admin
   - controles por categoria: privada / apenas admin posta
   - ordenação de categorias (subir/descer)
+- [x] `src/pages/circle/CircleFeed.tsx`
+  - regras da comunidade visíveis no feed para onboarding e governança
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
