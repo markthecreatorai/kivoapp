@@ -60,7 +60,7 @@ function EmbedPlayer({ stream }: { stream: any }) {
   );
 }
 
-export default function LiveStreamViewer({ stream, open, onClose, memberId, memberName, memberAvatar }: LiveStreamViewerProps) {
+export default function LiveStreamViewer({ stream, open, onClose, memberId, memberName, memberAvatar, isAdmin, onEdit }: LiveStreamViewerProps) {
   const queryClient = useQueryClient();
   const [chatMessage, setChatMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
