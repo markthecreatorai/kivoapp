@@ -273,6 +273,9 @@ const App = () => (
                 {/* Legacy /join/:slug -> /c/:slug redirect */}
                 <Route path="/join/:slug" element={<JoinRedirect />} />
 
+                {/* Global circle settings — outside community layout */}
+                <Route path="/circle-settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettings /></ProtectedRoute>} />
+
                 {/* Public community discovery */}
                 <Route path="/communities" element={<CommunityDiscovery />} />
                 <Route path="/circles/discover" element={<CommunityDiscovery />} />
