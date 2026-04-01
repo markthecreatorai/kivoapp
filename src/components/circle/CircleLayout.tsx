@@ -476,6 +476,14 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 unreadCount={unreadCount ?? 0}
               />
             )}
+            {member && community && (
+              <MessagesPopover
+                memberId={member.id}
+                communityId={community.id}
+                memberDisplayName={member.display_name || undefined}
+                unreadCount={dmUnreadCount ?? 0}
+              />
+            )}
             {member && isAdmin && !isPreviewVisitor && (
               <button
                 onClick={() => setShowAdminModal(true)}
