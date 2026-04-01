@@ -544,9 +544,8 @@ export default function CircleFeed() {
               memberRole={member?.role}
               onOpenPost={handleOpenPost}
               onDeletePost={async (id) => {
-                const { error } = await supabase.from("community_posts").update({ deleted_at: new Date().toISOString() }).eq("id", id);
-                if (error) {
-                  console.error("Delete post error:", error);
+                const { data, error } = await supabase.rpc("soft_delete_post", { p_post_id: id });
+                if (error || !data) {
                   toast.error("Erro ao excluir post");
                   return;
                 }
