@@ -135,7 +135,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
     <div
       className={cn(
         "bg-card rounded-xl shadow-sm p-5 relative group",
-        post.is_pinned && "border border-border"
+        post.is_pinned && "border border-primary"
       )}
     >
       {/* Pinned badge */}
