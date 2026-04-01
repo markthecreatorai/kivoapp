@@ -167,7 +167,7 @@ export default function AffiliatesSettings() {
         <Card className="p-5 space-y-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <DollarSign className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wide">Lifetime</span>
+            <span className="text-xs font-medium uppercase tracking-wide">Total acumulado</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(lifetime * 100)}</p>
         </Card>
