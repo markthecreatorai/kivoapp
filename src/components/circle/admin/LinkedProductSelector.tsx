@@ -21,11 +21,18 @@ export default function LinkedProductSelector({ workspaceId, value, onChange }: 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, type, price, status")
+        .select("id, name, type, status, prices(amount)")
         .eq("workspace_id", workspaceId)
+        .is("deleted_at", null)
         .order("name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((p: any) => ({
+        id: p.id as string,
+        name: p.name as string,
+        type: (p.type ?? "") as string,
+        status: p.status as string | null,
+        price: (p.prices?.[0]?.amount ?? 0) as number,
+      }));
     },
     enabled: !!workspaceId,
   });
