@@ -25,6 +25,7 @@ import LiveStreamViewer from "@/components/circle/LiveStreamViewer";
 import LiveStreamBanner from "@/components/circle/LiveStreamBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminSetupChecklist from "@/components/circle/AdminSetupChecklist";
+import MemberWelcomeCard from "@/components/circle/MemberWelcomeCard";
 
 function InviteDialogBody({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
