@@ -100,6 +100,22 @@ export default function CircleClassroom() {
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
 
+  // ─── Member active tiers (for PRIVATE access check) ──
+  const { data: memberTierIds = [] } = useQuery({
+    queryKey: ["member-active-tiers", community?.id, member?.id],
+    queryFn: async () => {
+      if (!community || !member) return [];
+      const { data } = await supabase
+        .from("community_member_tiers")
+        .select("tier_id")
+        .eq("community_id", community.id)
+        .eq("member_id", member.id)
+        .eq("status", "ACTIVE");
+      return (data || []).map((r: any) => r.tier_id as string);
+    },
+    enabled: !!community && !!member,
+  });
+
   // ─── Lesson progress tracking ────────────────────────
   const { progressMap, getCourseProgress, markStarted, markCompleted } = useLessonProgress(
     member?.id || null,
