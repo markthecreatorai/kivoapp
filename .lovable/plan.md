@@ -1,44 +1,77 @@
 
 
-## Fix: Community Landing Auth Modal — Two Bugs
+## Audit: "FREE_WITH_PRODUCT requires linked_product_id" Error
 
-### Bug 1 — "Entrar" button not working
+### Root Cause
 
-The code at line 240 already has the correct handler: `onClick={() => { setModalMode("login"); setShowJoinModal(true); }}`. However, the button is wrapped in `{!user && ...}` (line 235), so it's hidden when the user is logged in. The button should work for non-authenticated visitors.
+The error originates from the **trigger `fn_validate_community_pricing`** on the `communities` table. It enforces:
 
-**Possible cause**: The button may be visually present but blocked by an overlapping element, or there's a rendering issue. I'll ensure the button works by verifying the onClick is properly wired and check for any CSS/z-index issues. If the code is correct as-is, I'll add a small debugging check.
+```sql
+IF NEW.access_type = 'FREE_WITH_PRODUCT' THEN
+  IF NEW.linked_product_id IS NULL THEN
+    RAISE EXCEPTION 'FREE_WITH_PRODUCT requires linked_product_id';
+  END IF;
+END IF;
+```
 
-**Action**: Verify and ensure the onClick handler fires correctly. The code looks correct — this may be a browser cache issue. However, to be safe, I'll make the handler more explicit.
+The **`set_community_pricing_model_v2` RPC** backward-compat section maps two models to `FREE_WITH_PRODUCT`:
 
-### Bug 2 — "Esqueci minha senha" opens new tab
+- **`freemium`** → sets `linked_product_id` from the first paid tier's `linked_product_id`, which may be `NULL` if the user didn't pick a product.
+- **`tiers`** → sets `linked_product_id = NULL` **always**, guaranteed to fail.
 
-**Current**: Line 646 uses `<a href="/forgot-password" target="_blank">` which navigates away.
+So any save of "tiers" model fails, and "freemium" without a linked product also fails.
 
-**Fix**: Add a third modal state `"forgot-password"` to the existing `modalMode` state, and replace the `<a>` tag with a button that switches to this new state.
+### Fix Plan
 
----
+**1. Migration: Update `set_community_pricing_model_v2` backward-compat logic**
 
-### Changes (single file: `src/pages/CommunityLanding.tsx`)
+For models that use the new tier system, stop forcing legacy `access_type` values that trigger validation errors:
 
-1. **Expand modalMode type** (line 56):
-   - Change from `"signup" | "login"` to `"signup" | "login" | "forgot-password"`
+| Model | Current mapping | Fixed mapping |
+|-------|----------------|---------------|
+| `tiers` | `FREE_WITH_PRODUCT`, `linked_product_id = NULL` | `PAID_SUBSCRIPTION`, `price_cents = 0`, `linked_product_id = NULL` |
+| `freemium` | `FREE_WITH_PRODUCT`, `linked_product_id = first_paid` | Keep if product exists; use `OPEN` if no product linked |
 
-2. **Add forgot-password state and handler**:
-   - Add state: `forgotEmail`, `forgotLoading`, `forgotSent`
-   - Add `handleForgotPassword` function that calls `supabase.auth.resetPasswordForEmail()` (same logic as ForgotPassword.tsx)
+Alternatively (simpler and more future-proof): **relax the trigger** to allow `FREE_WITH_PRODUCT` without `linked_product_id` when `community_tiers` exist for that community. This avoids fragile mapping logic.
 
-3. **Replace the `<a href="/forgot-password">` link** (lines 645-650):
-   - Change to `<button onClick={() => setModalMode("forgot-password")}>`
+**Recommended approach**: Update the trigger to skip the `linked_product_id` check when active `community_tiers` exist:
 
-4. **Add third modal view** after the login form (around line 664):
-   - Insert a new conditional block for `modalMode === "forgot-password"`:
-     - Title: "Esqueceu sua senha?"
-     - Subtitle: "Digite seu email e enviaremos um link para redefinir sua senha"
-     - Email input field
-     - "Enviar link de redefinição" button (primary/red)
-     - "← Voltar ao login" link that switches back to `modalMode="login"`
-     - Success state: "✅ Email enviado!" message with "← Voltar ao login" button
+```sql
+IF NEW.access_type = 'FREE_WITH_PRODUCT' THEN
+  IF NEW.linked_product_id IS NULL THEN
+    -- Allow if community has active tiers (new system)
+    IF NOT EXISTS (
+      SELECT 1 FROM community_tiers
+      WHERE community_id = NEW.id AND is_active = true
+    ) THEN
+      RAISE EXCEPTION 'FREE_WITH_PRODUCT requires linked_product_id';
+    END IF;
+  END IF;
+END IF;
+```
 
-5. **Reset forgot-password state** when modal closes:
-   - In `onOpenChange` or when switching modes, reset `forgotEmail`, `forgotSent`, `forgotLoading`
+**2. Additionally fix `set_community_pricing_model_v2` 'tiers' case**
+
+Change the `tiers` backward-compat to use `OPEN` instead of `FREE_WITH_PRODUCT` when no single linked product exists, since access is now governed entirely by the tier system:
+
+```sql
+WHEN 'tiers' THEN
+  UPDATE communities SET
+    access_type = 'OPEN',
+    price_cents = 0,
+    billing_period = 'monthly',
+    linked_product_id = NULL,
+    updated_at = now()
+  WHERE id = p_community_id;
+```
+
+### Files to Change
+
+- **New migration**: 
+  - Replace `fn_validate_community_pricing` trigger function with the relaxed version
+  - Replace `set_community_pricing_model_v2` with fixed backward-compat for `tiers` and `freemium`
+
+### No frontend changes needed
+
+The UI code in `AdminPricingTab.tsx` correctly builds the payload. The bug is entirely server-side.
 
