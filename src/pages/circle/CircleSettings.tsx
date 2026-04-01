@@ -951,8 +951,8 @@ export default function CircleSettings() {
                 {/* Timezone */}
                 <div className="flex items-center justify-between py-5">
                   <div className="flex-1 min-w-0 mr-4">
-                    <p className="text-sm font-medium text-foreground">Timezone</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Used for event times and notifications</p>
+                    <p className="text-sm font-medium text-foreground">Fuso horário</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Usado para horários de eventos e notificações</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
