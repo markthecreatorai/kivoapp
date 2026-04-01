@@ -37,6 +37,7 @@ import PayoutsSettings from "@/components/circle/PayoutsSettings";
 import NotificationsSection from "@/components/circle/NotificationsSection";
 import ChatSection from "@/components/circle/ChatSection";
 import PaymentMethodsSection from "@/components/circle/PaymentMethodsSection";
+import PaymentHistorySection from "@/components/circle/PaymentHistorySection";
 
 const COMMON_TIMEZONES = [
   { value: "America/New_York", label: "(GMT-05:00) America/New_York" },
