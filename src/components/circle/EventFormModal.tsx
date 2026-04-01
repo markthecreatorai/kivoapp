@@ -176,6 +176,29 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
     enabled: !!communityId && open,
   });
 
+  const applyTemplate = (tpl: typeof EVENT_TEMPLATES[number]) => {
+    setTitle(tpl.title);
+    setDescription(tpl.description);
+    setDuration(tpl.duration);
+    setLocationType(tpl.locationType);
+    setLocationValue("");
+    setDate(format(new Date(), "yyyy-MM-dd"));
+    setTime("");
+    setTimezone("America/Sao_Paulo");
+    setIsRecurring(false);
+    setRepeatEvery("1");
+    setRepeatUnit("week");
+    setRepeatDays([]);
+    setEndType("never");
+    setEndDate("");
+    setEndAfter("10");
+    setCoverImage(null);
+    setAccessRule("all_members");
+    setAccessValue("");
+    setRemindEmail(false);
+    setStep("form");
+  };
+
   useEffect(() => {
     if (event) {
       setTitle(event.title || "");
@@ -192,26 +215,9 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
       setAccessRule(event.access_rule || "all_members");
       setAccessValue(event.access_value || "");
       setRemindEmail(!!event.remind_email_before);
+      setStep("form");
     } else {
-      setTitle("");
-      setDescription("");
-      setDate(format(new Date(), "yyyy-MM-dd"));
-      setTime("");
-      setDuration("");
-      setTimezone("America/Sao_Paulo");
-      setIsRecurring(false);
-      setRepeatEvery("1");
-      setRepeatUnit("week");
-      setRepeatDays([]);
-      setEndType("never");
-      setEndDate("");
-      setEndAfter("10");
-      setLocationType("zoom");
-      setLocationValue("");
-      setCoverImage(null);
-      setAccessRule("all_members");
-      setAccessValue("");
-      setRemindEmail(false);
+      setStep("template");
     }
   }, [event, open]);
 
