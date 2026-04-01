@@ -203,6 +203,15 @@ export default function CircleEvents() {
     }).length;
   }, [allItems]);
 
+  const handleOpenStream = async (liveStreamId: string) => {
+    const { data } = await supabase
+      .from("community_live_streams" as any)
+      .select("*, creator:created_by(display_name, avatar_url)")
+      .eq("id", liveStreamId)
+      .single();
+    if (data) setWatchingStream(data);
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}
