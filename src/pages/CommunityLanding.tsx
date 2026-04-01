@@ -452,7 +452,7 @@ export default function CommunityLanding() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     {isPaid ? (
-                      <><CreditCard className="h-4 w-4 text-amber-500" /><span className="text-amber-600 font-medium">{formatPrice(price!, billingPeriod)}</span></>
+                      <><CreditCard className="h-4 w-4 text-primary" /><span className="text-primary font-medium">{formatPrice(price!, billingPeriod)}</span></>
                     ) : (
                       <><CheckCircle className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600 font-medium">Gratuito</span></>
                     )}
@@ -604,7 +604,7 @@ export default function CommunityLanding() {
 
               {/* Price block */}
               {isPaid && !inviteCode && (
-                <div className="mx-4 mb-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
+                <div className="mx-4 mb-3 p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
                   <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{formatPrice(price!, billingPeriod)}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5">{trialDays > 0 ? `${trialDays} dias grátis` : "Cancele a qualquer momento"}</p>
                 </div>
@@ -690,7 +690,7 @@ export default function CommunityLanding() {
                 Logado como <span className="font-medium text-foreground">{user.email}</span>
               </p>
               {isPaid && !inviteCode ? (
-                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center">
                   <p className="text-2xl font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{trialDays > 0 ? `${trialDays} dias grátis, depois cobrança recorrente` : "Cancele quando quiser"}</p>
                 </div>
@@ -758,7 +758,7 @@ export default function CommunityLanding() {
                 </div>
 
                 {isPaid && !inviteCode && (
-                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
                     <p className="text-lg font-bold text-foreground">{formatPrice(price!, billingPeriod)}</p>
                     <p className="text-xs text-muted-foreground">{trialDays > 0 ? `Após criar conta, você inicia ${trialDays} dias grátis` : "Após criar conta, você será direcionado ao pagamento"}</p>
                   </div>

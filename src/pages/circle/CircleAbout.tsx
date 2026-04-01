@@ -271,7 +271,7 @@ export default function CircleAbout() {
         </span>
         <span className="flex items-center gap-1.5">
           {isPaid ? (
-            <><CreditCard className="h-4 w-4 text-amber-500" /><span className="text-amber-600 font-medium">{formatPrice(price!, billingPeriod)}</span></>
+            <><CreditCard className="h-4 w-4 text-primary" /><span className="text-primary font-medium">{formatPrice(price!, billingPeriod)}</span></>
           ) : (
             <><CheckCircle className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600 font-medium">Gratuito</span></>
           )}
