@@ -659,7 +659,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                               </DropdownMenu>
                             </div>
 
-                            <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{comment.body}</p>
+                            <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
 
                             {/* Comment images */}
                             {comment.images && (comment.images as string[]).length > 0 && (
