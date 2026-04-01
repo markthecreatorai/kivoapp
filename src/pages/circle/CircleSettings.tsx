@@ -13,14 +13,17 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   User, Bell, Shield, Camera, Save, Loader2,
-  Lock, Mail, AlertTriangle, ChevronDown,
+  Lock, Mail, AlertTriangle, ChevronDown, AlertCircle, CheckCircle2,
   Globe, Instagram, Youtube, Linkedin, Facebook, Link2, Eye, EyeOff,
+  MapPin, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -61,6 +64,14 @@ function normalizeSocialUrl(key: string, value: string): string {
   if (key === "linkedin") return `https://linkedin.com/in/${v}`;
   if (key === "facebook") return `https://facebook.com/${v}`;
   return v.includes(".") ? `https://${v}` : v;
+}
+
+function getBioQuality(bio: string): { label: string; color: string; level: number } {
+  const len = bio.trim().length;
+  if (len === 0) return { label: "Vazia", color: "text-muted-foreground", level: 0 };
+  if (len < 30) return { label: "Básica", color: "text-amber-500", level: 1 };
+  if (len < 80) return { label: "Boa", color: "text-blue-500", level: 2 };
+  return { label: "Forte", color: "text-green-500", level: 3 };
 }
 
 interface ProfileForm {
@@ -116,7 +127,6 @@ export default function CircleSettings() {
     staleTime: 30_000,
   });
 
-  // All communities user belongs to (for membership visibility)
   const { data: userCommunities = [] } = useQuery({
     queryKey: ["user-communities-list", user?.id],
     queryFn: async () => {
@@ -145,7 +155,6 @@ export default function CircleSettings() {
   const [form, setForm] = useState<ProfileForm | null>(null);
   const isOwnerOrAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
 
-  // Initialize form when member loads
   useEffect(() => {
     if (member && !form) {
       setForm({
@@ -178,6 +187,26 @@ export default function CircleSettings() {
     setIsDirty(true);
   }, []);
 
+  // ── Completeness ──
+  const completenessItems = useMemo(() => {
+    if (!form) return [];
+    return [
+      { label: "Foto de perfil", done: !!(member?.avatar_url), field: "avatar" },
+      { label: "Nome exibido", done: !!form.display_name.trim(), field: "display-name" },
+      { label: "@username", done: !!form.username.trim(), field: "username" },
+      { label: "Bio", done: form.bio.trim().length >= 10, field: "bio" },
+      { label: "Localização", done: !!form.location.trim(), field: "location" },
+      { label: "Pelo menos 1 link social", done: Object.values(form.social_links).some(v => !!v?.trim()), field: "social" },
+    ];
+  }, [form, member]);
+
+  const completenessScore = useMemo(() => {
+    if (!completenessItems.length) return 0;
+    return Math.round((completenessItems.filter(i => i.done).length / completenessItems.length) * 100);
+  }, [completenessItems]);
+
+  const bioQuality = useMemo(() => getBioQuality(form?.bio || ""), [form?.bio]);
+
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -204,7 +233,6 @@ export default function CircleSettings() {
     if (!form) return;
     setSaving(true);
     try {
-      // Normalize social links
       const normalizedLinks: Record<string, string> = {};
       for (const [key, val] of Object.entries(form.social_links)) {
         normalizedLinks[key] = normalizeSocialUrl(key, val);
@@ -225,6 +253,7 @@ export default function CircleSettings() {
         }) as any),
       });
       setIsDirty(false);
+      toast.success("Perfil atualizado com sucesso!");
     } catch {
       toast.error("Erro ao salvar. Tente novamente.");
     } finally {
@@ -245,11 +274,20 @@ export default function CircleSettings() {
     (e.target as HTMLFormElement).reset();
   }, []);
 
-  // Keyboard: Enter in search fields doesn't submit
+  // Unsaved changes warning
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        // Close open collapsibles
         setSocialOpen(false);
         setMembershipOpen(false);
         setAdvancedOpen(false);
@@ -261,7 +299,7 @@ export default function CircleSettings() {
 
   if (!member || !form) {
     return (
-      <div className="px-4 md:px-8 py-6 max-w-2xl mx-auto w-full space-y-6">
+      <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto w-full space-y-6">
         <div className="space-y-1.5">
           <Skeleton className="h-6 w-32" />
           <Skeleton className="h-4 w-48" />
@@ -280,23 +318,16 @@ export default function CircleSettings() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <div className="space-y-1.5">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-10 w-full" />
-            </div>
+            <div className="space-y-1.5"><Skeleton className="h-3 w-20" /><Skeleton className="h-10 w-full" /></div>
+            <div className="space-y-1.5"><Skeleton className="h-3 w-20" /><Skeleton className="h-10 w-full" /></div>
           </div>
-          <div className="space-y-1.5">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-20 w-full" />
-          </div>
+          <div className="space-y-1.5"><Skeleton className="h-3 w-16" /><Skeleton className="h-20 w-full" /></div>
         </Card>
       </div>
     );
   }
+
+  const socialCount = Object.values(form.social_links).filter(Boolean).length;
 
   const sectionButtons = [
     { id: "profile", label: "Perfil", icon: User },
@@ -305,10 +336,10 @@ export default function CircleSettings() {
   ];
 
   return (
-    <div className="px-4 md:px-8 py-6 max-w-2xl mx-auto w-full">
+    <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">Configurações</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Gerencie seu perfil e preferências na comunidade</p>
+        <h1 className="text-xl font-bold text-foreground">Configurações da comunidade</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Gerencie seu perfil e preferências nesta comunidade</p>
       </div>
 
       {/* Section nav */}
@@ -332,307 +363,433 @@ export default function CircleSettings() {
 
       {/* ─── Profile Section ─── */}
       {activeSection === "profile" && (
-        <div className="space-y-4">
-          {/* Scope indicator */}
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
-            <User className="h-4 w-4 text-muted-foreground shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              Estas configurações afetam apenas seu perfil nesta comunidade.{" "}
-              <span className="font-medium">Dados financeiros e de workspace são gerenciados separadamente.</span>
-            </p>
-          </div>
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Main form */}
+          <div className="flex-1 min-w-0 space-y-4">
+            {/* Scope indicator */}
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+              <User className="h-4 w-4 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Estas configurações afetam apenas seu perfil nesta comunidade.{" "}
+                <span className="font-medium">Dados financeiros e de workspace são gerenciados separadamente.</span>
+              </p>
+            </div>
 
-          <Card className="p-6 space-y-5">
-            {/* Sync toggle */}
-            {!isOwnerOrAdmin ? (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Sincronizar com Kivo</p>
-                  <p className="text-xs text-muted-foreground">Nome e avatar seguem seu perfil global Kivo</p>
+            {/* Completeness */}
+            {completenessScore < 100 && (
+              <Card className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Perfil completo</p>
+                    <p className="text-xs text-muted-foreground">Complete para mais visibilidade</p>
+                  </div>
+                  <span className={cn(
+                    "text-lg font-bold",
+                    completenessScore >= 80 ? "text-green-500" : completenessScore >= 40 ? "text-amber-500" : "text-destructive"
+                  )}>
+                    {completenessScore}%
+                  </span>
                 </div>
-                <Switch
-                  checked={form.sync_with_kivo}
-                  onCheckedChange={(v) => updateForm({ sync_with_kivo: v })}
-                />
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                <Shield className="h-4 w-4 text-primary shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  Como {member.role === "OWNER" ? "dono" : "admin"}, seu perfil é sempre sincronizado com sua conta Kivo.
-                </p>
-              </div>
+                <Progress value={completenessScore} className="h-2 mb-3" />
+                <div className="space-y-1.5">
+                  {completenessItems.filter(i => !i.done).map((item) => (
+                    <button
+                      key={item.field}
+                      onClick={() => {
+                        if (item.field === "social") setSocialOpen(true);
+                        const el = document.getElementById(item.field);
+                        el?.focus();
+                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }}
+                      className="flex items-center gap-2 text-xs text-primary hover:underline w-full text-left py-0.5"
+                    >
+                      <X className="h-3 w-3 text-muted-foreground" />
+                      {item.label}
+                      <span className="ml-auto text-[10px] text-muted-foreground">Completar →</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
             )}
 
-            {/* Avatar */}
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={member.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                    {(member.display_name || user?.email || "U").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                {(!form.sync_with_kivo || isOwnerOrAdmin) && (
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploadingAvatar || (form.sync_with_kivo && !isOwnerOrAdmin)}
-                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {uploadingAvatar ? (
-                      <Loader2 className="h-3.5 w-3.5 text-primary-foreground animate-spin" />
-                    ) : (
-                      <Camera className="h-3.5 w-3.5 text-primary-foreground" />
-                    )}
-                  </button>
-                )}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">{member.display_name}</p>
-                {(member as any).username && (
-                  <p className="text-sm text-muted-foreground">@{(member as any).username}</p>
-                )}
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-                {!form.sync_with_kivo && (
-                  <button onClick={() => fileRef.current?.click()} className="text-xs text-primary hover:underline mt-1">
-                    Alterar foto
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Core fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="display-name">Nome exibido</Label>
-                <Input
-                  id="display-name"
-                  value={form.display_name}
-                  onChange={(e) => updateForm({ display_name: e.target.value })}
-                  placeholder="Seu nome na comunidade"
-                  disabled={form.sync_with_kivo && !isOwnerOrAdmin}
-                  maxLength={60}
-                />
-                <p className="text-[10px] text-muted-foreground text-right">{form.display_name.length}/60</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="username">@username</Label>
-                <Input
-                  id="username"
-                  value={form.username}
-                  onChange={(e) => updateForm({ username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                  placeholder="seu_username"
-                  maxLength={30}
-                />
-                <p className="text-[10px] text-muted-foreground">Usado para @menções</p>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
-                value={form.bio}
-                onChange={(e) => updateForm({ bio: e.target.value })}
-                placeholder="Conte um pouco sobre você..."
-                rows={3}
-                maxLength={200}
-              />
-              <p className="text-[10px] text-muted-foreground text-right">{form.bio.length}/200</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="location">Localização</Label>
-                <Input
-                  id="location"
-                  value={form.location}
-                  onChange={(e) => updateForm({ location: e.target.value })}
-                  placeholder="São Paulo, BR"
-                  maxLength={80}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="mbti">Myers Briggs</Label>
-                <Select value={form.mbti || "none"} onValueChange={(v) => updateForm({ mbti: v === "none" ? "" : v })}>
-                  <SelectTrigger id="mbti"><SelectValue placeholder="Selecionar (opcional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Não informar</SelectItem>
-                    {MBTI_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </Card>
-
-          {/* ── Social Links (collapsible) ── */}
-          <Collapsible open={socialOpen} onOpenChange={setSocialOpen}>
-            <Card className="overflow-hidden">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/20 transition-colors">
-                <div className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm text-foreground">Links sociais</span>
-                  {Object.values(form.social_links).filter(Boolean).length > 0 && (
-                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                      {Object.values(form.social_links).filter(Boolean).length}
-                    </span>
-                  )}
+            <Card className="p-6 space-y-5">
+              {/* Sync toggle */}
+              {!isOwnerOrAdmin ? (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Sincronizar com Kivo</p>
+                    <p className="text-xs text-muted-foreground">Nome e avatar seguem seu perfil global Kivo</p>
+                  </div>
+                  <Switch
+                    checked={form.sync_with_kivo}
+                    onCheckedChange={(v) => updateForm({ sync_with_kivo: v })}
+                  />
                 </div>
-                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", socialOpen && "rotate-180")} />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="px-6 pb-5 space-y-3 border-t border-border pt-4">
-                  {SOCIAL_FIELDS.map(({ key, label, icon: Icon, placeholder }) => (
-                    <div key={key} className="flex items-center gap-3">
-                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 space-y-0.5">
-                        <Label className="text-xs text-muted-foreground">{label}</Label>
-                        <Input
-                          value={form.social_links[key] || ""}
-                          onChange={(e) => updateForm({
-                            social_links: { ...form.social_links, [key]: e.target.value }
-                          })}
-                          placeholder={placeholder}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Aceita @handle para Instagram e Twitter. URLs completas para os demais.
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                  <Shield className="h-4 w-4 text-primary shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Como {member.role === "OWNER" ? "dono" : "admin"}, seu perfil é sempre sincronizado com sua conta Kivo.
                   </p>
                 </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+              )}
 
-          {/* ── Membership Visibility (collapsible) ── */}
-          {userCommunities.length > 0 && (
-            <Collapsible open={membershipOpen} onOpenChange={setMembershipOpen}>
+              {/* Avatar */}
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={member.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                      {(member.display_name || user?.email || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {(!form.sync_with_kivo || isOwnerOrAdmin) && (
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      disabled={uploadingAvatar || (form.sync_with_kivo && !isOwnerOrAdmin)}
+                      className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {uploadingAvatar ? (
+                        <Loader2 className="h-3.5 w-3.5 text-primary-foreground animate-spin" />
+                      ) : (
+                        <Camera className="h-3.5 w-3.5 text-primary-foreground" />
+                      )}
+                    </button>
+                  )}
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{member.display_name}</p>
+                  {(member as any).username && (
+                    <p className="text-sm text-muted-foreground">@{(member as any).username}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Core fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="display-name">Nome exibido</Label>
+                  <Input
+                    id="display-name"
+                    value={form.display_name}
+                    onChange={(e) => updateForm({ display_name: e.target.value })}
+                    placeholder="Seu nome na comunidade"
+                    disabled={form.sync_with_kivo && !isOwnerOrAdmin}
+                    maxLength={60}
+                  />
+                  <p className="text-[10px] text-muted-foreground text-right">{form.display_name.length}/60</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="username">@username</Label>
+                  <Input
+                    id="username"
+                    value={form.username}
+                    onChange={(e) => updateForm({ username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                    placeholder="seu_username"
+                    maxLength={30}
+                  />
+                  <p className="text-[10px] text-muted-foreground">Usado para @menções</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="bio">Bio</Label>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-[10px] font-medium", bioQuality.color)}>{bioQuality.label}</span>
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "h-1.5 w-4 rounded-full transition-colors",
+                            i <= bioQuality.level ? (bioQuality.level >= 3 ? "bg-green-500" : bioQuality.level >= 2 ? "bg-blue-500" : "bg-amber-500") : "bg-muted"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <Textarea
+                  id="bio"
+                  value={form.bio}
+                  onChange={(e) => updateForm({ bio: e.target.value })}
+                  placeholder="Conte um pouco sobre você..."
+                  rows={3}
+                  maxLength={200}
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground italic">
+                    💡 Explique quem você ajuda e o que a pessoa encontra aqui.
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{form.bio.length}/200</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="location">Localização</Label>
+                  <Input
+                    id="location"
+                    value={form.location}
+                    onChange={(e) => updateForm({ location: e.target.value })}
+                    placeholder="São Paulo, BR"
+                    maxLength={80}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mbti">Myers Briggs</Label>
+                  <Select value={form.mbti || "none"} onValueChange={(v) => updateForm({ mbti: v === "none" ? "" : v })}>
+                    <SelectTrigger id="mbti"><SelectValue placeholder="Selecionar (opcional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não informar</SelectItem>
+                      {MBTI_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </Card>
+
+            {/* Social Links */}
+            <Collapsible open={socialOpen} onOpenChange={setSocialOpen}>
               <Card className="overflow-hidden">
                 <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/20 transition-colors">
                   <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm text-foreground">Visibilidade de memberships</span>
+                    <Link2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold text-sm text-foreground">Links sociais</span>
+                    {socialCount > 0 && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {socialCount}
+                      </Badge>
+                    )}
                   </div>
-                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", membershipOpen && "rotate-180")} />
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", socialOpen && "rotate-180")} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-6 pb-5 border-t border-border pt-4 space-y-1">
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Escolha quais comunidades aparecem no seu perfil público.
+                  <div className="px-6 pb-5 space-y-3 border-t border-border pt-4">
+                    {SOCIAL_FIELDS.map(({ key, label, icon: Icon, placeholder }) => {
+                      const val = form.social_links[key] || "";
+                      return (
+                        <div key={key} className="flex items-center gap-3">
+                          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1 space-y-0.5">
+                            <Label className="text-xs text-muted-foreground">{label}</Label>
+                            <div className="relative">
+                              <Input
+                                value={val}
+                                onChange={(e) => updateForm({
+                                  social_links: { ...form.social_links, [key]: e.target.value }
+                                })}
+                                placeholder={placeholder}
+                                className="h-9 text-sm pr-8"
+                              />
+                              {val && (
+                                <button
+                                  onClick={() => updateForm({ social_links: { ...form.social_links, [key]: "" } })}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Aceita @handle para Instagram e Twitter. URLs completas para os demais.
                     </p>
-
-                    {/* Creator communities */}
-                    {userCommunities.filter((c: any) => ["OWNER", "ADMIN"].includes(c.role)).length > 0 && (
-                      <div className="space-y-2 mb-4">
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Criador de</p>
-                        {userCommunities.filter((c: any) => ["OWNER", "ADMIN"].includes(c.role)).map((c: any) => (
-                          <div key={c.id} className="flex items-center justify-between py-2">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-7 w-7">
-                                <AvatarImage src={c.icon_url || undefined} />
-                                <AvatarFallback className="bg-primary/10 text-primary text-[10px]">{c.name[0]}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm text-foreground">{c.name}</span>
-                            </div>
-                            <Switch
-                              checked={form.membership_visibility[c.id] !== false}
-                              onCheckedChange={(v) => updateForm({
-                                membership_visibility: { ...form.membership_visibility, [c.id]: v }
-                              })}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Member communities */}
-                    {userCommunities.filter((c: any) => !["OWNER", "ADMIN"].includes(c.role)).length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Membro de</p>
-                        {userCommunities.filter((c: any) => !["OWNER", "ADMIN"].includes(c.role)).map((c: any) => (
-                          <div key={c.id} className="flex items-center justify-between py-2">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-7 w-7">
-                                <AvatarImage src={c.icon_url || undefined} />
-                                <AvatarFallback className="bg-muted text-muted-foreground text-[10px]">{c.name[0]}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm text-foreground">{c.name}</span>
-                            </div>
-                            <Switch
-                              checked={form.membership_visibility[c.id] !== false}
-                              onCheckedChange={(v) => updateForm({
-                                membership_visibility: { ...form.membership_visibility, [c.id]: v }
-                              })}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </CollapsibleContent>
               </Card>
             </Collapsible>
-          )}
 
-          {/* ── Advanced (collapsible) ── */}
-          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-            <Card className="overflow-hidden">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/20 transition-colors">
-                <div className="flex items-center gap-2">
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm text-foreground">Avançado</span>
-                </div>
-                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", advancedOpen && "rotate-180")} />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="px-6 pb-5 border-t border-border pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Ocultar perfil de mecanismos de busca</p>
-                      <p className="text-xs text-muted-foreground">Impede que Google, Bing etc. indexem seu perfil</p>
+            {/* Membership Visibility */}
+            {userCommunities.length > 0 && (
+              <Collapsible open={membershipOpen} onOpenChange={setMembershipOpen}>
+                <Card className="overflow-hidden">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/20 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-sm text-foreground">Visibilidade de memberships</span>
                     </div>
-                    <Switch
-                      checked={form.hide_from_search}
-                      onCheckedChange={(v) => updateForm({ hide_from_search: v })}
-                    />
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+                    <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", membershipOpen && "rotate-180")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-6 pb-5 border-t border-border pt-4 space-y-1">
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Escolha quais comunidades aparecem no seu perfil público.
+                      </p>
+                      {userCommunities.filter((c: any) => ["OWNER", "ADMIN"].includes(c.role)).length > 0 && (
+                        <div className="space-y-2 mb-4">
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Criador de</p>
+                          {userCommunities.filter((c: any) => ["OWNER", "ADMIN"].includes(c.role)).map((c: any) => (
+                            <div key={c.id} className="flex items-center justify-between py-2">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarImage src={c.icon_url || undefined} />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-[10px]">{c.name[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm text-foreground">{c.name}</span>
+                              </div>
+                              <Switch
+                                checked={form.membership_visibility[c.id] !== false}
+                                onCheckedChange={(v) => updateForm({
+                                  membership_visibility: { ...form.membership_visibility, [c.id]: v }
+                                })}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {userCommunities.filter((c: any) => !["OWNER", "ADMIN"].includes(c.role)).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Membro de</p>
+                          {userCommunities.filter((c: any) => !["OWNER", "ADMIN"].includes(c.role)).map((c: any) => (
+                            <div key={c.id} className="flex items-center justify-between py-2">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarImage src={c.icon_url || undefined} />
+                                  <AvatarFallback className="bg-muted text-muted-foreground text-[10px]">{c.name[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm text-foreground">{c.name}</span>
+                              </div>
+                              <Switch
+                                checked={form.membership_visibility[c.id] !== false}
+                                onCheckedChange={(v) => updateForm({
+                                  membership_visibility: { ...form.membership_visibility, [c.id]: v }
+                                })}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
 
-          {/* ── Save button ── */}
-          <div className="flex justify-end pt-2">
-            <Button
-              onClick={handleSave}
-              disabled={saving || !isDirty}
-              className={cn(
-                "min-w-[160px] transition-all duration-200",
-                isDirty ? "shadow-md" : "opacity-70"
+            {/* Advanced */}
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <Card className="overflow-hidden">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold text-sm text-foreground">Avançado</span>
+                  </div>
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", advancedOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-6 pb-5 border-t border-border pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Ocultar perfil de mecanismos de busca</p>
+                        <p className="text-xs text-muted-foreground">Impede que Google, Bing etc. indexem seu perfil</p>
+                      </div>
+                      <Switch
+                        checked={form.hide_from_search}
+                        onCheckedChange={(v) => updateForm({ hide_from_search: v })}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+
+            {/* Save CTA — sticky on mobile */}
+            <div className={cn(
+              "flex justify-end pt-2",
+              isDirty && "sticky bottom-4 z-20"
+            )}>
+              {isDirty && (
+                <div className="flex items-center gap-3 w-full md:w-auto bg-card border border-border rounded-xl px-4 py-3 shadow-lg md:shadow-md">
+                  <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Alterações não salvas
+                  </span>
+                  <div className="flex-1" />
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="min-w-[160px]"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    {saving ? "Salvando..." : "Atualizar Perfil"}
+                  </Button>
+                </div>
               )}
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
+              {!isDirty && (
+                <Button disabled className="min-w-[160px] opacity-60">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Perfil atualizado
+                </Button>
               )}
-              {saving ? "Salvando..." : "Atualizar Perfil"}
-            </Button>
+            </div>
+          </div>
+
+          {/* ─── Live Preview sidebar ─── */}
+          <div className="hidden lg:block w-[280px] shrink-0">
+            <div className="sticky top-20">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Preview do perfil</p>
+              <Card className="overflow-hidden">
+                <div className="h-14 bg-gradient-to-br from-primary/20 via-primary/10 to-muted" />
+                <div className="px-4 pb-4 -mt-7">
+                  <Avatar className="h-14 w-14 border-4 border-card">
+                    <AvatarImage src={member.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
+                      {(form.display_name || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="mt-2">
+                    <p className="font-semibold text-foreground text-sm">
+                      {form.display_name || "Seu nome"}
+                    </p>
+                    {form.username && (
+                      <p className="text-xs text-muted-foreground">@{form.username}</p>
+                    )}
+                  </div>
+                  {form.bio && (
+                    <p className="text-xs text-muted-foreground mt-2 line-clamp-3">{form.bio}</p>
+                  )}
+                  {form.location && (
+                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> {form.location}
+                    </p>
+                  )}
+                  {form.mbti && (
+                    <Badge variant="secondary" className="mt-1.5 text-[10px]">{form.mbti}</Badge>
+                  )}
+                  {socialCount > 0 && (
+                    <div className="flex items-center gap-2 mt-3">
+                      {SOCIAL_FIELDS.filter(f => form.social_links[f.key]?.trim()).map(({ key, icon: Icon }) => (
+                        <div key={key} className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
+                          <Icon className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!form.display_name && !form.bio && socialCount === 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-3 italic">
+                      Preencha os campos para ver o preview...
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
       )}
@@ -690,7 +847,6 @@ export default function CircleSettings() {
       {/* ─── Account Section ─── */}
       {activeSection === "account" && (
         <div className="space-y-4">
-          {/* Scope indicator */}
           <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
             <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
             <p className="text-xs text-muted-foreground">
