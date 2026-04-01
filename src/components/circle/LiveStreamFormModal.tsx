@@ -144,6 +144,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
                   meeting_url: embedUrl.trim(),
                   description: description.trim() || null,
                   status: goLiveNow ? "ACTIVE" : "SCHEDULED",
+                  cover_image_url: coverImage,
                 } as any)
                 .eq("id", existingEvent.id);
             }
