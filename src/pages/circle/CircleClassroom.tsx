@@ -693,9 +693,42 @@ export default function CircleClassroom() {
         {courses.map((course, index) => {
           const isPremium = course.access_type === "premium";
           const coursePct = course.id.startsWith("mock-") ? 0 : (courseProgressById[course.id] || 0);
-          const isLevelGated = course.access_mode === "LEVEL_GATED" && course.min_level;
           const memberLevel = member?.level ?? 1;
-          const isLocked = isLevelGated && !isAdmin && memberLevel < (course.min_level || 0);
+          const memberJoinedAt = member?.joined_at ? new Date(member.joined_at) : null;
+          const daysSinceJoin = memberJoinedAt ? Math.floor((Date.now() - memberJoinedAt.getTime()) / 86400000) : 0;
+
+          // Determine lock status per access_mode
+          let isLocked = false;
+          let lockMessage = "";
+          const mode = course.access_mode || "OPEN";
+
+          if (!isAdmin) {
+            switch (mode) {
+              case "LEVEL_UNLOCK":
+                if (memberLevel < (course.min_level || 0)) {
+                  isLocked = true;
+                  lockMessage = `Desbloqueia no nível ${course.min_level} (você está no ${memberLevel})`;
+                }
+                break;
+              case "BUY_NOW":
+                isLocked = true;
+                lockMessage = `Compra avulsa — R$ ${((course.course_price_cents || 0) / 100).toFixed(2).replace(".", ",")}`;
+                break;
+              case "TIME_UNLOCK": {
+                const requiredDays = course.unlock_after_days || 0;
+                if (daysSinceJoin < requiredDays) {
+                  isLocked = true;
+                  const remaining = requiredDays - daysSinceJoin;
+                  lockMessage = `Libera em ${remaining} ${remaining === 1 ? "dia" : "dias"}`;
+                }
+                break;
+              }
+              case "PRIVATE":
+                isLocked = true;
+                lockMessage = "Acesso privado";
+                break;
+            }
+          }
 
           return (
             <div
