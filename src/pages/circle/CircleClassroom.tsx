@@ -8,7 +8,7 @@ import {
   BookOpen, Play, Crown, Plus,
   FileText, Circle, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
-  Lock, Copy, Trash2,
+  Lock, Copy, Trash2, GripVertical,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,21 @@ import { toast } from "sonner";
 import CourseFormModal from "@/components/circle/CourseFormModal";
 import CourseCardMenu from "@/components/circle/CourseCardMenu";
 import LessonEditor from "@/components/circle/LessonEditor";
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ─── Types ───────────────────────────────────────────────────
 interface CircleCourse {
@@ -39,6 +54,38 @@ interface CircleCourse {
   allowed_tier_ids?: string[] | null;
   allowed_member_ids?: string[] | null;
   private_mode?: string | null;
+}
+
+/* ── Sortable wrapper for course cards ── */
+function SortableCourseCard({ courseId, disabled, children }: { courseId: string; disabled?: boolean; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: courseId,
+    disabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.85 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group/sortable">
+      {!disabled && (
+        <button
+          type="button"
+          className="absolute top-2.5 left-2.5 z-20 cursor-grab active:cursor-grabbing touch-none bg-background/80 backdrop-blur-sm rounded-md p-1 opacity-0 group-hover/sortable:opacity-100 transition-opacity shadow-sm"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      )}
+      {children}
+    </div>
+  );
 }
 
 interface CircleLesson {
@@ -311,6 +358,34 @@ export default function CircleClassroom() {
     },
     onError: (err: any) => toast.error(err.message),
   });
+
+  // ─── Reorder courses via drag & drop ──────────────────
+  const reorderCoursesMutation = useMutation({
+    mutationFn: async (reordered: CircleCourse[]) => {
+      const updates = reordered.map((c, i) =>
+        supabase.from("circle_courses").update({ position: i }).eq("id", c.id)
+      );
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-courses", community?.id] });
+    },
+    onError: () => toast.error("Erro ao reordenar cursos"),
+  });
+
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleCourseDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = courses.findIndex((c) => c.id === active.id);
+    const newIndex = courses.findIndex((c) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove([...courses], oldIndex, newIndex);
+    // optimistic update
+    queryClient.setQueryData(["circle-courses", community?.id], reordered);
+    reorderCoursesMutation.mutate(reordered);
+  };
 
   const startRenaming = (item: CircleLesson) => {
     setRenamingModuleId(item.id);
@@ -694,136 +769,140 @@ export default function CircleClassroom() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {courses.map((course, index) => {
-          const isPremium = course.access_type === "premium";
-          const coursePct = courseProgressById[course.id] || 0;
-          const memberLevel = member?.level ?? 1;
-          const memberJoinedAt = member?.joined_at ? new Date(member.joined_at) : null;
-          const daysSinceJoin = memberJoinedAt ? Math.floor((Date.now() - memberJoinedAt.getTime()) / 86400000) : 0;
+      <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
+        <SortableContext items={courses.map(c => c.id)} strategy={rectSortingStrategy}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course, index) => {
+              const isPremium = course.access_type === "premium";
+              const coursePct = courseProgressById[course.id] || 0;
+              const memberLevel = member?.level ?? 1;
+              const memberJoinedAt = member?.joined_at ? new Date(member.joined_at) : null;
+              const daysSinceJoin = memberJoinedAt ? Math.floor((Date.now() - memberJoinedAt.getTime()) / 86400000) : 0;
 
-          // Determine lock status per access_mode
-          let isLocked = false;
-          let lockMessage = "";
-          const mode = course.access_mode || "OPEN";
+              let isLocked = false;
+              let lockMessage = "";
+              const mode = course.access_mode || "OPEN";
 
-          if (!isAdmin) {
-            switch (mode) {
-              case "LEVEL_UNLOCK":
-                if (memberLevel < (course.min_level || 0)) {
-                  isLocked = true;
-                  lockMessage = `Desbloqueia no nível ${course.min_level} (você está no ${memberLevel})`;
+              if (!isAdmin) {
+                switch (mode) {
+                  case "LEVEL_UNLOCK":
+                    if (memberLevel < (course.min_level || 0)) {
+                      isLocked = true;
+                      lockMessage = `Desbloqueia no nível ${course.min_level} (você está no ${memberLevel})`;
+                    }
+                    break;
+                  case "BUY_NOW":
+                    isLocked = true;
+                    lockMessage = `Compra avulsa — R$ ${((course.course_price_cents || 0) / 100).toFixed(2).replace(".", ",")}`;
+                    break;
+                  case "TIME_UNLOCK": {
+                    const requiredDays = course.unlock_after_days || 0;
+                    if (daysSinceJoin < requiredDays) {
+                      isLocked = true;
+                      const remaining = requiredDays - daysSinceJoin;
+                      lockMessage = `Libera em ${remaining} ${remaining === 1 ? "dia" : "dias"}`;
+                    }
+                    break;
+                  }
+                  case "PRIVATE": {
+                    const inMemberList = (course.allowed_member_ids || []).includes(member?.id || "");
+                    const hasTier = (course.allowed_tier_ids || []).some(tid => memberTierIds.includes(tid));
+                    if (!inMemberList && !hasTier) {
+                      isLocked = true;
+                      lockMessage = "Acesso exclusivo para membros de tiers específicos";
+                    }
+                    break;
+                  }
                 }
-                break;
-              case "BUY_NOW":
-                isLocked = true;
-                lockMessage = `Compra avulsa — R$ ${((course.course_price_cents || 0) / 100).toFixed(2).replace(".", ",")}`;
-                break;
-              case "TIME_UNLOCK": {
-                const requiredDays = course.unlock_after_days || 0;
-                if (daysSinceJoin < requiredDays) {
-                  isLocked = true;
-                  const remaining = requiredDays - daysSinceJoin;
-                  lockMessage = `Libera em ${remaining} ${remaining === 1 ? "dia" : "dias"}`;
-                }
-                break;
               }
-              case "PRIVATE": {
-                const inMemberList = (course.allowed_member_ids || []).includes(member?.id || "");
-                const hasTier = (course.allowed_tier_ids || []).some(tid => memberTierIds.includes(tid));
-                if (!inMemberList && !hasTier) {
-                  isLocked = true;
-                  lockMessage = "Acesso exclusivo para membros de tiers específicos";
-                }
-                break;
-              }
-            }
-          }
 
-          return (
-            <div
-              key={course.id}
-              onClick={() => {
-                if (isLocked) {
-                  toast.error(lockMessage);
-                  return;
-                }
-                setSelectedCourseId(course.id);
-                setSelectedLessonId(null);
-              }}
-              className={cn(
-                "bg-card rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col relative",
-                isLocked && "opacity-80"
-              )}
-            >
-              {isAdmin && (
-                <div className="absolute top-2.5 right-2.5 z-10">
-                  <CourseCardMenu
-                    course={course}
-                    isFirst={index === 0}
-                    isLast={index === courses.length - 1}
-                    onEdit={() => { setEditingCourse(course); setShowFormModal(true); }}
-                  />
-                </div>
-              )}
-              <div className="relative overflow-hidden" style={{ height: 180 }}>
-                {course.cover_url ? (
-                  <img src={course.cover_url} alt={course.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-foreground/80 to-foreground/60 flex items-center justify-center">
-                    <BookOpen className="h-12 w-12 text-background/30" />
-                  </div>
-                )}
-                {isLocked ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/40">
-                    <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center shadow-lg">
-                      <Lock className="h-5 w-5 text-muted-foreground" />
+              return (
+                <SortableCourseCard key={course.id} courseId={course.id} disabled={!isAdmin}>
+                  <div
+                    onClick={() => {
+                      if (isLocked) {
+                        toast.error(lockMessage);
+                        return;
+                      }
+                      setSelectedCourseId(course.id);
+                      setSelectedLessonId(null);
+                    }}
+                    className={cn(
+                      "bg-card rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col relative h-full",
+                      isLocked && "opacity-80"
+                    )}
+                  >
+                    {isAdmin && (
+                      <div className="absolute top-2.5 right-2.5 z-10">
+                        <CourseCardMenu
+                          course={course}
+                          isFirst={index === 0}
+                          isLast={index === courses.length - 1}
+                          onEdit={() => { setEditingCourse(course); setShowFormModal(true); }}
+                        />
+                      </div>
+                    )}
+                    <div className="relative overflow-hidden" style={{ height: 180 }}>
+                      {course.cover_url ? (
+                        <img src={course.cover_url} alt={course.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-foreground/80 to-foreground/60 flex items-center justify-center">
+                          <BookOpen className="h-12 w-12 text-background/30" />
+                        </div>
+                      )}
+                      {isLocked ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-foreground/40">
+                          <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center shadow-lg">
+                            <Lock className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 group-hover:bg-foreground/20 transition-colors pointer-events-none">
+                          <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                            <Play className="h-5 w-5 text-foreground ml-0.5" />
+                          </div>
+                        </div>
+                      )}
+                      {isPremium && (
+                        <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 pointer-events-none">
+                          <div className="absolute top-[10px] right-[-28px] rotate-45 bg-accent text-accent-foreground text-[9px] font-extrabold tracking-wider py-1 px-7 shadow-sm flex items-center justify-center gap-0.5">
+                            <Crown className="h-2.5 w-2.5" /> PRO
+                          </div>
+                        </div>
+                      )}
+                      {!course.is_published && isAdmin && (
+                        <div className="absolute top-2.5 left-2.5 bg-muted text-muted-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          RASCUNHO
+                        </div>
+                      )}
+                    </div>
+                    <div className="pt-3 px-4">
+                      <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                        {course.name}
+                      </h3>
+                      {course.description && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                          {course.description}
+                        </p>
+                      )}
+                      {isLocked && (
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                          <Lock className="h-3 w-3" />
+                          <span>{lockMessage}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-auto px-4 mb-4 pt-3">
+                      <Progress value={isLocked ? 0 : coursePct} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+                      <p className="text-[10px] text-muted-foreground mt-1">{isLocked ? "Bloqueado" : `${coursePct}% concluído`}</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 group-hover:bg-foreground/20 transition-colors pointer-events-none">
-                    <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                      <Play className="h-5 w-5 text-foreground ml-0.5" />
-                    </div>
-                  </div>
-                )}
-                {isPremium && (
-                  <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 pointer-events-none">
-                    <div className="absolute top-[10px] right-[-28px] rotate-45 bg-accent text-accent-foreground text-[9px] font-extrabold tracking-wider py-1 px-7 shadow-sm flex items-center justify-center gap-0.5">
-                      <Crown className="h-2.5 w-2.5" /> PRO
-                    </div>
-                  </div>
-                )}
-                {!course.is_published && isAdmin && (
-                  <div className="absolute top-2.5 left-2.5 bg-muted text-muted-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    RASCUNHO
-                  </div>
-                )}
-              </div>
-              <div className="pt-3 px-4">
-                <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                  {course.name}
-                </h3>
-                {course.description && (
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                    {course.description}
-                  </p>
-                )}
-                {isLocked && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
-                    <Lock className="h-3 w-3" />
-                    <span>{lockMessage}</span>
-                  </div>
-                )}
-              </div>
-              <div className="mt-auto px-4 mb-4 pt-3">
-                <Progress value={isLocked ? 0 : coursePct} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
-                <p className="text-[10px] text-muted-foreground mt-1">{isLocked ? "Bloqueado" : `${coursePct}% concluído`}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </SortableCourseCard>
+              );
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {community && (
         <CourseFormModal
