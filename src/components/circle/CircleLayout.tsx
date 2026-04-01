@@ -64,10 +64,7 @@ export function getLevelInfo(points: number) {
   return LEVEL_THRESHOLDS[0];
 }
 
-interface CircleLayoutProps {
-  children: ReactNode;
-  showRightSidebar?: boolean;
-}
+// No more props — layout is persistent via Outlet
 
 function getTabItems(slug: string) {
   return [
