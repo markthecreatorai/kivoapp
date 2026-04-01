@@ -47,6 +47,8 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
   const [scheduledAt, setScheduledAt] = useState("");
   const [chatEnabled, setChatEnabled] = useState(true);
   const [goLiveNow, setGoLiveNow] = useState(false);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (stream) {
