@@ -2363,6 +2363,50 @@ export type Database = {
           },
         ]
       }
+      community_notification_preferences: {
+        Row: {
+          admin_announcements_enabled: boolean
+          community_id: string
+          created_at: string
+          digest_frequency: string
+          event_reminder_enabled: boolean
+          id: string
+          notifications_frequency: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_announcements_enabled?: boolean
+          community_id: string
+          created_at?: string
+          digest_frequency?: string
+          event_reminder_enabled?: boolean
+          id?: string
+          notifications_frequency?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_announcements_enabled?: boolean
+          community_id?: string
+          created_at?: string
+          digest_frequency?: string
+          event_reminder_enabled?: boolean
+          id?: string
+          notifications_frequency?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_notification_preferences_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_notifications: {
         Row: {
           actor_id: string | null
@@ -6296,6 +6340,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_preferences: {
+        Row: {
+          affiliate_referral_enabled: boolean
+          created_at: string
+          id: string
+          kaching_enabled: boolean
+          likes_enabled: boolean
+          new_follower_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          affiliate_referral_enabled?: boolean
+          created_at?: string
+          id?: string
+          kaching_enabled?: boolean
+          likes_enabled?: boolean
+          new_follower_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          affiliate_referral_enabled?: boolean
+          created_at?: string
+          id?: string
+          kaching_enabled?: boolean
+          likes_enabled?: boolean
+          new_follower_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       wallet_ledger: {
         Row: {
