@@ -521,7 +521,7 @@ export default function CircleSettings() {
                           }}
                         >
                           <Settings className="h-3.5 w-3.5 mr-1" />
-                          SETTINGS
+                          CONFIGURAÇÕES
                         </Button>
                         <button className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors">
                           <Eye className="h-4 w-4" />
