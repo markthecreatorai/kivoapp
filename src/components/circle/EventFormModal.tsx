@@ -71,6 +71,54 @@ const REPEAT_UNITS = [
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const EVENT_TEMPLATES = [
+  {
+    key: "coffee",
+    label: "Coffee hour",
+    icon: Coffee,
+    title: "Coffee hour",
+    description: "Casual hangout — grab your favorite drink and let's chat!",
+    duration: "60",
+    locationType: "zoom",
+  },
+  {
+    key: "qa",
+    label: "Q&A",
+    icon: HelpCircle,
+    title: "Q&A",
+    description: "Ask me anything! Bring your questions and let's dive in.",
+    duration: "60",
+    locationType: "zoom",
+  },
+  {
+    key: "coworking",
+    label: "Co-working session",
+    icon: Laptop,
+    title: "Co-working session",
+    description: "Work together in real-time. Stay focused, stay connected.",
+    duration: "120",
+    locationType: "zoom",
+  },
+  {
+    key: "happy",
+    label: "Happy hour",
+    icon: PartyPopper,
+    title: "Happy hour",
+    description: "Relax, socialize and celebrate wins with the community!",
+    duration: "60",
+    locationType: "zoom",
+  },
+  {
+    key: "custom",
+    label: "Create my own event",
+    icon: PenLine,
+    title: "",
+    description: "",
+    duration: "",
+    locationType: "zoom",
+  },
+];
+
 const TEMPLATE_SUGGESTIONS = [
   { label: "coffee hour", title: "Coffee hour" },
   { label: "Q&A", title: "Q&A" },
