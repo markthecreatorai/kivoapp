@@ -34,6 +34,8 @@ export default function CircleFeed() {
   const [showCompose, setShowCompose] = useState(false);
   const [filter, setFilter] = useState<"recent" | "popular">("recent");
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
+  const [showLiveForm, setShowLiveForm] = useState(false);
+  const [watchingStream, setWatchingStream] = useState<any>(null);
 
   // Post modal state — support both ?post=id (legacy) and direct open via prop/state
   const [activePostId, setActivePostId] = useState<string | null>(searchParams.get("post"));
