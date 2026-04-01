@@ -71,7 +71,6 @@ function getTabItems(slug: string) {
     { label: "Calendário", icon: Calendar, path: `/c/${slug}/events` },
     { label: "Membros", icon: Users, path: `/c/${slug}/members` },
     { label: "Ranking", icon: Trophy, path: `/c/${slug}/leaderboard` },
-    { label: "Mensagens", icon: Mail, path: `/c/${slug}/messages` },
     { label: "Sobre", icon: Star, path: `/c/${slug}/about` },
   ];
 }
