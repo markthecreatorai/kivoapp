@@ -1,3 +1,5 @@
+
+
 ## Mover /communities para /circles/explore com header de Circles
 
 ### Objetivo
@@ -18,7 +20,7 @@ A página de descoberta de comunidades deve viver em `/circles/explore` e usar o
 **3. `src/components/circle/CommunitySwitcher.tsx` — Logo Kivo quando sem comunidade**
 - Quando `currentCommunity` é `null`, renderizar o logo Kivo (importar de `@/assets/kivo-logo.svg`) no lugar do ícone/nome
 - Manter o dropdown funcional (lista de comunidades, criar, descobrir)
-- O texto ao lado do logo pode ser omitido (só logo) ou "Kivo" — seguindo padrão Skool
+- O texto ao lado do logo pode ser omitido (só logo) — seguindo padrão Skool
 
 **4. Atualizar referências `/communities` em outros arquivos**
 - `src/pages/circle/MyCommunities.tsx` — botão "Explorar" → `/circles/explore`
@@ -39,3 +41,4 @@ A página de descoberta de comunidades deve viver em `/circles/explore` e usar o
 - Logo Kivo aparece no switcher quando não há comunidade ativa
 - `/communities` redireciona para `/circles/explore`
 - Dropdown do switcher continua funcional
+
