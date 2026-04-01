@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -55,20 +55,39 @@ export default function CourseFormModal({
   const queryClient = useQueryClient();
   const isEdit = !!course;
 
-  const [name, setName] = useState(course?.name || "");
-  const [description, setDescription] = useState(course?.description || "");
-  const [accessType, setAccessType] = useState(course?.access_type || "free");
-  const [isPublished, setIsPublished] = useState(course?.is_published ?? true);
-  const [coverUrl, setCoverUrl] = useState(course?.cover_url || "");
-  const [accessMode, setAccessMode] = useState(course?.access_mode || "OPEN");
-  const [minLevel, setMinLevel] = useState<number>(course?.min_level || 2);
-  const [unlockDays, setUnlockDays] = useState<number>(course?.unlock_after_days || 7);
-  const [coursePriceCents, setCoursePriceCents] = useState<number>(course?.course_price_cents || 0);
-  const [buyNowProductId, setBuyNowProductId] = useState<string>(course?.buy_now_product_id || "");
-  const [privateMode, setPrivateMode] = useState<string>(course?.private_mode || "SPECIFIC_MEMBERS");
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(course?.allowed_member_ids || []);
-  const [selectedTierIds, setSelectedTierIds] = useState<string[]>(course?.allowed_tier_ids || []);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [accessType, setAccessType] = useState("free");
+  const [isPublished, setIsPublished] = useState(true);
+  const [coverUrl, setCoverUrl] = useState("");
+  const [accessMode, setAccessMode] = useState("OPEN");
+  const [minLevel, setMinLevel] = useState<number>(2);
+  const [unlockDays, setUnlockDays] = useState<number>(7);
+  const [coursePriceCents, setCoursePriceCents] = useState<number>(0);
+  const [buyNowProductId, setBuyNowProductId] = useState<string>("");
+  const [privateMode, setPrivateMode] = useState<string>("SPECIFIC_MEMBERS");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [selectedTierIds, setSelectedTierIds] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+
+  // Reset/prefill all fields when modal opens or course changes
+  useEffect(() => {
+    if (open) {
+      setName(course?.name || "");
+      setDescription(course?.description || "");
+      setAccessType(course?.access_type || "free");
+      setIsPublished(course?.is_published ?? true);
+      setCoverUrl(course?.cover_url || "");
+      setAccessMode(course?.access_mode || "OPEN");
+      setMinLevel(course?.min_level || 2);
+      setUnlockDays(course?.unlock_after_days || 7);
+      setCoursePriceCents(course?.course_price_cents || 0);
+      setBuyNowProductId(course?.buy_now_product_id || "");
+      setPrivateMode(course?.private_mode || "SPECIFIC_MEMBERS");
+      setSelectedMemberIds(course?.allowed_member_ids || []);
+      setSelectedTierIds(course?.allowed_tier_ids || []);
+    }
+  }, [open, course]);
 
   // Fetch workspace products for BUY_NOW
   const { data: products = [] } = useQuery({
