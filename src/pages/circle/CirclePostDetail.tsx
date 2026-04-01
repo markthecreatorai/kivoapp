@@ -279,7 +279,7 @@ export default function CirclePostDetail() {
       <Card className={cn("p-5", POST_BORDER[post.post_type])}>
         <div className="flex items-start gap-3">
           <Avatar className="h-11 w-11 ring-2 ring-primary/10">
-            <AvatarImage src={post.author?.avatar_url || ""} />
+            <AvatarImage src={post.author?.avatar_url || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary">{(post.author?.display_name || "U").charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">

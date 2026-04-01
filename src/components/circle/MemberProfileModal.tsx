@@ -96,7 +96,7 @@ export default function MemberProfileModal({ memberId, communityId, open, onOpen
         </DialogHeader>
         <div className="flex flex-col items-center text-center space-y-4">
           <Avatar className="h-20 w-20 ring-2 ring-offset-2 ring-border">
-            <AvatarImage src={member.avatar_url || ""} />
+            <AvatarImage src={member.avatar_url || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary text-xl">
               {(member.display_name || "U").charAt(0).toUpperCase()}
             </AvatarFallback>

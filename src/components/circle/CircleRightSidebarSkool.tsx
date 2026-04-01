@@ -239,7 +239,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
                   className="h-8 w-8 border-2 border-card"
                   style={{ marginLeft: i > 0 ? "-6px" : "0", zIndex: 20 - i }}
                 >
-                  <AvatarImage src={m.avatar_url || ""} />
+                  <AvatarImage src={m.avatar_url || undefined} />
                   <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
                     {(m.display_name || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
@@ -309,7 +309,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
                 <div key={m.id} className="flex items-center gap-2.5">
                   <span className="w-5 text-center text-sm shrink-0">{medal}</span>
                   <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarImage src={m.avatar_url || ""} />
+                    <AvatarImage src={m.avatar_url || undefined} />
                     <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-medium">
                       {(m.display_name || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>

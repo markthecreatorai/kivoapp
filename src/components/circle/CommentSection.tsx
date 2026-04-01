@@ -227,7 +227,7 @@ export default function CommentSection({
         <Card className="p-4">
           <div className="flex gap-3">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={member?.avatar_url || ""} />
+              <AvatarImage src={member?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/10 text-primary text-xs">
                 {(member?.display_name || "U").charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -289,7 +289,7 @@ export default function CommentSection({
                 )}
                 <div className="flex items-start gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={comment.author?.avatar_url || ""} />
+                    <AvatarImage src={comment.author?.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
                       {(comment.author?.display_name || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>
@@ -421,7 +421,7 @@ export default function CommentSection({
                       <Card key={reply.id} className="p-3">
                         <div className="flex items-start gap-2">
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={reply.author?.avatar_url || ""} />
+                            <AvatarImage src={reply.author?.avatar_url || undefined} />
                             <AvatarFallback className="bg-primary/10 text-primary text-[9px]">
                               {(reply.author?.display_name || "U").charAt(0).toUpperCase()}
                             </AvatarFallback>

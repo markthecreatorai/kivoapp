@@ -392,7 +392,7 @@ export default function CircleMessages() {
                   className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-muted/50 text-left"
                 >
                   <Avatar className="h-7 w-7">
-                    <AvatarImage src={m.avatar_url || ""} />
+                    <AvatarImage src={m.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
                       {(m.display_name || "U")[0].toUpperCase()}
                     </AvatarFallback>
@@ -427,7 +427,7 @@ export default function CircleMessages() {
                 )}
               >
                 <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarImage src={conv.otherMember?.avatar_url || ""} />
+                  <AvatarImage src={conv.otherMember?.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
                     {(conv.otherMember?.display_name || "U")[0].toUpperCase()}
                   </AvatarFallback>
@@ -480,7 +480,7 @@ export default function CircleMessages() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={selectedConvData?.otherMember?.avatar_url || ""} />
+                  <AvatarImage src={selectedConvData?.otherMember?.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
                     {(selectedConvData?.otherMember?.display_name || "U")[0].toUpperCase()}
                   </AvatarFallback>

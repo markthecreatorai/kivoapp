@@ -183,7 +183,7 @@ export default function CircleSettings() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={member.avatar_url || ""} />
+                  <AvatarImage src={member.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
                     {(member.display_name || user?.email || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>

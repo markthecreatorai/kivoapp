@@ -139,7 +139,7 @@ export default function EventDetailModal({ event, open, onOpenChange, myRsvp, on
               <div className="flex items-center -space-x-2">
                 {attendees.slice(0, maxVisible).map((a: any) => (
                   <Avatar key={a.id} className="h-8 w-8 ring-2 ring-background">
-                    <AvatarImage src={a.avatar_url || ""} />
+                    <AvatarImage src={a.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
                       {(a.display_name || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>

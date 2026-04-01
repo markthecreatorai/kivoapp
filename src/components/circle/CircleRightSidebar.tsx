@@ -94,7 +94,7 @@ export default function CircleRightSidebar({ community, member }: CircleRightSid
                     {medal || <span className="text-muted-foreground">{i + 1}</span>}
                   </span>
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={m.avatar_url || ""} />
+                    <AvatarImage src={m.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-[9px]">
                       {(m.display_name || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>
