@@ -77,11 +77,15 @@ export default function CourseFormModal({
       if (!workspaceId) return [];
       const { data } = await supabase
         .from("products")
-        .select("id, name, price")
+        .select("id, name, prices(amount)")
         .eq("workspace_id", workspaceId)
         .eq("status", "PUBLISHED")
         .order("name");
-      return data || [];
+      return (data || []).map((p: any) => ({
+        id: p.id as string,
+        name: p.name as string,
+        price: (p.prices?.[0]?.amount ?? 0) as number,
+      }));
     },
     enabled: !!workspaceId && accessMode === "BUY_NOW",
   });
@@ -263,9 +267,9 @@ export default function CourseFormModal({
           </div>
 
           {/* Access mode - card selector */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Tipo de acesso ao curso</Label>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-1.5">
               {ACCESS_MODE_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = accessMode === opt.value;
@@ -274,18 +278,31 @@ export default function CourseFormModal({
                     key={opt.value}
                     type="button"
                     onClick={() => setAccessMode(opt.value)}
-                    className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                       isSelected
-                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        ? "border-primary bg-primary/5 ring-2 ring-primary/20"
                         : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
                     }`}
                   >
-                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                    <div className="min-w-0">
+                    <div className={`flex items-center justify-center h-8 w-8 rounded-lg shrink-0 ${
+                      isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    }`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
                       <p className={`text-sm font-medium ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
                         {opt.label}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{opt.helper}</p>
+                      <p className="text-xs text-muted-foreground leading-snug">{opt.helper}</p>
+                    </div>
+                    <div className={`h-4 w-4 rounded-full border-2 shrink-0 transition-all ${
+                      isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
+                    }`}>
+                      {isSelected && (
+                        <div className="h-full w-full flex items-center justify-center">
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
@@ -295,26 +312,24 @@ export default function CourseFormModal({
 
           {/* Conditional fields per mode */}
           {accessMode === "LEVEL_UNLOCK" && (
-            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
-              <Label className="pl-3">Nível mínimo</Label>
-              <div className="pl-3">
-                <Input
-                  type="number"
-                  min={1}
-                  max={9}
-                  value={minLevel}
-                  onChange={(e) => setMinLevel(Math.max(1, Math.min(9, parseInt(e.target.value) || 1)))}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Membros precisam estar no nível {minLevel} ou acima para acessar.
-                </p>
-              </div>
+            <div className="space-y-1.5 rounded-lg border border-border bg-muted/30 p-4">
+              <Label>Nível mínimo</Label>
+              <Input
+                type="number"
+                min={1}
+                max={9}
+                value={minLevel}
+                onChange={(e) => setMinLevel(Math.max(1, Math.min(9, parseInt(e.target.value) || 1)))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Membros precisam alcançar o nível {minLevel} para desbloquear.
+              </p>
             </div>
           )}
 
           {accessMode === "BUY_NOW" && (
-            <div className="space-y-3 pl-1 border-l-2 border-primary/30 ml-2">
-              <div className="pl-3 space-y-1.5">
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+              <div className="space-y-1.5">
                 <Label>Produto vinculado</Label>
                 <Select value={buyNowProductId} onValueChange={setBuyNowProductId}>
                   <SelectTrigger>
@@ -334,62 +349,66 @@ export default function CourseFormModal({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  O membro que comprar este produto terá acesso ao curso.
+                  Ao comprar este produto, o membro recebe acesso ao curso.
                 </p>
               </div>
             </div>
           )}
 
           {accessMode === "TIME_UNLOCK" && (
-            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
-              <Label className="pl-3">Dias após ingresso</Label>
-              <div className="pl-3">
-                <Input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={unlockDays}
-                  onChange={(e) => setUnlockDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Libera automaticamente {unlockDays} {unlockDays === 1 ? "dia" : "dias"} após o membro entrar na comunidade.
-                </p>
-              </div>
+            <div className="space-y-1.5 rounded-lg border border-border bg-muted/30 p-4">
+              <Label>Dias após ingresso</Label>
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={unlockDays}
+                onChange={(e) => setUnlockDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+              />
+              <p className="text-xs text-muted-foreground">
+                O curso será liberado automaticamente {unlockDays} {unlockDays === 1 ? "dia" : "dias"} após o membro ingressar na comunidade.
+              </p>
             </div>
           )}
 
           {accessMode === "PRIVATE" && (
-            <div className="space-y-3 pl-1 border-l-2 border-primary/30 ml-2">
-              <div className="pl-3 space-y-1.5">
-                <Label>Modo privado</Label>
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+              <div className="space-y-1.5">
+                <Label>Restringir por</Label>
                 <Select value={privateMode} onValueChange={setPrivateMode}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SPECIFIC_MEMBERS">Membros específicos</SelectItem>
-                    <SelectItem value="TIERS">Por plano/tier</SelectItem>
-                    <SelectItem value="BOTH">Ambos</SelectItem>
+                    <SelectItem value="SPECIFIC_MEMBERS">
+                      <div className="flex items-center gap-2"><Users className="h-3.5 w-3.5" /> Membros específicos</div>
+                    </SelectItem>
+                    <SelectItem value="TIERS">
+                      <div className="flex items-center gap-2"><TrendingUp className="h-3.5 w-3.5" /> Por plano/tier</div>
+                    </SelectItem>
+                    <SelectItem value="BOTH">
+                      <div className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" /> Ambos (tier + membros)</div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Tier selector */}
               {(privateMode === "TIERS" || privateMode === "BOTH") && (
-                <div className="pl-3 space-y-1.5">
+                <div className="space-y-1.5">
                   <Label className="text-xs">Planos permitidos</Label>
                   {tiers.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhum plano ativo. Crie planos na aba Preços.</p>
+                    <p className="text-xs text-muted-foreground italic">Nenhum plano ativo. Crie planos na aba Preços.</p>
                   ) : (
-                    <div className="space-y-1 max-h-32 overflow-y-auto rounded border border-border p-2">
+                    <div className="space-y-1 max-h-32 overflow-y-auto rounded-lg border border-border bg-background p-2">
                       {tiers.map((tier: any) => (
-                        <label key={tier.id} className="flex items-center gap-2 text-sm cursor-pointer py-1 hover:bg-muted/30 px-1 rounded">
+                        <label key={tier.id} className="flex items-center gap-2 text-sm cursor-pointer py-1.5 hover:bg-muted/50 px-2 rounded-md">
                           <Checkbox
                             checked={selectedTierIds.includes(tier.id)}
                             onCheckedChange={() => toggleTierId(tier.id)}
                           />
-                          <span className="text-foreground">{tier.name}</span>
-                          <span className="text-xs text-muted-foreground ml-auto">
+                          <span className="text-foreground flex-1">{tier.name}</span>
+                          <span className="text-xs text-muted-foreground">
                             R$ {(tier.price_cents / 100).toFixed(2).replace(".", ",")} / {tier.interval === "monthly" ? "mês" : tier.interval === "yearly" ? "ano" : tier.interval}
                           </span>
                         </label>
@@ -401,14 +420,14 @@ export default function CourseFormModal({
 
               {/* Member selector */}
               {(privateMode === "SPECIFIC_MEMBERS" || privateMode === "BOTH") && (
-                <div className="pl-3 space-y-1.5">
+                <div className="space-y-1.5">
                   <Label className="text-xs">Membros permitidos</Label>
                   {members.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhum membro ativo encontrado.</p>
+                    <p className="text-xs text-muted-foreground italic">Nenhum membro ativo encontrado.</p>
                   ) : (
-                    <div className="space-y-1 max-h-40 overflow-y-auto rounded border border-border p-2">
+                    <div className="space-y-1 max-h-40 overflow-y-auto rounded-lg border border-border bg-background p-2">
                       {members.filter((m: any) => m.role === "MEMBER").map((m: any) => (
-                        <label key={m.id} className="flex items-center gap-2 text-sm cursor-pointer py-1 hover:bg-muted/30 px-1 rounded">
+                        <label key={m.id} className="flex items-center gap-2 text-sm cursor-pointer py-1.5 hover:bg-muted/50 px-2 rounded-md">
                           <Checkbox
                             checked={selectedMemberIds.includes(m.id)}
                             onCheckedChange={() => toggleMemberId(m.id)}
@@ -426,6 +445,30 @@ export default function CourseFormModal({
               )}
             </div>
           )}
+
+          {/* Access preview */}
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-medium text-foreground mb-1">Quem poderá acessar este curso?</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {accessMode === "OPEN" && "Todos os membros ativos da comunidade."}
+              {accessMode === "LEVEL_UNLOCK" && `Membros que alcançaram o nível ${minLevel} ou superior.`}
+              {accessMode === "BUY_NOW" && (
+                buyNowProductId
+                  ? `Membros que compraram o produto "${products.find((p: any) => p.id === buyNowProductId)?.name || "selecionado"}".`
+                  : "Selecione o produto vinculado acima."
+              )}
+              {accessMode === "TIME_UNLOCK" && `Membros com ${unlockDays} ${unlockDays === 1 ? "dia" : "dias"} ou mais de comunidade.`}
+              {accessMode === "PRIVATE" && (
+                privateMode === "TIERS"
+                  ? selectedTierIds.length > 0
+                    ? `Assinantes dos planos: ${tiers.filter((t: any) => selectedTierIds.includes(t.id)).map((t: any) => t.name).join(", ")}.`
+                    : "Selecione ao menos um plano acima."
+                  : privateMode === "SPECIFIC_MEMBERS"
+                    ? `${selectedMemberIds.length} membro${selectedMemberIds.length !== 1 ? "s" : ""} específico${selectedMemberIds.length !== 1 ? "s" : ""}.`
+                    : `${selectedTierIds.length} plano${selectedTierIds.length !== 1 ? "s" : ""} + ${selectedMemberIds.length} membro${selectedMemberIds.length !== 1 ? "s" : ""}.`
+              )}
+            </p>
+          </div>
 
           {/* Published toggle */}
           <div className="flex items-center justify-between">
