@@ -25,6 +25,7 @@ type Section =
   | "dashboard"
   | "invite"
   | "general"
+  | "onboarding"
   | "payouts"
   | "pricing"
   | "affiliates"
