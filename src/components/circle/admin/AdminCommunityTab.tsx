@@ -124,10 +124,10 @@ function SortableCategoryRow({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
         <div className="flex items-center justify-between rounded-lg border p-2">
-          <span>Categoria privada</span>
+          <span>Categoria visível</span>
           <Switch
-            checked={!!category.is_private}
-            onCheckedChange={(v) => onUpdatePatch(category.id, { is_private: v })}
+            checked={!!category.is_visible}
+            onCheckedChange={(v) => onUpdatePatch(category.id, { is_visible: v })}
           />
         </div>
         <div className="flex items-center justify-between rounded-lg border p-2">
@@ -163,9 +163,9 @@ export default function AdminCommunityTab({ community }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("community_spaces")
-        .select("id,name,emoji,sort_order,is_private,only_admins_can_post")
+        .select("id,name,emoji,position,is_visible,only_admins_can_post")
         .eq("community_id", community.id)
-        .order("sort_order", { ascending: true });
+        .order("position", { ascending: true });
       if (error) throw error;
       return data || [];
     },
@@ -236,7 +236,7 @@ export default function AdminCommunityTab({ community }: Props) {
 
     const reordered = arrayMove([...categories], oldIdx, newIdx);
     reordered.forEach((c: any, i: number) => {
-      updateCategory.mutate({ id: c.id, patch: { sort_order: i } });
+      updateCategory.mutate({ id: c.id, patch: { position: i } });
     });
   };
 
