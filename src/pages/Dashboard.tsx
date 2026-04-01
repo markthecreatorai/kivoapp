@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { DollarSign, TrendingUp, Receipt } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
-import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { PaymentMethodsCard } from "@/components/dashboard/PaymentMethodsCard";
 import { SalesPerformanceChart } from "@/components/dashboard/SalesPerformanceChart";
 import { TicketChart } from "@/components/dashboard/TicketChart";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { DashboardUpgradeCard } from "@/components/dashboard/DashboardUpgradeCard";
 import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
+import { RevenueBySourceCard } from "@/components/dashboard/RevenueBySourceCard";
+import { TopCommunitiesCard } from "@/components/dashboard/TopCommunitiesCard";
 
 interface Metrics {
   totalRevenue: number;
@@ -29,6 +29,19 @@ interface ChartData {
   ticket: number;
 }
 
+interface SourceData {
+  source_type: string;
+  total_revenue: number;
+  order_count: number;
+}
+
+interface CommunityRevenue {
+  community_id: string;
+  community_name: string;
+  total_revenue: number;
+  order_count: number;
+}
+
 export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<number | "custom">(30);
   const [metrics, setMetrics] = useState<Metrics>({
@@ -39,6 +52,8 @@ export default function Dashboard() {
     salesChange: 0,
   });
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [sourceData, setSourceData] = useState<SourceData[]>([]);
+  const [topCommunities, setTopCommunities] = useState<CommunityRevenue[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { currentWorkspace } = useWorkspace();
@@ -59,29 +74,44 @@ export default function Dashboard() {
         const prevEndDate = new Date();
         prevEndDate.setDate(prevEndDate.getDate() - periodDays);
 
-        const { data: ordersData, error } = await supabase
-          .from("orders")
-          .select("total_amount, created_at, payment_method")
-          .eq("workspace_id", currentWorkspace.id)
-          .eq("status", "PAID")
-          .gte("created_at", startDate.toISOString());
+        const endDate = new Date();
 
-        if (error) throw error;
+        // Fetch orders + source breakdown + top communities in parallel
+        const [ordersRes, prevRes, sourceRes, communitiesRes] = await Promise.all([
+          supabase
+            .from("orders")
+            .select("total_amount, created_at, payment_method")
+            .eq("workspace_id", currentWorkspace.id)
+            .eq("status", "PAID")
+            .gte("created_at", startDate.toISOString()),
+          supabase
+            .from("orders")
+            .select("total_amount")
+            .eq("workspace_id", currentWorkspace.id)
+            .eq("status", "PAID")
+            .gte("created_at", prevStartDate.toISOString())
+            .lt("created_at", prevEndDate.toISOString()),
+          supabase.rpc("get_revenue_by_source" as any, {
+            p_workspace_id: currentWorkspace.id,
+            p_start_date: startDate.toISOString(),
+            p_end_date: endDate.toISOString(),
+          }),
+          supabase.rpc("get_top_communities_revenue" as any, {
+            p_workspace_id: currentWorkspace.id,
+            p_start_date: startDate.toISOString(),
+            p_end_date: endDate.toISOString(),
+            p_limit: 5,
+          }),
+        ]);
 
-        const totalRevenue = ordersData?.reduce((sum, o) => sum + Number(o.total_amount), 0) || 0;
-        const totalSales = ordersData?.length || 0;
+        const ordersData = ordersRes.data || [];
+        const prevData = prevRes.data || [];
+
+        const totalRevenue = ordersData.reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
+        const totalSales = ordersData.length;
         const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-        // Previous period
-        const { data: prevData } = await supabase
-          .from("orders")
-          .select("total_amount")
-          .eq("workspace_id", currentWorkspace.id)
-          .eq("status", "PAID")
-          .gte("created_at", prevStartDate.toISOString())
-          .lt("created_at", prevEndDate.toISOString());
-
-        const prevRevenue = prevData?.reduce((sum, o) => sum + Number(o.total_amount), 0) || 0;
+        const prevRevenue = prevData.reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
         const revenueChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
         // Chart data
@@ -91,8 +121,8 @@ export default function Dashboard() {
           date.setDate(date.getDate() - i);
           const dateStr = date.toISOString().split("T")[0];
 
-          const dayOrders = ordersData?.filter((o) => o.created_at.startsWith(dateStr)) || [];
-          const dayRevenue = dayOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+          const dayOrders = ordersData.filter((o: any) => o.created_at.startsWith(dateStr));
+          const dayRevenue = dayOrders.reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
           const daySales = dayOrders.length;
 
           chart.push({
@@ -105,6 +135,8 @@ export default function Dashboard() {
 
         setMetrics({ totalRevenue, totalSales, ticketMedio, revenueChange, salesChange: 0 });
         setChartData(chart);
+        setSourceData((sourceRes.data as any) || []);
+        setTopCommunities((communitiesRes.data as any) || []);
       } catch (error) {
         console.error("Erro ao buscar métricas:", error);
       } finally {
@@ -117,6 +149,11 @@ export default function Dashboard() {
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+  // Derive per-source totals for KPI cards
+  const communityRevenue = sourceData.find((s) => s.source_type === "community")?.total_revenue || 0;
+  const courseRevenue = sourceData.find((s) => s.source_type === "course")?.total_revenue || 0;
+  const storeRevenue = sourceData.find((s) => s.source_type === "store")?.total_revenue || 0;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -131,7 +168,7 @@ export default function Dashboard() {
         <PeriodFilter selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
       </div>
 
-      {/* 3 KPI cards */}
+      {/* 3 KPI cards — total */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricCard
           title="Total em vendas"
@@ -147,6 +184,19 @@ export default function Dashboard() {
           value={formatCurrency(metrics.ticketMedio)}
         />
       </div>
+
+      {/* Revenue by source breakdown + per-source KPIs */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <RevenueBySourceCard data={sourceData} formatCurrency={formatCurrency} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+          <MetricCard title="Receita Loja" value={formatCurrency(Number(storeRevenue))} />
+          <MetricCard title="Receita Comunidade" value={formatCurrency(Number(communityRevenue))} />
+          <MetricCard title="Receita Cursos" value={formatCurrency(Number(courseRevenue))} />
+        </div>
+      </div>
+
+      {/* Top communities */}
+      <TopCommunitiesCard data={topCommunities} formatCurrency={formatCurrency} />
 
       {/* Payment methods block */}
       <PaymentMethodsCard />

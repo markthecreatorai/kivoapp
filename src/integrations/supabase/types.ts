@@ -4204,6 +4204,7 @@ export type Database = {
         Row: {
           affiliate_link_id: string | null
           checkout_session_id: string | null
+          community_id: string | null
           created_at: string
           currency: string
           customer_avatar_url: string | null
@@ -4219,6 +4220,8 @@ export type Database = {
           payment_method: string | null
           product_id: string | null
           source: string | null
+          source_id: string | null
+          source_type: string
           status: string
           subtotal_amount: number | null
           total_amount: number
@@ -4228,6 +4231,7 @@ export type Database = {
         Insert: {
           affiliate_link_id?: string | null
           checkout_session_id?: string | null
+          community_id?: string | null
           created_at?: string
           currency?: string
           customer_avatar_url?: string | null
@@ -4243,6 +4247,8 @@ export type Database = {
           payment_method?: string | null
           product_id?: string | null
           source?: string | null
+          source_id?: string | null
+          source_type?: string
           status?: string
           subtotal_amount?: number | null
           total_amount?: number
@@ -4252,6 +4258,7 @@ export type Database = {
         Update: {
           affiliate_link_id?: string | null
           checkout_session_id?: string | null
+          community_id?: string | null
           created_at?: string
           currency?: string
           customer_avatar_url?: string | null
@@ -4267,6 +4274,8 @@ export type Database = {
           payment_method?: string | null
           product_id?: string | null
           source?: string | null
+          source_id?: string | null
+          source_type?: string
           status?: string
           subtotal_amount?: number | null
           total_amount?: number
@@ -4279,6 +4288,13 @@ export type Database = {
             columns: ["checkout_session_id"]
             isOneToOne: false
             referencedRelation: "checkout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
             referencedColumns: ["id"]
           },
           {
@@ -5383,6 +5399,7 @@ export type Database = {
           platform_fee: number
           refunded_at: string | null
           settled_at: string | null
+          source_type: string
           split_rule_id: string | null
           status: string
           workspace_id: string
@@ -5399,6 +5416,7 @@ export type Database = {
           platform_fee?: number
           refunded_at?: string | null
           settled_at?: string | null
+          source_type?: string
           split_rule_id?: string | null
           status?: string
           workspace_id: string
@@ -5415,6 +5433,7 @@ export type Database = {
           platform_fee?: number
           refunded_at?: string | null
           settled_at?: string | null
+          source_type?: string
           split_rule_id?: string | null
           status?: string
           workspace_id?: string
@@ -6471,12 +6490,37 @@ export type Database = {
           total_payouts: number
         }[]
       }
+      get_daily_revenue_by_source: {
+        Args: {
+          p_end_date: string
+          p_start_date: string
+          p_workspace_id: string
+        }
+        Returns: {
+          day: string
+          order_count: number
+          source_type: string
+          total_revenue: number
+        }[]
+      }
       get_reserve_balance: {
         Args: { p_workspace_id: string }
         Returns: {
           total_held: number
           total_released: number
           upcoming_releases: number
+        }[]
+      }
+      get_revenue_by_source: {
+        Args: {
+          p_end_date: string
+          p_start_date: string
+          p_workspace_id: string
+        }
+        Returns: {
+          order_count: number
+          source_type: string
+          total_revenue: number
         }[]
       }
       get_split_rule: {
@@ -6487,6 +6531,20 @@ export type Database = {
           hold_days: number
           id: string
           platform_percent: number
+        }[]
+      }
+      get_top_communities_revenue: {
+        Args: {
+          p_end_date: string
+          p_limit?: number
+          p_start_date: string
+          p_workspace_id: string
+        }
+        Returns: {
+          community_id: string
+          community_name: string
+          order_count: number
+          total_revenue: number
         }[]
       }
       get_wallet_balance: {
