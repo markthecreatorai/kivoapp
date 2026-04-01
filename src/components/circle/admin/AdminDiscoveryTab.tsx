@@ -48,6 +48,19 @@ export default function AdminDiscoveryTab({ community }: Props) {
   ];
   const checklistDone = setupChecklist.filter((i) => i.done).length;
 
+  const discoverySignals = [
+    { label: "Comunidade listada", done: discoveryEnabled, weight: 20 },
+    { label: "Descrição", done: !!community.description?.trim(), weight: 15 },
+    { label: "Capa", done: !!community.cover_image_url, weight: 10 },
+    { label: "Ícone", done: !!community.icon_url, weight: 10 },
+    { label: "Categoria", done: !!category, weight: 10 },
+    { label: "Tags", done: tags.length > 0, weight: 10 },
+    { label: "Membros (>=20)", done: (community.member_count || 0) >= 20, weight: 15 },
+    { label: "Posts (>=10)", done: (community.post_count || 0) >= 10, weight: 10 },
+  ];
+  const discoveryScore = discoverySignals.reduce((sum, s) => sum + (s.done ? s.weight : 0), 0);
+  const missingSignals = discoverySignals.filter((s) => !s.done).slice(0, 3);
+
   const saveDiscovery = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -110,6 +123,27 @@ export default function AdminDiscoveryTab({ community }: Props) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Discovery intelligence */}
+      <div className="p-4 bg-white border border-gray-100 rounded-xl space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-900">Score de descoberta</p>
+          <span className="text-sm font-bold text-gray-900">{discoveryScore}/100</span>
+        </div>
+        <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+          <div className="h-full bg-primary" style={{ width: `${discoveryScore}%` }} />
+        </div>
+        {missingSignals.length > 0 ? (
+          <div className="text-xs text-gray-500">
+            <p className="mb-1">Para melhorar o rank no discovery, complete:</p>
+            <ul className="space-y-0.5">
+              {missingSignals.map((s) => <li key={s.label}>• {s.label}</li>)}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-xs text-emerald-600">Tudo certo. Comunidade pronta para máxima descoberta.</p>
+        )}
       </div>
 
       {/* Discovery toggle */}

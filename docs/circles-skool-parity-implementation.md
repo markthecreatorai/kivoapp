@@ -134,6 +134,11 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/pages/circle/CircleFeed.tsx`
   - regras da comunidade visíveis no feed para onboarding e governança
 
+## Sprint 13 — Discovery Intelligence (em andamento)
+- [x] `src/components/circle/admin/AdminDiscoveryTab.tsx`
+  - score de descoberta (0-100) com sinais explicáveis
+  - recomendações acionáveis para melhorar rank
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural
