@@ -446,21 +446,8 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
       {/* Fixed Header */}
       <header className="sticky top-0 z-30 bg-card border-b border-border">
         <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
-          {/* Left: back + community info */}
-          <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="h-8 w-8 shrink-0">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {community?.icon_url ? (
-              <img src={community.icon_url} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <MessageSquare className="h-4 w-4 text-primary" />
-              </div>
-            )}
-            <span className="font-semibold text-foreground text-sm truncate hidden sm:block">
-              {community?.name}
-            </span>
+          <div className="flex items-center gap-1 min-w-0">
+            <CommunitySwitcher currentCommunity={community} />
           </div>
 
           <div className="flex-1" />
