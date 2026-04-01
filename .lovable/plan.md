@@ -1,43 +1,27 @@
 
 
-## Fix: Lives Integration with Events Calendar + Edit Functionality
+## Fix: Link & Video buttons not working in comment toolbar
 
-### Problems Identified
+### Root Cause
 
-1. **Lives not linked to Events calendar**: When a live is scheduled via `LiveStreamFormModal`, it only inserts into `community_live_streams` but does NOT create a corresponding entry in `community_events`. The Events page (`CircleEvents.tsx`) only queries `community_events`, so scheduled lives never appear there.
+Both buttons use `window.prompt()` (lines 864, 875) which is **blocked in iframe/sandbox environments** like the Lovable preview. The browser silently returns `null`, so nothing happens.
 
-2. **Cannot edit live stream**: The `LiveStreamFormModal` is always opened without a `stream` prop in `CircleFeed.tsx` (line 512-517). There's no UI path to pass an existing stream for editing (no edit button on the banner or viewer).
+### Solution
 
-### Plan
+Replace `prompt()` with **Popover-based inline inputs** (same pattern already used for Emoji and GIF pickers), each with a text input + confirm button.
 
-#### 1. Link lives to events calendar (LiveStreamFormModal.tsx)
-When saving a new live stream, also insert/update a `community_events` record:
-- `title` = live title
-- `starts_at` = `scheduled_at`
-- `ends_at` = `scheduled_at + 2 hours` (default)
-- `meeting_url` = embed_url
-- `meeting_platform` = embed_type mapped (youtube/twitch → "custom")
-- Add a `live_stream_id` reference concept by storing it in the event description or via a new column
+### Changes — single file
 
-Since adding a column to `community_events` requires a migration:
+**`src/components/circle/PostDetailModal.tsx`**:
 
-**Migration**: Add `live_stream_id uuid REFERENCES community_live_streams(id)` column to `community_events` (nullable). This links events to their live stream source.
+1. Add two new state variables: `showLinkInput` and `showVideoInput` (booleans), plus `linkInputValue` and `videoInputValue` (strings)
+2. Replace the Link button (lines 861-869) with a `<Popover>` containing:
+   - Text input with placeholder "Cole o link"
+   - "Inserir" button that appends URL to `commentBody`
+3. Replace the Video button (lines 872-880) with a `<Popover>` containing:
+   - Text input with placeholder "Cole o link do vídeo (YouTube, Vimeo, Loom)"
+   - "Inserir" button that appends URL to `commentBody`
+4. Both popovers use `align="end" side="top"` like the existing emoji/GIF pickers
 
-**LiveStreamFormModal.tsx**: After inserting/updating `community_live_streams`, also upsert a `community_events` row with matching data. On edit, update the linked event too. On the existing `onSuccess`, invalidate `circle-events` query (already done).
-
-#### 2. Enable editing lives (LiveStreamBanner.tsx + CircleFeed.tsx)
-- **LiveStreamBanner.tsx**: Add an "Editar" button for admins on each live/scheduled banner item
-- **CircleFeed.tsx**: Add state `editingStream` and pass it to `LiveStreamFormModal` as the `stream` prop
-- **LiveStreamViewer.tsx**: Add "Editar" button for admin while viewing a live
-
-#### 3. Sync edits bidirectionally
-- When editing an event that has a `live_stream_id`, show it's linked to a live (read-only indicator)
-- When editing a live, update the linked event's title/datetime automatically
-
-### Files to Change
-- **New migration**: Add `live_stream_id` column to `community_events`
-- **`src/components/circle/LiveStreamFormModal.tsx`**: Create/update linked `community_events` record on save
-- **`src/components/circle/LiveStreamBanner.tsx`**: Add edit callback for admins
-- **`src/pages/circle/CircleFeed.tsx`**: Wire `editingStream` state, pass `stream` prop to modal
-- **`src/components/circle/LiveStreamViewer.tsx`**: Add edit button for admins
+No other files affected. No database changes.
 
