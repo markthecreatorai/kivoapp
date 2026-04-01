@@ -1050,10 +1050,10 @@ export default function CircleSettings() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setEmailModalOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setEmailModalOpen(false)}>Cancelar</Button>
                 <Button onClick={handleChangeEmail} disabled={changingEmail || !newEmail.trim() || !emailConfirmPassword.trim()}>
                   {changingEmail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
-                  {changingEmail ? "Sending..." : "Send confirmation"}
+                  {changingEmail ? "Enviando..." : "Enviar confirmação"}
                 </Button>
               </DialogFooter>
             </DialogContent>
