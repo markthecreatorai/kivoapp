@@ -1,26 +1,25 @@
 
 
-## Fix: GIF sent as text URL instead of visual attachment
+## Fix: Allow sending image-only comments via Enter key
 
 ### Problem
-Line 888: GIF selection appends the URL to `commentBody` as plain text. It should instead be added to `commentImages` so it renders visually like an image attachment.
+The send **button** (line 895) correctly allows sending when images are attached without text. But the **Enter key handler** (line 302) only checks `commentBody.trim()`, so pressing Enter with only images does nothing.
 
-### Solution — single file change
+### Solution — single file
 
-**`src/components/circle/PostDetailModal.tsx`** (line 887-889):
+**`src/components/circle/PostDetailModal.tsx`**:
 
-Change the GIF `onSelect` handler from appending to `commentBody` to pushing the GIF URL into `commentImages`:
-
+Line 302 — change the Enter key condition to also check for images:
 ```tsx
 // Before
-setCommentBody((prev) => prev + (prev ? " " : "") + gifUrl);
+if (commentBody.trim()) addComment.mutate({ body: commentBody });
 
 // After
-setCommentImages((prev) => [...prev, gifUrl]);
+if (commentBody.trim() || commentImages.length > 0) addComment.mutate({ body: commentBody || "📷" });
 ```
 
-This reuses the existing image preview/rendering pipeline — GIF URLs will display as visual thumbnails before sending, and get stored in the `images` array column on `community_comments`, just like uploaded photos.
+This mirrors the exact logic already used by the send button on line 895.
 
 ### Files to change
-- `src/components/circle/PostDetailModal.tsx` — 1 line change in GIF picker `onSelect`
+- `src/components/circle/PostDetailModal.tsx` — 1 line fix
 
