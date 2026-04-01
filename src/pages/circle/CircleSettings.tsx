@@ -24,7 +24,7 @@ import {
   User, Bell, Shield, Camera, Save, Loader2,
   Lock, Mail, AlertTriangle, ChevronDown, AlertCircle, CheckCircle2,
   Globe, Instagram, Youtube, Linkedin, Facebook, Link2, Eye, EyeOff,
-  MapPin, Trash2, X,
+  MapPin, Trash2, X, DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
