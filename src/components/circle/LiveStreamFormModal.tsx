@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Video, Radio, Calendar, Link as LinkIcon } from "lucide-react";
+import { Video, Radio, Calendar, Link as LinkIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface LiveStreamFormModalProps {
@@ -267,15 +267,42 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={!canSave || saveMutation.isPending}
-            className={goLiveNow ? "bg-red-600 hover:bg-red-700" : ""}
-          >
-            {saveMutation.isPending ? "Salvando..." : goLiveNow ? "🔴 Ir ao vivo" : isEditing ? "Salvar" : "Agendar live"}
-          </Button>
+        <div className="flex justify-between mt-4">
+          {isEditing ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                if (!confirm("Tem certeza que deseja excluir esta live e o evento vinculado?")) return;
+                try {
+                  // Delete linked event first
+                  await supabase.from("community_events").delete().eq("live_stream_id", stream.id);
+                  // Delete the stream
+                  await supabase.from("community_live_streams" as any).delete().eq("id", stream.id);
+                  queryClient.invalidateQueries({ queryKey: ["live-streams"] });
+                  queryClient.invalidateQueries({ queryKey: ["community-events"] });
+                  queryClient.invalidateQueries({ queryKey: ["circle-events"] });
+                  toast.success("Live excluída");
+                  onOpenChange(false);
+                } catch {
+                  toast.error("Erro ao excluir");
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Excluir
+            </Button>
+          ) : <div />}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={!canSave || saveMutation.isPending}
+              className={goLiveNow ? "bg-red-600 hover:bg-red-700" : ""}
+            >
+              {saveMutation.isPending ? "Salvando..." : goLiveNow ? "🔴 Ir ao vivo" : isEditing ? "Salvar" : "Agendar live"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
