@@ -290,7 +290,7 @@ export default function CircleLayout() {
 
   // No community
   if (!community) {
-    return children;
+    return <Suspense fallback={<PageSkeleton />}><Outlet /></Suspense>;
   }
 
   // Member status gates
