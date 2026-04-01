@@ -7432,6 +7432,7 @@ export type Database = {
         Args: { p_community_id: string; p_model: string; p_tiers?: Json }
         Returns: Json
       }
+      soft_delete_post: { Args: { p_post_id: string }; Returns: boolean }
     }
     Enums: {
       community_access_type: "FREE_WITH_PRODUCT" | "PAID_SUBSCRIPTION" | "OPEN"
