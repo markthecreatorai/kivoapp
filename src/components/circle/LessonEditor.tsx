@@ -274,14 +274,72 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
     }
   };
 
-  // ── Editor toolbar helpers ──
-  const promptAndInsertLink = () => {
-    const url = window.prompt("URL do link:");
-    if (url && editor) editor.chain().focus().setLink({ href: url }).run();
+  // ── Image modal helpers ──
+  const handleImageFromUrl = () => {
+    if (!imageUrl.trim() || !editor) return;
+    try { new URL(imageUrl.trim()); } catch { toast.error("URL inválida"); return; }
+    editor.chain().focus().setImage({ src: imageUrl.trim() }).run();
+    setHasChanges(true);
+    setImageUrl("");
+    setImagePreview(null);
+    setImageDialogOpen(false);
   };
-  const promptAndInsertImage = () => {
-    const url = window.prompt("URL da imagem:");
-    if (url && editor) editor.chain().focus().setImage({ src: url }).run();
+
+  const handleImageFileSelect = async (file: globalThis.File) => {
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+    if (!validTypes.includes(file.type)) { toast.error("Formato não suportado. Use JPG, PNG, GIF, WebP ou SVG."); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Imagem muito grande. Máximo 10MB."); return; }
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `classroom/${courseId}/${lesson.id}_img_${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from("community").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("community").getPublicUrl(data.path);
+      const src = urlData.publicUrl;
+      setImagePreview(src);
+      setImageUrl(src);
+      setImageTab("url");
+    } catch (e: any) {
+      toast.error("Erro ao enviar imagem");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleInsertImageConfirm = () => {
+    if (!imageUrl.trim() || !editor) return;
+    editor.chain().focus().setImage({ src: imageUrl.trim() }).run();
+    setHasChanges(true);
+    setImageUrl("");
+    setImagePreview(null);
+    setImageDialogOpen(false);
+  };
+
+  // ── Inline link modal helpers ──
+  const handleAddInlineLinkToList = () => {
+    if (!inlineLinkUrl.trim()) return;
+    try { new URL(inlineLinkUrl.trim()); } catch { toast.error("URL inválida"); return; }
+    setInlineLinks(prev => [...prev, { url: inlineLinkUrl.trim(), text: inlineLinkText.trim() || inlineLinkUrl.trim() }]);
+    setInlineLinkUrl("");
+    setInlineLinkText("");
+  };
+
+  const handleRemoveInlineLink = (index: number) => {
+    setInlineLinks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleInsertInlineLinks = () => {
+    if (!editor || inlineLinks.length === 0) return;
+    inlineLinks.forEach((link, i) => {
+      if (i > 0) editor.chain().focus().insertContent(" ").run();
+      editor.chain().focus().insertContent(`<a href="${link.url}">${link.text}</a>`).run();
+    });
+    setHasChanges(true);
+    setInlineLinks([]);
+    setInlineLinkUrl("");
+    setInlineLinkText("");
+    setInlineLinkDialogOpen(false);
   };
   const handleAddVideo = () => {
     if (!videoUrl.trim() || !editor) return;
