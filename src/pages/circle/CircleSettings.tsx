@@ -441,15 +441,14 @@ export default function CircleSettings() {
 
   if (!member || !form) {
     return (
-      <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
-        <Skeleton className="h-7 w-40 mb-6" />
+      <div className="py-6 w-full">
         <div className="flex gap-8">
-          <div className="hidden md:block w-56 space-y-1">
+          <div className="hidden md:block w-52 shrink-0 space-y-1">
             {Array.from({ length: 10 }).map((_, i) => (
               <Skeleton key={i} className="h-9 w-full rounded-md" />
             ))}
           </div>
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 min-w-0 max-w-2xl space-y-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-40 w-full" />
           </div>
