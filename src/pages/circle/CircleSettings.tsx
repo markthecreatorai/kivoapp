@@ -1074,7 +1074,7 @@ export default function CircleSettings() {
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Your current password"
+                    placeholder="Sua senha atual"
                     autoFocus
                   />
                 </div>
