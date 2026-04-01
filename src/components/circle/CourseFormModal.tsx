@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -12,13 +12,15 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Upload, X, Loader2, Globe, TrendingUp, ShoppingCart, Clock, Lock } from "lucide-react";
+import { Upload, X, Loader2, Globe, TrendingUp, ShoppingCart, Clock, Lock, Users } from "lucide-react";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CourseFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   communityId: string;
+  workspaceId?: string;
   course?: {
     id: string;
     name: string;
@@ -31,6 +33,10 @@ interface CourseFormModalProps {
     min_level?: number | null;
     unlock_after_days?: number | null;
     course_price_cents?: number | null;
+    buy_now_product_id?: string | null;
+    private_mode?: string | null;
+    allowed_tier_ids?: string[] | null;
+    allowed_member_ids?: string[] | null;
   } | null;
   nextPosition: number;
 }
@@ -38,13 +44,13 @@ interface CourseFormModalProps {
 const ACCESS_MODE_OPTIONS = [
   { value: "OPEN", label: "Aberto", icon: Globe, helper: "Todos os membros ativos podem acessar." },
   { value: "LEVEL_UNLOCK", label: "Desbloquear por nível", icon: TrendingUp, helper: "Somente membros no nível mínimo definido podem acessar." },
-  { value: "BUY_NOW", label: "Compra avulsa", icon: ShoppingCart, helper: "O membro precisa comprar este curso para acessar." },
+  { value: "BUY_NOW", label: "Compra avulsa", icon: ShoppingCart, helper: "O membro precisa comprar um produto vinculado para acessar." },
   { value: "TIME_UNLOCK", label: "Liberar por tempo", icon: Clock, helper: "Libera automaticamente após X dias do ingresso do membro." },
   { value: "PRIVATE", label: "Privado", icon: Lock, helper: "Acesso restrito por tier ou membros específicos." },
 ];
 
 export default function CourseFormModal({
-  open, onOpenChange, communityId, course, nextPosition,
+  open, onOpenChange, communityId, workspaceId, course, nextPosition,
 }: CourseFormModalProps) {
   const queryClient = useQueryClient();
   const isEdit = !!course;
@@ -58,7 +64,57 @@ export default function CourseFormModal({
   const [minLevel, setMinLevel] = useState<number>(course?.min_level || 2);
   const [unlockDays, setUnlockDays] = useState<number>(course?.unlock_after_days || 7);
   const [coursePriceCents, setCoursePriceCents] = useState<number>(course?.course_price_cents || 0);
+  const [buyNowProductId, setBuyNowProductId] = useState<string>(course?.buy_now_product_id || "");
+  const [privateMode, setPrivateMode] = useState<string>(course?.private_mode || "SPECIFIC_MEMBERS");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(course?.allowed_member_ids || []);
+  const [selectedTierIds, setSelectedTierIds] = useState<string[]>(course?.allowed_tier_ids || []);
   const [uploading, setUploading] = useState(false);
+
+  // Fetch workspace products for BUY_NOW
+  const { data: products = [] } = useQuery({
+    queryKey: ["workspace-products", workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return [];
+      const { data } = await supabase
+        .from("products")
+        .select("id, name, price")
+        .eq("workspace_id", workspaceId)
+        .eq("status", "PUBLISHED")
+        .order("name");
+      return data || [];
+    },
+    enabled: !!workspaceId && accessMode === "BUY_NOW",
+  });
+
+  // Fetch community members for PRIVATE
+  const { data: members = [] } = useQuery({
+    queryKey: ["community-members-list", communityId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_members")
+        .select("id, display_name, username, role")
+        .eq("community_id", communityId)
+        .eq("status", "ACTIVE")
+        .order("display_name");
+      return data || [];
+    },
+    enabled: !!communityId && accessMode === "PRIVATE" && (privateMode === "SPECIFIC_MEMBERS" || privateMode === "BOTH"),
+  });
+
+  // Fetch circle plans (tiers) for PRIVATE
+  const { data: tiers = [] } = useQuery({
+    queryKey: ["circle-plans", communityId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("circle_plans")
+        .select("id, name, price_cents, interval")
+        .eq("community_id", communityId)
+        .eq("is_active", true)
+        .order("price_cents");
+      return data || [];
+    },
+    enabled: !!communityId && accessMode === "PRIVATE" && (privateMode === "TIERS" || privateMode === "BOTH"),
+  });
 
   const handleUploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,9 +134,27 @@ export default function CourseFormModal({
     }
   };
 
+  const toggleMemberId = (id: string) => {
+    setSelectedMemberIds(prev =>
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+  };
+
+  const toggleTierId = (id: string) => {
+    setSelectedTierIds(prev =>
+      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    );
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Nome é obrigatório");
+      if (accessMode === "BUY_NOW" && !buyNowProductId) throw new Error("Selecione um produto para compra avulsa");
+      if (accessMode === "PRIVATE") {
+        if (privateMode === "SPECIFIC_MEMBERS" && selectedMemberIds.length === 0) throw new Error("Selecione ao menos um membro");
+        if (privateMode === "TIERS" && selectedTierIds.length === 0) throw new Error("Selecione ao menos um plano/tier");
+        if (privateMode === "BOTH" && selectedMemberIds.length === 0 && selectedTierIds.length === 0) throw new Error("Selecione ao menos um membro ou tier");
+      }
 
       const payload = {
         community_id: communityId,
@@ -94,6 +168,10 @@ export default function CourseFormModal({
         min_level: accessMode === "LEVEL_UNLOCK" ? minLevel : null,
         unlock_after_days: accessMode === "TIME_UNLOCK" ? unlockDays : null,
         course_price_cents: accessMode === "BUY_NOW" ? coursePriceCents : 0,
+        buy_now_product_id: accessMode === "BUY_NOW" ? buyNowProductId : null,
+        private_mode: accessMode === "PRIVATE" ? privateMode : null,
+        allowed_tier_ids: accessMode === "PRIVATE" && (privateMode === "TIERS" || privateMode === "BOTH") ? selectedTierIds : null,
+        allowed_member_ids: accessMode === "PRIVATE" && (privateMode === "SPECIFIC_MEMBERS" || privateMode === "BOTH") ? selectedMemberIds : null,
       };
 
       if (isEdit && course) {
@@ -113,8 +191,6 @@ export default function CourseFormModal({
       toast.error(err.message || "Erro ao salvar curso");
     },
   });
-
-  const currentModeInfo = ACCESS_MODE_OPTIONS.find(o => o.value === accessMode) || ACCESS_MODE_OPTIONS[0];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,19 +313,28 @@ export default function CourseFormModal({
           )}
 
           {accessMode === "BUY_NOW" && (
-            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
-              <Label className="pl-3">Preço do curso (R$)</Label>
-              <div className="pl-3">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={(coursePriceCents / 100).toFixed(2)}
-                  onChange={(e) => setCoursePriceCents(Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100)))}
-                  placeholder="49.90"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  O membro paga uma vez para desbloquear este curso.
+            <div className="space-y-3 pl-1 border-l-2 border-primary/30 ml-2">
+              <div className="pl-3 space-y-1.5">
+                <Label>Produto vinculado</Label>
+                <Select value={buyNowProductId} onValueChange={setBuyNowProductId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um produto..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} — R$ {(p.price / 100).toFixed(2).replace(".", ",")}
+                      </SelectItem>
+                    ))}
+                    {products.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        Nenhum produto ativo encontrado.
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  O membro que comprar este produto terá acesso ao curso.
                 </p>
               </div>
             </div>
@@ -274,12 +359,71 @@ export default function CourseFormModal({
           )}
 
           {accessMode === "PRIVATE" && (
-            <div className="space-y-1.5 pl-1 border-l-2 border-primary/30 ml-2">
-              <div className="pl-3">
-                <p className="text-xs text-muted-foreground">
-                  Apenas membros autorizados manualmente ou por tier terão acesso. A gestão de permissões individuais estará disponível em breve.
-                </p>
+            <div className="space-y-3 pl-1 border-l-2 border-primary/30 ml-2">
+              <div className="pl-3 space-y-1.5">
+                <Label>Modo privado</Label>
+                <Select value={privateMode} onValueChange={setPrivateMode}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SPECIFIC_MEMBERS">Membros específicos</SelectItem>
+                    <SelectItem value="TIERS">Por plano/tier</SelectItem>
+                    <SelectItem value="BOTH">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Tier selector */}
+              {(privateMode === "TIERS" || privateMode === "BOTH") && (
+                <div className="pl-3 space-y-1.5">
+                  <Label className="text-xs">Planos permitidos</Label>
+                  {tiers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhum plano ativo. Crie planos na aba Preços.</p>
+                  ) : (
+                    <div className="space-y-1 max-h-32 overflow-y-auto rounded border border-border p-2">
+                      {tiers.map((tier: any) => (
+                        <label key={tier.id} className="flex items-center gap-2 text-sm cursor-pointer py-1 hover:bg-muted/30 px-1 rounded">
+                          <Checkbox
+                            checked={selectedTierIds.includes(tier.id)}
+                            onCheckedChange={() => toggleTierId(tier.id)}
+                          />
+                          <span className="text-foreground">{tier.name}</span>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            R$ {(tier.price_cents / 100).toFixed(2).replace(".", ",")} / {tier.interval === "monthly" ? "mês" : tier.interval === "yearly" ? "ano" : tier.interval}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Member selector */}
+              {(privateMode === "SPECIFIC_MEMBERS" || privateMode === "BOTH") && (
+                <div className="pl-3 space-y-1.5">
+                  <Label className="text-xs">Membros permitidos</Label>
+                  {members.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhum membro ativo encontrado.</p>
+                  ) : (
+                    <div className="space-y-1 max-h-40 overflow-y-auto rounded border border-border p-2">
+                      {members.filter((m: any) => m.role === "MEMBER").map((m: any) => (
+                        <label key={m.id} className="flex items-center gap-2 text-sm cursor-pointer py-1 hover:bg-muted/30 px-1 rounded">
+                          <Checkbox
+                            checked={selectedMemberIds.includes(m.id)}
+                            onCheckedChange={() => toggleMemberId(m.id)}
+                          />
+                          <span className="text-foreground">{m.display_name || m.username || "Sem nome"}</span>
+                          {m.username && <span className="text-xs text-muted-foreground">@{m.username}</span>}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {selectedMemberIds.length} membro{selectedMemberIds.length !== 1 ? "s" : ""} selecionado{selectedMemberIds.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
