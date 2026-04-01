@@ -1010,7 +1010,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
       {lightboxImg && (
         <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 cursor-pointer" onClick={(e) => { e.stopPropagation(); setLightboxImg(null); }}>
           <button onClick={(e) => { e.stopPropagation(); setLightboxImg(null); }} className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-full transition-colors z-[61]">
-            <X className="h-6 w-6" />
+            <XIcon className="h-6 w-6" />
           </button>
           <img src={lightboxImg} alt="" className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
         </div>
