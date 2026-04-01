@@ -280,6 +280,8 @@ export default function CircleEvents() {
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
+              month={calendarMonth}
+              onMonthChange={setCalendarMonth}
               locale={ptBR}
               className="pointer-events-auto"
               modifiers={{ hasEvent: (date) => eventDates.has(format(date, "yyyy-MM-dd")) }}
