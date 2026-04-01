@@ -36,6 +36,8 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/components/circle/admin/AdminMembersTab.tsx`
   - filtros rápidos para pendentes (busca + ordenação)
   - atualização de status da application ao aprovar/rejeitar
+  - histórico de decisões recentes (approved/rejected)
+  - matriz visual de permissões (owner/admin/moderador)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

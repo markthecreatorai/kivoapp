@@ -144,6 +144,21 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
 
   const appByMemberId = new Map<string, any>(applications.map((a: any) => [a.member_id, a]));
 
+  const { data: reviewedApplications = [] } = useQuery({
+    queryKey: ["circle-reviewed-applications", community.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("community_join_applications")
+        .select("id, status, reviewed_at, reviewed_by, user_id, answers")
+        .eq("community_id", community.id)
+        .in("status", ["APPROVED", "REJECTED"])
+        .order("reviewed_at", { ascending: false })
+        .limit(20);
+      if (error) return [];
+      return (data || []) as any[];
+    },
+  });
+
   const filteredPending = [...pendingMembers]
     .filter((m: any) => {
       if (!pendingSearch.trim()) return true;
@@ -285,6 +300,49 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                 </div>
               );
             })}
+          </div>
+        </Card>
+      )}
+
+      {/* Permissions matrix */}
+      <Card className="p-4">
+        <h3 className="font-semibold text-sm text-foreground mb-3">Permissões por função</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+          <div className="rounded-lg border p-2">
+            <p className="font-medium text-foreground mb-1">Owner</p>
+            <p className="text-muted-foreground">Controle total da comunidade, billing e permissões.</p>
+          </div>
+          <div className="rounded-lg border p-2">
+            <p className="font-medium text-foreground mb-1">Admin</p>
+            <p className="text-muted-foreground">Gerencia membros, conteúdo, aprovações e configurações operacionais.</p>
+          </div>
+          <div className="rounded-lg border p-2">
+            <p className="font-medium text-foreground mb-1">Moderador</p>
+            <p className="text-muted-foreground">Moderação de membros/posts sem acesso a billing ou ownership.</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Recent decisions */}
+      {reviewedApplications.length > 0 && (
+        <Card className="p-4">
+          <h3 className="font-semibold text-sm text-foreground mb-3">Decisões recentes ({reviewedApplications.length})</h3>
+          <div className="space-y-2">
+            {reviewedApplications.map((a: any) => (
+              <div key={a.id} className="flex items-center justify-between rounded-lg border p-2 text-xs">
+                <div>
+                  <p className="font-medium text-foreground">{a.status === "APPROVED" ? "Aprovado" : "Rejeitado"}</p>
+                  <p className="text-muted-foreground">
+                    {a.reviewed_at && !isNaN(new Date(a.reviewed_at).getTime())
+                      ? `em ${format(new Date(a.reviewed_at), "dd/MM/yyyy HH:mm")}`
+                      : "sem data"}
+                  </p>
+                </div>
+                <Badge variant={a.status === "APPROVED" ? "default" : "destructive"}>
+                  {a.status === "APPROVED" ? "APPROVED" : "REJECTED"}
+                </Badge>
+              </div>
+            ))}
           </div>
         </Card>
       )}
