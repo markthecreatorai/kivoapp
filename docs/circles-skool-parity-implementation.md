@@ -112,8 +112,9 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 
 ## Sprint 10 — General Settings Pro (em andamento)
 - [x] `src/components/circle/admin/AdminSettingsTab.tsx`
-  - configuração de URL (slug) com preview
+  - configuração de URL (slug) com preview + validação de unicidade
   - controle de visibilidade no discovery com explicação
+  - recomendações de dimensões para capa/ícone
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

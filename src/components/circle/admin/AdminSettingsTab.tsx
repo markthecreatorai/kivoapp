@@ -68,6 +68,17 @@ export default function AdminSettingsTab({ community, member }: Props) {
     mutationFn: async () => {
       const payload: any = { ...settings };
       if (!payload.linked_product_id) payload.linked_product_id = null;
+
+      if (payload.slug && payload.slug !== community.slug) {
+        const { data: conflict } = await supabase
+          .from("communities")
+          .select("id")
+          .eq("slug", payload.slug)
+          .neq("id", community.id)
+          .maybeSingle();
+        if (conflict) throw new Error("Esse slug já está em uso.");
+      }
+
       const { error } = await supabase.from("communities").update(payload).eq("id", community.id);
       if (error) throw error;
     },
@@ -75,7 +86,7 @@ export default function AdminSettingsTab({ community, member }: Props) {
       queryClient.invalidateQueries({ queryKey: ["community"] });
       toast.success("Configurações salvas!");
     },
-    onError: () => toast.error("Erro ao salvar"),
+    onError: (e: any) => toast.error(e?.message || "Erro ao salvar"),
   });
 
   const uploadImage = async (file: File, type: "cover" | "icon") => {
@@ -143,6 +154,7 @@ export default function AdminSettingsTab({ community, member }: Props) {
                 <Upload className="h-4 w-4" />Enviar capa
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "cover")} />
               </label>
+              <p className="text-[11px] text-muted-foreground mt-1">Recomendado: 1280x720</p>
             </div>
           </div>
           <div>
@@ -155,6 +167,7 @@ export default function AdminSettingsTab({ community, member }: Props) {
                 <Upload className="h-4 w-4" />Enviar ícone
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "icon")} />
               </label>
+              <p className="text-[11px] text-muted-foreground mt-1">Recomendado: 256x256</p>
             </div>
           </div>
         </div>
