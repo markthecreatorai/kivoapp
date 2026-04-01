@@ -57,7 +57,6 @@ export default function CourseFormModal({
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [accessType, setAccessType] = useState("free");
   const [isPublished, setIsPublished] = useState(true);
   const [coverUrl, setCoverUrl] = useState("");
   const [accessMode, setAccessMode] = useState("OPEN");
@@ -70,12 +69,10 @@ export default function CourseFormModal({
   const [selectedTierIds, setSelectedTierIds] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // Reset/prefill all fields when modal opens or course changes
   useEffect(() => {
     if (open) {
       setName(course?.name || "");
       setDescription(course?.description || "");
-      setAccessType(course?.access_type || "free");
       setIsPublished(course?.is_published ?? true);
       setCoverUrl(course?.cover_url || "");
       setAccessMode(course?.access_mode || "OPEN");
@@ -89,7 +86,6 @@ export default function CourseFormModal({
     }
   }, [open, course]);
 
-  // Fetch workspace products for BUY_NOW
   const { data: products = [] } = useQuery({
     queryKey: ["workspace-products", workspaceId],
     queryFn: async () => {
@@ -109,7 +105,6 @@ export default function CourseFormModal({
     enabled: !!workspaceId && accessMode === "BUY_NOW",
   });
 
-  // Fetch community members for PRIVATE
   const { data: members = [] } = useQuery({
     queryKey: ["community-members-list", communityId],
     queryFn: async () => {
@@ -124,7 +119,6 @@ export default function CourseFormModal({
     enabled: !!communityId && accessMode === "PRIVATE" && (privateMode === "SPECIFIC_MEMBERS" || privateMode === "BOTH"),
   });
 
-  // Fetch community tiers for PRIVATE
   const { data: tiers = [] } = useQuery({
     queryKey: ["community-tiers", communityId],
     queryFn: async () => {
@@ -183,7 +177,7 @@ export default function CourseFormModal({
         community_id: communityId,
         name: name.trim(),
         description: description.trim() || null,
-        access_type: accessType,
+        access_type: accessMode === "OPEN" ? "free" : "premium",
         cover_url: coverUrl || null,
         is_published: isPublished,
         position: course?.position ?? nextPosition,
@@ -412,7 +406,6 @@ export default function CourseFormModal({
                 </Select>
               </div>
 
-              {/* Tier selector */}
               {(privateMode === "TIERS" || privateMode === "BOTH") && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Planos permitidos</Label>
@@ -437,7 +430,6 @@ export default function CourseFormModal({
                 </div>
               )}
 
-              {/* Member selector */}
               {(privateMode === "SPECIFIC_MEMBERS" || privateMode === "BOTH") && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Membros permitidos</Label>

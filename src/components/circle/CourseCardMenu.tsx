@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
-  MoreHorizontal, Pencil, ArrowLeft, ArrowRight, Copy, Eye, Share2, Trash2,
+  MoreHorizontal, Pencil, Copy, Trash2, Archive, ArchiveRestore,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,29 +25,8 @@ interface CourseCardMenuProps {
   onEdit: () => void;
 }
 
-export default function CourseCardMenu({ course, isFirst, isLast, onEdit }: CourseCardMenuProps) {
+export default function CourseCardMenu({ course, onEdit }: CourseCardMenuProps) {
   const queryClient = useQueryClient();
-
-  const moveMutation = useMutation({
-    mutationFn: async (direction: "left" | "right") => {
-      const newPos = direction === "left" ? course.position - 1 : course.position + 1;
-      // Swap positions: find the course at the target position
-      const { data: target } = await supabase
-        .from("circle_courses")
-        .select("id")
-        .eq("community_id", course.community_id)
-        .eq("position", newPos)
-        .maybeSingle();
-
-      if (target) {
-        await supabase.from("circle_courses").update({ position: course.position }).eq("id", target.id);
-      }
-      await supabase.from("circle_courses").update({ position: newPos }).eq("id", course.id);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["circle-courses"] });
-    },
-  });
 
   const duplicateMutation = useMutation({
     mutationFn: async () => {
@@ -65,6 +44,20 @@ export default function CourseCardMenu({ course, isFirst, isLast, onEdit }: Cour
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-courses"] });
       toast.success("Curso duplicado!");
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("circle_courses")
+        .update({ is_published: !course.is_published })
+        .eq("id", course.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-courses"] });
+      toast.success(course.is_published ? "Curso arquivado!" : "Curso publicado!");
     },
   });
 
@@ -95,23 +88,15 @@ export default function CourseCardMenu({ course, isFirst, isLast, onEdit }: Cour
         <DropdownMenuItem onClick={onEdit}>
           <Pencil className="h-4 w-4 mr-2" /> Editar curso
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => moveMutation.mutate("left")} disabled={isFirst}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Mover ←
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => moveMutation.mutate("right")} disabled={isLast}>
-          <ArrowRight className="h-4 w-4 mr-2" /> Mover →
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => duplicateMutation.mutate()}>
           <Copy className="h-4 w-4 mr-2" /> Duplicar curso
         </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Eye className="h-4 w-4 mr-2" /> Ver como membro
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => {
-          navigator.clipboard.writeText(`${window.location.origin}/circle/classroom?course=${course.id}`);
-          toast.success("Link copiado!");
-        }}>
-          <Share2 className="h-4 w-4 mr-2" /> Compartilhar link
+        <DropdownMenuItem onClick={() => archiveMutation.mutate()}>
+          {course.is_published ? (
+            <><Archive className="h-4 w-4 mr-2" /> Arquivar</>
+          ) : (
+            <><ArchiveRestore className="h-4 w-4 mr-2" /> Publicar</>
+          )}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
