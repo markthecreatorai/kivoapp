@@ -62,6 +62,20 @@ export default function AdminInviteTab({ community, member }: Props) {
     inviteStatusFilter === "all" ? true : inviteStatusFilter === "active" ? !!l.is_active : !l.is_active
   );
 
+  const topInviteLinks = [...inviteLinks]
+    .sort((a: any, b: any) => (b.uses_count || 0) - (a.uses_count || 0))
+    .slice(0, 3);
+
+  const copySelectedLinks = async () => {
+    const selected = filteredInviteLinks.filter((l: any) => selectedInviteIds.includes(l.id));
+    if (!selected.length) return;
+    const text = selected
+      .map((l: any) => `${window.location.origin}/join/${community.slug}?invite=${l.code}`)
+      .join("\n");
+    await navigator.clipboard.writeText(text);
+    toast.success(`Copiados ${selected.length} links`);
+  };
+
   const createAdvancedLink = () => {
     const expires_at = newExpiresDays
       ? new Date(Date.now() + Number(newExpiresDays) * 24 * 60 * 60 * 1000).toISOString()
@@ -197,6 +211,20 @@ export default function AdminInviteTab({ community, member }: Props) {
           <div className="rounded-lg border p-2"><p className="text-[10px] text-gray-500">Usos</p><p className="text-sm font-semibold">{inviteLinks.reduce((a: number, l: any) => a + (l.uses_count || 0), 0)}</p></div>
         </div>
 
+        {topInviteLinks.length > 0 && (
+          <div className="mb-3 rounded-lg border p-2">
+            <p className="text-[11px] text-gray-500 mb-1">Top convites por uso</p>
+            <div className="space-y-1">
+              {topInviteLinks.map((l: any) => (
+                <div key={l.id} className="text-xs text-gray-700 flex items-center justify-between">
+                  <span className="font-mono">{l.code}</span>
+                  <span>{l.uses_count || 0} usos</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Button size="sm" variant={inviteStatusFilter === "all" ? "default" : "outline"} onClick={() => setInviteStatusFilter("all")}>Todos</Button>
           <Button size="sm" variant={inviteStatusFilter === "active" ? "default" : "outline"} onClick={() => setInviteStatusFilter("active")}>Ativos</Button>
@@ -206,9 +234,14 @@ export default function AdminInviteTab({ community, member }: Props) {
           <Button size="sm" variant="outline" onClick={() => setSelectedInviteIds([])}>Limpar seleção</Button>
 
           {selectedInviteIds.length > 0 && (
-            <Button size="sm" variant="destructive" onClick={() => bulkDeactivateInvites.mutate(selectedInviteIds)}>
-              Desativar selecionados ({selectedInviteIds.length})
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={copySelectedLinks}>
+                Copiar selecionados ({selectedInviteIds.length})
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => bulkDeactivateInvites.mutate(selectedInviteIds)}>
+                Desativar selecionados ({selectedInviteIds.length})
+              </Button>
+            </>
           )}
         </div>
 

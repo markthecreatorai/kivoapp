@@ -107,6 +107,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - painel de status de convites (total/ativos/desativados/usos)
   - filtro por status e desativação em lote
   - criação de links com regras (máx. usos / expiração em dias)
+  - top convites por uso e cópia em lote de links selecionados
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
