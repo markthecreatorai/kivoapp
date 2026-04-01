@@ -1024,7 +1024,7 @@ export default function CircleSettings() {
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <Label>Current email</Label>
+                  <Label>E-mail atual</Label>
                   <Input value={user?.email || ""} disabled className="bg-muted" />
                 </div>
                 <div className="space-y-1.5">
