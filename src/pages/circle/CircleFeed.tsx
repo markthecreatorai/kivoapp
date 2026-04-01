@@ -6,6 +6,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { MessageCircle, Calendar, Lock, Video, SlidersHorizontal, ChevronDown, X, CheckCircle2, Circle, PlayCircle, MessageSquare, Smartphone, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
@@ -298,7 +299,7 @@ export default function CircleFeed() {
           {nextEvent.max_attendees && <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
           <span className="text-sm" style={{ color: "#111827" }}>
             <strong>{nextEvent.title}</strong>
-            {" "}is happening in {formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}
+            {" "}acontece em {formatDistanceToNow(new Date(nextEvent.starts_at), { locale: ptBR })}
           </span>
         </div>
       )}
@@ -316,7 +317,7 @@ export default function CircleFeed() {
             )}
             style={!effectiveSpaceId ? { backgroundColor: "#111827" } : { backgroundColor: "#F3F4F6" }}
           >
-            All
+            Todas
           </button>
           {(spaces || []).slice(0, 5).map((space: any) => (
             <button
@@ -340,7 +341,7 @@ export default function CircleFeed() {
                   className="shrink-0 px-3 py-1 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground whitespace-nowrap flex items-center gap-1"
                   style={{ backgroundColor: "#F3F4F6" }}
                 >
-                  More... <ChevronDown className="h-3 w-3" />
+                  Mais... <ChevronDown className="h-3 w-3" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -379,13 +380,13 @@ export default function CircleFeed() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
-              <span className="text-sm font-bold text-foreground">Welcome! Start here</span>
+              <span className="text-sm font-bold text-foreground">Bem-vindo! Comece por aqui</span>
             </div>
             <button
               onClick={handleDismissOnboarding}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
             >
-              Dismiss
+              Ocultar
             </button>
           </div>
           <div className="space-y-2.5">
@@ -435,6 +436,9 @@ export default function CircleFeed() {
           <MessageCircle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
           <h3 className="font-semibold text-foreground">Ainda não há posts</h3>
           <p className="text-sm text-muted-foreground mt-1">Seja o primeiro a compartilhar algo! 🎉</p>
+          {!showCompose && !isMuted && canPost && (
+            <Button className="mt-4" onClick={() => setShowCompose(true)}>Criar post</Button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

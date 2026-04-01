@@ -8,6 +8,18 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - subcopy de cobrança no modal
   - reduzir fricção no modal com alternância signup/login no topo
 
+## Sprint 1 — Feed UX + Composer (concluído)
+- [x] `src/components/circle/PostComposer.tsx`
+  - copy PT-BR e ações principais mais claras
+  - categoria predefinida para reduzir fricção
+- [x] `src/components/circle/PostCard.tsx`
+  - pinned com destaque visual de "Post importante" em cor primária
+- [x] `src/components/circle/PostDetailModal.tsx`
+  - hierarquia de comentários/replies mais legível e labels em PT-BR
+- [x] `src/pages/circle/CircleFeed.tsx`
+  - trigger de composer/empty state mais orientado a criação de post
+  - ajustes de microcopy para consistência de navegação
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural
