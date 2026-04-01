@@ -53,6 +53,18 @@ function getVideoEmbed(url: string | null) {
   return null;
 }
 
+/* ── Render @mentions as styled spans ── */
+const renderMentions = (text: string) => {
+  const parts = text.split(/(@\S+)/g);
+  return parts.map((part, i) =>
+    part.startsWith("@") ? (
+      <span key={i} className="text-primary font-semibold">{part}</span>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+};
+
 /* ── Main Component ──────────────────────────────── */
 
 export default function PostDetailModal({ postId, open, onClose }: PostDetailModalProps) {
@@ -659,7 +671,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                               </DropdownMenu>
                             </div>
 
-                            <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{comment.body}</p>
+                            <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
 
                             {/* Comment images */}
                             {comment.images && (comment.images as string[]).length > 0 && (
@@ -757,13 +769,22 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                         </DropdownMenuContent>
                                       </DropdownMenu>
                                     </div>
-                                    <p className="text-xs text-foreground mt-0.5 whitespace-pre-wrap">{reply.body}</p>
+                                    <p className="text-xs text-foreground mt-0.5 whitespace-pre-wrap">{renderMentions(reply.body)}</p>
                                     <div className="flex items-center gap-3 mt-1">
                                       <button onClick={() => !isMuted && toggleCommentLike.mutate(reply.id)} disabled={isMuted}
                                         className={cn("flex items-center gap-1 text-[10px]", rLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}>
                                         <ThumbsUp className={cn("h-3 w-3", rLiked && "fill-current")} />
                                         {reply.like_count > 0 && <span>{reply.like_count}</span>}
                                       </button>
+                                      {!post.is_locked && !isMuted && (
+                                        <button onClick={() => {
+                                          setReplyTo(comment.id);
+                                          setReplyBody(`@${reply.author?.display_name || "Membro"} `);
+                                        }}
+                                          className="text-[10px] font-medium text-muted-foreground hover:text-foreground">
+                                          Responder
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
