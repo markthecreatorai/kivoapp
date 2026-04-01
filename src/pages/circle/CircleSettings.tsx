@@ -122,16 +122,16 @@ interface ProfileForm {
 }
 
 const SECTION_ITEMS = [
-  { id: "communities", label: "Communities" },
-  { id: "profile", label: "Profile" },
-  { id: "affiliates", label: "Affiliates" },
-  { id: "payouts", label: "Payouts" },
-  { id: "account", label: "Account" },
-  { id: "notifications", label: "Notifications" },
+  { id: "communities", label: "Comunidades" },
+  { id: "profile", label: "Perfil" },
+  { id: "affiliates", label: "Afiliados" },
+  { id: "payouts", label: "Saques" },
+  { id: "account", label: "Conta" },
+  { id: "notifications", label: "Notificações" },
   { id: "chat", label: "Chat" },
-  { id: "payment-methods", label: "Payment methods" },
-  { id: "payment-history", label: "Payment history" },
-  { id: "theme", label: "Theme" },
+  { id: "payment-methods", label: "Métodos de pagamento" },
+  { id: "payment-history", label: "Histórico de pagamentos" },
+  { id: "theme", label: "Tema" },
 ];
 
 export default function CircleSettings() {
