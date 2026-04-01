@@ -316,9 +316,17 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
       if (isEditing) {
         const { error } = await supabase.from("community_events").update(payload).eq("id", event.id);
         if (error) throw error;
+        // Regenerate occurrences if recurring
+        if (isRecurring) {
+          await supabase.rpc("generate_recurring_occurrences", { p_event_id: event.id });
+        }
       } else {
-        const { error } = await supabase.from("community_events").insert(payload);
+        const { data: inserted, error } = await supabase.from("community_events").insert(payload).select("id").single();
         if (error) throw error;
+        // Generate occurrences for new recurring event
+        if (isRecurring && inserted) {
+          await supabase.rpc("generate_recurring_occurrences", { p_event_id: inserted.id });
+        }
       }
     },
     onSuccess: () => {
