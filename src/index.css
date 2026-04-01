@@ -132,13 +132,8 @@
     background: hsl(var(--primary));
   }
 
-  img.emoji {
-    display: inline-block;
-    height: 1.2em;
-    width: 1.2em;
-    vertical-align: -0.15em;
-    margin: 0 0.05em;
-  }
+  /* Noto Color Emoji is loaded via Google Fonts in index.html
+     and included in the font-family stack via tailwind.config.ts */
 }
 
 .ProseMirror iframe {
