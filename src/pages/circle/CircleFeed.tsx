@@ -187,10 +187,10 @@ export default function CircleFeed() {
   });
 
   const onboardingTasks = useMemo(() => [
-    { label: "Assistir vídeo de introdução", icon: PlayCircle, done: (lessonProgress || 0) > 0, link: `/c/${community.slug}/classroom` },
+    { label: "Assistir vídeo de introdução", icon: PlayCircle, done: (lessonProgress || 0) > 0, link: community?.slug ? `/c/${community.slug}/classroom` : "#" },
     { label: "Encontrar um post e deixar um comentário", icon: MessageSquare, done: (memberCommentCount || 0) > 0, link: "#" },
     { label: "Baixar o app", icon: Smartphone, done: false, link: "#" },
-  ], [lessonProgress, memberCommentCount]);
+  ], [lessonProgress, memberCommentCount, community?.slug]);
 
   const allOnboardingDone = onboardingTasks.every((t) => t.done);
   const showOnboarding = member && !(member as any).onboarding_dismissed && !allOnboardingDone;
