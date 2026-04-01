@@ -885,7 +885,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                             </PopoverTrigger>
                             <PopoverContent className="w-[320px] p-0" align="end" side="top">
                               <GifPicker onSelect={(gifUrl) => {
-                                setCommentBody((prev) => prev + (prev ? " " : "") + gifUrl);
+                                setCommentImages((prev) => [...prev, gifUrl]);
                                 setShowGifPicker(false);
                               }} />
                             </PopoverContent>
