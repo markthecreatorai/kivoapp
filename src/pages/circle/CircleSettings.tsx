@@ -337,6 +337,7 @@ export default function CircleSettings() {
   const sectionButtons = [
     { id: "profile", label: "Perfil", icon: User },
     { id: "affiliates", label: "Afiliados", icon: DollarSign },
+    { id: "payouts", label: "Saques", icon: Wallet },
     { id: "notifications", label: "Notificações", icon: Bell },
     { id: "account", label: "Conta", icon: Shield },
   ];
