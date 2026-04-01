@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -58,37 +58,12 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [lifecycleFilter, setLifecycleFilter] = useState<"ALL" | "ACTIVE" | "RISK" | "LEFT" | "BANNED">("ALL");
-  const [inactiveWindow, setInactiveWindow] = useState<"ANY" | "7" | "14" | "30">("ANY");
   const [sortBy, setSortBy] = useState<string>("joined_at");
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingSort, setPendingSort] = useState<"newest" | "oldest" | "with_answers">("newest");
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [bulkReason, setBulkReason] = useState("");
   const [bulkConfirm, setBulkConfirm] = useState<{ type: "approve" | "reject"; count: number } | null>(null);
-  const [savedViews, setSavedViews] = useState<Array<{ name: string; roleFilter: string; statusFilter: string; lifecycleFilter: string; sortBy: string }>>([]);
-  const [newViewName, setNewViewName] = useState("");
-
-  const FILTERS_KEY = `kivo-admin-members-filters-${community.id}`;
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(FILTERS_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (saved.roleFilter) setRoleFilter(saved.roleFilter);
-      if (saved.statusFilter) setStatusFilter(saved.statusFilter);
-      if (saved.lifecycleFilter) setLifecycleFilter(saved.lifecycleFilter);
-      if (saved.sortBy) setSortBy(saved.sortBy);
-      if (saved.inactiveWindow) setInactiveWindow(saved.inactiveWindow);
-      if (Array.isArray(saved.savedViews)) setSavedViews(saved.savedViews);
-    } catch {}
-  }, [FILTERS_KEY]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      FILTERS_KEY,
-      JSON.stringify({ roleFilter, statusFilter, lifecycleFilter, sortBy, inactiveWindow, savedViews })
-    );
-  }, [FILTERS_KEY, roleFilter, statusFilter, lifecycleFilter, sortBy, inactiveWindow, savedViews]);
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -163,36 +138,6 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     },
   });
 
-  const bulkLifecycleAction = useMutation({
-    mutationFn: async ({ memberIds, action }: { memberIds: string[]; action: "reactivate" | "mute24h" | "recover_left" }) => {
-      if (!memberIds.length) return;
-      if (action === "reactivate") {
-        await supabase
-          .from("community_members")
-          .update({ status: "ACTIVE", muted_until: null, muted_at: null })
-          .in("id", memberIds);
-      }
-      if (action === "mute24h") {
-        await supabase
-          .from("community_members")
-          .update({ status: "MUTED", muted_at: new Date().toISOString(), muted_until: new Date(Date.now() + 86400000).toISOString() })
-          .in("id", memberIds);
-      }
-      if (action === "recover_left") {
-        await supabase
-          .from("community_members")
-          .update({ status: "ACTIVE" })
-          .in("id", memberIds)
-          .eq("status", "LEFT");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
-      queryClient.invalidateQueries({ queryKey: ["community"] });
-      toast.success("Ação aplicada no segmento");
-    },
-  });
-
   const givePoints = useMutation({
     mutationFn: async ({ memberId, points, reason, type }: { memberId: string; points: number; reason: string; type: "bonus" | "penalty" }) => {
       const actualPoints = type === "penalty" ? -points : points;
@@ -259,33 +204,12 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
 
   const canBulkModerate = currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
 
-  const isInactive = (m: any, minDays = 14) => {
-    const last = m.last_active_at ? new Date(m.last_active_at).getTime() : 0;
-    if (!last) return false;
-    const days = (Date.now() - last) / (1000 * 60 * 60 * 24);
-    return days >= minDays;
-  };
-
   const lifecycleCounts = {
     ACTIVE: (members || []).filter((m: any) => m.status === "ACTIVE").length,
-    RISK: (members || []).filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).length,
+    RISK: (members || []).filter((m: any) => ["MUTED", "PENDING"].includes(m.status)).length,
     LEFT: (members || []).filter((m: any) => m.status === "LEFT").length,
     BANNED: (members || []).filter((m: any) => m.status === "BANNED").length,
   };
-
-  const SNAP_KEY = `kivo-admin-members-snapshot-${community.id}`;
-  const [prevSnapshot, setPrevSnapshot] = useState<{ active: number; risk: number } | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SNAP_KEY);
-      if (raw) setPrevSnapshot(JSON.parse(raw));
-      localStorage.setItem(SNAP_KEY, JSON.stringify({ active: lifecycleCounts.ACTIVE, risk: lifecycleCounts.RISK }));
-    } catch {}
-  }, [SNAP_KEY, lifecycleCounts.ACTIVE, lifecycleCounts.RISK]);
-
-  const activeDelta = prevSnapshot ? lifecycleCounts.ACTIVE - prevSnapshot.active : 0;
-  const riskDelta = prevSnapshot ? lifecycleCounts.RISK - prevSnapshot.risk : 0;
 
   const filteredPending = [...pendingMembers]
     .filter((m: any) => {
@@ -320,15 +244,11 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   if (lifecycleFilter !== "ALL") {
     filtered = filtered.filter((m: any) => {
       if (lifecycleFilter === "ACTIVE") return m.status === "ACTIVE";
-      if (lifecycleFilter === "RISK") return ["MUTED", "PENDING"].includes(m.status) || isInactive(m);
+      if (lifecycleFilter === "RISK") return ["MUTED", "PENDING"].includes(m.status);
       if (lifecycleFilter === "LEFT") return m.status === "LEFT";
       if (lifecycleFilter === "BANNED") return m.status === "BANNED";
       return true;
     });
-  }
-  if (inactiveWindow !== "ANY") {
-    const min = Number(inactiveWindow);
-    filtered = filtered.filter((m: any) => isInactive(m, min));
   }
 
   filtered.sort((a: any, b: any) => {
@@ -378,8 +298,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const segment = `${lifecycleFilter}-${roleFilter}-${statusFilter}`.toLowerCase();
-    a.download = `members-${community.slug || community.id}-${segment}.csv`;
+    a.download = `members-${community.slug || community.id}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV exportado");
@@ -582,111 +501,6 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
             </button>
           ))}
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={exportMembersCsv}>Exportar segmento atual</Button>
-          {lifecycleFilter === "RISK" && canBulkModerate && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setSelectedPendingIds(filtered.filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).map((m: any) => m.id))}>
-                Selecionar membros em risco
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  const ids = filtered.filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).map((m: any) => m.id);
-                  bulkLifecycleAction.mutate({ memberIds: ids, action: "reactivate" });
-                }}
-              >
-                Reativar em risco
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  const ids = filtered.filter((m: any) => m.status === "ACTIVE" && isInactive(m)).map((m: any) => m.id);
-                  bulkLifecycleAction.mutate({ memberIds: ids, action: "mute24h" });
-                }}
-              >
-                Silenciar inativos 24h
-              </Button>
-            </>
-          )}
-
-          {lifecycleFilter === "LEFT" && canBulkModerate && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const ids = filtered.filter((m: any) => m.status === "LEFT").map((m: any) => m.id);
-                bulkLifecycleAction.mutate({ memberIds: ids, action: "recover_left" });
-              }}
-            >
-              Recuperar membros que saíram
-            </Button>
-          )}
-        </div>
-      </Card>
-
-      {/* CRM trends + saved views */}
-      <Card className="p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h3 className="font-semibold text-sm text-foreground">Tendência rápida</h3>
-          <div className="text-xs text-muted-foreground flex gap-3">
-            <span>Ativos {activeDelta === 0 ? "=" : activeDelta > 0 ? `+${activeDelta}` : activeDelta}</span>
-            <span>Risco {riskDelta === 0 ? "=" : riskDelta > 0 ? `+${riskDelta}` : riskDelta}</span>
-            <span>Saída {(members || []).length ? `${Math.round((lifecycleCounts.LEFT / Math.max(1, (members || []).length)) * 100)}%` : "0%"}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Input
-            placeholder="Salvar visão atual..."
-            value={newViewName}
-            onChange={(e) => setNewViewName(e.target.value)}
-            className="max-w-[220px] h-8"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              const n = newViewName.trim();
-              if (!n) return;
-              const next = [{ name: n, roleFilter, statusFilter, lifecycleFilter, sortBy }, ...savedViews].slice(0, 8);
-              setSavedViews(next);
-              setNewViewName("");
-              toast.success("Visão salva");
-            }}
-          >
-            Salvar visão
-          </Button>
-        </div>
-
-        {savedViews.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {savedViews.map((v) => (
-              <div key={v.name} className="inline-flex items-center rounded-full border overflow-hidden">
-                <button
-                  className="text-xs px-2.5 py-1 hover:bg-muted"
-                  onClick={() => {
-                    setRoleFilter(v.roleFilter);
-                    setStatusFilter(v.statusFilter);
-                    setLifecycleFilter(v.lifecycleFilter as any);
-                    setSortBy(v.sortBy);
-                  }}
-                >
-                  {v.name}
-                </button>
-                <button
-                  className="text-xs px-2 py-1 border-l hover:bg-muted text-muted-foreground"
-                  onClick={() => setSavedViews((prev) => prev.filter((x) => x.name !== v.name))}
-                  title="Remover visão"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </Card>
 
       {/* Filters */}
@@ -722,15 +536,6 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
             <SelectItem value="name">Nome</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={inactiveWindow} onValueChange={(v: any) => setInactiveWindow(v)}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Inatividade" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ANY">Inatividade: qualquer</SelectItem>
-            <SelectItem value="7">Inatividade 7d+</SelectItem>
-            <SelectItem value="14">Inatividade 14d+</SelectItem>
-            <SelectItem value="30">Inatividade 30d+</SelectItem>
-          </SelectContent>
-        </Select>
         <Button variant="outline" onClick={exportMembersCsv}>Exportar CSV</Button>
       </div>
 
@@ -754,15 +559,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {m.total_points || 0} pts · Desde {m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yy") : "—"}
-                  {isInactive(m) ? " · inativo 14d+" : ""}
                 </p>
-                {(isInactive(m) || ["MUTED", "PENDING"].includes(m.status)) && (
-                  <div className="mt-1 flex gap-1 flex-wrap">
-                    {isInactive(m) && <Badge variant="outline" className="text-[10px]">Inatividade</Badge>}
-                    {m.status === "MUTED" && <Badge variant="outline" className="text-[10px]">Silenciado</Badge>}
-                    {m.status === "PENDING" && <Badge variant="outline" className="text-[10px]">Pendente</Badge>}
-                  </div>
-                )}
               </div>
               <Badge variant={m.role === "OWNER" || m.role === "ADMIN" ? "default" : "secondary"} className="text-[10px]">
                 {ROLE_LABELS[m.role] || m.role}

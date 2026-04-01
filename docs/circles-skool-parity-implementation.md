@@ -99,15 +99,6 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - segmentação de ciclo (todos, ativos, risco, saíram, banidos)
   - export CSV da lista filtrada
   - integração de filtros de ciclo com lista principal
-  - regra de risco ampliada (muted/pending + inativos 14d+)
-  - persistência local de filtros de CRM
-  - seleção rápida de membros em risco
-  - ações operacionais rápidas por segmento (reativar / silenciar inativos 24h)
-  - tendência rápida (delta ativos/risco) e "saved views" de CRM
-  - remoção de saved view e badges de motivo de risco por membro
-  - export nomeado por segmento e playbook de recuperação para membros que saíram
-  - filtro de janela de inatividade (7/14/30 dias)
-  - métrica rápida de taxa de saída no topo
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
