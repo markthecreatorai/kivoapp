@@ -126,7 +126,7 @@ export default function CommunitySwitcher({ currentCommunity }: CommunitySwitche
             />
           </div>
           <button
-            onClick={() => { setOpen(false); navigate(`/c/${currentCommunity?.slug}/settings`); }}
+            onClick={() => { setOpen(false); navigate(`/circle-settings`); }}
             className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
             <Settings className="h-3.5 w-3.5" />
