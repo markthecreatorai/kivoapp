@@ -22,6 +22,7 @@ export default function AdminInviteTab({ community, member }: Props) {
 
   const [requireApproval, setRequireApproval] = useState(community.require_approval ?? false);
   const [csvEmails, setCsvEmails] = useState("");
+  const [singleInviteEmail, setSingleInviteEmail] = useState("");
   const [selectedInviteIds, setSelectedInviteIds] = useState<string[]>([]);
   const [inviteStatusFilter, setInviteStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [newMaxUses, setNewMaxUses] = useState<number | "">("");
@@ -103,6 +104,26 @@ export default function AdminInviteTab({ community, member }: Props) {
       toast.success("Links selecionados desativados");
     },
     onError: () => toast.error("Não foi possível desativar em lote"),
+  });
+
+  const sendSingleEmailInvite = useMutation({
+    mutationFn: async () => {
+      const email = singleInviteEmail.trim().toLowerCase();
+      if (!email || !email.includes("@") || !email.includes(".")) throw new Error("E-mail inválido");
+      const created = await createLink.mutateAsync({});
+      const code = created?.code as string;
+      const url = `${window.location.origin}/join/${community.slug}?invite=${code}`;
+      return { email, url };
+    },
+    onSuccess: ({ email, url }) => {
+      const subject = encodeURIComponent(`Convite para ${community.name}`);
+      const body = encodeURIComponent(`Oi! Você foi convidado para entrar em ${community.name}.\n\nAcesse: ${url}`);
+      window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
+      navigator.clipboard.writeText(url).catch(() => {});
+      toast.success("Convite preparado no seu e-mail e link copiado");
+      setSingleInviteEmail("");
+    },
+    onError: (e: any) => toast.error(e?.message || "Falha ao preparar convite"),
   });
 
   const bulkInviteImport = useMutation({
@@ -359,11 +380,18 @@ export default function AdminInviteTab({ community, member }: Props) {
           <h3 className="text-base font-semibold text-gray-900">Convidar por e-mail</h3>
         </div>
         <div className="flex gap-2">
-          <Input placeholder="email@exemplo.com" className="flex-1" />
-          <Button variant="outline">Enviar convite</Button>
+          <Input
+            placeholder="email@exemplo.com"
+            className="flex-1"
+            value={singleInviteEmail}
+            onChange={(e) => setSingleInviteEmail(e.target.value)}
+          />
+          <Button variant="outline" onClick={() => sendSingleEmailInvite.mutate()} disabled={sendSingleEmailInvite.isPending}>
+            {sendSingleEmailInvite.isPending ? "Preparando..." : "Enviar convite"}
+          </Button>
         </div>
         <p className="text-xs text-gray-400 mt-2">
-          O convidado receberá um e-mail com link direto para entrar na comunidade.
+          Abrimos seu cliente de e-mail com o convite pronto e copiamos o link para fallback.
         </p>
       </div>
     </div>
