@@ -65,7 +65,7 @@ export default function CommunityLanding() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [joinAnswers, setJoinAnswers] = useState<Record<string, string>>({});
 
-  const inviteLink = `${window.location.origin}/c/${slug}`;
+  const inviteLink = `${window.location.origin}/circles/${slug}`;
 
   const { fetchCommunity, signupAndJoin, joinAsExistingUser, isLoading } = useJoinCommunity(
     slug || "",
