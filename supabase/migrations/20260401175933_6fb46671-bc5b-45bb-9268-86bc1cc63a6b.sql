@@ -1,0 +1,1 @@
+ALTER TABLE public.community_members ADD COLUMN IF NOT EXISTS timezone text DEFAULT 'UTC';
