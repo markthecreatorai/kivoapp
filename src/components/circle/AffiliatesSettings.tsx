@@ -147,7 +147,7 @@ export default function AffiliatesSettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Affiliates</h2>
+          <h2 className="text-lg font-semibold text-foreground">Afiliados</h2>
           <p className="text-sm text-muted-foreground">
             Compartilhe seu link, indique membros e ganhe comissões.
           </p>
