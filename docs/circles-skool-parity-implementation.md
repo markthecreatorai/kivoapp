@@ -110,6 +110,11 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - top convites por uso e cópia em lote de links selecionados
   - convite por e-mail com abertura de composer (mailto) + fallback de link copiado
 
+## Sprint 10 — General Settings Pro (em andamento)
+- [x] `src/components/circle/admin/AdminSettingsTab.tsx`
+  - configuração de URL (slug) com preview
+  - controle de visibilidade no discovery com explicação
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural

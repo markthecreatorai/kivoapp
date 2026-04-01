@@ -32,6 +32,8 @@ export default function AdminSettingsTab({ community, member }: Props) {
 
   const [settings, setSettings] = useState({
     name: community.name,
+    slug: community.slug,
+    is_listed: community.is_listed ?? true,
     description: community.description || "",
     long_description: community.long_description || "",
     about_video_url: community.about_video_url || "",
@@ -109,6 +111,11 @@ export default function AdminSettingsTab({ community, member }: Props) {
         <div>
           <Label>Nome da comunidade</Label>
           <Input value={settings.name} onChange={(e) => set("name", e.target.value)} />
+        </div>
+        <div>
+          <Label>URL (slug)</Label>
+          <Input value={settings.slug} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} />
+          <p className="text-xs text-muted-foreground mt-1">URL pública: /c/{settings.slug}</p>
         </div>
         <div>
           <Label>Descrição curta</Label>
@@ -204,6 +211,13 @@ export default function AdminSettingsTab({ community, member }: Props) {
 
         {/* Toggles */}
         <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Visibilidade no discovery</Label>
+              <p className="text-xs text-muted-foreground">Quando desativado, a comunidade não aparece em listagens públicas.</p>
+            </div>
+            <Switch checked={settings.is_listed} onCheckedChange={(v) => set("is_listed", v)} />
+          </div>
           <div className="flex items-center justify-between">
             <Label>Requer aprovação para novos membros</Label>
             <Switch checked={settings.require_approval} onCheckedChange={(v) => set("require_approval", v)} />
