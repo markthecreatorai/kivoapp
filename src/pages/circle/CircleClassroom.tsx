@@ -56,6 +56,38 @@ interface CircleCourse {
   private_mode?: string | null;
 }
 
+/* ── Sortable wrapper for course cards ── */
+function SortableCourseCard({ courseId, disabled, children }: { courseId: string; disabled?: boolean; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: courseId,
+    disabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.85 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group/sortable">
+      {!disabled && (
+        <button
+          type="button"
+          className="absolute top-2.5 left-2.5 z-20 cursor-grab active:cursor-grabbing touch-none bg-background/80 backdrop-blur-sm rounded-md p-1 opacity-0 group-hover/sortable:opacity-100 transition-opacity shadow-sm"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      )}
+      {children}
+    </div>
+  );
+}
+
 interface CircleLesson {
   id: string;
   course_id: string;
