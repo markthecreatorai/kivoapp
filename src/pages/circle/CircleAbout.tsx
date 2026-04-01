@@ -406,6 +406,10 @@ export default function CircleAbout() {
             <DndContext
               sensors={sensors}
               collisionDetection={pointerWithin}
+              onDragStart={(event) => {
+                setDragActiveId(String(event.active.id));
+                if (!localGallery) setLocalGallery([...gallery]);
+              }}
               onDragOver={(event) => {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
@@ -420,6 +424,11 @@ export default function CircleAbout() {
               onDragEnd={() => {
                 if (localGallery) saveGallery(localGallery);
                 setLocalGallery(null);
+                setDragActiveId(null);
+              }}
+              onDragCancel={() => {
+                setLocalGallery(null);
+                setDragActiveId(null);
               }}
             >
               <SortableContext
@@ -451,6 +460,32 @@ export default function CircleAbout() {
                   )}
                 </div>
               </SortableContext>
+              <DragOverlay dropAnimation={null}>
+                {dragActiveId ? (() => {
+                  const dragItem = gallery.find((g) => `g-${g.url}` === dragActiveId);
+                  if (!dragItem) return null;
+                  return (
+                    <div className="w-20 h-14 rounded-lg overflow-hidden border-2 border-primary shadow-lg">
+                      {dragItem.type === "image" ? (
+                        <img src={dragItem.url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="relative w-full h-full">
+                          {getVideoThumbnail(dragItem.url) ? (
+                            <img src={getVideoThumbnail(dragItem.url)!} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                              <Play className="h-4 w-4 text-white/60" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Play className="h-4 w-4 text-white drop-shadow" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })() : null}
+              </DragOverlay>
             </DndContext>
           )}
         </div>
