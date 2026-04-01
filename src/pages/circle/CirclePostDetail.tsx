@@ -207,7 +207,7 @@ export default function CirclePostDetail() {
         },
         duration: 5000,
       });
-      navigate(`/c/${community?.slug}/feed`);
+      navigate(`/circles/${community?.slug}/feed`);
     },
   });
 
@@ -294,7 +294,7 @@ export default function CirclePostDetail() {
               <span className="text-xs text-muted-foreground">· {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ptBR })}</span>
             </div>
             {post.space && (
-              <Link to={`/c/${community?.slug}/spaces/${post.space.slug}`} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+              <Link to={`/circles/${community?.slug}/spaces/${post.space.slug}`} className="text-xs text-muted-foreground hover:text-primary transition-colors">
                 {post.space.emoji} {post.space.name}
               </Link>
             )}

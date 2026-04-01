@@ -159,7 +159,7 @@ export default function MemberProfileModal({ memberId, communityId, open, onOpen
               {recentPosts.map((p: any) => (
                 <Link
                   key={p.id}
-                  to={`/c/${communitySlug}/post/${p.id}`}
+                  to={`/circles/${communitySlug}/post/${p.id}`}
                   onClick={() => onOpenChange(false)}
                   className="block text-sm text-foreground hover:text-primary truncate"
                 >

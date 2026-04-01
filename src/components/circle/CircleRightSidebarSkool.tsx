@@ -21,7 +21,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const coverInputRef = useRef<HTMLInputElement>(null);
-  const isAboutPage = location.pathname === `/c/${slug}/about`;
+  const isAboutPage = location.pathname === `/circles/${slug}/about`;
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
   const isPreviewVisitor = searchParams.get("preview") === "visitor";
 
@@ -262,7 +262,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
             <div className="space-y-2">
               {isAdmin && isAboutPage && (
                 <button
-                  onClick={() => onOpenAdmin ? onOpenAdmin() : navigate(`/c/${slug}/admin`)}
+                  onClick={() => onOpenAdmin ? onOpenAdmin() : navigate(`/circles/${slug}/admin`)}
                   className="flex items-center justify-center gap-2 w-full rounded-lg py-2.5 px-4 font-semibold text-sm border border-foreground/20 bg-transparent hover:bg-muted transition-colors text-foreground"
                   id="sidebar-settings-btn"
                 >
@@ -282,7 +282,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
           ) : (
             /* Visitor / preview visitor: join */
             <Link
-              to={`/c/${slug}`}
+              to={`/circles/${slug}`}
               className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
             >
               {visitorCta}
@@ -298,7 +298,7 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
             <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
               Ranking (30 dias)
             </h4>
-            <Link to={`/c/${slug}/leaderboard`} className="text-[12px] text-primary hover:underline font-medium">
+            <Link to={`/circles/${slug}/leaderboard`} className="text-[12px] text-primary hover:underline font-medium">
               Ver todos
             </Link>
           </div>

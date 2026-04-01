@@ -75,7 +75,7 @@ export default function JoinCommunity() {
   // If already an active member, redirect
   useEffect(() => {
     if (existingMember?.status === "ACTIVE" && community?.slug) {
-      navigate(`/c/${community.slug}/feed`, { replace: true });
+      navigate(`/circles/${community.slug}/feed`, { replace: true });
     }
   }, [existingMember, community, navigate]);
 

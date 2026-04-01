@@ -32,7 +32,7 @@ export default function CircleDashboard() {
   // Redirect to feed if community exists
   useEffect(() => {
     if (community?.slug) {
-      navigate(`/c/${community.slug}/feed`, { replace: true });
+      navigate(`/circles/${community.slug}/feed`, { replace: true });
     }
   }, [community, navigate]);
 

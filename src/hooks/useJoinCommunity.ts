@@ -199,7 +199,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
         toast.success("Solicitação enviada! Aguarde aprovação.");
       } else {
         toast.success("Bem-vindo à comunidade!");
-        navigate(`/c/${communitySlug}/feed`);
+        navigate(`/circles/${communitySlug}/feed`);
       }
     } catch (err: any) {
       toast.error(err.message || "Erro ao entrar na comunidade.");

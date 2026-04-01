@@ -117,7 +117,7 @@ function CircleSettingsRedirect() {
   });
 
   if (!community?.slug) return null;
-  const target = section ? `/c/${community.slug}/settings?section=${section}` : `/c/${community.slug}/settings`;
+  const target = section ? `/circles/${community.slug}/settings?section=${section}` : `/circles/${community.slug}/settings`;
   return <Navigate to={target} replace />;
 }
 

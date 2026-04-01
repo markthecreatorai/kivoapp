@@ -11,7 +11,7 @@ export default function CirclePostRedirect() {
 
   useEffect(() => {
     if (slug && id) {
-      navigate(`/c/${slug}/feed?post=${id}`, { replace: true });
+      navigate(`/circles/${slug}/feed?post=${id}`, { replace: true });
     }
   }, [slug, id, navigate]);
 

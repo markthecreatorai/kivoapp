@@ -184,7 +184,7 @@ export default function CommunityLanding() {
   // Already active member → go directly to feed
   useEffect(() => {
     if (existingMember?.status === "ACTIVE" && community?.slug) {
-      navigate(`/c/${community.slug}/feed`, { replace: true });
+      navigate(`/circles/${community.slug}/feed`, { replace: true });
     }
   }, [existingMember, community, navigate]);
 
@@ -256,7 +256,7 @@ export default function CommunityLanding() {
     const hasMultipleTiers = communityTiers.length >= 2;
 
     if (hasMultipleTiers && !inviteCode) {
-      navigate(`/c/${slug}/plans${inviteCode ? `?invite=${inviteCode}` : ""}`);
+      navigate(`/circles/${slug}/plans${inviteCode ? `?invite=${inviteCode}` : ""}`);
       return;
     }
 
@@ -268,7 +268,7 @@ export default function CommunityLanding() {
 
     // Single paid tier without linked product → select plan page
     if (paidTiers.length === 1 && freeTiers.length === 0 && !inviteCode) {
-      navigate(`/c/${slug}/plans`);
+      navigate(`/circles/${slug}/plans`);
       return;
     }
 
@@ -1017,7 +1017,7 @@ export default function CommunityLanding() {
 
             <Button
               className="w-full gap-2"
-              onClick={() => navigate(`/c/${slug}/feed`)}
+              onClick={() => navigate(`/circles/${slug}/feed`)}
             >
               Ir para a Comunidade
             </Button>
