@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Video, Radio, Calendar, Link as LinkIcon, Trash2 } from "lucide-react";
+import { Video, Radio, Calendar, Link as LinkIcon, Trash2, Upload, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface LiveStreamFormModalProps {
@@ -47,6 +47,8 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
   const [scheduledAt, setScheduledAt] = useState("");
   const [chatEnabled, setChatEnabled] = useState(true);
   const [goLiveNow, setGoLiveNow] = useState(false);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (stream) {
@@ -56,15 +58,30 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
       setScheduledAt(stream.scheduled_at ? new Date(stream.scheduled_at).toISOString().slice(0, 16) : "");
       setChatEnabled(stream.chat_enabled ?? true);
       setGoLiveNow(false);
+      setCoverImage(stream.cover_image_url || null);
     } else {
-      setTitle("");
-      setDescription("");
-      setEmbedUrl("");
-      setScheduledAt("");
-      setChatEnabled(true);
-      setGoLiveNow(false);
+      setTitle(""); setDescription(""); setEmbedUrl(""); setScheduledAt("");
+      setChatEnabled(true); setGoLiveNow(false); setCoverImage(null);
     }
   }, [stream, open]);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `live-covers/${communityId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("community").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("community").getPublicUrl(path);
+      setCoverImage(urlData.publicUrl);
+    } catch {
+      toast.error("Erro ao enviar imagem");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const embedType = detectEmbedType(embedUrl);
   const isValidUrl = embedUrl.trim().length > 0 && (
@@ -127,6 +144,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
                   meeting_url: embedUrl.trim(),
                   description: description.trim() || null,
                   status: goLiveNow ? "ACTIVE" : "SCHEDULED",
+                  cover_image_url: coverImage,
                 } as any)
                 .eq("id", existingEvent.id);
             }
@@ -155,6 +173,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
                   meeting_platform: embedType === "youtube" ? "youtube" : embedType === "twitch" ? "twitch" : "custom",
                   status: goLiveNow ? "ACTIVE" : "SCHEDULED",
                   live_stream_id: (latestStream as any).id,
+                  cover_image_url: coverImage,
                 } as any);
             }
           }
@@ -205,6 +224,31 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
+          </div>
+
+          {/* Thumbnail / Cover image */}
+          <div>
+            <Label>Thumbnail</Label>
+            {coverImage ? (
+              <div className="relative mt-2">
+                <img src={coverImage} alt="" className="w-full h-28 object-cover rounded-lg border border-border" />
+                <Button
+                  variant="destructive" size="icon"
+                  className="absolute top-2 right-2 h-7 w-7"
+                  onClick={() => setCoverImage(null)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <label className="mt-2 flex items-center justify-center h-20 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                <div className="text-center text-sm text-muted-foreground">
+                  <Upload className="h-4 w-4 mx-auto mb-1" />
+                  {uploading ? "Enviando..." : "Adicionar capa para o calendário"}
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={uploading} />
+              </label>
+            )}
           </div>
 
           <div>
