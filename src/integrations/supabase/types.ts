@@ -1109,12 +1109,54 @@ export type Database = {
           },
         ]
       }
+      circle_course_entitlements: {
+        Row: {
+          course_id: string
+          granted_at: string
+          granted_by: string
+          id: string
+          member_id: string
+        }
+        Insert: {
+          course_id: string
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          member_id: string
+        }
+        Update: {
+          course_id?: string
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_course_entitlements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "circle_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_course_entitlements_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_courses: {
         Row: {
           access_mode: string
           access_rule: string
           access_type: string
+          allowed_member_ids: string[] | null
+          allowed_tier_ids: string[] | null
           billing_period: string
+          buy_now_product_id: string | null
           community_id: string
           course_price_cents: number | null
           cover_url: string | null
@@ -1126,6 +1168,7 @@ export type Database = {
           name: string
           position: number
           price_cents: number
+          private_mode: string | null
           unlock_after_days: number | null
           updated_at: string
         }
@@ -1133,7 +1176,10 @@ export type Database = {
           access_mode?: string
           access_rule?: string
           access_type?: string
+          allowed_member_ids?: string[] | null
+          allowed_tier_ids?: string[] | null
           billing_period?: string
+          buy_now_product_id?: string | null
           community_id: string
           course_price_cents?: number | null
           cover_url?: string | null
@@ -1145,6 +1191,7 @@ export type Database = {
           name: string
           position?: number
           price_cents?: number
+          private_mode?: string | null
           unlock_after_days?: number | null
           updated_at?: string
         }
@@ -1152,7 +1199,10 @@ export type Database = {
           access_mode?: string
           access_rule?: string
           access_type?: string
+          allowed_member_ids?: string[] | null
+          allowed_tier_ids?: string[] | null
           billing_period?: string
+          buy_now_product_id?: string | null
           community_id?: string
           course_price_cents?: number | null
           cover_url?: string | null
@@ -1164,10 +1214,18 @@ export type Database = {
           name?: string
           position?: number
           price_cents?: number
+          private_mode?: string | null
           unlock_after_days?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "circle_courses_buy_now_product_id_fkey"
+            columns: ["buy_now_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "circle_courses_community_id_fkey"
             columns: ["community_id"]
