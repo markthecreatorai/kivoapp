@@ -79,7 +79,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - filtros por tipo no painel (todas / não lidas / interações / DMs)
   - empty state contextual por filtro
 
-## Sprint 7 — Mobile polish final (em andamento)
+## Sprint 7 — Mobile polish final (concluído)
 - [x] `src/components/circle/CircleLayout.tsx`
   - aumento da barra inferior mobile (touch target maior)
   - espaçamento maior nos botões da navegação mobile
@@ -89,6 +89,10 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/pages/circle/CircleMessages.tsx`
   - bolhas de mensagem mais confortáveis no mobile
   - botões de filtros com touch target consistente
+- [x] `src/pages/circle/CircleFeed.tsx`
+  - pills de categoria com área de toque ampliada
+- [x] `src/components/circle/NotificationPanel.tsx`
+  - filtros no painel com botões mobile-friendly (h-8)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

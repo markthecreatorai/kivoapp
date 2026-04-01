@@ -310,7 +310,7 @@ export default function CircleFeed() {
           <button
             onClick={() => setActiveSpaceId("all")}
             className={cn(
-              "shrink-0 px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+              "shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
               !effectiveSpaceId
                 ? "text-background"
                 : "text-muted-foreground hover:text-foreground"
@@ -324,7 +324,7 @@ export default function CircleFeed() {
               key={space.id}
               onClick={() => setActiveSpaceId(space.id)}
               className={cn(
-                "shrink-0 px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+                "shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
                 effectiveSpaceId === space.id
                   ? "text-background"
                   : "text-muted-foreground hover:text-foreground"
@@ -338,7 +338,7 @@ export default function CircleFeed() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="shrink-0 px-3 py-1 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground whitespace-nowrap flex items-center gap-1"
+                  className="shrink-0 px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground whitespace-nowrap flex items-center gap-1"
                   style={{ backgroundColor: "#F3F4F6" }}
                 >
                   Mais... <ChevronDown className="h-3 w-3" />

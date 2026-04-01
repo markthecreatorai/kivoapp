@@ -197,10 +197,10 @@ export default function NotificationPanel({ memberId, communityId, unreadCount }
       </div>
 
       <div className="px-3 py-2 border-b border-border flex gap-2 flex-wrap">
-        <Button size="sm" variant={typeFilter === "all" ? "default" : "outline"} onClick={() => setTypeFilter("all")}>Todas</Button>
-        <Button size="sm" variant={typeFilter === "unread" ? "default" : "outline"} onClick={() => setTypeFilter("unread")}>Não lidas</Button>
-        <Button size="sm" variant={typeFilter === "interactions" ? "default" : "outline"} onClick={() => setTypeFilter("interactions")}>Interações</Button>
-        <Button size="sm" variant={typeFilter === "dms" ? "default" : "outline"} onClick={() => setTypeFilter("dms")}>DMs</Button>
+        <Button size="sm" className="h-8" variant={typeFilter === "all" ? "default" : "outline"} onClick={() => setTypeFilter("all")}>Todas</Button>
+        <Button size="sm" className="h-8" variant={typeFilter === "unread" ? "default" : "outline"} onClick={() => setTypeFilter("unread")}>Não lidas</Button>
+        <Button size="sm" className="h-8" variant={typeFilter === "interactions" ? "default" : "outline"} onClick={() => setTypeFilter("interactions")}>Interações</Button>
+        <Button size="sm" className="h-8" variant={typeFilter === "dms" ? "default" : "outline"} onClick={() => setTypeFilter("dms")}>DMs</Button>
       </div>
 
       {/* List */}
