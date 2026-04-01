@@ -7,6 +7,7 @@ import { SettingsPayments } from "@/components/settings/SettingsPayments";
 import { SettingsNotifications } from "@/components/settings/SettingsNotifications";
 import { SettingsSecurity } from "@/components/settings/SettingsSecurity";
 import { SettingsFiscal } from "@/components/settings/SettingsFiscal";
+import { Lock } from "lucide-react";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -15,8 +16,11 @@ export default function Settings() {
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
-        <p className="text-sm text-muted-foreground">Gerencie sua conta e preferências</p>
+        <h1 className="text-2xl font-bold text-foreground">Configurações da conta</h1>
+        <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+          <Lock className="h-3.5 w-3.5" />
+          Configurações globais da sua conta Kivo. Não afeta configurações de comunidades.
+        </p>
       </div>
 
       <Tabs
