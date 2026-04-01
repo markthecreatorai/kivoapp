@@ -2218,6 +2218,7 @@ export type Database = {
           social_links: Json | null
           status: Database["public"]["Enums"]["community_member_status"]
           sync_with_kivo: boolean
+          timezone: string | null
           total_points: number
           updated_at: string
           user_id: string
@@ -2249,6 +2250,7 @@ export type Database = {
           social_links?: Json | null
           status?: Database["public"]["Enums"]["community_member_status"]
           sync_with_kivo?: boolean
+          timezone?: string | null
           total_points?: number
           updated_at?: string
           user_id: string
@@ -2280,6 +2282,7 @@ export type Database = {
           social_links?: Json | null
           status?: Database["public"]["Enums"]["community_member_status"]
           sync_with_kivo?: boolean
+          timezone?: string | null
           total_points?: number
           updated_at?: string
           user_id?: string
