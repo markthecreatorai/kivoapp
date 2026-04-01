@@ -124,6 +124,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - seleção de modelo de monetização no estilo Skool
   - prévia textual da jornada de compra por modelo
   - status de prontidão do modelo (pronto vs pendente de configuração)
+  - validação de prontidão respeitando billing options (monthly/annual/both)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
