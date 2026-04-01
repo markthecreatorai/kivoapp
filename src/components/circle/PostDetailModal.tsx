@@ -807,36 +807,116 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         {(member?.display_name || "U").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 flex items-center gap-2 border border-border rounded-full px-4 py-2 focus-within:border-primary/50 transition-colors">
-                      <input
-                        type="text"
-                        value={commentBody}
-                        onChange={(e) => setCommentBody(e.target.value)}
-                        onKeyDown={handleCommentKeyDown}
-                        placeholder="Seu comentário..."
-                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                      />
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <button className="p-1 hover:text-foreground transition-colors" onClick={() => toast.info("Anexo em breve!")}>
-                          <Paperclip className="h-3.5 w-3.5" />
-                        </button>
-                        <button className="p-1 hover:text-foreground transition-colors" onClick={() => toast.info("Link em breve!")}>
-                          <Link2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button className="p-1 hover:text-foreground transition-colors" onClick={() => toast.info("Vídeo em breve!")}>
-                          <Video className="h-3.5 w-3.5" />
-                        </button>
-                        <button className="p-1 hover:text-foreground transition-colors" onClick={() => toast.info("Emoji em breve!")}>
-                          <Smile className="h-3.5 w-3.5" />
-                        </button>
-                        <button className="p-1 hover:text-foreground transition-colors text-[10px] font-bold" onClick={() => toast.info("GIF em breve!")}>
-                          GIF
+                    <div className="flex-1 flex flex-col gap-2">
+                      {/* Image previews */}
+                      {commentImages.length > 0 && (
+                        <div className="flex gap-2 flex-wrap px-1">
+                          {commentImages.map((img, i) => (
+                            <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                              <img src={img} alt="" className="w-full h-full object-cover" />
+                              <button
+                                onClick={() => setCommentImages((prev) => prev.filter((_, idx) => idx !== i))}
+                                className="absolute top-0.5 right-0.5 bg-foreground/60 text-background rounded-full p-0.5"
+                              >
+                                <XIcon className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 border border-border rounded-full px-4 py-2 focus-within:border-primary/50 transition-colors">
+                        <input
+                          type="text"
+                          value={commentBody}
+                          onChange={(e) => setCommentBody(e.target.value)}
+                          onKeyDown={handleCommentKeyDown}
+                          placeholder="Seu comentário..."
+                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        />
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          {/* Image upload */}
+                          <input
+                            ref={commentImageRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter no máximo 5MB"); return; }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (reader.result) setCommentImages((prev) => [...prev, reader.result as string]);
+                              };
+                              reader.readAsDataURL(file);
+                              e.target.value = "";
+                            }}
+                          />
+                          <button className="p-1 hover:text-foreground transition-colors" onClick={() => commentImageRef.current?.click()}>
+                            <Paperclip className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Link insert */}
+                          <button
+                            className="p-1 hover:text-foreground transition-colors"
+                            onClick={() => {
+                              const url = prompt("Cole o link:");
+                              if (url?.trim()) setCommentBody((prev) => prev + (prev ? " " : "") + url.trim());
+                            }}
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Video embed */}
+                          <button
+                            className="p-1 hover:text-foreground transition-colors"
+                            onClick={() => {
+                              const url = prompt("Cole o link do vídeo (YouTube, Vimeo, Loom):");
+                              if (url?.trim()) setCommentBody((prev) => prev + (prev ? " " : "") + url.trim());
+                            }}
+                          >
+                            <Video className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Emoji picker */}
+                          <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                            <PopoverTrigger asChild>
+                              <button className="p-1 hover:text-foreground transition-colors">
+                                <Smile className="h-3.5 w-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[280px] p-0" align="end" side="top">
+                              <EmojiPicker onSelect={(emoji) => {
+                                setCommentBody((prev) => prev + emoji);
+                                setShowEmojiPicker(false);
+                              }} />
+                            </PopoverContent>
+                          </Popover>
+
+                          {/* GIF picker */}
+                          <Popover open={showGifPicker} onOpenChange={setShowGifPicker}>
+                            <PopoverTrigger asChild>
+                              <button className="p-1 hover:text-foreground transition-colors text-[10px] font-bold">
+                                GIF
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[320px] p-0" align="end" side="top">
+                              <GifPicker onSelect={(gifUrl) => {
+                                setCommentBody((prev) => prev + (prev ? " " : "") + gifUrl);
+                                setShowGifPicker(false);
+                              }} />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <button
+                          onClick={() => (commentBody.trim() || commentImages.length > 0) && addComment.mutate({ body: commentBody || "📷" })}
+                          disabled={(!commentBody.trim() && commentImages.length === 0) || addComment.isPending}
+                          className="text-primary hover:text-primary/80 disabled:opacity-30 transition-opacity"
+                        >
+                          <Send className="h-4 w-4" />
                         </button>
                       </div>
-                      <button onClick={() => commentBody.trim() && addComment.mutate({ body: commentBody })} disabled={!commentBody.trim() || addComment.isPending}
-                        className="text-primary hover:text-primary/80 disabled:opacity-30 transition-opacity">
-                        <Send className="h-4 w-4" />
-                      </button>
                     </div>
                   </div>
                 </div>
