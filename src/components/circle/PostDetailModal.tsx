@@ -88,6 +88,8 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [commentImages, setCommentImages] = useState<string[]>([]);
   const commentImageRef = useRef<HTMLInputElement>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentBody, setEditingCommentBody] = useState("");
 
   /* ── Queries ─────── */
   const { data: community } = useQuery({
@@ -647,12 +649,8 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 <DropdownMenuContent align="end">
                                   {comment.author_id === member?.id && (
                                     <DropdownMenuItem onClick={() => {
-                                      const newBody = prompt("Editar comentário:", comment.body);
-                                      if (newBody?.trim()) {
-                                        supabase.from("community_comments").update({ body: newBody.trim(), edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
-                                          queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] }); toast.success("Editado");
-                                        });
-                                      }
+                                      setEditingCommentId(comment.id);
+                                      setEditingCommentBody(comment.body);
                                     }}>✏️ Editar</DropdownMenuItem>
                                   )}
                                   {(isAdmin || comment.author_id === member?.id) && (
@@ -671,7 +669,40 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                               </DropdownMenu>
                             </div>
 
-                            <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
+                            {editingCommentId === comment.id ? (
+                              <div className="mt-1 flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={editingCommentBody}
+                                  onChange={(e) => setEditingCommentBody(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && editingCommentBody.trim()) {
+                                      supabase.from("community_comments").update({ body: editingCommentBody.trim(), edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
+                                        queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
+                                        toast.success("Editado");
+                                        setEditingCommentId(null);
+                                      });
+                                    } else if (e.key === "Escape") {
+                                      setEditingCommentId(null);
+                                    }
+                                  }}
+                                  className="flex-1 text-sm bg-muted/50 border border-border rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
+                                  autoFocus
+                                />
+                                <button onClick={() => {
+                                  if (editingCommentBody.trim()) {
+                                    supabase.from("community_comments").update({ body: editingCommentBody.trim(), edited_at: new Date().toISOString() }).eq("id", comment.id).then(() => {
+                                      queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
+                                      toast.success("Editado");
+                                      setEditingCommentId(null);
+                                    });
+                                  }
+                                }} className="text-primary hover:text-primary/80 text-xs font-medium">Salvar</button>
+                                <button onClick={() => setEditingCommentId(null)} className="text-muted-foreground hover:text-foreground text-xs">Cancelar</button>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{renderMentions(comment.body)}</p>
+                            )}
 
                             {/* Comment images */}
                             {comment.images && (comment.images as string[]).length > 0 && (
