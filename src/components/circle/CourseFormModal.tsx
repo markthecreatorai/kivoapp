@@ -42,6 +42,8 @@ export default function CourseFormModal({
   const [accessType, setAccessType] = useState(course?.access_type || "free");
   const [isPublished, setIsPublished] = useState(course?.is_published ?? true);
   const [coverUrl, setCoverUrl] = useState(course?.cover_url || "");
+  const [accessMode, setAccessMode] = useState((course as any)?.access_mode || "OPEN");
+  const [minLevel, setMinLevel] = useState<number>((course as any)?.min_level || 2);
   const [uploading, setUploading] = useState(false);
 
   const handleUploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,6 +76,8 @@ export default function CourseFormModal({
         cover_url: coverUrl || null,
         is_published: isPublished,
         position: course?.position ?? nextPosition,
+        access_mode: accessMode,
+        min_level: accessMode === "LEVEL_GATED" ? minLevel : null,
       };
 
       if (isEdit && course) {
@@ -178,6 +182,41 @@ export default function CourseFormModal({
               </label>
             )}
           </div>
+
+          {/* Access mode */}
+          <div className="space-y-1.5">
+            <Label>Modo de acesso</Label>
+            <Select value={accessMode} onValueChange={(v) => setAccessMode(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OPEN">Aberto</SelectItem>
+                <SelectItem value="LEVEL_GATED">Desbloquear por nível</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {accessMode === "OPEN"
+                ? "Todos os membros ativos podem acessar."
+                : "Somente membros no nível mínimo definido podem acessar."}
+            </p>
+          </div>
+
+          {accessMode === "LEVEL_GATED" && (
+            <div className="space-y-1.5">
+              <Label>Nível mínimo</Label>
+              <Input
+                type="number"
+                min={1}
+                max={9}
+                value={minLevel}
+                onChange={(e) => setMinLevel(Math.max(1, Math.min(9, parseInt(e.target.value) || 1)))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Membros precisam estar no nível {minLevel} ou acima para acessar.
+              </p>
+            </div>
+          )}
 
           {/* Published toggle */}
           <div className="flex items-center justify-between">

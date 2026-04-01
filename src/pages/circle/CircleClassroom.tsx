@@ -8,6 +8,7 @@ import {
   BookOpen, Play, Crown, ArrowLeft, Plus,
   FileText, Circle, Trash2, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder, Pencil,
+  Lock,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,8 @@ interface CircleCourse {
   cover_url: string | null;
   is_published: boolean;
   position: number;
+  access_mode?: string;
+  min_level?: number | null;
 }
 
 interface CircleLesson {
@@ -688,11 +691,25 @@ export default function CircleClassroom() {
         {courses.map((course, index) => {
           const isPremium = course.access_type === "premium";
           const coursePct = course.id.startsWith("mock-") ? 0 : (courseProgressById[course.id] || 0);
+          const isLevelGated = course.access_mode === "LEVEL_GATED" && course.min_level;
+          const memberLevel = member?.level ?? 1;
+          const isLocked = isLevelGated && !isAdmin && memberLevel < (course.min_level || 0);
+
           return (
             <div
               key={course.id}
-              onClick={() => { setSelectedCourseId(course.id); setSelectedLessonId(null); }}
-              className="bg-card rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col relative"
+              onClick={() => {
+                if (isLocked) {
+                  toast.error(`Desbloqueia no nível ${course.min_level} (você está no ${memberLevel}).`);
+                  return;
+                }
+                setSelectedCourseId(course.id);
+                setSelectedLessonId(null);
+              }}
+              className={cn(
+                "bg-card rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col relative",
+                isLocked && "opacity-80"
+              )}
             >
               {isAdmin && !course.id.startsWith("mock-") && (
                 <div className="absolute top-2.5 right-2.5 z-10">
@@ -712,11 +729,19 @@ export default function CircleClassroom() {
                     <BookOpen className="h-12 w-12 text-background/30" />
                   </div>
                 )}
-              <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 group-hover:bg-foreground/20 transition-colors pointer-events-none">
-                  <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                    <Play className="h-5 w-5 text-foreground ml-0.5" />
+                {isLocked ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/40">
+                    <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center shadow-lg">
+                      <Lock className="h-5 w-5 text-muted-foreground" />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 group-hover:bg-foreground/20 transition-colors pointer-events-none">
+                    <div className="h-12 w-12 rounded-full bg-background/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                      <Play className="h-5 w-5 text-foreground ml-0.5" />
+                    </div>
+                  </div>
+                )}
                 {isPremium && (
                   <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 pointer-events-none">
                     <div className="absolute top-[10px] right-[-28px] rotate-45 bg-accent text-accent-foreground text-[9px] font-extrabold tracking-wider py-1 px-7 shadow-sm flex items-center justify-center gap-0.5">
@@ -739,10 +764,16 @@ export default function CircleClassroom() {
                     {course.description}
                   </p>
                 )}
+                {isLocked && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                    <Lock className="h-3 w-3" />
+                    <span>Desbloqueia no nível {course.min_level} (você está no {memberLevel})</span>
+                  </div>
+                )}
               </div>
               <div className="mt-auto px-4 mb-4 pt-3">
-                <Progress value={coursePct} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
-                <p className="text-[10px] text-muted-foreground mt-1">{coursePct}% concluído</p>
+                <Progress value={isLocked ? 0 : coursePct} className="h-1.5 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+                <p className="text-[10px] text-muted-foreground mt-1">{isLocked ? "Bloqueado" : `${coursePct}% concluído`}</p>
               </div>
             </div>
           );
