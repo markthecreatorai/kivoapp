@@ -6792,6 +6792,17 @@ export type Database = {
         }[]
       }
       get_workspace_plan: { Args: { p_workspace_id: string }; Returns: string }
+      grant_tier_entitlement: {
+        Args: {
+          p_community_id: string
+          p_expires_at?: string
+          p_member_id: string
+          p_source_id?: string
+          p_source_type?: string
+          p_tier_id: string
+        }
+        Returns: string
+      }
       has_active_circle_subscription: {
         Args: { _community_id: string; _user_id: string }
         Returns: boolean
@@ -6812,6 +6823,26 @@ export type Database = {
           p_role?: string
           p_status?: string
           p_user_id: string
+        }
+        Returns: undefined
+      }
+      resolve_member_tiers: {
+        Args: { p_community_id: string; p_user_id: string }
+        Returns: {
+          is_free: boolean
+          price_cents: number
+          source_id: string
+          source_type: string
+          started_at: string
+          tier_id: string
+          tier_name: string
+        }[]
+      }
+      revoke_tier_entitlement: {
+        Args: {
+          p_community_id: string
+          p_member_id: string
+          p_tier_id?: string
         }
         Returns: undefined
       }
