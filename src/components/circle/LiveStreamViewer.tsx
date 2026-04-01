@@ -19,6 +19,8 @@ interface LiveStreamViewerProps {
   memberId?: string;
   memberName?: string;
   memberAvatar?: string;
+  isAdmin?: boolean;
+  onEdit?: (stream: any) => void;
 }
 
 function EmbedPlayer({ stream }: { stream: any }) {
