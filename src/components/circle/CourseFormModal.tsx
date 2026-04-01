@@ -77,11 +77,15 @@ export default function CourseFormModal({
       if (!workspaceId) return [];
       const { data } = await supabase
         .from("products")
-        .select("id, name, price")
+        .select("id, name, prices(amount)")
         .eq("workspace_id", workspaceId)
         .eq("status", "PUBLISHED")
         .order("name");
-      return data || [];
+      return (data || []).map((p: any) => ({
+        id: p.id as string,
+        name: p.name as string,
+        price: (p.prices?.[0]?.amount ?? 0) as number,
+      }));
     },
     enabled: !!workspaceId && accessMode === "BUY_NOW",
   });
