@@ -99,6 +99,15 @@ const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
 
+/** Redirect /c/:slug/settings?section=X → /circle-settings?section=X */
+function CircleSettingsRedirect() {
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get("section");
+  const target = section ? `/circle-settings?section=${section}` : "/circle-settings";
+  return <Navigate to={target} replace />;
+}
+import { useSearchParams as useSearchParamsHook } from "react-router-dom";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
