@@ -439,7 +439,7 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
   // === MAIN LAYOUT — Skool-style ===
   const isMuted = !!(member?.muted_until && new Date(member.muted_until) > new Date());
 
-  const navItems = tabItems.filter((item) => item.path !== `/c/${slug}/about`);
+  const navItems = tabItems;
 
   return (
     <div className="min-h-screen bg-muted/40 flex flex-col">
