@@ -686,8 +686,8 @@ export default function CommunityLanding() {
 
               {/* Powered by */}
               <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2.5 flex items-center justify-center gap-1.5">
-                <span className="text-[10px] text-gray-400">Desenvolvido por</span>
-                <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Kivo</span>
+                <span className="text-[10px] text-gray-400">Impulsionado pela</span>
+                <span className="text-[10px] font-bold text-primary">Kivo</span>
               </div>
             </div>
           </div>
