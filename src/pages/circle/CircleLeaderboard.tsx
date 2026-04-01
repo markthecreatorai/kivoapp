@@ -5,7 +5,7 @@ import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Lock, HelpCircle, Settings } from "lucide-react";
+import { Lock, HelpCircle, Settings, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getLevelInfo, LEVEL_THRESHOLDS } from "@/components/circle/CircleLayout";
@@ -278,6 +278,10 @@ export default function CircleLeaderboard() {
         Última atualização: {new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}{" "}
         {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
       </p>
+
+      <Card className="p-3 rounded-xl border-0" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+        <p className="text-xs text-muted-foreground flex items-center gap-2"><Info className="h-3.5 w-3.5" /> Pontos vêm de posts, comentários, curtidas e conclusão de aulas.</p>
+      </Card>
 
       {/* 3 Leaderboard columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

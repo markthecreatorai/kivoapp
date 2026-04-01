@@ -43,6 +43,13 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - confirmação para ações em lote sensíveis
   - bloqueio visual de lote para roles sem permissão
 
+## Sprint 4 — Members + Leaderboard clarity (em andamento)
+- [x] `src/pages/circle/CircleMembers.tsx`
+  - filtros rápidos de ordenação (pontos, atividade recente, sequência)
+  - card explicativo de "como ganhar pontos"
+- [x] `src/pages/circle/CircleLeaderboard.tsx`
+  - dica contextual de origem dos pontos no topo do ranking
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural

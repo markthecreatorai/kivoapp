@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Users, Search, Flame } from "lucide-react";
+import { Users, Search, Flame, Info } from "lucide-react";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -14,6 +14,7 @@ import LevelBadge from "@/components/circle/LevelBadge";
 export default function CircleMembers() {
   const { currentWorkspace } = useWorkspace();
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<"points" | "recent" | "streak">("points");
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
@@ -44,9 +45,13 @@ export default function CircleMembers() {
     enabled: !!community,
   });
 
-  const filtered = members?.filter((m: any) =>
-    !search || (m.display_name || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = (members || [])
+    .filter((m: any) => !search || (m.display_name || "").toLowerCase().includes(search.toLowerCase()))
+    .sort((a: any, b: any) => {
+      if (sort === "recent") return new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime();
+      if (sort === "streak") return (b.current_streak || 0) - (a.current_streak || 0);
+      return (b.total_points || 0) - (a.total_points || 0);
+    });
 
   const roleLabel = (role: string) => {
     switch (role) {
@@ -66,6 +71,10 @@ export default function CircleMembers() {
         </div>
       </div>
 
+      <Card className="p-3 bg-muted/20 border-dashed">
+        <p className="text-xs text-muted-foreground flex items-center gap-2"><Info className="h-3.5 w-3.5" /> Como ganhar pontos: publicar, comentar, receber curtidas e concluir aulas.</p>
+      </Card>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -74,6 +83,12 @@ export default function CircleMembers() {
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
         />
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <button className={`px-3 py-1.5 text-xs rounded-full border ${sort === "points" ? "bg-primary text-primary-foreground border-primary" : ""}`} onClick={() => setSort("points")}>Top pontos</button>
+        <button className={`px-3 py-1.5 text-xs rounded-full border ${sort === "recent" ? "bg-primary text-primary-foreground border-primary" : ""}`} onClick={() => setSort("recent")}>Mais ativos</button>
+        <button className={`px-3 py-1.5 text-xs rounded-full border ${sort === "streak" ? "bg-primary text-primary-foreground border-primary" : ""}`} onClick={() => setSort("streak")}>Maior sequência</button>
       </div>
 
       {isLoading ? (
