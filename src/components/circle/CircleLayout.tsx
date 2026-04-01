@@ -463,7 +463,7 @@ export default function CircleLayout() {
   const navItems = tabItems;
 
   // Determine showRightSidebar based on current route
-  const hideRightSidebar = location.pathname.includes("/settings") || location.pathname.includes("/profile") || location.pathname.includes("/classroom");
+  const hideRightSidebar = location.pathname.includes("/settings") || location.pathname.includes("/profile") || location.pathname.includes("/classroom") || location.pathname.includes("/leaderboard");
 
   return (
     <div className="min-h-screen bg-muted/40 flex flex-col">
