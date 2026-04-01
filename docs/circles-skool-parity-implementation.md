@@ -20,6 +20,12 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - trigger de composer/empty state mais orientado a criação de post
   - ajustes de microcopy para consistência de navegação
 
+## Sprint 2 — Classroom Progress UX (em andamento)
+- [x] `src/pages/circle/CircleClassroom.tsx`
+  - card de progresso mais evidente no topo da trilha
+  - CTA de "Próxima aula" no painel de conteúdo
+  - copy de navegação e ações principais em PT-BR
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural

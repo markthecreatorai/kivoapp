@@ -57,7 +57,7 @@ const MOCK_COURSES: CircleCourse[] = [
 ];
 
 // ─── Component ───────────────────────────────────────────────
-export default function CircleClassroom() {
+export default function CircleSala de aula() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -229,6 +229,8 @@ export default function CircleClassroom() {
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const activeLesson = allPages.find(l => l.id === selectedLessonId);
+  const activeLessonIndex = allPages.findIndex(l => l.id === selectedLessonId);
+  const nextLesson = activeLessonIndex >= 0 ? allPages[activeLessonIndex + 1] : null;
 
   // Auto-select first page
   useEffect(() => {
@@ -285,10 +287,10 @@ export default function CircleClassroom() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => addPageMutation.mutate(null)}>
-                        <FileText className="h-4 w-4 mr-2" /> Add page
+                        <FileText className="h-4 w-4 mr-2" /> Adicionar página
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => addModuleMutation.mutate()}>
-                        <FolderOpen className="h-4 w-4 mr-2" /> Add folder
+                        <FolderOpen className="h-4 w-4 mr-2" /> Adicionar pasta
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -296,9 +298,12 @@ export default function CircleClassroom() {
               </div>
 
               {/* Progress bar */}
-              <div className="flex items-center gap-2 mb-4">
+              <div className="mb-4 rounded-lg border bg-muted/30 p-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-medium text-foreground">Seu progresso</span>
+                  <span className="text-[11px] text-muted-foreground font-medium">{percent}%</span>
+                </div>
                 <Progress value={percent} className="h-1.5 flex-1 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
-                <span className="text-[11px] text-muted-foreground font-medium">{percent}%</span>
               </div>
 
               {/* Items tree */}
@@ -367,7 +372,7 @@ export default function CircleClassroom() {
                                 <button
                                   onClick={() => addPageMutation.mutate(item.id)}
                                   className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"
-                                  title="Add page to folder"
+                                  title="Adicionar página to folder"
                                 >
                                   <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                                 </button>
@@ -408,7 +413,7 @@ export default function CircleClassroom() {
                                   {page.title}
                                 </span>
                                 {!page.is_published && (
-                                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">DRAFT</span>
+                                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
                                 )}
                                 {isAdmin && (
                                   <button
@@ -424,7 +429,7 @@ export default function CircleClassroom() {
 
                           {isExpanded && childPages.length === 0 && (
                             <div className="pl-11 pr-3 py-2 text-[12px] text-muted-foreground/60 italic">
-                              Empty folder
+                              Pasta vazia
                             </div>
                           )}
                         </div>
@@ -455,7 +460,7 @@ export default function CircleClassroom() {
                           {item.title}
                         </span>
                         {!item.is_published && (
-                          <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">DRAFT</span>
+                          <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
                         )}
                         {isAdmin && (
                           <button
@@ -478,10 +483,10 @@ export default function CircleClassroom() {
                   {isAdmin && (
                     <div className="space-y-2">
                       <Button variant="outline" size="sm" className="w-full" onClick={() => addPageMutation.mutate(null)}>
-                        <Plus className="h-4 w-4 mr-1.5" /> Add page
+                        <Plus className="h-4 w-4 mr-1.5" /> Adicionar página
                       </Button>
                       <Button variant="outline" size="sm" className="w-full" onClick={() => addModuleMutation.mutate()}>
-                        <FolderOpen className="h-4 w-4 mr-1.5" /> Add folder
+                        <FolderOpen className="h-4 w-4 mr-1.5" /> Adicionar pasta
                       </Button>
                     </div>
                   )}
@@ -494,16 +499,41 @@ export default function CircleClassroom() {
           <ScrollArea className="flex-1 bg-muted/30">
             <div className="max-w-3xl mx-auto px-4 md:px-8 py-6">
               {activeLesson && !isMockCourse ? (
-                <LessonEditor
-                  lesson={activeLesson}
-                  isAdmin={isAdmin}
-                  courseId={selectedCourseId}
-                  memberId={member?.id}
-                  onMarkCompleted={(lessonId) =>
-                    markCompleted.mutate({ lessonId })
-                  }
-                  isCompleted={!!progressMap[activeLesson.id]?.completed}
-                />
+                <div className="space-y-3">
+                  <div className="rounded-lg border bg-card p-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Agora</p>
+                      <p className="text-sm font-medium text-foreground">{activeLesson.title}</p>
+                      {nextLesson ? (
+                        <p className="text-xs text-muted-foreground mt-0.5">Próxima aula: {nextLesson.title}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-0.5">Você chegou na última aula deste curso 🎉</p>
+                      )}
+                    </div>
+                    {nextLesson ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedLessonId(nextLesson.id);
+                          markStarted.mutate(nextLesson.id);
+                        }}
+                      >
+                        Próxima aula
+                      </Button>
+                    ) : null}
+                  </div>
+                  <LessonEditor
+                    lesson={activeLesson}
+                    isAdmin={isAdmin}
+                    courseId={selectedCourseId}
+                    memberId={member?.id}
+                    onMarkCompleted={(lessonId) =>
+                      markCompleted.mutate({ lessonId })
+                    }
+                    isCompleted={!!progressMap[activeLesson.id]?.completed}
+                  />
+                </div>
               ) : isMockCourse ? (
                 <div className="flex items-center justify-center h-64 text-muted-foreground">
                   <div className="text-center">
@@ -516,7 +546,7 @@ export default function CircleClassroom() {
                 <div className="flex items-center justify-center h-64 text-muted-foreground">
                   <div className="text-center">
                     <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                    <p className="text-sm">Selecione uma página para começar</p>
+                    <p className="text-sm">Selecione uma aula para começar</p>
                   </div>
                 </div>
               )}
@@ -563,7 +593,7 @@ export default function CircleClassroom() {
           </p>
           {isAdmin && (
             <Button size="lg" onClick={() => { setEditingCourse(null); setShowFormModal(true); }}>
-              <Plus className="h-5 w-5 mr-2" /> Add Course
+              <Plus className="h-5 w-5 mr-2" /> Adicionar curso
             </Button>
           )}
         </div>
@@ -584,14 +614,14 @@ export default function CircleClassroom() {
     <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Classroom</h1>
+          <h1 className="text-xl font-bold text-foreground">Sala de aula</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {courses.length} {courses.length === 1 ? "course" : "courses"} available
+            {courses.length} {courses.length === 1 ? "curso disponível" : "cursos disponíveis"}
           </p>
         </div>
         {isAdmin && (
           <Button onClick={() => { setEditingCourse(null); setShowFormModal(true); }}>
-            <Plus className="h-4 w-4 mr-1.5" /> Add Course
+            <Plus className="h-4 w-4 mr-1.5" /> Adicionar curso
           </Button>
         )}
       </div>
