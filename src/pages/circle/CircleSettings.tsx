@@ -1173,53 +1173,7 @@ export default function CircleSettings() {
 
           {/* ═══ Notifications ═══ */}
           {activeSection === "notifications" && (
-            <Card className="p-6 space-y-0">
-              <h3 className="font-semibold text-foreground mb-1">Notifications</h3>
-              <p className="text-sm text-muted-foreground mb-4">Manage your notification preferences</p>
-              <div className="flex flex-wrap gap-2 mb-2">
-                <Button
-                  type="button" variant="outline" size="sm"
-                  onClick={() => { updateForm({ notifications: { likes: true, comments: true, dms: true, events: true, announcements: true } }); }}
-                >
-                  Ativar tudo
-                </Button>
-                <Button
-                  type="button" variant="outline" size="sm"
-                  onClick={() => { updateForm({ notifications: { likes: false, comments: true, dms: true, events: false, announcements: true } }); }}
-                >
-                  Somente importantes
-                </Button>
-              </div>
-              {([
-                { key: "likes", label: "Curtidas", description: "Quando alguém curtir seus posts ou comentários" },
-                { key: "comments", label: "Comentários", description: "Quando alguém comentar nos seus posts" },
-                { key: "dms", label: "Mensagens diretas", description: "Quando você receber uma mensagem privada" },
-                { key: "events", label: "Eventos", description: "Lembretes de eventos e novas criações" },
-                { key: "announcements", label: "Anúncios", description: "Comunicados importantes do admin" },
-              ] as const).map((item, i, arr) => (
-                <div key={item.key}>
-                  <div className="flex items-center justify-between py-4">
-                    <div>
-                      <p className="font-medium text-foreground text-sm">{item.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
-                    </div>
-                    <Switch
-                      checked={form.notifications[item.key]}
-                      onCheckedChange={(v) =>
-                        updateForm({ notifications: { ...form.notifications, [item.key]: v } })
-                      }
-                    />
-                  </div>
-                  {i < arr.length - 1 && <Separator />}
-                </div>
-              ))}
-              <div className="pt-2 flex justify-end">
-                <Button onClick={handleSave} disabled={saving || !isDirty}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Salvar preferências
-                </Button>
-              </div>
-            </Card>
+            <NotificationsSection userId={user?.id || ""} userCommunities={userCommunities} />
           )}
 
           {/* ═══ Chat ═══ */}
