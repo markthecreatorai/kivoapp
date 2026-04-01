@@ -545,20 +545,6 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
               </Link>
             );
           })}
-          {isAdmin && !isPreviewVisitor && (
-            <button
-              onClick={() => setShowAdminModal(true)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ml-auto",
-                showAdminModal
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
-              )}
-            >
-              <ShieldX className="h-4 w-4" />
-              Admin
-            </button>
-          )}
         </nav>
       </header>
 
