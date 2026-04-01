@@ -106,7 +106,7 @@ function CircleSettingsRedirect() {
   const target = section ? `/circle-settings?section=${section}` : "/circle-settings";
   return <Navigate to={target} replace />;
 }
-import { useSearchParams as useSearchParamsHook } from "react-router-dom";
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
