@@ -38,6 +38,8 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - atualização de status da application ao aprovar/rejeitar
   - histórico de decisões recentes (approved/rejected)
   - matriz visual de permissões (owner/admin/moderador)
+  - ações em lote para pendências (aprovar/rejeitar selecionados)
+  - guardrail de motivo opcional em rejeição em lote
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

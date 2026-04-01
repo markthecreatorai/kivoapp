@@ -60,6 +60,8 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [sortBy, setSortBy] = useState<string>("joined_at");
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingSort, setPendingSort] = useState<"newest" | "oldest" | "with_answers">("newest");
+  const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
+  const [bulkReason, setBulkReason] = useState("");
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -93,6 +95,45 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       toast.success("Membro atualizado!");
     },
     onError: () => toast.error("Erro ao atualizar"),
+  });
+
+  const bulkApprovePending = useMutation({
+    mutationFn: async (memberIds: string[]) => {
+      if (!memberIds.length) return;
+      await supabase.from("community_members").update({ status: "ACTIVE" }).in("id", memberIds);
+      await (supabase as any)
+        .from("community_join_applications")
+        .update({ status: "APPROVED", reviewed_at: new Date().toISOString(), reviewed_by: currentMember.user_id })
+        .eq("community_id", community.id)
+        .in("member_id", memberIds);
+    },
+    onSuccess: () => {
+      setSelectedPendingIds([]);
+      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
+      toast.success("Pendências aprovadas em lote");
+    },
+  });
+
+  const bulkRejectPending = useMutation({
+    mutationFn: async (memberIds: string[]) => {
+      if (!memberIds.length) return;
+      await (supabase as any)
+        .from("community_join_applications")
+        .update({ status: "REJECTED", reviewed_at: new Date().toISOString(), reviewed_by: currentMember.user_id, review_reason: bulkReason || null })
+        .eq("community_id", community.id)
+        .in("member_id", memberIds);
+      await supabase.from("community_members").delete().in("id", memberIds);
+    },
+    onSuccess: () => {
+      setSelectedPendingIds([]);
+      setBulkReason("");
+      queryClient.invalidateQueries({ queryKey: ["circle-admin-members"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-join-applications"] });
+      toast.success("Pendências rejeitadas em lote");
+    },
   });
 
   const givePoints = useMutation({
@@ -223,7 +264,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       {pendingMembers.length > 0 && (
         <Card className="p-4 border-yellow-300/50 bg-yellow-50/10">
           <h3 className="font-semibold text-sm text-foreground mb-3">Aguardando aprovação ({pendingMembers.length})</h3>
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-3 items-center">
             <Input
               placeholder="Buscar pendentes..."
               value={pendingSearch}
@@ -238,6 +279,38 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                 <SelectItem value="with_answers">Mais respostas</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedPendingIds(filteredPending.map((m: any) => m.id))}
+            >
+              Selecionar todos
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedPendingIds([])}
+            >
+              Limpar seleção
+            </Button>
+
+            {selectedPendingIds.length > 0 && (
+              <>
+                <Button size="sm" onClick={() => bulkApprovePending.mutate(selectedPendingIds)}>
+                  Aprovar selecionados ({selectedPendingIds.length})
+                </Button>
+                <Input
+                  placeholder="Motivo (opcional)"
+                  value={bulkReason}
+                  onChange={(e) => setBulkReason(e.target.value)}
+                  className="max-w-[180px] h-8"
+                />
+                <Button size="sm" variant="destructive" onClick={() => bulkRejectPending.mutate(selectedPendingIds)}>
+                  Rejeitar selecionados
+                </Button>
+              </>
+            )}
           </div>
           <div className="space-y-2">
             {filteredPending.map((m: any) => {
@@ -246,6 +319,17 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
 
               return (
                 <div key={m.id} className="p-3 rounded-lg border bg-card space-y-3">
+                  <div className="flex items-center justify-end">
+                    <input
+                      type="checkbox"
+                      checked={selectedPendingIds.includes(m.id)}
+                      onChange={(e) => {
+                        setSelectedPendingIds((prev) =>
+                          e.target.checked ? Array.from(new Set([...prev, m.id])) : prev.filter((id) => id !== m.id)
+                        );
+                      }}
+                    />
+                  </div>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={m.avatar_url || ""} />
