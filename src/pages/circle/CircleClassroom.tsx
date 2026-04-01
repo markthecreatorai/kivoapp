@@ -57,7 +57,7 @@ const MOCK_COURSES: CircleCourse[] = [
 ];
 
 // ─── Component ───────────────────────────────────────────────
-export default function CircleSala de aula() {
+export default function CircleClassroom() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const queryClient = useQueryClient();
