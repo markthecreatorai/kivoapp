@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Users, Send, MessageCircle, Radio } from "lucide-react";
+import { X, Users, Send, MessageCircle, Radio, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -19,6 +19,8 @@ interface LiveStreamViewerProps {
   memberId?: string;
   memberName?: string;
   memberAvatar?: string;
+  isAdmin?: boolean;
+  onEdit?: (stream: any) => void;
 }
 
 function EmbedPlayer({ stream }: { stream: any }) {
@@ -58,7 +60,7 @@ function EmbedPlayer({ stream }: { stream: any }) {
   );
 }
 
-export default function LiveStreamViewer({ stream, open, onClose, memberId, memberName, memberAvatar }: LiveStreamViewerProps) {
+export default function LiveStreamViewer({ stream, open, onClose, memberId, memberName, memberAvatar, isAdmin, onEdit }: LiveStreamViewerProps) {
   const queryClient = useQueryClient();
   const [chatMessage, setChatMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -192,6 +194,11 @@ export default function LiveStreamViewer({ stream, open, onClose, memberId, memb
                     className={cn(showChat && "bg-muted")}
                   >
                     <MessageCircle className="h-4 w-4" />
+                  </Button>
+                )}
+                {isAdmin && onEdit && (
+                  <Button variant="ghost" size="sm" onClick={() => { onEdit(stream); onClose(); }}>
+                    <Pencil className="h-4 w-4" />
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={onClose}>

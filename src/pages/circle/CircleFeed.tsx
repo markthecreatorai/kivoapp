@@ -36,6 +36,7 @@ export default function CircleFeed() {
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
   const [showLiveForm, setShowLiveForm] = useState(false);
   const [watchingStream, setWatchingStream] = useState<any>(null);
+  const [editingStream, setEditingStream] = useState<any>(null);
 
   // Post modal state — support both ?post=id (legacy) and direct open via prop/state
   const [activePostId, setActivePostId] = useState<string | null>(searchParams.get("post"));
@@ -318,6 +319,7 @@ export default function CircleFeed() {
           onWatch={(stream) => setWatchingStream(stream)}
           isAdmin={isAdminMember}
           onCreateLive={() => setShowLiveForm(true)}
+          onEdit={(stream) => { setEditingStream(stream); setShowLiveForm(true); }}
         />
       )}
 
@@ -511,9 +513,10 @@ export default function CircleFeed() {
       {community && member && (
         <LiveStreamFormModal
           open={showLiveForm}
-          onOpenChange={setShowLiveForm}
+          onOpenChange={(open) => { setShowLiveForm(open); if (!open) setEditingStream(null); }}
           communityId={community.id}
           memberId={member.id}
+          stream={editingStream}
         />
       )}
 
@@ -525,6 +528,8 @@ export default function CircleFeed() {
         memberId={member?.id}
         memberName={member?.display_name}
         memberAvatar={member?.avatar_url}
+        isAdmin={isAdminMember}
+        onEdit={(stream) => { setWatchingStream(null); setEditingStream(stream); setShowLiveForm(true); }}
       />
     </div>
   );

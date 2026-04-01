@@ -11,9 +11,10 @@ interface LiveStreamBannerProps {
   onWatch: (stream: any) => void;
   isAdmin?: boolean;
   onCreateLive?: () => void;
+  onEdit?: (stream: any) => void;
 }
 
-export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCreateLive }: LiveStreamBannerProps) {
+export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCreateLive, onEdit }: LiveStreamBannerProps) {
   const { data: streams } = useQuery({
     queryKey: ["live-streams", communityId],
     queryFn: async () => {
@@ -58,6 +59,11 @@ export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCrea
             <Users className="h-3.5 w-3.5" />
             <span className="text-xs">{stream.viewer_count}</span>
           </div>
+          {isAdmin && onEdit && (
+            <Button size="sm" variant="ghost" className="shrink-0 h-8 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(stream); }}>
+              Editar
+            </Button>
+          )}
           <Button size="sm" variant="destructive" className="shrink-0 h-8 text-xs font-semibold">
             <Play className="h-3 w-3 mr-1" />
             Assistir
@@ -84,6 +90,9 @@ export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCrea
               {" · "}{scheduled[0].creator?.display_name || "Admin"}
             </p>
           </div>
+          {isAdmin && onEdit && (
+            <span className="text-xs font-medium text-primary shrink-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); onEdit(scheduled[0]); }}>Editar</span>
+          )}
           <span className="text-xs font-medium text-primary shrink-0">Ver detalhes →</span>
         </div>
       )}

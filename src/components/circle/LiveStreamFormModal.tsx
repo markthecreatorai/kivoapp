@@ -102,9 +102,70 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_, __, context) => {
+      // Sync with community_events calendar
+      try {
+        const scheduledDate = scheduledAt ? new Date(scheduledAt).toISOString() : (goLiveNow ? new Date().toISOString() : null);
+        if (scheduledDate) {
+          const endsAt = new Date(new Date(scheduledDate).getTime() + 2 * 60 * 60 * 1000).toISOString();
+
+          if (isEditing && stream.id) {
+            // Update linked event if exists
+            const { data: existingEvent } = await supabase
+              .from("community_events")
+              .select("id")
+              .eq("live_stream_id", stream.id)
+              .maybeSingle();
+
+            if (existingEvent) {
+              await supabase
+                .from("community_events")
+                .update({
+                  title: `🔴 ${title.trim()}`,
+                  starts_at: scheduledDate,
+                  ends_at: endsAt,
+                  meeting_url: embedUrl.trim(),
+                  description: description.trim() || null,
+                  status: goLiveNow ? "ACTIVE" : "SCHEDULED",
+                } as any)
+                .eq("id", existingEvent.id);
+            }
+          } else {
+            // Create new linked event — need to get the stream id from latest insert
+            const { data: latestStream } = await supabase
+              .from("community_live_streams" as any)
+              .select("id")
+              .eq("community_id", communityId)
+              .eq("created_by", memberId)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single();
+
+            if (latestStream) {
+              await supabase
+                .from("community_events")
+                .insert({
+                  community_id: communityId,
+                  created_by: memberId,
+                  title: `🔴 ${title.trim()}`,
+                  description: description.trim() || null,
+                  starts_at: scheduledDate,
+                  ends_at: endsAt,
+                  meeting_url: embedUrl.trim(),
+                  meeting_platform: embedType === "youtube" ? "youtube" : embedType === "twitch" ? "twitch" : "custom",
+                  status: goLiveNow ? "ACTIVE" : "SCHEDULED",
+                  live_stream_id: (latestStream as any).id,
+                } as any);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to sync event:", e);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["live-streams"] });
       queryClient.invalidateQueries({ queryKey: ["community-events"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-events"] });
       toast.success(isEditing ? "Live atualizada!" : goLiveNow ? "Você está ao vivo! 🔴" : "Live agendada!");
       onOpenChange(false);
     },
