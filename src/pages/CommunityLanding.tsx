@@ -368,7 +368,13 @@ export default function CommunityLanding() {
             {TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  if (tab.locked && !isAlreadyMember) {
+                    handleJoinClick();
+                    return;
+                  }
+                  setActiveTab(tab.key);
+                }}
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0",
                   activeTab === tab.key
