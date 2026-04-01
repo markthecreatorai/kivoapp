@@ -122,16 +122,16 @@ interface ProfileForm {
 }
 
 const SECTION_ITEMS = [
-  { id: "communities", label: "Communities" },
-  { id: "profile", label: "Profile" },
-  { id: "affiliates", label: "Affiliates" },
-  { id: "payouts", label: "Payouts" },
-  { id: "account", label: "Account" },
-  { id: "notifications", label: "Notifications" },
+  { id: "communities", label: "Comunidades" },
+  { id: "profile", label: "Perfil" },
+  { id: "affiliates", label: "Afiliados" },
+  { id: "payouts", label: "Saques" },
+  { id: "account", label: "Conta" },
+  { id: "notifications", label: "Notificações" },
   { id: "chat", label: "Chat" },
-  { id: "payment-methods", label: "Payment methods" },
-  { id: "payment-history", label: "Payment history" },
-  { id: "theme", label: "Theme" },
+  { id: "payment-methods", label: "Métodos de pagamento" },
+  { id: "payment-history", label: "Histórico de pagamentos" },
+  { id: "theme", label: "Tema" },
 ];
 
 export default function CircleSettings() {
@@ -487,13 +487,13 @@ export default function CircleSettings() {
           {/* ═══ Communities ═══ */}
           {activeSection === "communities" && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Communities</h2>
-              <p className="text-sm text-muted-foreground mb-6">Manage your community memberships</p>
+              <h2 className="text-lg font-semibold text-foreground mb-1">Comunidades</h2>
+              <p className="text-sm text-muted-foreground mb-6">Gerencie suas participações em comunidades</p>
 
               {userCommunities.length === 0 ? (
                 <div className="text-center py-12">
                   <User className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">You haven't joined any communities yet.</p>
+                  <p className="text-sm text-muted-foreground">Você ainda não participa de nenhuma comunidade.</p>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -521,7 +521,7 @@ export default function CircleSettings() {
                           }}
                         >
                           <Settings className="h-3.5 w-3.5 mr-1" />
-                          SETTINGS
+                          CONFIGURAÇÕES
                         </Button>
                         <button className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors">
                           <Eye className="h-4 w-4" />
@@ -920,18 +920,18 @@ export default function CircleSettings() {
           {/* ═══ Account ═══ */}
           {activeSection === "account" && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Account</h2>
-              <p className="text-sm text-muted-foreground mb-6">Manage your account settings</p>
+              <h2 className="text-lg font-semibold text-foreground mb-1">Conta</h2>
+              <p className="text-sm text-muted-foreground mb-6">Gerencie as configurações da sua conta</p>
 
               <div className="space-y-0">
                 {/* Email */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Email</p>
+                    <p className="text-sm font-medium text-foreground">E-mail</p>
                     <p className="text-sm text-muted-foreground mt-0.5">{user?.email}</p>
                   </div>
                   <Button variant="outline" size="sm" className="font-semibold" onClick={() => setEmailModalOpen(true)}>
-                    CHANGE EMAIL
+                    ALTERAR E-MAIL
                   </Button>
                 </div>
                 <Separator />
@@ -939,11 +939,11 @@ export default function CircleSettings() {
                 {/* Password */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Password</p>
+                    <p className="text-sm font-medium text-foreground">Senha</p>
                     <p className="text-sm text-muted-foreground mt-0.5">••••••••</p>
                   </div>
                   <Button variant="outline" size="sm" className="font-semibold" onClick={() => setPasswordModalOpen(true)}>
-                    CHANGE PASSWORD
+                    ALTERAR SENHA
                   </Button>
                 </div>
                 <Separator />
@@ -951,8 +951,8 @@ export default function CircleSettings() {
                 {/* Timezone */}
                 <div className="flex items-center justify-between py-5">
                   <div className="flex-1 min-w-0 mr-4">
-                    <p className="text-sm font-medium text-foreground">Timezone</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Used for event times and notifications</p>
+                    <p className="text-sm font-medium text-foreground">Fuso horário</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Usado para horários de eventos e notificações</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
@@ -966,7 +966,7 @@ export default function CircleSettings() {
                       </SelectContent>
                     </Select>
                     <Button size="sm" onClick={handleSaveTimezone} disabled={savingTimezone} className="font-semibold">
-                      {savingTimezone ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+                      {savingTimezone ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR"}
                     </Button>
                   </div>
                 </div>
@@ -975,8 +975,8 @@ export default function CircleSettings() {
                 {/* Log out everywhere */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Log out of all devices</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">This will end all active sessions including this one</p>
+                    <p className="text-sm font-medium text-foreground">Sair de todos os dispositivos</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Todas as sessões ativas serão encerradas, incluindo esta</p>
                   </div>
                   <Button
                     variant="outline"
@@ -986,7 +986,7 @@ export default function CircleSettings() {
                     disabled={loggingOutAll}
                   >
                     {loggingOutAll ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <LogOut className="h-4 w-4 mr-1.5" />}
-                    LOG OUT EVERYWHERE
+                    ENCERRAR SESSÕES
                   </Button>
                 </div>
                 <Separator />
@@ -994,8 +994,8 @@ export default function CircleSettings() {
                 {/* Leave community — danger zone */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-destructive">Leave community</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Remove your access to feed, courses, and events</p>
+                    <p className="text-sm font-medium text-destructive">Sair da comunidade</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Remove seu acesso ao feed, cursos e eventos</p>
                   </div>
                   <Button
                     variant="destructive"
@@ -1008,7 +1008,7 @@ export default function CircleSettings() {
                       window.location.href = "/dashboard";
                     }}
                   >
-                    LEAVE
+                    SAIR
                   </Button>
                 </div>
               </div>
@@ -1019,41 +1019,41 @@ export default function CircleSettings() {
           <Dialog open={emailModalOpen} onOpenChange={(open) => { if (!open) { setNewEmail(""); setEmailConfirmPassword(""); } setEmailModalOpen(open); }}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Change email</DialogTitle>
-                <DialogDescription>A confirmation link will be sent to your new email address.</DialogDescription>
+                <DialogTitle>Alterar e-mail</DialogTitle>
+                <DialogDescription>Um link de confirmação será enviado para o novo endereço de e-mail.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <Label>Current email</Label>
+                  <Label>E-mail atual</Label>
                   <Input value={user?.email || ""} disabled className="bg-muted" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="new-email">New email</Label>
+                  <Label htmlFor="new-email">Novo e-mail</Label>
                   <Input
                     id="new-email"
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="your-new@email.com"
+                    placeholder="seu-novo@email.com"
                     autoFocus
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="email-confirm-pwd">Current password</Label>
+                  <Label htmlFor="email-confirm-pwd">Senha atual</Label>
                   <Input
                     id="email-confirm-pwd"
                     type="password"
                     value={emailConfirmPassword}
                     onChange={(e) => setEmailConfirmPassword(e.target.value)}
-                    placeholder="Enter your password to confirm"
+                    placeholder="Digite sua senha para confirmar"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setEmailModalOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setEmailModalOpen(false)}>Cancelar</Button>
                 <Button onClick={handleChangeEmail} disabled={changingEmail || !newEmail.trim() || !emailConfirmPassword.trim()}>
                   {changingEmail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
-                  {changingEmail ? "Sending..." : "Send confirmation"}
+                  {changingEmail ? "Enviando..." : "Enviar confirmação"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1063,56 +1063,56 @@ export default function CircleSettings() {
           <Dialog open={passwordModalOpen} onOpenChange={(open) => { if (!open) { setCurrentPassword(""); setNewPassword(""); setConfirmNewPassword(""); } setPasswordModalOpen(open); }}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Change password</DialogTitle>
-                <DialogDescription>Your password must be at least 6 characters.</DialogDescription>
+                <DialogTitle>Alterar senha</DialogTitle>
+                <DialogDescription>Sua senha deve ter pelo menos 6 caracteres.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="current-pwd">Current password</Label>
+                  <Label htmlFor="current-pwd">Senha atual</Label>
                   <Input
                     id="current-pwd"
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Your current password"
+                    placeholder="Sua senha atual"
                     autoFocus
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="new-pwd">New password</Label>
+                  <Label htmlFor="new-pwd">Nova senha</Label>
                   <Input
                     id="new-pwd"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimum 6 characters"
+                    placeholder="Mínimo 6 caracteres"
                   />
                   {newPassword.length > 0 && newPassword.length < 6 && (
-                    <p className="text-xs text-destructive">At least 6 characters required</p>
+                    <p className="text-xs text-destructive">Mínimo de 6 caracteres</p>
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="confirm-new-pwd">Confirm new password</Label>
+                  <Label htmlFor="confirm-new-pwd">Confirmar nova senha</Label>
                   <Input
                     id="confirm-new-pwd"
                     type="password"
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    placeholder="Repeat your new password"
+                    placeholder="Repita sua nova senha"
                   />
                   {confirmNewPassword.length > 0 && confirmNewPassword !== newPassword && (
-                    <p className="text-xs text-destructive">Passwords don't match</p>
+                    <p className="text-xs text-destructive">As senhas não coincidem</p>
                   )}
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setPasswordModalOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setPasswordModalOpen(false)}>Cancelar</Button>
                 <Button
                   onClick={handleChangePassword}
                   disabled={changingPassword || !currentPassword || newPassword.length < 6 || newPassword !== confirmNewPassword}
                 >
                   {changingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                  {changingPassword ? "Changing..." : "Change password"}
+                  {changingPassword ? "Alterando..." : "Alterar senha"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1140,27 +1140,27 @@ export default function CircleSettings() {
           {/* ═══ Theme ═══ */}
           {activeSection === "theme" && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Theme</h2>
-              <p className="text-sm text-muted-foreground mb-6">Customize your visual experience</p>
+              <h2 className="text-lg font-semibold text-foreground mb-1">Tema</h2>
+              <p className="text-sm text-muted-foreground mb-6">Personalize sua experiência visual</p>
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Theme</Label>
+                  <Label>Tema</Label>
                   <Select value={selectedTheme} onValueChange={setSelectedTheme}>
                     <SelectTrigger className="w-full max-w-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="light">Claro</SelectItem>
+                      <SelectItem value="dark">Escuro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <Button
                   className="font-semibold"
-                  onClick={() => toast.success("Theme saved!")}
+                  onClick={() => toast.success("Tema salvo!")}
                 >
-                  SAVE
+                  SALVAR
                 </Button>
               </div>
             </Card>

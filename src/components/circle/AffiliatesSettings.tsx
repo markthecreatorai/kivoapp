@@ -147,7 +147,7 @@ export default function AffiliatesSettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Affiliates</h2>
+          <h2 className="text-lg font-semibold text-foreground">Afiliados</h2>
           <p className="text-sm text-muted-foreground">
             Compartilhe seu link, indique membros e ganhe comissões.
           </p>
@@ -167,7 +167,7 @@ export default function AffiliatesSettings() {
         <Card className="p-5 space-y-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <DollarSign className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wide">Lifetime</span>
+            <span className="text-xs font-medium uppercase tracking-wide">Total acumulado</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(lifetime * 100)}</p>
         </Card>
@@ -241,7 +241,7 @@ export default function AffiliatesSettings() {
       <Card className="p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <h3 className="font-semibold text-foreground">Referrals</h3>
+          <h3 className="font-semibold text-foreground">Indicações</h3>
         </div>
 
         {commissions && commissions.length > 0 ? (
@@ -291,7 +291,7 @@ export default function AffiliatesSettings() {
             <div className="mx-auto h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
               <AlertCircle className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-sm font-medium text-foreground">Nenhum referral ainda</p>
+            <p className="text-sm font-medium text-foreground">Nenhuma indicação ainda</p>
             <p className="text-xs text-muted-foreground mt-1">
               Compartilhe seu link de afiliado para começar a ganhar comissões.
             </p>

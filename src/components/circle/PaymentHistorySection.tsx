@@ -146,7 +146,7 @@ export default function PaymentHistorySection({ userId }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Payment history</h2>
+            <h2 className="text-lg font-semibold text-foreground">Histórico de pagamentos</h2>
             <p className="text-sm text-muted-foreground">Veja suas transações anteriores</p>
           </div>
           <Button
@@ -193,7 +193,7 @@ export default function PaymentHistorySection({ userId }: Props) {
         {payments.length === 0 ? (
           <div className="text-center py-12">
             <Receipt className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">You have no payments.</p>
+            <p className="text-sm text-muted-foreground">Você não possui pagamentos.</p>
           </div>
         ) : (
           <div className="space-y-1">
