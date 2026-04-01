@@ -595,7 +595,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     {topComments.length} {topComments.length === 1 ? "comentário" : "comentários"}
                   </span>
                   <button onClick={() => {
-                    const url = `${window.location.origin}/c/${communitySlug}/post/${postId}`;
+                    const url = `${window.location.origin}/circles/${communitySlug}/post/${postId}`;
                     navigator.clipboard.writeText(url); toast.success("Link copiado!");
                   }}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-auto">

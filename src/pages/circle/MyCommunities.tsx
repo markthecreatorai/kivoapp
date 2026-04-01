@@ -304,7 +304,7 @@ export default function MyCommunities() {
               <Label htmlFor="com-slug">Link público</Label>
               <div className="flex items-center gap-0">
                 <span className="text-xs px-3 h-10 flex items-center bg-muted border border-r-0 border-input rounded-l-md text-muted-foreground whitespace-nowrap">
-                  kivo.com/c/
+                  kivo.com/circles/
                 </span>
                 <Input
                   id="com-slug"
