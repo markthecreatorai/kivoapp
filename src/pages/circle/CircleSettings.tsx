@@ -920,8 +920,8 @@ export default function CircleSettings() {
           {/* ═══ Account ═══ */}
           {activeSection === "account" && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Account</h2>
-              <p className="text-sm text-muted-foreground mb-6">Manage your account settings</p>
+              <h2 className="text-lg font-semibold text-foreground mb-1">Conta</h2>
+              <p className="text-sm text-muted-foreground mb-6">Gerencie as configurações da sua conta</p>
 
               <div className="space-y-0">
                 {/* Email */}
