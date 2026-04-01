@@ -1145,7 +1145,7 @@ export default function CircleSettings() {
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Theme</Label>
+                  <Label>Tema</Label>
                   <Select value={selectedTheme} onValueChange={setSelectedTheme}>
                     <SelectTrigger className="w-full max-w-xs">
                       <SelectValue />
