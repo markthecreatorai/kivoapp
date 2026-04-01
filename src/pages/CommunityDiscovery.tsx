@@ -20,6 +20,13 @@ function CommunityCard({ community }: { community: any }) {
     PAID_SUBSCRIPTION: { label: "Assinatura", className: "bg-purple-500/10 text-purple-600 border-purple-500/20", cta: "Ver plano" },
   }[community.access_type as string] || { label: "Gratuita", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", cta: "Participar grátis" };
 
+  const activityScore = (community.member_count || 0) * 0.7 + (community.post_count || 0) * 0.3;
+  const trustBadges = [
+    activityScore >= 120 ? "Alta atividade" : null,
+    (community.member_count || 0) >= 100 ? "Comunidade popular" : null,
+    community.require_approval ? "Curadoria ativa" : null,
+  ].filter(Boolean) as string[];
+
   return (
     <div
       onClick={() => navigate(`/c/${community.slug}`)}
@@ -81,6 +88,12 @@ function CommunityCard({ community }: { community: any }) {
           <span className="flex items-center gap-1 text-emerald-600">
             <CheckCircle2 className="h-3.5 w-3.5" /> ativa
           </span>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {trustBadges.slice(0, 2).map((b) => (
+            <Badge key={`${community.id}-${b}`} variant="outline" className="text-[10px]">{b}</Badge>
+          ))}
         </div>
 
         <div className="mt-4 flex items-center justify-between">

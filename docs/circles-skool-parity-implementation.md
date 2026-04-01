@@ -56,6 +56,11 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - seção de links externos (quando disponíveis)
   - atividade recente mais explícita
 
+## Sprint 5 — Discovery + Conversion (em andamento)
+- [x] `src/pages/CommunityDiscovery.tsx`
+  - badges de confiança/prova social (atividade, popularidade, curadoria)
+  - reforço de sinais de conversão por card
+
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
   - aba "Mapa" (placeholder locked) para paridade estrutural
