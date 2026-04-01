@@ -224,6 +224,14 @@ export default function AdminSettingsTab({ community, member }: Props) {
 
         {/* Toggles */}
         <div className="space-y-3 pt-2">
+          <div className="rounded-lg border bg-muted/20 p-3">
+            <p className="text-xs font-medium text-foreground">Estado público da comunidade</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {settings.is_listed
+                ? "Pública no discovery: pode ser encontrada por novos visitantes e indexada com mais facilidade."
+                : "Oculta no discovery: acesso apenas por link direto/convite."}
+            </p>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <Label>Visibilidade no discovery</Label>

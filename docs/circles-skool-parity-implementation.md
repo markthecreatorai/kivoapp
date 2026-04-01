@@ -115,6 +115,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - configuração de URL (slug) com preview + validação de unicidade
   - controle de visibilidade no discovery com explicação
   - recomendações de dimensões para capa/ícone
+  - resumo do estado público (pública/oculta) com impacto em descoberta
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
