@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Layout, Grid3x3, BookOpen, Plus, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import SpaceFormModal from "@/components/circle/SpaceFormModal";
 import {
   DndContext,
   closestCenter,
@@ -153,6 +154,7 @@ export default function AdminCommunityTab({ community }: Props) {
   const [rules, setRules] = useState<string[]>((community.community_rules as string[]) || []);
   const [newRule, setNewRule] = useState("");
   const [activeSection, setActiveSection] = useState<"tabs" | "categories" | "rules">("tabs");
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -328,31 +330,68 @@ export default function AdminCommunityTab({ community }: Props) {
       )}
 
       {activeSection === "categories" && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
-          <SortableContext
-            items={categories.map((c: any) => c.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-3">
-              {categories.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                  <Grid3x3 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400 mb-1">Nenhuma categoria ainda.</p>
-                  <p className="text-xs text-gray-400">Crie espaços na comunidade para organizar o feed.</p>
-                </div>
-              ) : (
-                categories.map((c: any, idx: number) => (
-                  <SortableCategoryRow
-                    key={c.id}
-                    category={c}
-                    index={idx}
-                    onUpdatePatch={(id, patch) => updateCategory.mutate({ id, patch })}
-                  />
-                ))
-              )}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm text-muted-foreground">
+              {categories.length} categoria{categories.length !== 1 ? "s" : ""}
+            </p>
+            <Button
+              size="sm"
+              onClick={() => setShowCreateCategory(true)}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Nova categoria
+            </Button>
+          </div>
+
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
+            <SortableContext
+              items={categories.map((c: any) => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-3">
+                {categories.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <Grid3x3 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400 mb-1">Nenhuma categoria ainda.</p>
+                    <p className="text-xs text-gray-400 mb-4">Categorias organizam os posts no feed para seus membros.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowCreateCategory(true)}
+                      className="gap-1.5"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Criar primeira categoria
+                    </Button>
+                  </div>
+                ) : (
+                  categories.map((c: any, idx: number) => (
+                    <SortableCategoryRow
+                      key={c.id}
+                      category={c}
+                      index={idx}
+                      onUpdatePatch={(id, patch) => updateCategory.mutate({ id, patch })}
+                    />
+                  ))
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          {showCreateCategory && (
+            <SpaceFormModal
+              communityId={community.id}
+              spacesCount={categories.length}
+              onClose={() => {
+                setShowCreateCategory(false);
+                queryClient.invalidateQueries({ queryKey: ["community-categories-admin", community.id] });
+                queryClient.invalidateQueries({ queryKey: ["circle-spaces"] });
+              }}
+            />
+          )}
+        </>
       )}
 
       {activeSection === "rules" && (
