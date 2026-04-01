@@ -1140,8 +1140,8 @@ export default function CircleSettings() {
           {/* ═══ Theme ═══ */}
           {activeSection === "theme" && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Theme</h2>
-              <p className="text-sm text-muted-foreground mb-6">Customize your visual experience</p>
+              <h2 className="text-lg font-semibold text-foreground mb-1">Tema</h2>
+              <p className="text-sm text-muted-foreground mb-6">Personalize sua experiência visual</p>
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
