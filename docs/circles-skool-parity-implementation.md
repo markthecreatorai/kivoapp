@@ -130,6 +130,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/components/circle/admin/AdminCommunityTab.tsx`
   - categorias reais (spaces) no admin
   - controles por categoria: privada / apenas admin posta
+  - ordenação de categorias (subir/descer)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

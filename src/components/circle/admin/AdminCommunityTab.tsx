@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Layout, Grid3x3, BookOpen, Plus, Trash2, GripVertical } from "lucide-react";
+import { Layout, Grid3x3, BookOpen, Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -208,7 +208,33 @@ export default function AdminCommunityTab({ community }: Props) {
                     <GripVertical className="h-4 w-4 text-gray-300" />
                     <p className="text-sm font-medium text-gray-900">{c.emoji || "📁"} {c.name}</p>
                   </div>
-                  <p className="text-[11px] text-gray-400">#{idx + 1}</p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+                      disabled={idx === 0}
+                      onClick={() => {
+                        const prev = categories[idx - 1];
+                        if (!prev) return;
+                        updateCategory.mutate({ id: c.id, patch: { sort_order: prev.sort_order } });
+                        updateCategory.mutate({ id: prev.id, patch: { sort_order: c.sort_order } });
+                      }}
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+                      disabled={idx === categories.length - 1}
+                      onClick={() => {
+                        const next = categories[idx + 1];
+                        if (!next) return;
+                        updateCategory.mutate({ id: c.id, patch: { sort_order: next.sort_order } });
+                        updateCategory.mutate({ id: next.id, patch: { sort_order: c.sort_order } });
+                      }}
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                    <p className="text-[11px] text-gray-400 w-7 text-right">#{idx + 1}</p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
