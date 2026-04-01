@@ -74,7 +74,7 @@ export default {
         "kivo-pill": "9999px",
       },
       fontFamily: {
-        sans: ['Fustat', 'system-ui', 'sans-serif'],
+        sans: ['Fustat', 'system-ui', 'sans-serif', '"Noto Color Emoji"'],
       },
       keyframes: {
         "accordion-down": {
