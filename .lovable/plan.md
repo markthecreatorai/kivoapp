@@ -1,40 +1,45 @@
 
 
-## Fix: Drag-and-drop não encaixa ao soltar suavemente
+## Fix: Drag-and-drop estilo Trello (sem elástico, acompanha o mouse)
 
 ### Causa raiz
-Dois problemas:
-1. `collisionDetection` usa `closestCenter` — exige que o centro do item arrastado cruze o centro do alvo. Soltura suave não satisfaz essa condição, e `over` retorna `null`, causando o "elástico" de volta.
-2. `PointerSensor` tem `distance: 3` que funciona, mas o `onDragEnd` descarta quando `over` é null, perdendo a reordenação que já aconteceu no `onDragOver`.
+O `SortableThumb` usa `transform` e `transition` do `useSortable`, que gera animação de retorno ao soltar. Falta um `DragOverlay` — o componente do dnd-kit que renderiza uma cópia "fantasma" que acompanha o mouse, enquanto os itens reais apenas trocam de posição instantaneamente.
+
+O erro `closestCenter is not defined` é de cache antigo — o código atual já usa `pointerWithin`.
 
 ### Solução
 
 **`src/pages/circle/CircleAbout.tsx`**
 
-1. Importar `pointerWithin` em vez de `closestCenter` — detecta colisão quando o **ponteiro** está dentro do item alvo (muito mais sensível)
-2. Reduzir `PointerSensor` distance para `0` (ativa imediatamente)
-3. No `onDragEnd`: sempre persistir o `gallery` atual (que já foi reordenado pelo `onDragOver`), independente de `over` ser null ou não
+1. **Importar `DragOverlay`** do `@dnd-kit/core`
 
-```tsx
-// Mudanças:
-import { pointerWithin } from "@dnd-kit/core";  // trocar closestCenter
+2. **Adicionar estado `activeId`** para rastrear qual item está sendo arrastado
 
-// Sensor com distance: 0
-useSensor(PointerSensor, { activationConstraint: { distance: 0 } })
+3. **`SortableThumb` — remover transition e esconder item arrastado**:
+   - `transition: undefined` (sem animação de retorno)
+   - `opacity: isDragging ? 0 : 1` (esconde o item original, o overlay mostra a cópia)
 
-// collisionDetection={pointerWithin}
+4. **Adicionar handlers `onDragStart` e `onDragCancel`** ao `DndContext`:
+   - `onDragStart`: seta `activeId` e inicializa `localGallery`
+   - `onDragCancel`: limpa `activeId` e `localGallery`
 
-// onDragEnd simplificado:
-onDragEnd={() => {
-  if (localGallery) saveGallery(localGallery);
-  setLocalGallery(null);
-}}
+5. **Adicionar `<DragOverlay dropAnimation={null}>`** após `SortableContext`:
+   - Renderiza uma cópia estática do thumbnail ativo
+   - `dropAnimation={null}` = sem animação ao soltar (encaixa instantâneo)
+
+```text
+Fluxo:
+  onDragStart → salva activeId, copia gallery p/ local
+  onDragOver  → reordena localGallery (já funciona)  
+  onDragEnd   → persiste, limpa activeId e localGallery
+  DragOverlay → mostra cópia do item sob o cursor
 ```
 
 ### Arquivos alterados
-1. `src/pages/circle/CircleAbout.tsx` — trocar collision detection, reduzir distância do sensor, simplificar onDragEnd
+1. `src/pages/circle/CircleAbout.tsx` — adicionar DragOverlay, ajustar SortableThumb, adicionar onDragStart/onDragCancel
 
 ### Resultado
-- Arrastar e soltar encaixa naturalmente ao soltar em qualquer posição
-- Sem efeito elástico — item fica onde foi solto
+- Item acompanha o mouse suavemente (overlay)
+- Thumbnails trocam de posição em tempo real sem animação elástica
+- Ao soltar, item encaixa instantaneamente na posição final
 
