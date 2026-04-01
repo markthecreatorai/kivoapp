@@ -548,12 +548,18 @@ export default function CircleFeed() {
       />
 
       {/* Invite modal triggered from admin checklist */}
-      {showInviteFromChecklist && community && (
-        <InviteFromChecklistModal
-          open={showInviteFromChecklist}
-          onOpenChange={setShowInviteFromChecklist}
-          community={community}
-        />
+      {community && (
+        <Dialog open={showInviteFromChecklist} onOpenChange={setShowInviteFromChecklist}>
+          <DialogContent className="sm:max-w-md p-6">
+            <DialogHeader className="space-y-1.5">
+              <DialogTitle className="text-xl font-bold text-foreground">Convidar pessoas</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Convide seus amigos para <span className="font-medium text-foreground">{community.name}</span>
+              </p>
+            </DialogHeader>
+            <InviteDialogBody slug={communitySlug || community.slug} />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
