@@ -1045,7 +1045,7 @@ export default function CircleSettings() {
                     type="password"
                     value={emailConfirmPassword}
                     onChange={(e) => setEmailConfirmPassword(e.target.value)}
-                    placeholder="Enter your password to confirm"
+                    placeholder="Digite sua senha para confirmar"
                   />
                 </div>
               </div>
