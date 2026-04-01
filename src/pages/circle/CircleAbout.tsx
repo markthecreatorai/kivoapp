@@ -418,14 +418,8 @@ export default function CircleAbout() {
                 if (activeIndex === oldIndex) setActiveIndex(newIndex);
                 else if (activeIndex === newIndex) setActiveIndex(oldIndex);
               }}
-              onDragEnd={(event: DragEndEvent) => {
-                const { active, over } = event;
-                if (!over || active.id === over.id) {
-                  setLocalGallery(null);
-                  return;
-                }
-                // Persist the current local order
-                saveGallery(gallery);
+              onDragEnd={() => {
+                if (localGallery) saveGallery(localGallery);
                 setLocalGallery(null);
               }}
             >
