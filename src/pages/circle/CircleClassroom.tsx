@@ -591,29 +591,6 @@ export default function CircleClassroom() {
             <div className="max-w-3xl mx-auto px-4 md:px-8 py-6">
               {activeLesson ? (
                 <div className="space-y-3">
-                  <div className="rounded-lg border bg-card p-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Agora</p>
-                      <p className="text-sm font-medium text-foreground">{activeLesson.title}</p>
-                      {nextLesson ? (
-                        <p className="text-xs text-muted-foreground mt-0.5">Próxima aula: {nextLesson.title}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-0.5">Você chegou na última aula deste curso 🎉</p>
-                      )}
-                    </div>
-                    {nextLesson ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedLessonId(nextLesson.id);
-                          markStarted.mutate(nextLesson.id);
-                        }}
-                      >
-                        Próxima aula
-                      </Button>
-                    ) : null}
-                  </div>
                   <LessonEditor
                     lesson={activeLesson}
                     isAdmin={isAdmin}
