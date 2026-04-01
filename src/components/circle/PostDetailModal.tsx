@@ -53,6 +53,18 @@ function getVideoEmbed(url: string | null) {
   return null;
 }
 
+/* ── Render @mentions as styled spans ── */
+const renderMentions = (text: string) => {
+  const parts = text.split(/(@\S+)/g);
+  return parts.map((part, i) =>
+    part.startsWith("@") ? (
+      <span key={i} className="text-primary font-semibold">{part}</span>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+};
+
 /* ── Main Component ──────────────────────────────── */
 
 export default function PostDetailModal({ postId, open, onClose }: PostDetailModalProps) {
