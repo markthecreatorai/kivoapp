@@ -675,6 +675,7 @@ export default function EventFormModal({ open, onOpenChange, communityId, member
             </Button>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
