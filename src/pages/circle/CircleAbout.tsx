@@ -11,9 +11,12 @@ import { Label } from "@/components/ui/label";
 import {
   Users, Globe, CreditCard, CheckCircle, Play,
   Upload, Link2, Pencil, X, Plus, Eye, EyeOff,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+type GalleryItem = { type: "image" | "video"; url: string; position: number };
 
 function formatPrice(price: number, period?: string) {
   const fmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
@@ -29,12 +32,19 @@ function getEmbedUrl(url: string): string | null {
   return url;
 }
 
+function getVideoThumbnail(url: string): string | null {
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/);
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/mqdefault.jpg`;
+  return null;
+}
+
 export default function CircleAbout() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  const [activeIndex, setActiveIndex] = useState(0);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -44,7 +54,6 @@ export default function CircleAbout() {
   const mediaImageInputRef = useRef<HTMLInputElement>(null);
   const previewMode = searchParams.get("preview") === "visitor";
 
-  // Fetch community
   const { data: community, isLoading } = useQuery({
     queryKey: ["community-about", slug],
     queryFn: async () => {
@@ -60,7 +69,6 @@ export default function CircleAbout() {
     enabled: !!slug,
   });
 
-  // Check if current user is admin
   const { data: member } = useQuery({
     queryKey: ["about-member", community?.id, user?.id],
     queryFn: async () => {
@@ -76,7 +84,6 @@ export default function CircleAbout() {
     enabled: !!community?.id && !!user?.id,
   });
 
-  // Fetch community owner
   const { data: owner } = useQuery({
     queryKey: ["community-owner", community?.id],
     queryFn: async () => {
@@ -94,10 +101,21 @@ export default function CircleAbout() {
   });
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
-
   const isAdminEditing = isAdmin && !previewMode;
 
-  // ─── Mutations ───
+  // Parse gallery from community data
+  const gallery: GalleryItem[] = (() => {
+    const raw = (community as any)?.about_gallery;
+    if (Array.isArray(raw) && raw.length > 0) return raw;
+    // Fallback to legacy fields
+    const items: GalleryItem[] = [];
+    if (community?.cover_image_url) items.push({ type: "image", url: community.cover_image_url, position: 0 });
+    const videoUrl = (community as any)?.about_video_url;
+    if (videoUrl) items.push({ type: "video", url: videoUrl, position: 1 });
+    return items;
+  })();
+
+  const activeItem = gallery[activeIndex] || null;
 
   const updateCommunity = useMutation({
     mutationFn: async (payload: Record<string, any>) => {
@@ -114,6 +132,11 @@ export default function CircleAbout() {
     },
   });
 
+  const saveGallery = async (newGallery: GalleryItem[]) => {
+    const sorted = newGallery.map((g, i) => ({ ...g, position: i }));
+    await updateCommunity.mutateAsync({ about_gallery: sorted } as any);
+  };
+
   const handleUploadMediaImage = async (file: File) => {
     setUploadingMedia(true);
     try {
@@ -122,7 +145,9 @@ export default function CircleAbout() {
       const { error } = await supabase.storage.from("community").upload(path, file, { upsert: true });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("community").getPublicUrl(path);
-      await updateCommunity.mutateAsync({ cover_image_url: urlData.publicUrl });
+      const newGallery = [...gallery, { type: "image" as const, url: urlData.publicUrl, position: gallery.length }];
+      await saveGallery(newGallery);
+      setActiveIndex(newGallery.length - 1);
       toast.success("Imagem adicionada!");
       setShowMediaModal(false);
     } catch {
@@ -132,11 +157,22 @@ export default function CircleAbout() {
     }
   };
 
-  const handleSaveVideo = async () => {
-    await updateCommunity.mutateAsync({ about_video_url: mediaVideoUrl.trim() || null });
-    toast.success("Vídeo salvo!");
+  const handleAddVideo = async () => {
+    const url = mediaVideoUrl.trim();
+    if (!url) return;
+    const newGallery = [...gallery, { type: "video" as const, url, position: gallery.length }];
+    await saveGallery(newGallery);
+    setActiveIndex(newGallery.length - 1);
+    toast.success("Vídeo adicionado!");
     setShowMediaModal(false);
     setMediaVideoUrl("");
+  };
+
+  const handleRemoveItem = async (index: number) => {
+    const newGallery = gallery.filter((_, i) => i !== index);
+    await saveGallery(newGallery);
+    setActiveIndex((prev) => Math.min(prev, Math.max(newGallery.length - 1, 0)));
+    toast.success("Mídia removida");
   };
 
   const handleSaveDescription = async () => {
@@ -158,10 +194,51 @@ export default function CircleAbout() {
   const isPaid = community.access_type === "PAID_SUBSCRIPTION" && !!(community as any).price;
   const price = (community as any).price as number | undefined;
   const billingPeriod = (community as any).billing_period as string | undefined;
-  const videoUrl = (community as any).about_video_url as string | undefined;
-  const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null;
   const memberCount = community.member_count || 0;
-  const hasMedia = !!embedUrl || !!community.cover_image_url;
+  const hasMedia = gallery.length > 0;
+
+  const renderMainMedia = () => {
+    if (!activeItem) return null;
+
+    if (activeItem.type === "video") {
+      const embedUrl = getEmbedUrl(activeItem.url);
+      if (!embedUrl) return null;
+      return (
+        <div className="rounded-xl overflow-hidden bg-black aspect-video shadow-sm">
+          {videoPlaying ? (
+            <iframe
+              src={embedUrl + "&autoplay=1"}
+              className="w-full h-full"
+              allowFullScreen
+              allow="autoplay; fullscreen"
+              title={community.name}
+            />
+          ) : (
+            <button onClick={() => setVideoPlaying(true)} className="relative w-full h-full">
+              {getVideoThumbnail(activeItem.url) ? (
+                <img src={getVideoThumbnail(activeItem.url)!} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                  <Play className="h-12 w-12 text-white/30" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/25 flex items-center justify-center hover:bg-black/35 transition-colors">
+                <div className="h-16 w-16 rounded-full bg-white/95 flex items-center justify-center shadow-2xl hover:scale-105 transition-transform">
+                  <Play className="h-7 w-7 text-gray-900 fill-gray-900 ml-1" />
+                </div>
+              </div>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-xl overflow-hidden aspect-video shadow-sm">
+        <img src={activeItem.url} alt="" className="w-full h-full object-cover" />
+      </div>
+    );
+  };
 
   return (
     <div className="p-4 md:p-5 space-y-5">
@@ -202,53 +279,90 @@ export default function CircleAbout() {
         )}
       </div>
 
-      {/* ── MEDIA AREA ── */}
+      {/* ── MEDIA CAROUSEL ── */}
       {hasMedia ? (
-        <div className="relative group">
-          {embedUrl ? (
-            <div className="rounded-xl overflow-hidden bg-black aspect-video shadow-sm">
-              {videoPlaying ? (
-                <iframe
-                  src={embedUrl + "&autoplay=1"}
-                  className="w-full h-full"
-                  allowFullScreen
-                  allow="autoplay; fullscreen"
-                  title={community.name}
-                />
-              ) : (
-                <button onClick={() => setVideoPlaying(true)} className="relative w-full h-full">
-                  {community.cover_image_url ? (
-                    <img src={community.cover_image_url} alt="" className="w-full h-full object-cover" />
+        <div className="space-y-3">
+          {/* Main media */}
+          <div className="relative group">
+            {renderMainMedia()}
+
+            {/* Nav arrows */}
+            {gallery.length > 1 && (
+              <>
+                <button
+                  onClick={() => { setActiveIndex((p) => Math.max(0, p - 1)); setVideoPlaying(false); }}
+                  disabled={activeIndex === 0}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => { setActiveIndex((p) => Math.min(gallery.length - 1, p + 1)); setVideoPlaying(false); }}
+                  disabled={activeIndex === gallery.length - 1}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {(gallery.length > 1 || isAdminEditing) && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {gallery.map((item, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "relative group/thumb shrink-0 w-20 h-14 rounded-lg overflow-hidden cursor-pointer border-2 transition-all",
+                    activeIndex === i ? "border-primary ring-1 ring-primary/30" : "border-transparent hover:border-muted-foreground/30"
+                  )}
+                  onClick={() => { setActiveIndex(i); setVideoPlaying(false); }}
+                >
+                  {item.type === "image" ? (
+                    <img src={item.url} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                      <Play className="h-12 w-12 text-white/30" />
+                    <div className="relative w-full h-full">
+                      {getVideoThumbnail(item.url) ? (
+                        <img src={getVideoThumbnail(item.url)!} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                          <Play className="h-4 w-4 text-white/60" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Play className="h-4 w-4 text-white drop-shadow" />
+                      </div>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black/25 flex items-center justify-center hover:bg-black/35 transition-colors">
-                    <div className="h-16 w-16 rounded-full bg-white/95 flex items-center justify-center shadow-2xl hover:scale-105 transition-transform">
-                      <Play className="h-7 w-7 text-gray-900 fill-gray-900 ml-1" />
-                    </div>
-                  </div>
+
+                  {/* Remove button (admin) */}
+                  {isAdminEditing && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRemoveItem(i); }}
+                      className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/70 hover:bg-destructive text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {/* Add button */}
+              {isAdminEditing && (
+                <button
+                  onClick={() => { setMediaVideoUrl(""); setShowMediaModal(true); }}
+                  className="shrink-0 w-20 h-14 rounded-lg border-2 border-dashed border-border hover:border-muted-foreground/40 bg-muted/30 hover:bg-muted/50 flex items-center justify-center transition-all"
+                >
+                  <Plus className="h-5 w-5 text-muted-foreground" />
                 </button>
               )}
             </div>
-          ) : (
-            <div className="rounded-xl overflow-hidden aspect-video shadow-sm">
-              <img src={community.cover_image_url!} alt="" className="w-full h-full object-cover" />
-            </div>
-          )}
-          {isAdminEditing && (
-            <button
-              onClick={() => { setMediaVideoUrl(videoUrl || ""); setShowMediaModal(true); }}
-              className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-lg px-2.5 py-1.5 text-xs flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Editar mídia
-            </button>
           )}
         </div>
       ) : isAdminEditing ? (
         <button
-          onClick={() => { setMediaVideoUrl(videoUrl || ""); setShowMediaModal(true); }}
+          onClick={() => { setMediaVideoUrl(""); setShowMediaModal(true); }}
           className="w-full aspect-video rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/40 transition-all flex flex-col items-center justify-center gap-3 text-muted-foreground group"
         >
           <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-muted-foreground/10 transition-colors">
@@ -288,7 +402,7 @@ export default function CircleAbout() {
         )}
       </div>
 
-      {/* ── DESCRIPTION — editable for admin ── */}
+      {/* ── DESCRIPTION ── */}
       {editingDescription && isAdminEditing ? (
         <div className="space-y-2">
           <div className="relative">
@@ -315,10 +429,7 @@ export default function CircleAbout() {
         </div>
       ) : community.description ? (
         <div
-          className={cn(
-            "relative",
-            isAdminEditing && "cursor-pointer group"
-          )}
+          className={cn("relative", isAdminEditing && "cursor-pointer group")}
           onClick={() => {
             if (isAdminEditing) {
               setDescriptionDraft(community.description || "");
@@ -344,7 +455,7 @@ export default function CircleAbout() {
         </button>
       ) : null}
 
-      {/* ────────── MEDIA MODAL (admin only) ────────── */}
+      {/* ── MEDIA MODAL ── */}
       <Dialog open={showMediaModal} onOpenChange={setShowMediaModal}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -396,26 +507,12 @@ export default function CircleAbout() {
                 />
               </div>
             </div>
-
-            {videoUrl && (
-              <button
-                className="text-xs text-destructive hover:underline flex items-center gap-1"
-                onClick={async () => {
-                  await updateCommunity.mutateAsync({ about_video_url: null });
-                  setMediaVideoUrl("");
-                  toast.success("Vídeo removido");
-                  setShowMediaModal(false);
-                }}
-              >
-                <X className="h-3 w-3" /> Remover vídeo atual
-              </button>
-            )}
           </div>
 
           <DialogFooter className="mt-2">
             <Button variant="ghost" onClick={() => setShowMediaModal(false)}>Cancelar</Button>
             <Button
-              onClick={handleSaveVideo}
+              onClick={handleAddVideo}
               disabled={!mediaVideoUrl.trim() || updateCommunity.isPending}
             >
               Adicionar
