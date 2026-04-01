@@ -162,7 +162,7 @@ export default function AdminCommunityTab({ community }: Props) {
     queryKey: ["community-categories-admin", community.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("community_spaces" as any)
+        .from("community_spaces")
         .select("id,name,emoji,sort_order,is_private,only_admins_can_post")
         .eq("community_id", community.id)
         .order("sort_order", { ascending: true });
