@@ -26,6 +26,9 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - CTA de "Próxima aula" no painel de conteúdo
   - copy de navegação e ações principais em PT-BR
   - progresso real por curso na grade (em vez de 0% fixo)
+  - empty states guiados para admin vs membro
+- [x] `src/components/circle/LessonEditor.tsx`
+  - feedback visual mais forte quando aula é concluída
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`

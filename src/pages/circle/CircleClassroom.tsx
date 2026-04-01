@@ -525,7 +525,10 @@ export default function CircleSala de aula() {
               {allItems.length === 0 && !isMockCourse && (
                 <div className="text-center py-8">
                   <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                  <p className="text-sm text-muted-foreground mb-3">Nenhum conteúdo ainda</p>
+                  <p className="text-sm text-muted-foreground mb-1">Nenhum conteúdo ainda</p>
+                  <p className="text-xs text-muted-foreground/80 mb-3">
+                    {isAdmin ? "Comece criando uma página ou pasta para organizar o curso." : "Esse curso ainda não recebeu aulas. Volte em breve."}
+                  </p>
                   {isAdmin && (
                     <div className="space-y-2">
                       <Button variant="outline" size="sm" className="w-full" onClick={() => addPageMutation.mutate(null)}>
@@ -665,10 +668,12 @@ export default function CircleSala de aula() {
             {courses.length} {courses.length === 1 ? "curso disponível" : "cursos disponíveis"}
           </p>
         </div>
-        {isAdmin && (
+        {isAdmin ? (
           <Button onClick={() => { setEditingCourse(null); setShowFormModal(true); }}>
             <Plus className="h-4 w-4 mr-1.5" /> Adicionar curso
           </Button>
+        ) : (
+          <span className="text-xs text-muted-foreground rounded-full border px-2.5 py-1 bg-muted/40">Acompanhe seu progresso</span>
         )}
       </div>
 

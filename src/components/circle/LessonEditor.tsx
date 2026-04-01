@@ -297,7 +297,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
         </div>
         {parsedResources.length > 0 && <ResourcesList resources={parsedResources} />}
         {memberId && onMarkCompleted && (
-          <div className="px-6 pb-6">
+          <div className="px-6 pb-6 space-y-2">
             <Button
               variant={isCompleted ? "outline" : "default"}
               size="sm"
@@ -308,6 +308,9 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
               <CheckCircle2 className="h-4 w-4 mr-2" />
               {isCompleted ? "Concluída!" : "Marcar como concluída"}
             </Button>
+            {isCompleted && (
+              <p className="text-xs text-emerald-600 font-medium">✅ Aula concluída. Continue para a próxima aula.</p>
+            )}
           </div>
         )}
       </div>
