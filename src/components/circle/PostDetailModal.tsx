@@ -241,7 +241,8 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
       if (!member || !community) throw new Error("Missing");
       const spam = await checkSpam(member.id, community.id, "comment", body.trim());
       if (!spam.allowed) throw new Error(spam.reason || "Spam detectado");
-      const { data: comment, error } = await supabase.from("community_comments").insert({ post_id: postId, author_id: member.id, body: body.trim(), parent_id: parentId || null }).select().single();
+      const insertImages = parentId ? undefined : (commentImages.length > 0 ? commentImages : undefined);
+      const { data: comment, error } = await supabase.from("community_comments").insert({ post_id: postId, author_id: member.id, body: body.trim(), parent_id: parentId || null, ...(insertImages ? { images: insertImages } : {}) }).select().single();
       if (error) throw error;
       await supabase.from("community_points_log").insert({ community_id: community.id, member_id: member.id, action: "COMMENT_CREATED", points: community.points_per_comment, reference_id: comment.id, reference_type: "comment", description: "Comentou em um post" });
       await supabase.from("community_members").update({ total_points: (member.total_points || 0) + community.points_per_comment, last_active_at: new Date().toISOString() }).eq("id", member.id);
