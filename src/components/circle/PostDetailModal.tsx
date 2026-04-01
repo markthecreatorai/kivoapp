@@ -235,8 +235,12 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   });
 
   const deletePost = useMutation({
-    mutationFn: async () => { await supabase.from("community_posts").update({ deleted_at: new Date().toISOString() }).eq("id", postId); },
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("soft_delete_post", { p_post_id: postId });
+      if (error || !data) throw new Error("Falha ao excluir");
+    },
     onSuccess: () => { toast.success("Post excluído"); queryClient.invalidateQueries({ queryKey: ["circle-posts"] }); onClose(); },
+    onError: () => { toast.error("Erro ao excluir post"); },
   });
 
   const movePost = useMutation({
