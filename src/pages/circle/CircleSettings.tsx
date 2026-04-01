@@ -1101,7 +1101,7 @@ export default function CircleSettings() {
                     placeholder="Repita sua nova senha"
                   />
                   {confirmNewPassword.length > 0 && confirmNewPassword !== newPassword && (
-                    <p className="text-xs text-destructive">Passwords don't match</p>
+                    <p className="text-xs text-destructive">As senhas não coincidem</p>
                   )}
                 </div>
               </div>
