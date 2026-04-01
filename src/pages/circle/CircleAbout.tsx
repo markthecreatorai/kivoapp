@@ -140,7 +140,7 @@ export default function CircleAbout() {
   const previewMode = searchParams.get("preview") === "visitor";
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } })
   );
 
   const { data: community, isLoading } = useQuery({
