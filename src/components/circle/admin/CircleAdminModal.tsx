@@ -144,11 +144,8 @@ export default function CircleAdminModal({ community, member, onClose }: Props) 
           {/* Footer */}
           <div className="px-5 py-4 border-t border-gray-100">
             <p className="text-[11px] text-gray-400">
-              Powered by{" "}
-              <span className="font-bold">
-                <span className="text-gray-700">ki</span>
-                <span className="text-yellow-500">vo</span>
-              </span>
+              Impulsionado pela{" "}
+              <span className="font-bold text-primary">Kivo</span>
             </p>
           </div>
         </aside>
