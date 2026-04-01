@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Copy, Trash2, Clock, Link2, Users, Mail } from "lucide-react";
+import { Plus, Copy, Trash2, Clock, Link2, Users, Mail, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useInviteLinks } from "@/hooks/useInviteLinks";
 
@@ -22,6 +21,18 @@ export default function AdminInviteTab({ community, member }: Props) {
   );
 
   const [requireApproval, setRequireApproval] = useState(community.require_approval ?? false);
+  const [csvEmails, setCsvEmails] = useState("");
+
+  const parsedEmails = useMemo(() => {
+    return Array.from(
+      new Set(
+        csvEmails
+          .split(/\r?\n|,|;/)
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => s.includes("@") && s.includes("."))
+      )
+    );
+  }, [csvEmails]);
 
   const saveApproval = useMutation({
     mutationFn: async (val: boolean) => {
@@ -42,6 +53,35 @@ export default function AdminInviteTab({ community, member }: Props) {
     setRequireApproval(val);
     saveApproval.mutate(val);
   };
+
+  const bulkInviteImport = useMutation({
+    mutationFn: async () => {
+      if (!parsedEmails.length) throw new Error("Nenhum e-mail válido");
+      const rows: Array<{ email: string; code: string; url: string }> = [];
+      for (const email of parsedEmails) {
+        const created = await createLink.mutateAsync({});
+        const code = created?.code as string;
+        const url = `${window.location.origin}/join/${community.slug}?invite=${code}`;
+        rows.push({ email, code, url });
+      }
+      return rows;
+    },
+    onSuccess: (rows) => {
+      const header = ["email", "invite_code", "invite_url"];
+      const csv = [
+        header.join(","),
+        ...rows.map((r) => [r.email, r.code, r.url].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+      ].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `invites-${community.slug}.csv`;
+      link.click();
+      toast.success(`Importados ${rows.length} e-mails e gerado CSV de convites`);
+      setCsvEmails("");
+    },
+    onError: (e: any) => toast.error(e?.message || "Falha no import"),
+  });
 
   return (
     <div className="space-y-8">
@@ -170,6 +210,25 @@ export default function AdminInviteTab({ community, member }: Props) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* CSV Import */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Upload className="h-5 w-5 text-gray-400" />
+          <h3 className="text-base font-semibold text-gray-900">Importar CSV (e-mails)</h3>
+        </div>
+        <Input
+          placeholder="Cole e-mails separados por vírgula ou linha"
+          value={csvEmails}
+          onChange={(e) => setCsvEmails(e.target.value)}
+        />
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-gray-400">{parsedEmails.length} e-mails válidos</p>
+          <Button variant="outline" onClick={() => bulkInviteImport.mutate()} disabled={bulkInviteImport.isPending || parsedEmails.length === 0}>
+            {bulkInviteImport.isPending ? "Importando..." : "Gerar convites CSV"}
+          </Button>
+        </div>
       </div>
 
       {/* Email Invite */}

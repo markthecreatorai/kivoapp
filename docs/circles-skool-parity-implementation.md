@@ -94,11 +94,16 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/components/circle/NotificationPanel.tsx`
   - filtros no painel com botões mobile-friendly (h-8)
 
-## Sprint 8 — Member CRM & Lifecycle (em andamento)
+## Sprint 8 — Member CRM & Lifecycle (concluído)
 - [x] `src/components/circle/admin/AdminMembersTab.tsx`
   - segmentação de ciclo (todos, ativos, risco, saíram, banidos)
   - export CSV da lista filtrada
   - integração de filtros de ciclo com lista principal
+
+## Sprint 9 — Invite Ops Scale (em andamento)
+- [x] `src/components/circle/admin/AdminInviteTab.tsx`
+  - import de e-mails em massa (csv-like paste)
+  - geração de convites em lote + export CSV com links
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
