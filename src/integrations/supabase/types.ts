@@ -1941,9 +1941,11 @@ export type Database = {
           onboarding_dismissed: boolean
           role: Database["public"]["Enums"]["community_member_role"]
           status: Database["public"]["Enums"]["community_member_status"]
+          sync_with_kivo: boolean
           total_points: number
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1966,9 +1968,11 @@ export type Database = {
           onboarding_dismissed?: boolean
           role?: Database["public"]["Enums"]["community_member_role"]
           status?: Database["public"]["Enums"]["community_member_status"]
+          sync_with_kivo?: boolean
           total_points?: number
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1991,9 +1995,11 @@ export type Database = {
           onboarding_dismissed?: boolean
           role?: Database["public"]["Enums"]["community_member_role"]
           status?: Database["public"]["Enums"]["community_member_status"]
+          sync_with_kivo?: boolean
           total_points?: number
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -6504,6 +6510,16 @@ export type Database = {
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
+      }
+      join_community: {
+        Args: {
+          p_community_id: string
+          p_display_name?: string
+          p_role?: string
+          p_status?: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       set_community_pricing_model: {
         Args: {

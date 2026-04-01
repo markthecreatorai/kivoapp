@@ -103,6 +103,9 @@ export default function MemberProfileModal({ memberId, communityId, open, onOpen
           </Avatar>
           <div>
             <h2 className="text-lg font-bold text-foreground">{member.display_name || "Membro"}</h2>
+            {(member as any).username && (
+              <p className="text-sm text-muted-foreground">@{(member as any).username}</p>
+            )}
             {member.bio && <p className="text-sm text-muted-foreground mt-1">{member.bio}</p>}
           </div>
 
