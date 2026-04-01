@@ -124,10 +124,10 @@ function SortableCategoryRow({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
         <div className="flex items-center justify-between rounded-lg border p-2">
-          <span>Categoria privada</span>
+          <span>Categoria visível</span>
           <Switch
-            checked={!!category.is_private}
-            onCheckedChange={(v) => onUpdatePatch(category.id, { is_private: v })}
+            checked={!!category.is_visible}
+            onCheckedChange={(v) => onUpdatePatch(category.id, { is_visible: v })}
           />
         </div>
         <div className="flex items-center justify-between rounded-lg border p-2">
