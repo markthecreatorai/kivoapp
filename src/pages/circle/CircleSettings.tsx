@@ -325,7 +325,6 @@ export default function CircleSettings() {
         }) as any),
       });
       setIsDirty(false);
-      toast.success("Perfil atualizado com sucesso!");
     } catch {
       toast.error("Erro ao salvar. Tente novamente.");
     } finally {
