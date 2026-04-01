@@ -544,6 +544,15 @@ export default function CircleFeed() {
         isAdmin={isAdminMember}
         onEdit={(stream) => { setWatchingStream(null); setEditingStream(stream); setShowLiveForm(true); }}
       />
+
+      {/* Invite modal triggered from admin checklist */}
+      {showInviteFromChecklist && community && (
+        <InviteFromChecklistModal
+          open={showInviteFromChecklist}
+          onOpenChange={setShowInviteFromChecklist}
+          community={community}
+        />
+      )}
     </div>
   );
 }
