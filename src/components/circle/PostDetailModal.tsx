@@ -703,7 +703,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                           onClick={() => setEditingCommentImages((prev) => prev.filter((_, idx) => idx !== i))}
                                           className="absolute top-0.5 right-0.5 bg-foreground/60 text-background rounded-full p-0.5"
                                         >
-                                          <X className="h-3 w-3" />
+                                          <XIcon className="h-3 w-3" />
                                         </button>
                                       </div>
                                     ))}
