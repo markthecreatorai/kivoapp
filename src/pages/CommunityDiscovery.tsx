@@ -1,15 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Users, MessageSquare, Search,
-  Sparkles, Globe, CheckCircle2, Crown,
+  Sparkles, CheckCircle2,
+  User, Settings, LogOut, LogIn,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 
 function CommunityCard({ community }: { community: any }) {
   const navigate = useNavigate();
@@ -33,76 +38,45 @@ function CommunityCard({ community }: { community: any }) {
     <div
       onClick={() => navigate(`/circles/${community.slug}`)}
       className="group bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-200"
-      id={`community-card-${community.id}`}
     >
-      {/* Cover */}
       <div className="relative h-36 overflow-hidden bg-gradient-to-br from-primary/20 via-primary/10 to-muted">
         {community.cover_image_url && (
-          <img
-            src={community.cover_image_url}
-            alt=""
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          <img src={community.cover_image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         <div className="absolute bottom-3 left-3">
-          <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", accessInfo.className)}>
-            {accessInfo.label}
-          </span>
+          <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", accessInfo.className)}>{accessInfo.label}</span>
         </div>
       </div>
-
-      {/* Content */}
       <div className="p-4">
         <div className="flex items-start gap-3">
           {community.icon_url ? (
-            <img
-              src={community.icon_url}
-              alt=""
-              className="h-12 w-12 rounded-xl object-cover border-2 border-background shadow -mt-8 relative z-10 shrink-0"
-            />
+            <img src={community.icon_url} alt="" className="h-12 w-12 rounded-xl object-cover border-2 border-background shadow -mt-8 relative z-10 shrink-0" />
           ) : (
             <div className="h-12 w-12 rounded-xl bg-primary/10 border-2 border-background shadow -mt-8 relative z-10 flex items-center justify-center shrink-0">
               <MessageSquare className="h-5 w-5 text-primary" />
             </div>
           )}
           <div className="min-w-0 pt-1">
-            <h3 className="font-bold text-foreground text-base leading-tight truncate group-hover:text-primary transition-colors">
-              {community.name}
-            </h3>
-            {community.category && (
-              <span className="text-xs text-muted-foreground">{community.category}</span>
-            )}
+            <h3 className="font-bold text-foreground text-base leading-tight truncate group-hover:text-primary transition-colors">{community.name}</h3>
+            {community.category && <span className="text-xs text-muted-foreground">{community.category}</span>}
           </div>
         </div>
-
-        {community.description && (
-          <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">{community.description}</p>
-        )}
-
+        {community.description && <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">{community.description}</p>}
         <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" />{community.member_count || 0}
-          </span>
-          <span className="flex items-center gap-1">
-            <MessageSquare className="h-3.5 w-3.5" />{community.post_count || 0}
-          </span>
-          <span className="flex items-center gap-1 text-emerald-600">
-            <CheckCircle2 className="h-3.5 w-3.5" /> ativa
-          </span>
+          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{community.member_count || 0}</span>
+          <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{community.post_count || 0}</span>
+          <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> ativa</span>
         </div>
-
         <div className="mt-3 flex flex-wrap gap-1.5">
           {trustBadges.slice(0, 2).map((b) => (
             <Badge key={`${community.id}-${b}`} variant="outline" className="text-[10px]">{b}</Badge>
           ))}
         </div>
-
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{community.require_approval ? "Entrada com aprovação" : "Entrada imediata"}</span>
           <span className="text-xs text-muted-foreground">{cadenceLabel}</span>
         </div>
-
         <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/circles/${community.slug}`); }}>
           {accessInfo.cta}
         </Button>
@@ -113,6 +87,7 @@ function CommunityCard({ community }: { community: any }) {
 
 export default function CommunityDiscovery() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "free" | "paid">("all");
   const [sort, setSort] = useState<"trending" | "newest" | "members">("trending");
@@ -147,52 +122,70 @@ export default function CommunityDiscovery() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-background py-16 px-4">
-        <div className="max-w-3xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 text-sm text-primary font-medium mb-2">
-            <Globe className="h-4 w-4" />
-            Descubra comunidades
+    <div className="min-h-screen bg-muted/40 flex flex-col">
+      {/* Header — same as CircleLayout */}
+      <header className="sticky top-0 z-30 bg-card border-b border-border">
+        <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
+          <div className="flex items-center gap-1 min-w-0">
+            <CommunitySwitcher currentCommunity={null} />
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-foreground">
-            Encontre sua comunidade
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Explore comunidades, aprenda com especialistas e conecte-se com pessoas que compartilham seus interesses.
-          </p>
-          <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <Crown className="h-3.5 w-3.5 text-primary" />
-            Comunidades com maior engajamento aparecem primeiro em "Em alta"
-          </div>
-
-          {/* Search */}
-          <div className="relative max-w-md mx-auto mt-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="community-search"
-              placeholder="Buscar comunidades..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 h-12 rounded-xl"
-            />
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {(user.email || "U").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-sm font-medium text-foreground truncate">{user.email?.split("@")[0]}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                  <DropdownMenuItem onClick={() => navigate("/settings")} className="gap-2 text-sm cursor-pointer">
+                    <Settings className="h-4 w-4" /> Configurações
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="gap-2 text-sm text-destructive focus:text-destructive cursor-pointer">
+                    <LogOut className="h-4 w-4" /> Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="gap-2">
+                <LogIn className="h-4 w-4" /> Entrar
+              </Button>
+            )}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      {/* Content */}
+      <div className="max-w-5xl mx-auto px-4 py-8 w-full">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">Descubra comunidades</h1>
+          <p className="text-muted-foreground mt-2">
+            Explore comunidades ou{" "}
+            <button onClick={() => navigate("/circles")} className="text-primary hover:underline font-medium">crie a sua</button>
+          </p>
+        </div>
+
+        {/* Search */}
+        <div className="relative max-w-md mx-auto mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar comunidades..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 h-11 rounded-xl" />
+        </div>
+
         {/* Filters */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {(
-            [
-              { key: "all", label: "Todas" },
-              { key: "free", label: "Gratuitas" },
-              { key: "paid", label: "Pagas" },
-            ] as const
-          ).map((f) => (
+          {([{ key: "all", label: "Todas" }, { key: "free", label: "Gratuitas" }, { key: "paid", label: "Pagas" }] as const).map((f) => (
             <button
               key={f.key}
-              id={`filter-${f.key}`}
               onClick={() => setFilter(f.key)}
               className={cn(
                 "px-4 py-1.5 rounded-full text-sm font-medium transition-colors border",
@@ -210,16 +203,9 @@ export default function CommunityDiscovery() {
         </div>
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          {(
-            [
-              { key: "trending", label: "Em alta" },
-              { key: "newest", label: "Recentes" },
-              { key: "members", label: "Mais membros" },
-            ] as const
-          ).map((s) => (
+          {([{ key: "trending", label: "Em alta" }, { key: "newest", label: "Recentes" }, { key: "members", label: "Mais membros" }] as const).map((s) => (
             <button
               key={s.key}
-              id={`sort-${s.key}`}
               onClick={() => setSort(s.key)}
               className={cn(
                 "px-3 py-1 rounded-full text-xs font-medium transition-colors border",
@@ -256,9 +242,7 @@ export default function CommunityDiscovery() {
               {search ? `Nenhuma comunidade corresponde a "${search}".` : "Ainda não há comunidades públicas disponíveis."}
             </p>
             {search && (
-              <Button variant="outline" className="mt-4" onClick={() => setSearch("")}>
-                Limpar busca
-              </Button>
+              <Button variant="outline" className="mt-4" onClick={() => setSearch("")}>Limpar busca</Button>
             )}
           </div>
         ) : (
