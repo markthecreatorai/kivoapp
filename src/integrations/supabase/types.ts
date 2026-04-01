@@ -1915,20 +1915,26 @@ export type Database = {
       }
       community_events: {
         Row: {
+          access_rule: string | null
+          access_value: string | null
           community_id: string
           cover_image_url: string | null
           created_at: string
           created_by: string
           description: string | null
+          duration_minutes: number | null
           ends_at: string | null
           id: string
           is_all_day: boolean
           is_recurring: boolean
           live_stream_id: string | null
+          location_type: string | null
+          location_value: string | null
           max_attendees: number | null
           meeting_platform: string | null
           meeting_url: string | null
           recurrence_rule: string | null
+          remind_email_before: number | null
           rsvp_count: number
           starts_at: string
           status: Database["public"]["Enums"]["event_status"]
@@ -1937,20 +1943,26 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_rule?: string | null
+          access_value?: string | null
           community_id: string
           cover_image_url?: string | null
           created_at?: string
           created_by: string
           description?: string | null
+          duration_minutes?: number | null
           ends_at?: string | null
           id?: string
           is_all_day?: boolean
           is_recurring?: boolean
           live_stream_id?: string | null
+          location_type?: string | null
+          location_value?: string | null
           max_attendees?: number | null
           meeting_platform?: string | null
           meeting_url?: string | null
           recurrence_rule?: string | null
+          remind_email_before?: number | null
           rsvp_count?: number
           starts_at: string
           status?: Database["public"]["Enums"]["event_status"]
@@ -1959,20 +1971,26 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_rule?: string | null
+          access_value?: string | null
           community_id?: string
           cover_image_url?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
+          duration_minutes?: number | null
           ends_at?: string | null
           id?: string
           is_all_day?: boolean
           is_recurring?: boolean
           live_stream_id?: string | null
+          location_type?: string | null
+          location_value?: string | null
           max_attendees?: number | null
           meeting_platform?: string | null
           meeting_url?: string | null
           recurrence_rule?: string | null
+          remind_email_before?: number | null
           rsvp_count?: number
           starts_at?: string
           status?: Database["public"]["Enums"]["event_status"]

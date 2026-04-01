@@ -6,9 +6,9 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, Video, Users, Plus, List, CalendarDays, Radio, Image as ImageIcon, Upload, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, Users, Plus, List, CalendarDays, Radio, Image as ImageIcon, Upload, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { format, isPast, isFuture, isWithinInterval, addHours, isSameDay } from "date-fns";
+import { format, isPast, isFuture, isWithinInterval, addHours, isSameDay, addMonths, subMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ export default function CircleEvents() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [view, setView] = useState<"list" | "calendar">("list");
+  const [view, setView] = useState<"list" | "calendar">("calendar");
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
   const [showCreate, setShowCreate] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
@@ -52,6 +52,7 @@ export default function CircleEvents() {
   const [watchingStream, setWatchingStream] = useState<any>(null);
   const [showLiveForm, setShowLiveForm] = useState(false);
   const [editingStream, setEditingStream] = useState<any>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(new Date()));
 
   const { data: community } = useQuery({
     queryKey: ["community", currentWorkspace?.id],
@@ -212,21 +213,46 @@ export default function CircleEvents() {
     if (data) setWatchingStream(data);
   };
 
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const tzShort = new Date().toLocaleTimeString("en-US", { timeZone: userTimezone, timeZoneName: "short" }).split(" ").pop() || "";
+  const currentTimeStr = format(new Date(), "h:mma").toLowerCase() + " " + userTimezone.split("/").pop()?.replace("_", " ") + " time";
+
   return (
-    <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
+    <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
+      {/* Calendar-style header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <CalendarIcon className="h-6 w-6 text-primary" />
-            Eventos
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {upcomingCount} evento{upcomingCount !== 1 ? "s" : ""} próximo{upcomingCount !== 1 ? "s" : ""}
-            {liveCount > 0 && <span className="text-red-500 font-medium ml-1">· {liveCount} ao vivo</span>}
-          </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setCalendarMonth(startOfMonth(new Date()));
+            setSelectedDate(new Date());
+          }}
+        >
+          Today
+        </Button>
+
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-foreground">
+              {format(calendarMonth, "MMMM yyyy", { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())}
+            </h2>
+            <p className="text-xs text-muted-foreground">{currentTimeStr}</p>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
+
         <div className="flex items-center gap-2">
+          {(isAdmin || community?.allow_member_events) && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
           <div className="flex border border-border rounded-lg overflow-hidden">
             <Button
               variant="ghost" size="sm"
@@ -243,31 +269,7 @@ export default function CircleEvents() {
               <CalendarDays className="h-4 w-4" />
             </Button>
           </div>
-
-          {(isAdmin || community?.allow_member_events) && (
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />Criar
-            </Button>
-          )}
         </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-2">
-        {([
-          { key: "upcoming" as const, label: "Próximos" },
-          { key: "past" as const, label: "Passados" },
-          { key: "all" as const, label: "Todos" },
-        ]).map((f) => (
-          <Button
-            key={f.key}
-            variant={filter === f.key ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter(f.key)}
-          >
-            {f.label}
-          </Button>
-        ))}
       </div>
 
       {/* Calendar view */}
@@ -278,6 +280,8 @@ export default function CircleEvents() {
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
+              month={calendarMonth}
+              onMonthChange={setCalendarMonth}
               locale={ptBR}
               className="pointer-events-auto"
               modifiers={{ hasEvent: (date) => eventDates.has(format(date, "yyyy-MM-dd")) }}
