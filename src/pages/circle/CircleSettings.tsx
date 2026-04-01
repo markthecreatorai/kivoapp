@@ -939,11 +939,11 @@ export default function CircleSettings() {
                 {/* Password */}
                 <div className="flex items-center justify-between py-5">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Password</p>
+                    <p className="text-sm font-medium text-foreground">Senha</p>
                     <p className="text-sm text-muted-foreground mt-0.5">••••••••</p>
                   </div>
                   <Button variant="outline" size="sm" className="font-semibold" onClick={() => setPasswordModalOpen(true)}>
-                    CHANGE PASSWORD
+                    ALTERAR SENHA
                   </Button>
                 </div>
                 <Separator />
