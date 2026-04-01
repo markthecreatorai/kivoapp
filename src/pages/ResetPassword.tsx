@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Progress } from "@/components/ui/progress";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import zxcvbn from "zxcvbn";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -16,12 +15,31 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [zxcvbnFn, setZxcvbnFn] = useState<null | ((password: string) => any)>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    let mounted = true;
+    import("zxcvbn")
+      .then((mod) => {
+        if (mounted) setZxcvbnFn(() => mod.default);
+      })
+      .catch(() => {
+        // no-op fallback
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Password strength analysis
-  const passwordStrength = password ? zxcvbn(password) : null;
+  const passwordStrength = useMemo(() => {
+    if (!password || !zxcvbnFn) return null;
+    return zxcvbnFn(password);
+  }, [password, zxcvbnFn]);
   const strengthLabels = ["Muito fraca", "Fraca", "Regular", "Boa", "Muito forte"];
 
   useEffect(() => {

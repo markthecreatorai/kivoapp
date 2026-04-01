@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/tracking";
-import zxcvbn from "zxcvbn";
 import { Progress } from "@/components/ui/progress";
 
 export default function Signup() {
@@ -23,6 +22,7 @@ export default function Signup() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [creatorType, setCreatorType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [zxcvbnFn, setZxcvbnFn] = useState<null | ((password: string) => any)>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -40,9 +40,26 @@ export default function Signup() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    let mounted = true;
+    import("zxcvbn")
+      .then((mod) => {
+        if (mounted) setZxcvbnFn(() => mod.default);
+      })
+      .catch(() => {
+        // no-op fallback
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Password strength analysis
-  const passwordStrength = password ? zxcvbn(password) : null;
-  const strengthColors = ["bg-destructive", "bg-orange-500", "bg-yellow-500", "bg-orange-400", "bg-accent"];
+  const passwordStrength = useMemo(() => {
+    if (!password || !zxcvbnFn) return null;
+    return zxcvbnFn(password);
+  }, [password, zxcvbnFn]);
   const strengthLabels = ["Muito fraca", "Fraca", "Regular", "Boa", "Muito forte"];
 
   const handleSignup = async (e: React.FormEvent) => {
