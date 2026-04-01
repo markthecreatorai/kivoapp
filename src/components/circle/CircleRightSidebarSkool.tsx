@@ -292,44 +292,6 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
         </div>
       </div>
 
-      {/* ── Leaderboard Card ── */}
-      {topMembers && topMembers.length > 0 && (
-        <div className="bg-card rounded-xl shadow-sm px-4 py-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-              Ranking (30 dias)
-            </h4>
-            <Link to={`/circles/${slug}/leaderboard`} className="text-[12px] text-primary hover:underline font-medium">
-              Ver todos
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {topMembers.map((m: any, i: number) => {
-              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
-              return (
-                <div key={m.id} className="flex items-center gap-2.5">
-                  <span className="w-5 text-center text-sm shrink-0">{medal}</span>
-                  <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarImage src={m.avatar_url || undefined} />
-                    <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-medium">
-                      {(m.display_name || "U").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[13px] font-medium text-foreground block truncate">
-                      {m.display_name || "Membro"}
-                    </span>
-                  </div>
-                  <span className="text-[12px] font-semibold text-primary shrink-0">
-                    +{m.total_points}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* ── INVITE MODAL ── */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
         <DialogContent className="sm:max-w-md p-6">
