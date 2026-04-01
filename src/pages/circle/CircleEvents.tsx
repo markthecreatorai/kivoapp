@@ -373,6 +373,27 @@ export default function CircleEvents() {
         onRsvp={handleRsvp}
         rsvpPending={rsvp.isPending}
       />
+
+      {/* Live stream viewer */}
+      <LiveStreamViewer
+        stream={watchingStream}
+        open={!!watchingStream}
+        onClose={() => setWatchingStream(null)}
+        memberId={member?.id}
+        memberName={member?.display_name}
+        memberAvatar={member?.avatar_url}
+        isAdmin={isAdmin}
+        onEdit={(stream: any) => { setWatchingStream(null); setEditingStream(stream); setShowLiveForm(true); }}
+      />
+
+      {/* Live stream form (for editing from viewer) */}
+      <LiveStreamFormModal
+        open={showLiveForm}
+        onOpenChange={(open) => { if (!open) { setShowLiveForm(false); setEditingStream(null); } }}
+        communityId={community?.id || ""}
+        memberId={member?.id || ""}
+        stream={editingStream}
+      />
     </div>
   );
 }
