@@ -224,7 +224,31 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
             />
           </div>
 
+          {/* Thumbnail / Cover image */}
           <div>
+            <Label>Thumbnail</Label>
+            {coverImage ? (
+              <div className="relative mt-2">
+                <img src={coverImage} alt="" className="w-full h-28 object-cover rounded-lg border border-border" />
+                <Button
+                  variant="destructive" size="icon"
+                  className="absolute top-2 right-2 h-7 w-7"
+                  onClick={() => setCoverImage(null)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <label className="mt-2 flex items-center justify-center h-20 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                <div className="text-center text-sm text-muted-foreground">
+                  <Upload className="h-4 w-4 mx-auto mb-1" />
+                  {uploading ? "Enviando..." : "Adicionar capa para o calendário"}
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={uploading} />
+              </label>
+            )}
+          </div>
+
             <Label htmlFor="live-url" className="flex items-center gap-1.5">
               <LinkIcon className="h-3.5 w-3.5" />
               URL do YouTube ou Twitch *
