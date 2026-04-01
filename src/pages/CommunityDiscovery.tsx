@@ -21,6 +21,8 @@ function CommunityCard({ community }: { community: any }) {
   }[community.access_type as string] || { label: "Gratuita", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", cta: "Participar grátis" };
 
   const activityScore = (community.member_count || 0) * 0.7 + (community.post_count || 0) * 0.3;
+  const postsPerMember = (community.post_count || 0) / Math.max(1, community.member_count || 1);
+  const cadenceLabel = postsPerMember >= 0.7 ? "Movimento alto" : postsPerMember >= 0.25 ? "Movimento constante" : "Movimento inicial";
   const trustBadges = [
     activityScore >= 120 ? "Alta atividade" : null,
     (community.member_count || 0) >= 100 ? "Comunidade popular" : null,
@@ -98,8 +100,12 @@ function CommunityCard({ community }: { community: any }) {
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{community.require_approval ? "Entrada com aprovação" : "Entrada imediata"}</span>
-          <span className="text-xs font-semibold text-primary">{accessInfo.cta}</span>
+          <span className="text-xs text-muted-foreground">{cadenceLabel}</span>
         </div>
+
+        <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/c/${community.slug}`); }}>
+          {accessInfo.cta}
+        </Button>
       </div>
     </div>
   );

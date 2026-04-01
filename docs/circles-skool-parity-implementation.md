@@ -60,6 +60,8 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 - [x] `src/pages/CommunityDiscovery.tsx`
   - badges de confiança/prova social (atividade, popularidade, curadoria)
   - reforço de sinais de conversão por card
+  - indicador de cadência de atividade por comunidade
+  - CTA principal em botão no card (mais conversão)
 - [x] `src/pages/CommunityLanding.tsx`
   - selos de confiança no sidebar da comunidade
   - microcopy de CTA contextual por tipo (free/trial/paid/aprovação)
