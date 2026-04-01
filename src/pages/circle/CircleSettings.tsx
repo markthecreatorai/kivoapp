@@ -972,63 +972,204 @@ export default function CircleSettings() {
 
           {/* ═══ Account ═══ */}
           {activeSection === "account" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
-                <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  Configurações de conta afetam sua conta Kivo global. Alterações aqui <span className="font-medium">não</span> concedem acesso financeiro ou de workspace.
-                </p>
-              </div>
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-1">Account</h2>
+              <p className="text-sm text-muted-foreground mb-6">Manage your account settings</p>
 
-              <Card className="p-6 space-y-3">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Mail className="h-4 w-4" /> Email da conta
-                </h3>
-                <p className="text-sm text-foreground bg-muted rounded-lg px-3 py-2">{user?.email}</p>
-                <p className="text-xs text-muted-foreground">Para alterar seu email, entre em contato com o suporte.</p>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-                  <Lock className="h-4 w-4" /> Alterar senha
-                </h3>
-                <form onSubmit={handleChangePassword} className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="new-password" className="text-sm">Nova senha</Label>
-                    <Input id="new-password" name="new_password" type="password" placeholder="Mínimo 6 caracteres" className="h-10" />
+              <div className="space-y-0">
+                {/* Email */}
+                <div className="flex items-center justify-between py-5">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Email</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{user?.email}</p>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirm-password" className="text-sm">Confirmar nova senha</Label>
-                    <Input id="confirm-password" name="confirm_password" type="password" placeholder="Repita a senha" className="h-10" />
-                  </div>
-                  <Button type="submit" variant="outline">
-                    <Lock className="h-4 w-4 mr-2" /> Alterar senha
+                  <Button variant="outline" size="sm" className="font-semibold" onClick={() => setEmailModalOpen(true)}>
+                    CHANGE EMAIL
                   </Button>
-                </form>
-              </Card>
+                </div>
+                <Separator />
 
-              <Card className="p-6 border-destructive/20">
-                <h3 className="font-semibold text-destructive flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-4 w-4" /> Zona de perigo
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Sair da comunidade removerá seu acesso ao feed, cursos e eventos. Seus dados serão mantidos.
-                </p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={async () => {
-                    if (!confirm("Tem certeza que deseja sair da comunidade?")) return;
-                    await supabase.from("community_members").update({ status: "LEFT" } as any).eq("id", member.id);
-                    toast.success("Você saiu da comunidade.");
-                    window.location.href = "/dashboard";
-                  }}
-                >
-                  Sair da comunidade
-                </Button>
-              </Card>
-            </div>
+                {/* Password */}
+                <div className="flex items-center justify-between py-5">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Password</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">••••••••</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="font-semibold" onClick={() => setPasswordModalOpen(true)}>
+                    CHANGE PASSWORD
+                  </Button>
+                </div>
+                <Separator />
+
+                {/* Timezone */}
+                <div className="flex items-center justify-between py-5">
+                  <div className="flex-1 min-w-0 mr-4">
+                    <p className="text-sm font-medium text-foreground">Timezone</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Used for event times and notifications</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
+                      <SelectTrigger className="w-[280px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMMON_TIMEZONES.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" onClick={handleSaveTimezone} disabled={savingTimezone} className="font-semibold">
+                      {savingTimezone ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+                    </Button>
+                  </div>
+                </div>
+                <Separator />
+
+                {/* Log out everywhere */}
+                <div className="flex items-center justify-between py-5">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Log out of all devices</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">This will end all active sessions including this one</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="font-semibold text-destructive hover:text-destructive"
+                    onClick={handleLogoutEverywhere}
+                    disabled={loggingOutAll}
+                  >
+                    {loggingOutAll ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <LogOut className="h-4 w-4 mr-1.5" />}
+                    LOG OUT EVERYWHERE
+                  </Button>
+                </div>
+                <Separator />
+
+                {/* Leave community — danger zone */}
+                <div className="flex items-center justify-between py-5">
+                  <div>
+                    <p className="text-sm font-medium text-destructive">Leave community</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Remove your access to feed, courses, and events</p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="font-semibold"
+                    onClick={async () => {
+                      if (!confirm("Tem certeza que deseja sair da comunidade?")) return;
+                      await supabase.from("community_members").update({ status: "LEFT" } as any).eq("id", member.id);
+                      toast.success("Você saiu da comunidade.");
+                      window.location.href = "/dashboard";
+                    }}
+                  >
+                    LEAVE
+                  </Button>
+                </div>
+              </div>
+            </Card>
           )}
+
+          {/* ── Change Email Modal ── */}
+          <Dialog open={emailModalOpen} onOpenChange={(open) => { if (!open) { setNewEmail(""); setEmailConfirmPassword(""); } setEmailModalOpen(open); }}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Change email</DialogTitle>
+                <DialogDescription>A confirmation link will be sent to your new email address.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label>Current email</Label>
+                  <Input value={user?.email || ""} disabled className="bg-muted" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-email">New email</Label>
+                  <Input
+                    id="new-email"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="your-new@email.com"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email-confirm-pwd">Current password</Label>
+                  <Input
+                    id="email-confirm-pwd"
+                    type="password"
+                    value={emailConfirmPassword}
+                    onChange={(e) => setEmailConfirmPassword(e.target.value)}
+                    placeholder="Enter your password to confirm"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEmailModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleChangeEmail} disabled={changingEmail || !newEmail.trim() || !emailConfirmPassword.trim()}>
+                  {changingEmail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+                  {changingEmail ? "Sending..." : "Send confirmation"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── Change Password Modal ── */}
+          <Dialog open={passwordModalOpen} onOpenChange={(open) => { if (!open) { setCurrentPassword(""); setNewPassword(""); setConfirmNewPassword(""); } setPasswordModalOpen(open); }}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Change password</DialogTitle>
+                <DialogDescription>Your password must be at least 6 characters.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="current-pwd">Current password</Label>
+                  <Input
+                    id="current-pwd"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Your current password"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-pwd">New password</Label>
+                  <Input
+                    id="new-pwd"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                  />
+                  {newPassword.length > 0 && newPassword.length < 6 && (
+                    <p className="text-xs text-destructive">At least 6 characters required</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirm-new-pwd">Confirm new password</Label>
+                  <Input
+                    id="confirm-new-pwd"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Repeat your new password"
+                  />
+                  {confirmNewPassword.length > 0 && confirmNewPassword !== newPassword && (
+                    <p className="text-xs text-destructive">Passwords don't match</p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPasswordModalOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={changingPassword || !currentPassword || newPassword.length < 6 || newPassword !== confirmNewPassword}
+                >
+                  {changingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+                  {changingPassword ? "Changing..." : "Change password"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* ═══ Notifications ═══ */}
           {activeSection === "notifications" && (
