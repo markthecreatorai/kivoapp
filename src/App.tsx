@@ -121,6 +121,14 @@ function CircleSettingsRedirect() {
   return <Navigate to={target} replace />;
 }
 
+/** Legacy /c/:slug/* → /circles/:slug/* redirect */
+function LegacyCRedirect() {
+  const { slug, "*": rest } = useParams<{ slug: string; "*": string }>();
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  const target = `/circles/${slug}${rest ? `/${rest}` : ""}${qs ? `?${qs}` : ""}`;
+  return <Navigate to={target} replace />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
