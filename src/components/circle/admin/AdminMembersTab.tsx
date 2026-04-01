@@ -204,9 +204,16 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
 
   const canBulkModerate = currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
 
+  const isInactive = (m: any) => {
+    const last = m.last_active_at ? new Date(m.last_active_at).getTime() : 0;
+    if (!last) return false;
+    const days = (Date.now() - last) / (1000 * 60 * 60 * 24);
+    return days >= 14;
+  };
+
   const lifecycleCounts = {
     ACTIVE: (members || []).filter((m: any) => m.status === "ACTIVE").length,
-    RISK: (members || []).filter((m: any) => ["MUTED", "PENDING"].includes(m.status)).length,
+    RISK: (members || []).filter((m: any) => ["MUTED", "PENDING"].includes(m.status) || isInactive(m)).length,
     LEFT: (members || []).filter((m: any) => m.status === "LEFT").length,
     BANNED: (members || []).filter((m: any) => m.status === "BANNED").length,
   };
@@ -244,7 +251,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   if (lifecycleFilter !== "ALL") {
     filtered = filtered.filter((m: any) => {
       if (lifecycleFilter === "ACTIVE") return m.status === "ACTIVE";
-      if (lifecycleFilter === "RISK") return ["MUTED", "PENDING"].includes(m.status);
+      if (lifecycleFilter === "RISK") return ["MUTED", "PENDING"].includes(m.status) || isInactive(m);
       if (lifecycleFilter === "LEFT") return m.status === "LEFT";
       if (lifecycleFilter === "BANNED") return m.status === "BANNED";
       return true;
@@ -559,6 +566,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {m.total_points || 0} pts · Desde {m.joined_at && !isNaN(new Date(m.joined_at).getTime()) ? format(new Date(m.joined_at), "dd/MM/yy") : "—"}
+                  {isInactive(m) ? " · inativo 14d+" : ""}
                 </p>
               </div>
               <Badge variant={m.role === "OWNER" || m.role === "ADMIN" ? "default" : "secondary"} className="text-[10px]">

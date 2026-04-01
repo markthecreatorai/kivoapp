@@ -99,6 +99,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - segmentação de ciclo (todos, ativos, risco, saíram, banidos)
   - export CSV da lista filtrada
   - integração de filtros de ciclo com lista principal
+  - regra de risco ampliada (muted/pending + inativos 14d+)
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
