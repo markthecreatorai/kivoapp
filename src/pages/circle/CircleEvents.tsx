@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, Video, Users, Plus, List, CalendarDays } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, Users, Plus, List, CalendarDays, Radio, Image as ImageIcon, Upload, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format, isPast, isFuture, isWithinInterval, addHours, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -20,6 +20,8 @@ const PLATFORM_LABELS: Record<string, string> = {
   google_meet: "Google Meet",
   teams: "Teams",
   discord: "Discord",
+  youtube: "YouTube",
+  twitch: "Twitch",
   custom: "Link",
 };
 
@@ -76,6 +78,24 @@ export default function CircleEvents() {
     enabled: !!community,
   });
 
+  // Fetch orphan live streams (not linked to any event)
+  const { data: orphanStreams } = useQuery({
+    queryKey: ["orphan-live-streams", community?.id],
+    queryFn: async () => {
+      if (!community) return [];
+      const { data: streams } = await supabase
+        .from("community_live_streams" as any)
+        .select("*, creator:created_by(display_name, avatar_url)")
+        .eq("community_id", community.id)
+        .in("status", ["LIVE", "SCHEDULED"]);
+      if (!streams || streams.length === 0) return [];
+      // Filter out streams that already have a linked event
+      const linkedIds = (events || []).map((e: any) => e.live_stream_id).filter(Boolean);
+      return (streams as any[]).filter((s: any) => !linkedIds.includes(s.id));
+    },
+    enabled: !!community && events !== undefined,
+  });
+
   const { data: userRsvps } = useQuery({
     queryKey: ["circle-rsvps", member?.id],
     queryFn: async () => {
@@ -99,14 +119,11 @@ export default function CircleEvents() {
       } else {
         await supabase.from("community_event_rsvps").insert([{ event_id: eventId, member_id: member.id, status }] as any);
       }
-
-      // Update rsvp_count (count GOING)
       const { count } = await supabase
         .from("community_event_rsvps")
         .select("id", { count: "exact", head: true })
         .eq("event_id", eventId)
         .eq("status", "GOING");
-
       await supabase.from("community_events").update({ rsvp_count: count || 0 }).eq("id", eventId);
     },
     onSuccess: () => {
@@ -116,55 +133,97 @@ export default function CircleEvents() {
     },
   });
 
+  // Convert orphan streams to event-like objects for unified rendering
+  const allItems = useMemo(() => {
+    const eventItems = (events || []).map((e: any) => ({ ...e, _type: "event" as const }));
+    const streamItems = (orphanStreams || []).map((s: any) => ({
+      id: `stream-${s.id}`,
+      _streamId: s.id,
+      _type: "stream" as const,
+      title: `🔴 ${s.title}`,
+      description: s.description,
+      starts_at: s.scheduled_at || s.created_at,
+      ends_at: s.scheduled_at ? new Date(new Date(s.scheduled_at).getTime() + 2 * 3600000).toISOString() : null,
+      status: s.status === "LIVE" ? "ACTIVE" : "SCHEDULED",
+      meeting_url: s.embed_url,
+      meeting_platform: s.embed_type,
+      cover_image_url: null,
+      rsvp_count: s.viewer_count || 0,
+      is_all_day: false,
+      live_stream_id: s.id,
+      _stream: s,
+    }));
+    return [...eventItems, ...streamItems].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+  }, [events, orphanStreams]);
+
   // Filtered events
   const filteredEvents = useMemo(() => {
-    if (!events) return [];
     const now = new Date();
-    return events.filter((e: any) => {
+    return allItems.filter((e: any) => {
       const end = e.ends_at ? new Date(e.ends_at) : addHours(new Date(e.starts_at), 1);
       if (filter === "upcoming") return !isPast(end);
       if (filter === "past") return isPast(end);
       return true;
     });
-  }, [events, filter]);
+  }, [allItems, filter]);
 
   // Events for selected calendar date
   const dateEvents = useMemo(() => {
-    if (!selectedDate || !events) return [];
-    return events.filter((e: any) => isSameDay(new Date(e.starts_at), selectedDate));
-  }, [events, selectedDate]);
+    if (!selectedDate) return [];
+    return allItems.filter((e: any) => isSameDay(new Date(e.starts_at), selectedDate));
+  }, [allItems, selectedDate]);
 
   // Dates with events for calendar dots
   const eventDates = useMemo(() => {
-    if (!events) return new Set<string>();
-    return new Set(events.map((e: any) => format(new Date(e.starts_at), "yyyy-MM-dd")));
-  }, [events]);
+    return new Set(allItems.map((e: any) => format(new Date(e.starts_at), "yyyy-MM-dd")));
+  }, [allItems]);
 
   const handleRsvp = (eventId: string, status: "GOING" | "MAYBE" | "NOT_GOING") => {
     rsvp.mutate({ eventId, status });
   };
+
+  // Counts
+  const upcomingCount = useMemo(() => {
+    const now = new Date();
+    return allItems.filter((e: any) => {
+      const end = e.ends_at ? new Date(e.ends_at) : addHours(new Date(e.starts_at), 1);
+      return !isPast(end);
+    }).length;
+  }, [allItems]);
+
+  const liveCount = useMemo(() => {
+    return allItems.filter((e: any) => {
+      const s = getEventStatus(e);
+      return s.key === "live";
+    }).length;
+  }, [allItems]);
 
   return (
     <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Eventos</h1>
-          <p className="text-sm text-muted-foreground mt-1">Próximos eventos da comunidade</p>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <CalendarIcon className="h-6 w-6 text-primary" />
+            Eventos
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {upcomingCount} evento{upcomingCount !== 1 ? "s" : ""} próximo{upcomingCount !== 1 ? "s" : ""}
+            {liveCount > 0 && <span className="text-red-500 font-medium ml-1">· {liveCount} ao vivo</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex border rounded-lg overflow-hidden">
+          <div className="flex border border-border rounded-lg overflow-hidden">
             <Button
               variant="ghost" size="sm"
-              className={cn("rounded-none h-8", view === "list" && "bg-muted")}
+              className={cn("rounded-none h-8 px-2.5", view === "list" && "bg-muted")}
               onClick={() => setView("list")}
             >
               <List className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost" size="sm"
-              className={cn("rounded-none h-8", view === "calendar" && "bg-muted")}
+              className={cn("rounded-none h-8 px-2.5", view === "calendar" && "bg-muted")}
               onClick={() => setView("calendar")}
             >
               <CalendarDays className="h-4 w-4" />
@@ -226,9 +285,9 @@ export default function CircleEvents() {
                   myRsvp={userRsvps?.[event.id]}
                   onRsvp={handleRsvp}
                   rsvpPending={rsvp.isPending}
-                  onClick={() => setDetailEvent(event)}
+                  onClick={() => event._type !== "stream" && setDetailEvent(event)}
                   isAdmin={isAdmin}
-                  onEdit={() => setEditEvent(event)}
+                  onEdit={() => event._type !== "stream" && setEditEvent(event)}
                 />
               ))}
             </div>
@@ -260,12 +319,12 @@ export default function CircleEvents() {
                 <EventCard
                   key={event.id}
                   event={event}
-                  myRsvp={userRsvps?.[event.id]}
+                  myRsvp={event._type === "stream" ? undefined : userRsvps?.[event.id]}
                   onRsvp={handleRsvp}
                   rsvpPending={rsvp.isPending}
-                  onClick={() => setDetailEvent(event)}
+                  onClick={() => event._type !== "stream" && setDetailEvent(event)}
                   isAdmin={isAdmin}
-                  onEdit={() => setEditEvent(event)}
+                  onEdit={() => event._type !== "stream" && setEditEvent(event)}
                 />
               ))}
             </div>
@@ -314,30 +373,55 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
   const end = event.ends_at ? new Date(event.ends_at) : null;
   const duration = end ? Math.round((end.getTime() - start.getTime()) / 60000) : null;
   const isEnded = status.key === "past";
+  const isLive = status.key === "live";
+  const isStream = event._type === "stream";
+  const hasCover = !!event.cover_image_url;
 
   return (
-    <Card className="overflow-hidden group">
-      {/* Cover image or gradient */}
+    <Card className={cn(
+      "overflow-hidden group transition-shadow hover:shadow-md",
+      isLive && "ring-2 ring-red-500/50",
+      isStream && "ring-1 ring-primary/30"
+    )}>
+      {/* Cover image or gradient header */}
       <div
         className={cn(
-          "relative h-32 cursor-pointer",
-          event.cover_image_url ? "" : "bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5"
+          "relative cursor-pointer overflow-hidden",
+          hasCover ? "h-36" : "h-24",
+          !hasCover && isStream && "bg-gradient-to-br from-red-500/20 via-primary/10 to-primary/5",
+          !hasCover && !isStream && "bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5"
         )}
         onClick={onClick}
       >
-        {event.cover_image_url && (
+        {hasCover && (
           <img src={event.cover_image_url} alt="" className="w-full h-full object-cover" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-3 left-4 right-4">
-          <h3 className="font-bold text-white text-lg leading-tight drop-shadow-sm">{event.title}</h3>
+          <h3 className="font-bold text-white text-lg leading-tight drop-shadow-md line-clamp-2">{event.title}</h3>
+          {event.description && (
+            <p className="text-white/70 text-xs mt-0.5 line-clamp-1">{event.description}</p>
+          )}
         </div>
-        <Badge className={cn("absolute top-3 right-3", status.color)}>{status.label}</Badge>
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {isStream && (
+            <Badge className="bg-red-600 text-white border-0 text-[10px] gap-1">
+              <Radio className="h-2.5 w-2.5" />
+              LIVE
+            </Badge>
+          )}
+          <Badge className={cn(status.color, "text-[10px]")}>{status.label}</Badge>
+        </div>
+        {/* Date overlay chip */}
+        <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm rounded-lg px-2.5 py-1 text-center shadow-sm">
+          <span className="text-xs font-bold text-foreground block leading-tight">{format(start, "dd")}</span>
+          <span className="text-[10px] text-muted-foreground uppercase leading-tight">{format(start, "MMM", { locale: ptBR })}</span>
+        </div>
       </div>
 
       <div className="p-4 space-y-3">
         {/* Info row */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1.5">
             <CalendarIcon className="h-3.5 w-3.5" />
             {format(start, "EEE, dd MMM yyyy", { locale: ptBR })}
@@ -346,32 +430,30 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
             <span className="flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
               {format(start, "HH:mm")}
-            </span>
-          )}
-          {duration && (
-            <span className="flex items-center gap-1.5">
-              ⏱️ {duration >= 60 ? `${Math.floor(duration / 60)}h${duration % 60 > 0 ? `${duration % 60}m` : ""}` : `${duration}m`}
+              {end && ` – ${format(end, "HH:mm")}`}
             </span>
           )}
           {event.meeting_platform && (
             <Badge variant="secondary" className="text-[10px] h-5">
+              <Video className="h-2.5 w-2.5 mr-1" />
               {PLATFORM_LABELS[event.meeting_platform] || "Link"}
             </Badge>
           )}
           <span className="flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" />
-            {event.rsvp_count} confirmado{event.rsvp_count !== 1 ? "s" : ""}
+            {event.rsvp_count} {isStream ? "espectador" : "confirmado"}{event.rsvp_count !== 1 ? (isStream ? "es" : "s") : ""}
           </span>
         </div>
 
         {/* RSVP & Actions */}
-        {!isEnded && event.status !== "CANCELLED" && (
+        {!isEnded && event.status !== "CANCELLED" && !isStream && (
           <div className="flex items-center gap-2 flex-wrap">
             {(["GOING", "MAYBE", "NOT_GOING"] as const).map((s) => (
               <Button
                 key={s}
                 variant={myRsvp === s ? "default" : "outline"}
                 size="sm"
+                className="h-8 text-xs"
                 onClick={() => onRsvp(event.id, s)}
                 disabled={rsvpPending}
               >
@@ -379,8 +461,8 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
               </Button>
             ))}
 
-            {status.key === "live" && event.meeting_url && (
-              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" asChild>
+            {isLive && event.meeting_url && (
+              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white h-8 text-xs" asChild>
                 <a href={event.meeting_url} target="_blank" rel="noopener noreferrer">
                   <Video className="h-3.5 w-3.5 mr-1" />Entrar
                 </a>
@@ -388,16 +470,33 @@ function EventCard({ event, myRsvp, onRsvp, rsvpPending, onClick, isAdmin, onEdi
             )}
 
             {isAdmin && (
-              <Button variant="ghost" size="sm" onClick={onEdit} className="ml-auto text-muted-foreground">
+              <Button variant="ghost" size="sm" onClick={onEdit} className="ml-auto text-muted-foreground h-8 text-xs">
                 Editar
               </Button>
             )}
           </div>
         )}
 
+        {/* Stream actions */}
+        {isStream && !isEnded && (
+          <div className="flex items-center gap-2">
+            {isLive && event.meeting_url && (
+              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white h-8 text-xs" asChild>
+                <a href={event.meeting_url} target="_blank" rel="noopener noreferrer">
+                  <Video className="h-3.5 w-3.5 mr-1" />Assistir ao vivo
+                </a>
+              </Button>
+            )}
+            <Badge variant="outline" className="text-[10px]">
+              <Radio className="h-2.5 w-2.5 mr-1" />
+              Transmissão ao vivo
+            </Badge>
+          </div>
+        )}
+
         {isEnded && (
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">✅ {event.rsvp_count} participaram</Badge>
+            <Badge variant="secondary" className="text-[10px]">✅ {event.rsvp_count} participaram</Badge>
           </div>
         )}
       </div>
