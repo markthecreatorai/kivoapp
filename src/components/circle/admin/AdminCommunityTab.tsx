@@ -236,7 +236,7 @@ export default function AdminCommunityTab({ community }: Props) {
 
     const reordered = arrayMove([...categories], oldIdx, newIdx);
     reordered.forEach((c: any, i: number) => {
-      updateCategory.mutate({ id: c.id, patch: { sort_order: i } });
+      updateCategory.mutate({ id: c.id, patch: { position: i } });
     });
   };
 
