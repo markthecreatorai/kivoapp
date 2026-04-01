@@ -38,7 +38,7 @@ export default function PostComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
-  const [selectedSpace, setSelectedSpace] = useState(preselectedSpaceId || "");
+  const [selectedSpace, setSelectedSpace] = useState(preselectedSpaceId || spaces?.[0]?.id || "");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -160,8 +160,8 @@ export default function PostComposer({
           </Avatar>
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{displayName}</span>
-            {" "}posting in{" "}
-            <span className="font-bold text-foreground">{communityName || "Community"}</span>
+            {" "}postando em{" "}
+            <span className="font-bold text-foreground">{communityName || "Comunidade"}</span>
           </p>
         </div>
 
@@ -182,7 +182,7 @@ export default function PostComposer({
           ref={bodyRef}
           value={body}
           onChange={handleBodyChange}
-          placeholder="Write something..."
+          placeholder="Escreva algo..."
           className="w-full min-h-[80px] text-sm text-foreground placeholder:text-muted-foreground/50 bg-transparent border-0 outline-none focus:ring-0 px-0 resize-none"
         />
 
@@ -225,12 +225,12 @@ export default function PostComposer({
         {showPoll && (
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-foreground">Poll</span>
+              <span className="text-sm font-semibold text-foreground">Enquete</span>
               <button
                 onClick={() => { setShowPoll(false); setPollOptions(["", "", ""]); }}
                 className="text-xs text-destructive hover:underline"
               >
-                Remove
+                Remover
               </button>
             </div>
             {pollOptions.map((opt, i) => (
@@ -243,7 +243,7 @@ export default function PostComposer({
                     copy[i] = e.target.value;
                     setPollOptions(copy);
                   }}
-                  placeholder={`Option ${i + 1}`}
+                  placeholder={`Opção ${i + 1}`}
                   className="flex-1 text-sm text-foreground placeholder:text-muted-foreground/50 bg-muted/30 rounded-lg px-3 py-2 border border-border outline-none"
                 />
                 {pollOptions.length > 2 && (
@@ -261,7 +261,7 @@ export default function PostComposer({
                 onClick={() => setPollOptions([...pollOptions, ""])}
                 className="text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 uppercase tracking-wide"
               >
-                + Add Option
+                + Adicionar opção
               </button>
             )}
           </div>
@@ -343,8 +343,8 @@ export default function PostComposer({
               <button className="h-8 flex items-center gap-1.5 px-3 text-xs border border-border rounded-lg bg-transparent hover:bg-muted/50 transition-colors">
                 <span className={cn(selectedSpace ? "text-foreground" : "text-muted-foreground")}>
                   {selectedSpace
-                    ? (() => { const s = spaces?.find((sp: any) => sp.id === selectedSpace); return s ? `${s.emoji || ""} ${s.name}` : "Select a category"; })()
-                    : "Select a category"}
+                    ? (() => { const s = spaces?.find((sp: any) => sp.id === selectedSpace); return s ? `${s.emoji || ""} ${s.name}` : "Selecionar categoria"; })()
+                    : "Selecionar categoria"}
                 </span>
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
@@ -372,7 +372,7 @@ export default function PostComposer({
             className="text-sm font-bold uppercase tracking-wide px-2 transition-colors"
             style={{ color: "#6B7280" }}
           >
-            CANCEL
+            Cancelar
           </button>
 
           <button
@@ -386,7 +386,7 @@ export default function PostComposer({
             )}
             style={hasContent ? { backgroundColor: "hsl(var(--primary))" } : undefined}
           >
-            {createPost.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "POST"}
+            {createPost.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publicar"}
           </button>
         </div>
       </div>
@@ -404,7 +404,7 @@ export default function PostComposer({
       <Dialog open={showLinkModal} onOpenChange={setShowLinkModal}>
         <DialogContent className="sm:max-w-md p-6 [&>button[data-close]]:hidden [&>button]:hidden">
           <DialogHeader className="pb-0">
-            <DialogTitle className="text-lg font-bold text-foreground">Add link</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-foreground">Adicionar link</DialogTitle>
           </DialogHeader>
           <div className="pt-4 space-y-4">
             <div>
@@ -412,7 +412,7 @@ export default function PostComposer({
                 type="url"
                 value={linkModalUrl}
                 onChange={(e) => setLinkModalUrl(e.target.value)}
-                placeholder="Enter a URL"
+                placeholder="Insira uma URL"
                 className="w-full px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 border border-border rounded-sm outline-none focus:border-primary transition-colors"
                 autoFocus
                 onKeyDown={(e) => {
@@ -436,7 +436,7 @@ export default function PostComposer({
                 onClick={() => setShowLinkModal(false)}
                 className="px-4 py-1.5 text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
               >
-                CANCEL
+                Cancelar
               </button>
               <button
                 onClick={() => {
@@ -452,7 +452,7 @@ export default function PostComposer({
                 }}
                 className="px-4 py-1.5 rounded-sm text-sm font-bold uppercase tracking-wide text-primary-foreground bg-primary hover:opacity-90 transition-opacity"
               >
-                LINK
+                Inserir link
               </button>
             </div>
           </div>
@@ -463,7 +463,7 @@ export default function PostComposer({
       <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
         <DialogContent className="sm:max-w-md p-6 [&>button]:hidden">
           <DialogHeader className="pb-0">
-            <DialogTitle className="text-lg font-bold text-foreground">Add video</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-foreground">Adicionar vídeo</DialogTitle>
           </DialogHeader>
           <div className="pt-4 space-y-4">
             {/* URL input */}
@@ -505,8 +505,8 @@ export default function PostComposer({
                 <>
                   <Upload className="h-6 w-6 text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    Drag and drop video here{" "}
-                    <span className="text-primary hover:underline">or select file</span>
+                    Arraste e solte o vídeo aqui{" "}
+                    <span className="text-primary hover:underline">ou selecione um arquivo</span>
                   </p>
                 </>
               )}
@@ -528,7 +528,7 @@ export default function PostComposer({
                 onClick={() => setShowVideoModal(false)}
                 className="px-4 py-1.5 text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
               >
-                CANCEL
+                Cancelar
               </button>
               <button
                 onClick={() => {
@@ -544,7 +544,7 @@ export default function PostComposer({
                 }}
                 className="px-4 py-1.5 rounded-sm text-sm font-bold uppercase tracking-wide text-primary-foreground bg-primary hover:opacity-90 transition-opacity"
               >
-                ADD
+                Adicionar
               </button>
             </div>
           </div>

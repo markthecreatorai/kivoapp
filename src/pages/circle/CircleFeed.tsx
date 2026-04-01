@@ -254,17 +254,17 @@ export default function CircleFeed() {
                    </AvatarFallback>
                  </Avatar>
                  <div className="flex-1 rounded-xl bg-muted/40 px-4 py-2.5">
-                   <span className="text-muted-foreground text-sm">Write something...</span>
+                   <span className="text-muted-foreground text-sm">Escreva algo...</span>
                  </div>
                  <button
                    onClick={(e) => {
                      e.stopPropagation();
-                     toast.info("Go Live em breve!");
+                     toast.info("Transmissão ao vivo em breve!");
                    }}
                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 px-3 py-1.5 rounded-lg hover:bg-muted/50"
                  >
                    <Video className="h-4 w-4" />
-                   <span className="hidden sm:inline">Go Live</span>
+                   <span className="hidden sm:inline">Ao vivo</span>
                  </button>
                </div>
              </Card>
@@ -433,8 +433,8 @@ export default function CircleFeed() {
       ) : posts?.length === 0 ? (
         <div className="bg-card rounded-xl shadow-sm p-12 text-center">
           <MessageCircle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-          <h3 className="font-semibold text-foreground">No posts yet</h3>
-          <p className="text-sm text-muted-foreground mt-1">Be the first to share something! 🎉</p>
+          <h3 className="font-semibold text-foreground">Ainda não há posts</h3>
+          <p className="text-sm text-muted-foreground mt-1">Seja o primeiro a compartilhar algo! 🎉</p>
         </div>
       ) : (
         <div className="space-y-3">

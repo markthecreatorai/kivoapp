@@ -137,13 +137,13 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
         "bg-card rounded-xl shadow-sm p-5 relative group",
         post.is_pinned && "border-l-4"
       )}
-      style={post.is_pinned ? { borderLeftColor: "#f5c518" } : undefined}
+      style={post.is_pinned ? { borderLeftColor: "hsl(var(--primary))" } : undefined}
     >
       {/* Pinned badge */}
       {post.is_pinned && (
         <div className="absolute top-3 right-4 flex items-center gap-1">
           <Pin className="h-3 w-3 text-muted-foreground" />
-          <span className="text-[11px] font-medium text-muted-foreground">Pinned</span>
+          <span className="text-[11px] font-medium text-muted-foreground">Fixado</span>
         </div>
       )}
 
@@ -172,7 +172,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
           </span>
           {showSpace && post.space && (
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-              · in {post.space.emoji} {post.space.name}
+              · em {post.space.emoji} {post.space.name}
             </span>
           )}
         </div>
@@ -275,7 +275,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
               ))}
             </div>
             <span className="text-[12px] text-primary hover:underline whitespace-nowrap hidden sm:block">
-              New comment {timeAgo(post.updated_at)} ago
+Novo comentário há {timeAgo(post.updated_at)}
             </span>
           </button>
         )}
