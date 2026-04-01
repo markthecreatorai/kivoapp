@@ -990,7 +990,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                           </Popover>
                         </div>
                         <button
-                          onClick={() => (commentBody.trim() || commentImages.length > 0) && addComment.mutate({ body: commentBody || "📷" })}
+                          onClick={() => (commentBody.trim() || commentImages.length > 0) && addComment.mutate({ body: commentBody })}
                           disabled={(!commentBody.trim() && commentImages.length === 0) || addComment.isPending}
                           className="text-primary hover:text-primary/80 disabled:opacity-30 transition-opacity"
                         >
