@@ -50,7 +50,21 @@ const modelPreview: Record<PricingModel, string> = {
   one_time: "Visitante paga uma vez e recebe acesso permanente.",
 };
 
-function derivePricingModel(community: any): PricingModel {
+function derivePricingModel(community: any, dbTiers?: any[]): PricingModel {
+  // If we have active tiers from DB, derive from them
+  if (dbTiers && dbTiers.length > 0) {
+    const freeCount = dbTiers.filter((t: any) => t.is_free).length;
+    const paidCount = dbTiers.filter((t: any) => !t.is_free).length;
+    const hasOneTime = dbTiers.some((t: any) => t.billing_period === 'one_time');
+
+    if (paidCount === 0 && freeCount >= 1) return "free";
+    if (paidCount === 1 && freeCount === 0 && hasOneTime) return "one_time";
+    if (paidCount === 1 && freeCount === 0) return "subscription";
+    if (freeCount >= 1 && paidCount >= 1 && paidCount <= 2) return "freemium";
+    if (paidCount >= 2) return "tiers";
+  }
+
+  // Fallback: derive from legacy columns
   const at = community.access_type;
   const bp = community.billing_period;
   const lp = community.linked_product_id;
@@ -212,6 +226,10 @@ export default function AdminPricingTab({ community }: Props) {
 
   useEffect(() => {
     if (dbTiers && dbTiers.length > 0) {
+      // Derive correct model from DB tiers
+      const derivedModel = derivePricingModel(community, dbTiers);
+      setModel(derivedModel);
+
       setTiers(
         dbTiers.map((t: any) => ({
           key: t.id,
