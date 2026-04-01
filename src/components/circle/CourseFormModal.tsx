@@ -79,7 +79,7 @@ export default function CourseFormModal({
         .from("products")
         .select("id, name, price")
         .eq("workspace_id", workspaceId)
-        .eq("status", "ACTIVE")
+        .eq("status", "PUBLISHED")
         .order("name");
       return data || [];
     },
