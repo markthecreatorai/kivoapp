@@ -145,6 +145,20 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
 
+  // Image modal state
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageTab, setImageTab] = useState<"url" | "upload">("url");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageFileRef = useRef<HTMLInputElement>(null);
+
+  // Inline link modal state
+  const [inlineLinkDialogOpen, setInlineLinkDialogOpen] = useState(false);
+  const [inlineLinkUrl, setInlineLinkUrl] = useState("");
+  const [inlineLinkText, setInlineLinkText] = useState("");
+  const [inlineLinks, setInlineLinks] = useState<{ url: string; text: string }[]>([]);
+
   // Resources state
   const [resources, setResources] = useState<Resource[]>(() =>
     Array.isArray(lesson.resources) ? (lesson.resources as Resource[]) : []
