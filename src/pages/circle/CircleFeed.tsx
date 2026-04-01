@@ -311,6 +311,16 @@ export default function CircleFeed() {
         </div>
       )}
 
+      {/* Live stream banner */}
+      {community && (
+        <LiveStreamBanner
+          communityId={community.id}
+          onWatch={(stream) => setWatchingStream(stream)}
+          isAdmin={isAdminMember}
+          onCreateLive={() => setShowLiveForm(true)}
+        />
+      )}
+
       {/* Category pills + filter */}
       <div className="flex items-center gap-2">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide items-center flex-1 min-w-0">
