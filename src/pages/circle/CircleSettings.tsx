@@ -146,6 +146,22 @@ export default function CircleSettings() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState("light");
 
+  // Account modals state
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailConfirmPassword, setEmailConfirmPassword] = useState("");
+  const [changingEmail, setChangingEmail] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const [selectedTimezone, setSelectedTimezone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+  );
+  const [savingTimezone, setSavingTimezone] = useState(false);
+
   const handleSectionChange = useCallback((id: string) => {
     setActiveSection(id);
     setSearchParams({ section: id }, { replace: true });
