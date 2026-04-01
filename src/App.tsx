@@ -99,11 +99,24 @@ const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
 
-/** Redirect /c/:slug/settings?section=X → /circle-settings?section=X */
+/** Redirect /circle-settings?section=X and /circle/settings?section=X → first community settings */
 function CircleSettingsRedirect() {
   const [searchParams] = useSearchParams();
   const section = searchParams.get("section");
-  const target = section ? `/circle-settings?section=${section}` : "/circle-settings";
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: community } = useQuery({
+    queryKey: ["community-for-redirect", currentWorkspace?.id],
+    queryFn: async () => {
+      if (!currentWorkspace) return null;
+      const { data } = await supabase.from("communities").select("slug").eq("workspace_id", currentWorkspace.id).maybeSingle();
+      return data;
+    },
+    enabled: !!currentWorkspace,
+  });
+
+  if (!community?.slug) return null;
+  const target = section ? `/c/${community.slug}/settings?section=${section}` : `/c/${community.slug}/settings`;
   return <Navigate to={target} replace />;
 }
 
