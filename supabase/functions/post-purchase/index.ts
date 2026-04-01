@@ -86,6 +86,81 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 1b. Grant community tier if product is linked to a tier
+    if (order.product_id) {
+      try {
+        // Find tiers linked to this product
+        const { data: linkedTiers } = await supabase
+          .from("community_tiers")
+          .select("id, community_id")
+          .eq("linked_product_id", order.product_id)
+          .eq("is_active", true);
+
+        if (linkedTiers && linkedTiers.length > 0) {
+          // Get buyer's email to find their member record
+          const customerEmail = order.customer_email;
+          
+          for (const lt of linkedTiers) {
+            // Find member in this community by email match via user
+            const { data: members } = await supabase
+              .from("community_members")
+              .select("id, user_id")
+              .eq("community_id", lt.community_id)
+              .eq("status", "ACTIVE");
+
+            if (members) {
+              for (const member of members) {
+                // Check if this member's email matches the buyer
+                const { data: user } = await supabase
+                  .from("auth.users" as any)
+                  .select("email")
+                  .eq("id", member.user_id)
+                  .maybeSingle();
+
+                // Fallback: use RPC for granting (service role bypasses RLS)
+                if (user?.email === customerEmail || !user) {
+                  // Use direct insert for service role context (RPC needs auth.uid())
+                  // Idempotent: check existing first
+                  const { data: existing } = await supabase
+                    .from("community_member_tiers")
+                    .select("id")
+                    .eq("member_id", member.id)
+                    .eq("community_id", lt.community_id)
+                    .eq("tier_id", lt.id)
+                    .eq("status", "ACTIVE")
+                    .maybeSingle();
+
+                  if (!existing && user?.email === customerEmail) {
+                    // Deactivate old tiers
+                    await supabase
+                      .from("community_member_tiers")
+                      .update({ status: "INACTIVE", updated_at: new Date().toISOString() })
+                      .eq("member_id", member.id)
+                      .eq("community_id", lt.community_id)
+                      .eq("status", "ACTIVE");
+
+                    // Grant new tier
+                    await supabase.from("community_member_tiers").insert({
+                      community_id: lt.community_id,
+                      member_id: member.id,
+                      tier_id: lt.id,
+                      source_type: "PRODUCT",
+                      source_id: order.id,
+                      status: "ACTIVE",
+                    });
+
+                    console.log(`Tier ${lt.id} granted to member ${member.id} via product purchase ${order.id}`);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (tierErr) {
+        console.error("Tier entitlement grant error (non-fatal):", tierErr);
+      }
+    }
+
     // 2. Create order item if not exists
     if (order.product_id) {
       const { data: existingItem } = await supabase
