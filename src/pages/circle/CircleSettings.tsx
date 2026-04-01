@@ -487,13 +487,13 @@ export default function CircleSettings() {
           {/* ═══ Communities ═══ */}
           {activeSection === "communities" && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Communities</h2>
-              <p className="text-sm text-muted-foreground mb-6">Manage your community memberships</p>
+              <h2 className="text-lg font-semibold text-foreground mb-1">Comunidades</h2>
+              <p className="text-sm text-muted-foreground mb-6">Gerencie suas participações em comunidades</p>
 
               {userCommunities.length === 0 ? (
                 <div className="text-center py-12">
                   <User className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">You haven't joined any communities yet.</p>
+                  <p className="text-sm text-muted-foreground">Você ainda não participa de nenhuma comunidade.</p>
                 </div>
               ) : (
                 <div className="space-y-1">
