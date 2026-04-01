@@ -113,6 +113,7 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
 ## Sprint 10 — General Settings Pro (em andamento)
 - [x] `src/components/circle/admin/AdminSettingsTab.tsx`
   - configuração de URL (slug) com preview + validação de unicidade
+  - botão de validação de URL disponível (slug)
   - controle de visibilidade no discovery com explicação
   - recomendações de dimensões para capa/ícone
   - resumo do estado público (pública/oculta) com impacto em descoberta

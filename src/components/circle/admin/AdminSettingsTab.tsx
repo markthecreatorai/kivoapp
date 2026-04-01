@@ -64,6 +64,25 @@ export default function AdminSettingsTab({ community, member }: Props) {
     enabled: !!currentWorkspace && (settings.access_type === "FREE_WITH_PRODUCT" || settings.access_type === "PAID_SUBSCRIPTION"),
   });
 
+  const validateSlug = useMutation({
+    mutationFn: async () => {
+      const slug = String(settings.slug || "").trim();
+      if (!slug) throw new Error("Slug não pode ficar vazio");
+      if (!/^[a-z0-9-]+$/.test(slug)) throw new Error("Use apenas letras minúsculas, números e hífen");
+
+      const { data: conflict } = await supabase
+        .from("communities")
+        .select("id")
+        .eq("slug", slug)
+        .neq("id", community.id)
+        .maybeSingle();
+      if (conflict) throw new Error("Slug indisponível");
+      return slug;
+    },
+    onSuccess: (slug) => toast.success(`URL disponível: /c/${slug}`),
+    onError: (e: any) => toast.error(e?.message || "Falha ao validar URL"),
+  });
+
   const updateSettings = useMutation({
     mutationFn: async () => {
       const payload: any = { ...settings };
@@ -125,7 +144,12 @@ export default function AdminSettingsTab({ community, member }: Props) {
         </div>
         <div>
           <Label>URL (slug)</Label>
-          <Input value={settings.slug} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} />
+          <div className="flex gap-2">
+            <Input value={settings.slug} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} />
+            <Button type="button" variant="outline" onClick={() => validateSlug.mutate()} disabled={validateSlug.isPending}>
+              Validar URL
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground mt-1">URL pública: /c/{settings.slug}</p>
         </div>
         <div>
