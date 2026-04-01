@@ -569,8 +569,8 @@ export default function CircleLayout({ children, showRightSidebar = true }: Circ
           <div className="flex-1 min-w-0">
             {children}
           </div>
-          {/* Right sidebar ~35% — desktop only, hidden on classroom */}
-          {!location.pathname.includes("/classroom") && (
+          {/* Right sidebar ~35% — desktop only, hidden on classroom and settings */}
+          {showRightSidebar && !location.pathname.includes("/classroom") && !location.pathname.includes("/settings") && (
             <div className="hidden lg:block w-[340px] shrink-0">
               <div className="sticky top-[108px]">
                 <CircleRightSidebarSkool
