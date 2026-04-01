@@ -289,7 +289,7 @@ const App = () => (
                   <Route path="/circles/:slug/feed" element={<CircleFeed />} />
                   <Route path="/circles/:slug/spaces/:spaceSlug" element={<CircleFeed />} />
                   <Route path="/circles/:slug/members" element={<CircleMembers />} />
-                  <Route path="/circles/:slug/leaderboard" element={<Navigate to="/circles" replace />} />
+                  <Route path="/circles/:slug/leaderboard" element={<CircleLeaderboard />} />
                   <Route path="/circles/:slug/events" element={<CircleEvents />} />
                   <Route path="/circles/:slug/classroom" element={<CircleClassroom />} />
                   <Route path="/circles/:slug/admin" element={<CircleFeed />} />
