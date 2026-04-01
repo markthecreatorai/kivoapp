@@ -58,6 +58,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [lifecycleFilter, setLifecycleFilter] = useState<"ALL" | "ACTIVE" | "RISK" | "LEFT" | "BANNED">("ALL");
+  const [inactiveWindow, setInactiveWindow] = useState<"ANY" | "7" | "14" | "30">("ANY");
   const [sortBy, setSortBy] = useState<string>("joined_at");
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingSort, setPendingSort] = useState<"newest" | "oldest" | "with_answers">("newest");
@@ -77,6 +78,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       if (saved.statusFilter) setStatusFilter(saved.statusFilter);
       if (saved.lifecycleFilter) setLifecycleFilter(saved.lifecycleFilter);
       if (saved.sortBy) setSortBy(saved.sortBy);
+      if (saved.inactiveWindow) setInactiveWindow(saved.inactiveWindow);
       if (Array.isArray(saved.savedViews)) setSavedViews(saved.savedViews);
     } catch {}
   }, [FILTERS_KEY]);
@@ -84,9 +86,9 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
   useEffect(() => {
     localStorage.setItem(
       FILTERS_KEY,
-      JSON.stringify({ roleFilter, statusFilter, lifecycleFilter, sortBy, savedViews })
+      JSON.stringify({ roleFilter, statusFilter, lifecycleFilter, sortBy, inactiveWindow, savedViews })
     );
-  }, [FILTERS_KEY, roleFilter, statusFilter, lifecycleFilter, sortBy, savedViews]);
+  }, [FILTERS_KEY, roleFilter, statusFilter, lifecycleFilter, sortBy, inactiveWindow, savedViews]);
 
   // Modals
   const [muteModal, setMuteModal] = useState<any>(null);
@@ -257,11 +259,11 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
 
   const canBulkModerate = currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
 
-  const isInactive = (m: any) => {
+  const isInactive = (m: any, minDays = 14) => {
     const last = m.last_active_at ? new Date(m.last_active_at).getTime() : 0;
     if (!last) return false;
     const days = (Date.now() - last) / (1000 * 60 * 60 * 24);
-    return days >= 14;
+    return days >= minDays;
   };
 
   const lifecycleCounts = {
@@ -323,6 +325,10 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
       if (lifecycleFilter === "BANNED") return m.status === "BANNED";
       return true;
     });
+  }
+  if (inactiveWindow !== "ANY") {
+    const min = Number(inactiveWindow);
+    filtered = filtered.filter((m: any) => isInactive(m, min));
   }
 
   filtered.sort((a: any, b: any) => {
@@ -628,6 +634,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
           <div className="text-xs text-muted-foreground flex gap-3">
             <span>Ativos {activeDelta === 0 ? "=" : activeDelta > 0 ? `+${activeDelta}` : activeDelta}</span>
             <span>Risco {riskDelta === 0 ? "=" : riskDelta > 0 ? `+${riskDelta}` : riskDelta}</span>
+            <span>Saída {(members || []).length ? `${Math.round((lifecycleCounts.LEFT / Math.max(1, (members || []).length)) * 100)}%` : "0%"}</span>
           </div>
         </div>
 
@@ -713,6 +720,15 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
             <SelectItem value="joined_at">Data de entrada</SelectItem>
             <SelectItem value="points">Pontos</SelectItem>
             <SelectItem value="name">Nome</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={inactiveWindow} onValueChange={(v: any) => setInactiveWindow(v)}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Inatividade" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ANY">Inatividade: qualquer</SelectItem>
+            <SelectItem value="7">Inatividade 7d+</SelectItem>
+            <SelectItem value="14">Inatividade 14d+</SelectItem>
+            <SelectItem value="30">Inatividade 30d+</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" onClick={exportMembersCsv}>Exportar CSV</Button>

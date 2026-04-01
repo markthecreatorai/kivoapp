@@ -106,6 +106,8 @@ Objetivo: aproximar fluxos, IA de navegação e conversão da Skool mantendo ide
   - tendência rápida (delta ativos/risco) e "saved views" de CRM
   - remoção de saved view e badges de motivo de risco por membro
   - export nomeado por segmento e playbook de recuperação para membros que saíram
+  - filtro de janela de inatividade (7/14/30 dias)
+  - métrica rápida de taxa de saída no topo
 
 ## Fase B — Paridade de navegação e estados de visita
 - [x] `src/pages/CommunityLanding.tsx`
