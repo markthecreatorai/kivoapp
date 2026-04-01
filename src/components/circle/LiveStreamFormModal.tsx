@@ -173,6 +173,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
                   meeting_platform: embedType === "youtube" ? "youtube" : embedType === "twitch" ? "twitch" : "custom",
                   status: goLiveNow ? "ACTIVE" : "SCHEDULED",
                   live_stream_id: (latestStream as any).id,
+                  cover_image_url: coverImage,
                 } as any);
             }
           }
