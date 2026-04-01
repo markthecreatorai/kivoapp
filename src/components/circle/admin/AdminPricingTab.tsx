@@ -449,7 +449,6 @@ export default function AdminPricingTab({ community }: Props) {
                       <SelectContent>
                         <SelectItem value="monthly">Mensal</SelectItem>
                         <SelectItem value="yearly">Anual</SelectItem>
-                        {model === "one_time" && <SelectItem value="one_time">Único</SelectItem>}
                       </SelectContent>
                     </Select>
                   )}
