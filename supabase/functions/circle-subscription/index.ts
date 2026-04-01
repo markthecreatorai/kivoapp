@@ -37,13 +37,11 @@ async function asaasRequest(path: string, method: string, body?: any, apiKey?: s
 }
 
 async function findOrCreateCustomer(email: string, name: string, cpf?: string, apiKey?: string) {
-  // Search by email
   try {
     const search = await asaasRequest(`/customers?email=${encodeURIComponent(email)}`, "GET", undefined, apiKey);
     if (search?.data?.length > 0) return search.data[0];
   } catch { /* ignore search errors */ }
 
-  // Create
   return await asaasRequest("/customers", "POST", {
     name: name || email.split("@")[0],
     email,
@@ -98,6 +96,58 @@ async function cancelAsaasSubscription(subscriptionId: string, apiKey?: string) 
   return await asaasRequest(`/subscriptions/${subscriptionId}`, "DELETE", undefined, apiKey);
 }
 
+// ── Resolve plan from tier_id ──
+
+async function resolvePlanFromTier(adminClient: any, tierId: string) {
+  const { data: tier, error: tierErr } = await adminClient
+    .from("community_tiers")
+    .select("circle_plan_id, community_id, name, price_cents, billing_period, is_free, is_active")
+    .eq("id", tierId)
+    .single();
+
+  if (tierErr || !tier) throw new Error("Tier not found");
+  if (!tier.is_active) throw new Error("Tier is not active");
+  if (tier.is_free) throw new Error("Cannot create subscription for free tier");
+
+  // If already linked to a circle_plan, use it
+  if (tier.circle_plan_id) {
+    const { data: plan, error: planErr } = await adminClient
+      .from("circle_plans")
+      .select("*")
+      .eq("id", tier.circle_plan_id)
+      .eq("is_active", true)
+      .single();
+
+    if (!planErr && plan) return plan;
+  }
+
+  // Create circle_plan on-the-fly
+  const interval = tier.billing_period === "yearly" ? "yearly" : "monthly";
+  const { data: newPlan, error: newPlanErr } = await adminClient
+    .from("circle_plans")
+    .insert({
+      community_id: tier.community_id,
+      name: tier.name,
+      price_cents: tier.price_cents,
+      currency: "BRL",
+      interval,
+      trial_days: 0,
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (newPlanErr || !newPlan) throw new Error("Failed to create plan from tier");
+
+  // Link back
+  await adminClient
+    .from("community_tiers")
+    .update({ circle_plan_id: newPlan.id })
+    .eq("id", tierId);
+
+  return newPlan;
+}
+
 // ── Main handler ──
 
 serve(async (req) => {
@@ -133,29 +183,41 @@ serve(async (req) => {
     const userEmail = claimsData.user.email || "";
 
     const body = await req.json();
-    const { action, plan_id, subscription_id, card_data } = body;
+    const { action, plan_id, tier_id, subscription_id, card_data } = body;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     const useRealGateway = !!asaasKey;
 
     // ── CREATE SUBSCRIPTION ──
     if (action === "create") {
-      if (!plan_id) {
-        return new Response(JSON.stringify({ error: "plan_id required" }), {
+      // Resolve plan: either from plan_id directly or from tier_id
+      let plan: any;
+
+      if (tier_id) {
+        try {
+          plan = await resolvePlanFromTier(adminClient, tier_id);
+        } catch (err: any) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else if (plan_id) {
+        const { data: planData, error: planErr } = await adminClient
+          .from("circle_plans")
+          .select("*")
+          .eq("id", plan_id)
+          .eq("is_active", true)
+          .single();
+
+        if (planErr || !planData) {
+          return new Response(JSON.stringify({ error: "Plan not found" }), {
+            status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        plan = planData;
+      } else {
+        return new Response(JSON.stringify({ error: "plan_id or tier_id required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const { data: plan, error: planErr } = await adminClient
-        .from("circle_plans")
-        .select("*")
-        .eq("id", plan_id)
-        .eq("is_active", true)
-        .single();
-
-      if (planErr || !plan) {
-        return new Response(JSON.stringify({ error: "Plan not found" }), {
-          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -187,9 +249,8 @@ serve(async (req) => {
       if (isFree) {
         status = "active";
       } else if (useRealGateway) {
-        // ── ASAAS FLOW ──
         try {
-          const customer = await findOrCreateCustomer(userEmail, userEmail.split("@")[0], undefined, asaasKey);
+          const customer = await findOrCreateCustomer(userEmail, userEmail.split("@")[0], card_data?.cpf, asaasKey);
           providerCustomerId = customer.id;
 
           const valueBRL = plan.price_cents / 100;
@@ -216,7 +277,6 @@ serve(async (req) => {
               nextBillingAt = new Date(now.getTime() + intervalMs).toISOString();
             }
           } else {
-            // Paid, no card → need card
             return new Response(JSON.stringify({
               error: "card_data required for paid plans",
               requires_card: true,
@@ -230,7 +290,7 @@ serve(async (req) => {
         } catch (gwErr: any) {
           console.error("Asaas subscription error:", gwErr);
           return new Response(JSON.stringify({
-            error: "Payment processing failed",
+            error: gwErr.message || "Payment processing failed",
             details: gwErr.message,
           }), {
             status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -318,7 +378,6 @@ serve(async (req) => {
         });
       }
 
-      // Cancel on Asaas
       if (sub.provider_subscription_id && useRealGateway) {
         try {
           await cancelAsaasSubscription(sub.provider_subscription_id, asaasKey);
