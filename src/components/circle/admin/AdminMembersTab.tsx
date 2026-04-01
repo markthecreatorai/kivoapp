@@ -381,7 +381,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
                   </div>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={m.avatar_url || ""} />
+                      <AvatarImage src={m.avatar_url || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">{(m.display_name || "U")[0].toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -549,7 +549,7 @@ export default function AdminMembersTab({ community, currentMember }: Props) {
           return (
             <Card key={m.id} className="p-3 flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={m.avatar_url || ""} />
+                <AvatarImage src={m.avatar_url || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">{(m.display_name || "U")[0].toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">

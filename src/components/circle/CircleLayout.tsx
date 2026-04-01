@@ -398,7 +398,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
                 <Card key={post.id} className={cn("p-4 relative overflow-hidden", i > 0 && "blur-[2px] pointer-events-none select-none")}>
                   <div className="flex items-start gap-3">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={post.author?.avatar_url || ""} />
+                      <AvatarImage src={post.author?.avatar_url || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
                         {(post.author?.display_name || "U").charAt(0).toUpperCase()}
                       </AvatarFallback>
@@ -487,7 +487,7 @@ export default function CircleLayout({ children }: CircleLayoutProps) {
             )}
             {member && (
               <Avatar className="h-8 w-8">
-                <AvatarImage src={member.avatar_url || ""} />
+                <AvatarImage src={member.avatar_url || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
                   {(member.display_name || user?.email || "U").charAt(0).toUpperCase()}
                 </AvatarFallback>

@@ -331,7 +331,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                 {/* Avatar with level badge */}
                 <div className="relative shrink-0">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={post.author?.avatar_url || ""} />
+                    <AvatarImage src={post.author?.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                       {(post.author?.display_name || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>
@@ -596,7 +596,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         <div className="flex gap-3 rounded-lg p-2 hover:bg-muted/20 transition-colors">
                           <div className="relative shrink-0">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={comment.author?.avatar_url || ""} />
+                              <AvatarImage src={comment.author?.avatar_url || undefined} />
                               <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
                                 {(comment.author?.display_name || "U").charAt(0).toUpperCase()}
                               </AvatarFallback>
@@ -688,7 +688,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         {replyTo === comment.id && (
                           <div className="mt-2 ml-11 flex gap-2 items-start">
                             <Avatar className="h-6 w-6 shrink-0">
-                              <AvatarImage src={member?.avatar_url || ""} />
+                              <AvatarImage src={member?.avatar_url || undefined} />
                               <AvatarFallback className="bg-muted text-muted-foreground text-[9px]">
                                 {(member?.display_name || "U").charAt(0).toUpperCase()}
                               </AvatarFallback>
@@ -720,7 +720,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                 <div key={reply.id} className="flex gap-2.5 group/reply rounded-lg p-2 bg-muted/30">
                                   <div className="relative shrink-0">
                                     <Avatar className="h-6 w-6">
-                                      <AvatarImage src={reply.author?.avatar_url || ""} />
+                                      <AvatarImage src={reply.author?.avatar_url || undefined} />
                                       <AvatarFallback className="bg-muted text-muted-foreground text-[9px]">
                                         {(reply.author?.display_name || "U").charAt(0).toUpperCase()}
                                       </AvatarFallback>
@@ -793,7 +793,7 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                 <div className="border-t border-border px-4 py-3 shrink-0 bg-background">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarImage src={member?.avatar_url || ""} />
+                      <AvatarImage src={member?.avatar_url || undefined} />
                       <AvatarFallback className="bg-muted text-muted-foreground text-xs font-medium">
                         {(member?.display_name || "U").charAt(0).toUpperCase()}
                       </AvatarFallback>

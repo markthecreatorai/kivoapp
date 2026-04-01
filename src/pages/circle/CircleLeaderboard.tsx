@@ -164,7 +164,7 @@ export default function CircleLeaderboard() {
                 )}
               </span>
               <Avatar className="h-10 w-10 shrink-0">
-                <AvatarImage src={m.avatar_url || ""} />
+                <AvatarImage src={m.avatar_url || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary text-sm">
                   {(m.display_name || "U").charAt(0).toUpperCase()}
                 </AvatarFallback>
@@ -201,7 +201,7 @@ export default function CircleLeaderboard() {
           <div className="flex flex-col items-center text-center min-w-[200px]">
             <div className="relative">
               <Avatar className="h-40 w-40 ring-4 ring-border">
-                <AvatarImage src={member?.avatar_url || ""} />
+                <AvatarImage src={member?.avatar_url || undefined} />
                 <AvatarFallback className="bg-muted text-muted-foreground text-3xl">
                   {(member?.display_name || "U").charAt(0).toUpperCase()}
                 </AvatarFallback>

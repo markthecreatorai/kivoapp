@@ -117,7 +117,7 @@ export default function CircleMembers() {
             return (
               <Card key={m.id} className="p-4 md:p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setProfileMemberId(m.id)}>
                 <Avatar className="h-11 w-11">
-                  <AvatarImage src={m.avatar_url || ""} />
+                  <AvatarImage src={m.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {(m.display_name || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>

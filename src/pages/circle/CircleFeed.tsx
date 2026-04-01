@@ -249,7 +249,7 @@ export default function CircleFeed() {
              >
                <div className="flex items-center gap-3">
                  <Avatar className="h-10 w-10 shrink-0">
-                   <AvatarImage src={member?.avatar_url || ""} />
+                   <AvatarImage src={member?.avatar_url || undefined} />
                    <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
                      {(member?.display_name || user?.email || "U").charAt(0).toUpperCase()}
                    </AvatarFallback>
@@ -275,7 +275,7 @@ export default function CircleFeed() {
               communityName={community.name}
               memberId={member.id}
               memberPoints={member.total_points || 0}
-              memberAvatarUrl={member.avatar_url || ""}
+              memberAvatarUrl={member.avatar_url || undefined}
               memberDisplayName={member.display_name || ""}
               pointsPerPost={community.points_per_post}
               spaces={spaces || []}
