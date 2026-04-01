@@ -6544,6 +6544,10 @@ export type Database = {
           required_level: number
         }[]
       }
+      can_access_course_debug: {
+        Args: { p_community_id: string; p_course_id: string; p_user_id: string }
+        Returns: Json
+      }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
       get_community_ids_for_user: {
