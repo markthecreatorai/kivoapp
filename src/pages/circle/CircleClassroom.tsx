@@ -36,6 +36,9 @@ interface CircleCourse {
   min_level?: number | null;
   unlock_after_days?: number | null;
   course_price_cents?: number | null;
+  allowed_tier_ids?: string[] | null;
+  allowed_member_ids?: string[] | null;
+  private_mode?: string | null;
 }
 
 interface CircleLesson {
@@ -96,6 +99,22 @@ export default function CircleClassroom() {
   });
 
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
+
+  // ─── Member active tiers (for PRIVATE access check) ──
+  const { data: memberTierIds = [] } = useQuery({
+    queryKey: ["member-active-tiers", community?.id, member?.id],
+    queryFn: async () => {
+      if (!community || !member) return [];
+      const { data } = await supabase
+        .from("community_member_tiers")
+        .select("tier_id")
+        .eq("community_id", community.id)
+        .eq("member_id", member.id)
+        .eq("status", "ACTIVE");
+      return (data || []).map((r: any) => r.tier_id as string);
+    },
+    enabled: !!community && !!member,
+  });
 
   // ─── Lesson progress tracking ────────────────────────
   const { progressMap, getCourseProgress, markStarted, markCompleted } = useLessonProgress(
@@ -724,10 +743,17 @@ export default function CircleClassroom() {
                 }
                 break;
               }
-              case "PRIVATE":
-                isLocked = true;
-                lockMessage = "Acesso privado";
+              case "PRIVATE": {
+                // Check if member is in allowed_member_ids
+                const inMemberList = (course.allowed_member_ids || []).includes(member?.id || "");
+                // Check if member has an active tier that matches allowed_tier_ids
+                const hasTier = (course.allowed_tier_ids || []).some(tid => memberTierIds.includes(tid));
+                if (!inMemberList && !hasTier) {
+                  isLocked = true;
+                  lockMessage = "Acesso exclusivo para membros de tiers específicos";
+                }
                 break;
+              }
             }
           }
 
