@@ -262,16 +262,18 @@ export default function CircleFeed() {
                  <div className="flex-1 rounded-xl bg-muted/40 px-4 py-2.5">
                    <span className="text-muted-foreground text-sm">Escreva algo...</span>
                  </div>
-                 <button
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     toast.info("Transmissão ao vivo em breve!");
-                   }}
-                   className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 px-3 py-1.5 rounded-lg hover:bg-muted/50"
-                 >
-                   <Video className="h-4 w-4" />
-                   <span className="hidden sm:inline">Ao vivo</span>
-                 </button>
+                 {isAdminMember && (
+                   <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowLiveForm(true);
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 px-3 py-1.5 rounded-lg hover:bg-muted/50"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span className="hidden sm:inline">Ao vivo</span>
+                  </button>
+                 )}
                </div>
              </Card>
            ) : community && member && (
