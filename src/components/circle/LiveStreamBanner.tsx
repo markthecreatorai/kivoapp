@@ -70,32 +70,6 @@ export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCrea
           </Button>
         </div>
       ))}
-
-      {/* Next scheduled */}
-      {!liveNow.length && scheduled.length > 0 && (
-        <div
-          onClick={() => onWatch(scheduled[0])}
-          className="flex items-center gap-3 bg-muted/40 rounded-xl px-4 py-3 cursor-pointer hover:bg-muted/60 transition-colors"
-        >
-          <Calendar className="h-4 w-4 text-primary shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">
-              📺 {scheduled[0].title}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {scheduled[0].scheduled_at
-                ? format(new Date(scheduled[0].scheduled_at), "dd MMM · HH:mm", { locale: ptBR })
-                : "Em breve"
-              }
-              {" · "}{scheduled[0].creator?.display_name || "Admin"}
-            </p>
-          </div>
-          {isAdmin && onEdit && (
-            <span className="text-xs font-medium text-primary shrink-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); onEdit(scheduled[0]); }}>Editar</span>
-          )}
-          <span className="text-xs font-medium text-primary shrink-0">Ver detalhes →</span>
-        </div>
-      )}
     </div>
   );
 }
