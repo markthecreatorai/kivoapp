@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       body: body.substring(0, 500),
       type: "financial",
       read: false,
-    }).then(() => {}).catch(() => {
+    }).then(() => {}).catch!(() => {
       // notifications table may not exist, that's ok
     });
 
