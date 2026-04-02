@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export default function CircleLeaderboard() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
