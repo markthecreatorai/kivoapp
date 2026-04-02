@@ -214,19 +214,31 @@ export default function CircleAbout() {
     enabled: !!community?.linked_product_id && !!user && community?.access_type === "FREE_WITH_PRODUCT" && !isMember,
   });
 
-  // Join community mutation
+  // Join community mutation (uses RPC for consistency + RLS bypass)
   const joinCommunity = useMutation({
     mutationFn: async () => {
       if (!community || !user) throw new Error("Missing data");
       const status = community.require_approval ? "PENDING" : "ACTIVE";
-      const { error } = await supabase.from("community_members").insert({
-        community_id: community.id,
-        user_id: user.id,
-        role: "MEMBER",
-        status,
-        display_name: user.email?.split("@")[0] || "Membro",
+
+      // Fetch Kivo profile display_name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const displayName = profile?.display_name || user.email?.split("@")[0] || "Membro";
+
+      const { error } = await supabase.rpc("join_community" as any, {
+        p_community_id: community.id,
+        p_user_id: user.id,
+        p_display_name: displayName,
+        p_role: "MEMBER",
+        p_status: status,
       });
-      if (error) throw error;
+      if (error && !error.message?.includes("duplicate") && !error.message?.includes("unique")) {
+        throw error;
+      }
       return status;
     },
     onSuccess: (status) => {
