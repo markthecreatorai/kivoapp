@@ -1,54 +1,35 @@
+## Fix: Tornar "Convidar 3 pessoas" rastreável
 
+### Problema
+A checklist verifica `member_count >= 3`, mas membros podem nunca chegar a 3. Não há como trackear se o admin realmente convidou alguém.
 
-## Fix: Criador não vira OWNER ao criar comunidade via MyCommunities
+### Solução
+Trocar a validação para: **admin criou pelo menos 1 link de convite** (tabela `community_invite_links`). Isso é rastreável, auditável e já existe no banco.
 
-### Causa raiz
+### Mudanças em `src/components/circle/AdminSetupChecklist.tsx`
 
-Em `MyCommunities.tsx` linha 134, o criador é inserido diretamente na tabela `community_members` com `role: "OWNER"`. Porém, a política de RLS da tabela só permite insert com `role = 'MEMBER'`:
-
-```sql
--- RLS atual:
-with_check: (user_id = auth.uid()) AND (role = 'MEMBER')
-```
-
-O insert com `role: "OWNER"` é **silenciosamente rejeitado** pelo RLS. O criador nunca se torna OWNER.
-
-A RPC `join_community` é `SECURITY DEFINER` e **bypassa RLS**, suportando qualquer role. Mas o `MyCommunities` não a usa.
-
-### Mudanças
-
-**`src/pages/circle/MyCommunities.tsx`**
-
-1. Substituir o insert direto (linhas 133-140):
+1. **Adicionar query** para contar links de convite criados pelo admin:
 ```typescript
-// ANTES (falha silenciosamente por RLS):
-await supabase.from("community_members").insert({
-  community_id: community.id,
-  user_id: user.id,
-  role: "OWNER",
-  ...
-});
-
-// DEPOIS (usa RPC SECURITY DEFINER):
-await supabase.rpc("join_community", {
-  p_community_id: community.id,
-  p_user_id: user.id,
-  p_display_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Owner",
-  p_role: "OWNER",
-  p_status: "ACTIVE",
+const { data: inviteLinkCount } = useQuery({
+  queryKey: ["admin-invite-links-count", community.id],
+  queryFn: async () => {
+    const { count } = await supabase
+      .from("community_invite_links")
+      .select("id", { count: "exact", head: true })
+      .eq("community_id", community.id);
+    return count || 0;
+  },
+  enabled: !dismissed,
 });
 ```
 
-2. Adicionar criação dos 4 espaços padrão (Geral, Anúncios, Perguntas, Conquistas) após criar a comunidade — mesmo padrão do `CircleDashboard`
+2. **Trocar condição** de `hasInvited3` (member_count >= 3) para `hasCreatedInvite` (inviteLinkCount >= 1)
 
-3. Remover `CircleDashboard.tsx` (arquivo órfão, sem rota, código duplicado)
+3. **Atualizar label** de "Convidar 3 pessoas" para "Criar link de convite"
 
-### Arquivos alterados
-1. `src/pages/circle/MyCommunities.tsx` — usar RPC + criar espaços padrão
-2. Deletar `src/pages/circle/CircleDashboard.tsx` — código órfão
+4. Remover a linha `const hasInvited3 = (community.member_count || 0) >= 3;`
 
 ### Resultado
-- Criador sempre será OWNER (RPC bypassa RLS)
-- Espaços padrão criados automaticamente
-- Código duplicado eliminado
-
+- Task completa assim que o admin cria um link de convite
+- Rastreável via banco de dados
+- Sem dependência de member_count
