@@ -129,6 +129,7 @@ function getVideoThumbnail(url: string): string | null {
 export default function CircleAbout() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
