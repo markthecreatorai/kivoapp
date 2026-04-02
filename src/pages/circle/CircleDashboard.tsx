@@ -40,6 +40,18 @@ export default function CircleDashboard() {
     mutationFn: async () => {
       if (!currentWorkspace || !user) throw new Error("Missing data");
 
+      // Guard: check if community already exists for this workspace
+      const { data: existing } = await supabase
+        .from("communities")
+        .select("slug")
+        .eq("workspace_id", currentWorkspace.id)
+        .maybeSingle();
+
+      if (existing?.slug) {
+        navigate(`/circles/${existing.slug}/feed`, { replace: true });
+        return existing;
+      }
+
       const slug = currentWorkspace.slug + "-circle";
       const { data: comm, error } = await supabase
         .from("communities")
@@ -86,7 +98,14 @@ export default function CircleDashboard() {
       queryClient.invalidateQueries({ queryKey: ["circle-member"] });
       toast.success("Comunidade criada com sucesso!");
     },
-    onError: () => toast.error("Erro ao criar comunidade"),
+    onError: (err: any) => {
+      if (err?.message?.includes("uq_community_workspace") || err?.code === "23505") {
+        queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
+        toast.info("Comunidade já existe! Redirecionando...");
+      } else {
+        toast.error("Erro ao criar comunidade");
+      }
+    },
   });
 
   if (isLoading) {
