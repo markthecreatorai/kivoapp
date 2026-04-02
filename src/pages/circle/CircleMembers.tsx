@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Users, Search, Flame, Info } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
@@ -17,7 +18,7 @@ const MAX_VISIBLE = 30;
 const ROLE_PRIORITY: Record<string, number> = { OWNER: 0, ADMIN: 1, MODERATOR: 2, MEMBER: 3 };
 
 export default function CircleMembers() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const [search, setSearch] = useState("");
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
 
