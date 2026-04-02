@@ -45,6 +45,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isAdminUser } from "@/lib/admin";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +59,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import kivoSymbol from "@/assets/kivo-symbol.svg";
+import { getMenuToolsState, menuToolItems } from "@/lib/menuTools";
 
 interface NavItem {
   title: string;
@@ -68,6 +70,7 @@ interface NavItem {
 const primaryItems: NavItem[] = [
   { title: "Home", url: "/dashboard", icon: Home },
   { title: "Minha Loja", url: "/store", icon: Store },
+  { title: "Circles", url: "/circles", icon: MessagesSquare },
   { title: "Renda", url: "/earnings", icon: DollarSign },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Heart },
@@ -82,7 +85,6 @@ const moreItems: NavItem[] = [
   { title: "Email Flows", url: "/email-flows", icon: Mail },
   { title: "Campanhas", url: "/email-campaigns", icon: Send },
   { title: "Afiliados", url: "/affiliates", icon: Users },
-  { title: "Circles", url: "/circles", icon: MessagesSquare },
   { title: "Fiscal", url: "/fiscal", icon: Receipt },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
@@ -113,6 +115,7 @@ export function AppSidebar() {
   const { currentWorkspace } = useWorkspace();
   const { signOut, user } = useAuth();
   const isAdmin = isAdminUser(user);
+  const [menuToolsState, setMenuToolsState] = useState<Record<string, boolean>>(() => getMenuToolsState());
 
   const { data: avatarUrl } = useQuery({
     queryKey: ["sidebar-avatar", currentWorkspace?.id],
@@ -137,6 +140,18 @@ export function AppSidebar() {
     user?.user_metadata?.name ||
     user?.email?.split("@")[0] ||
     "Usuário";
+
+  useEffect(() => {
+    const syncMenuTools = () => setMenuToolsState(getMenuToolsState());
+    window.addEventListener("kivo:menu-tools-updated", syncMenuTools as EventListener);
+    return () => window.removeEventListener("kivo:menu-tools-updated", syncMenuTools as EventListener);
+  }, []);
+
+  const isMenuEnabled = (url: string) => {
+    const match = menuToolItems.find((item) => item.url === url);
+    if (!match) return true;
+    return menuToolsState[match.id] !== false;
+  };
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
@@ -173,42 +188,28 @@ export function AppSidebar() {
     );
   };
 
-  const renderMoreMenu = () => (
-    <SidebarMenuItem>
-      <DropdownMenu>
-        <SidebarMenuButton asChild tooltip={collapsed ? "Mais" : undefined}>
-          <DropdownMenuTrigger asChild>
-            <button
+  const renderMoreLink = () => {
+    const active = isActive("/menu-tools");
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip={collapsed ? "Ver mais" : undefined}>
+          <NavLink
+            to="/menu-tools"
+            className={cn(navItemClass(active), collapsed && "justify-center px-0")}
+            activeClassName="bg-primary/10 text-primary"
+          >
+            <Grid3X3
               className={cn(
-                "flex w-full items-center rounded-lg text-[13px] font-medium transition-colors",
-                collapsed ? "justify-center p-2" : "gap-3 px-3 py-2",
-                "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                "h-4 w-4 flex-shrink-0",
+                active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
               )}
-            >
-              <Grid3X3 className="h-4 w-4" />
-              {!collapsed && <span>Mais</span>}
-            </button>
-          </DropdownMenuTrigger>
+            />
+            {!collapsed && <span>Ver mais</span>}
+          </NavLink>
         </SidebarMenuButton>
-        <DropdownMenuContent
-          side={collapsed ? "right" : "right"}
-          align="start"
-          className="min-w-[200px]"
-        >
-          {moreItems.map((item) => (
-            <DropdownMenuItem
-              key={item.url}
-              onClick={() => navigate(item.url)}
-              className={cn("cursor-pointer gap-2 text-sm", isActive(item.url) && "bg-accent")}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.title}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </SidebarMenuItem>
-  );
+      </SidebarMenuItem>
+    );
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/40">
@@ -256,8 +257,9 @@ export function AppSidebar() {
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {primaryItems.map(renderNavItem)}
-              {renderMoreMenu()}
+              {primaryItems.filter((item) => isMenuEnabled(item.url)).map(renderNavItem)}
+              {moreItems.filter((item) => isMenuEnabled(item.url)).map(renderNavItem)}
+              {renderMoreLink()}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

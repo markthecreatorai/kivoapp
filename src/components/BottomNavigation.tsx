@@ -1,4 +1,4 @@
-import { Home, DollarSign, Store, BarChart3, MoreHorizontal } from "lucide-react";
+import { Home, DollarSign, Store, MessagesSquare, MoreHorizontal } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +7,8 @@ const navigationItems = [
   { title: "Home", url: "/dashboard", icon: Home },
   { title: "Renda", url: "/earnings", icon: DollarSign, hasNotifications: false },
   { title: "Minha Loja", url: "/store", icon: Store },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
-  { title: "Mais", url: "/settings", icon: MoreHorizontal },
+  { title: "Circles", url: "/circles", icon: MessagesSquare },
+  { title: "Ver mais", url: "/menu-tools", icon: MoreHorizontal },
 ];
 
 export function BottomNavigation() {

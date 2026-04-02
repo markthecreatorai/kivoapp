@@ -46,6 +46,7 @@ const LeadSegments = lazy(() => import("./pages/LeadSegments"));
 const LeadEmail = lazy(() => import("./pages/LeadEmail"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Settings = lazy(() => import("./pages/Settings"));
+const MenuTools = lazy(() => import("./pages/MenuTools"));
 const Coupons = lazy(() => import("./pages/Coupons"));
 const EmailFlows = lazy(() => import("./pages/EmailFlows"));
 const Appointments = lazy(() => import("./pages/Appointments"));
@@ -246,6 +247,7 @@ const App = () => (
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/clients" element={<Customers />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/menu-tools" element={<MenuTools />} />
                   <Route path="/affiliates" element={<Affiliates />} />
                   <Route path="/email-flows" element={<EmailFlows />} />
                   <Route path="/leads" element={<Leads />} />
