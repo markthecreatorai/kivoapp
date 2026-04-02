@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createNotification } from "@/lib/notifications";
 
 export default function CircleMessages() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedConv, setSelectedConv] = useState<string | null>(null);
