@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
         if (wsAge < step.minDays || wsAge >= step.maxDays) continue;
 
         // Check prerequisite (if step requires a missing onboarding step)
-        if (step.requiresMissing && completedSteps.has(step.requiresMissing)) continue;
+        if ("requiresMissing" in step && step.requiresMissing && completedSteps.has(step.requiresMissing)) continue;
 
         // For d0_welcome, send to all new workspaces
         const subject = step.subject(name);

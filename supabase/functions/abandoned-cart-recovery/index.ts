@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         visitor_id: null,
         metadata: { checkout_session_id: session.id, email: session.email?.replace(/(.{2}).*(@.*)/, "$1***$2") },
         page_path: "/checkout",
-      }).catch(() => {});
+      });
 
       processed++;
     }

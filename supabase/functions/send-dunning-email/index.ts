@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
           sendError = `HTTP ${resp.status}: ${await resp.text()}`;
         }
       } catch (err) {
-        sendError = err.message;
+        sendError = (err as Error).message;
       }
     }
 

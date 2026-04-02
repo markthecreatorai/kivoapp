@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
 
     await supabase.from("webhook_events").update({
       status: isDeadLetter ? "DEAD_LETTER" : "FAILED",
-      error_message: err.message || "Unknown error",
+      error_message: (err as Error).message || "Unknown error",
       next_retry_at: nextRetryAt,
       last_attempt_at: new Date().toISOString(),
     }).eq("id", webhookEventId);
