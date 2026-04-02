@@ -41,7 +41,7 @@ function getEventStatus(event: any) {
 }
 
 export default function CircleEvents() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
