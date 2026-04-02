@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
           providerMessageId = result?.id || result?.messageId || null;
         }
       } catch (err) {
-        sendError = `Network error: ${err.message}`;
+        sendError = `Network error: ${(err as Error).message}`;
         console.error("Email send error:", err);
       }
     } else {
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("send-email error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Internal error" }),
+      JSON.stringify({ error: (err as Error).message || "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
