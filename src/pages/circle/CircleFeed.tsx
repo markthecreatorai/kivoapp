@@ -149,10 +149,13 @@ export default function CircleFeed() {
         query = query.eq("space_id", effectiveSpaceId);
       }
 
-      if (filter === "recent") {
-        query = query.order("is_pinned", { ascending: false }).order("created_at", { ascending: false });
-      } else {
+      if (filter === "top") {
         query = query.order("like_count", { ascending: false });
+      } else if (filter === "new") {
+        query = query.order("created_at", { ascending: false });
+      } else {
+        // "default" and "unread" — pinned first + recent
+        query = query.order("is_pinned", { ascending: false }).order("created_at", { ascending: false });
       }
 
       const { data } = await query.limit(50);
