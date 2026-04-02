@@ -996,7 +996,7 @@ export default function Store() {
   }
 
   return (
-    <div className="px-6 py-8 md:px-10 max-w-[1600px] mx-auto w-full">
+    <div className="px-4 py-5 md:px-6 md:py-6 max-w-[1440px] mx-auto w-full">
       
       {/* Warning Banner */}
       {storefront && !storefront.is_published && (
@@ -1013,9 +1013,9 @@ export default function Store() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-6 mb-8">
+      <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-[36px] font-bold text-[#111827] tracking-tight leading-none mb-2">
+          <h1 className="text-2xl md:text-3xl font-semibold text-[#111827] tracking-tight leading-none mb-1.5">
             Minha Loja
           </h1>
           {storeUrl && (
@@ -1043,7 +1043,7 @@ export default function Store() {
             <Button
               variant="outline"
               onClick={openStore}
-              className="gap-2 rounded-[12px] h-11 px-5 font-bold border-[#ececec] hover:border-[#d4d4d4]"
+              className="gap-2 rounded-[10px] h-9 px-4 text-[13px] font-semibold border-[#ececec] hover:border-[#d4d4d4]"
             >
               <ExternalLink className="h-4 w-4" />
               Abrir loja
@@ -1051,7 +1051,7 @@ export default function Store() {
           )}
           <Button
             onClick={() => navigate("/products/new")}
-            className="gap-2 rounded-[12px] h-11 px-6 font-bold shadow-lg shadow-primary/25"
+            className="gap-2 rounded-[10px] h-9 px-4 text-[13px] font-semibold shadow-sm"
           >
             <Plus className="h-4 w-4" />
             Novo produto
@@ -1060,14 +1060,14 @@ export default function Store() {
       </div>
 
       {/* Main Layout: 65/35 Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-12 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] gap-8 items-start">
         
         {/* Left Column: Editor */}
         <div className="w-full min-w-0">
           <Tabs value={tab} onValueChange={(v) => setTab(v as StoreTab)}>
             
             {/* Tabs */}
-            <TabsList className="bg-transparent h-auto p-0 gap-1.5 mb-7 flex-wrap justify-start border-none">
+            <TabsList className="bg-transparent h-auto p-0 gap-1 mb-5 flex-wrap justify-start border-none">
               <TabsTrigger
                 value="loja"
                 className={cn(

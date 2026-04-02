@@ -305,23 +305,23 @@ export default function Leads() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-5 space-y-5 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Leads</h1>
+          <h1 className="text-xl md:text-2xl font-semibold">Leads</h1>
           <p className="text-muted-foreground">
             Gerencie seus leads e potenciais clientes
           </p>
         </div>
-        <Button onClick={exportCSV} variant="outline">
+        <Button onClick={exportCSV} variant="outline" className="h-9 text-[13px]">
           <Download className="h-4 w-4 mr-2" />
           Exportar CSV
         </Button>
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">

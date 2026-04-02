@@ -260,18 +260,18 @@ export default function Analytics() {
   const loading = loadingOrders || loadingEvents;
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-5 space-y-5 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Analytics</h1>
           <p className="text-sm text-muted-foreground">Visão completa do seu negócio</p>
         </div>
         <PeriodFilter selectedPeriod={period} onPeriodChange={setPeriod} />
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="bg-card border border-border/50 shadow-sm rounded-xl">
@@ -293,7 +293,7 @@ export default function Analytics() {
       <RevenueChart data={revenueChartData} period={period} />
 
       {/* Funnel + Traffic side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Funnel */}
         <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
           <CardHeader>
@@ -409,7 +409,7 @@ export default function Analytics() {
       </Card>
 
       {/* Cart Recovery */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <MetricCard
           title="Carrinhos Recuperados"
           value={`${recoveredSessions.length} (${formatCurrency(recoveredRevenue)})`}
