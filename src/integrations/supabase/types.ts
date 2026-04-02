@@ -1704,7 +1704,7 @@ export type Database = {
           {
             foreignKeyName: "communities_workspace_id_fkey"
             columns: ["workspace_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
