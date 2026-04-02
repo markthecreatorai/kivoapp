@@ -327,26 +327,6 @@ export default function CircleFeed() {
         </>
       )}
 
-      {/* Admin setup checklist — only for OWNER/ADMIN */}
-      {isAdminMember && community && member && communitySlug && (
-        <AdminSetupChecklist
-          community={community}
-          member={member}
-          slug={communitySlug}
-          onOpenComposer={() => setShowCompose(true)}
-          onOpenInvite={() => setShowInviteFromChecklist(true)}
-        />
-      )}
-
-      {/* Member welcome card — only for non-admin members */}
-      {!isAdminMember && community && member && communitySlug && (
-        <MemberWelcomeCard
-          communityId={community.id}
-          memberId={member.id}
-          slug={communitySlug}
-        />
-      )}
-
       {/* Event banner — only shows when event starts within 24h */}
       {nextEvent && (
         <div
