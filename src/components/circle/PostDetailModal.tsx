@@ -501,22 +501,12 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                     {post.is_locked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                   </div>
 
-                  {/* Body with "Ver mais" */}
+                  {/* Body - always fully visible in detail modal */}
                   {post.body && (
-                    <div className="relative">
-                      <div
-                        className={cn("text-sm text-foreground prose prose-sm max-w-none dark:prose-invert", !bodyExpanded && isLongBody && "max-h-[200px] overflow-hidden")}
-                        dangerouslySetInnerHTML={{ __html: bodyHtml }}
-                      />
-                      {isLongBody && !bodyExpanded && (
-                        <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-background to-transparent" />
-                      )}
-                      {isLongBody && (
-                        <button onClick={() => setBodyExpanded(!bodyExpanded)} className="text-sm font-medium text-primary hover:underline mt-1">
-                          {bodyExpanded ? "Ver menos" : "Ver mais"}
-                        </button>
-                      )}
-                    </div>
+                    <div
+                      className="text-sm text-foreground prose prose-sm max-w-none dark:prose-invert"
+                      dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                    />
                   )}
 
                   {/* Media gallery */}
