@@ -92,15 +92,17 @@ Deno.serve(async (req) => {
     }
 
     // Store notification in-app
-    await supabase.from("notifications").insert({
-      user_id: ownerId,
-      title: subject,
-      body: body.substring(0, 500),
-      type: "financial",
-      read: false,
-    }).then(() => {}).catch!(() => {
+    try {
+      await supabase.from("notifications").insert({
+        user_id: ownerId,
+        title: subject,
+        body: body.substring(0, 500),
+        type: "financial",
+        read: false,
+      });
+    } catch {
       // notifications table may not exist, that's ok
-    });
+    }
 
     // Log the notification
     console.log(`Notification sent: ${event_type} to ${recipientEmail}`);
