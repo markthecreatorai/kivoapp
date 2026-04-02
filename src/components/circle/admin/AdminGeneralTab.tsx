@@ -26,6 +26,8 @@ interface Props {
 
 export default function AdminGeneralTab({ community }: Props) {
   const queryClient = useQueryClient();
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: community.name || "",
