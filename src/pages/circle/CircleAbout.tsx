@@ -194,8 +194,54 @@ export default function CircleAbout() {
     enabled: !!community?.id,
   });
 
+  const isMember = !!member;
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
   const isAdminEditing = isAdmin && !previewMode;
+
+  // Entitlement check for FREE_WITH_PRODUCT
+  const { data: hasEntitlement } = useQuery({
+    queryKey: ["about-entitlement", community?.linked_product_id, user?.id],
+    queryFn: async () => {
+      if (!community?.linked_product_id || !user) return false;
+      const { data } = await supabase
+        .from("entitlements" as any)
+        .select("id")
+        .eq("product_id", community.linked_product_id)
+        .is("revoked_at", null)
+        .limit(1);
+      return ((data as any[])?.length || 0) > 0;
+    },
+    enabled: !!community?.linked_product_id && !!user && community?.access_type === "FREE_WITH_PRODUCT" && !isMember,
+  });
+
+  // Join community mutation
+  const joinCommunity = useMutation({
+    mutationFn: async () => {
+      if (!community || !user) throw new Error("Missing data");
+      const status = community.require_approval ? "PENDING" : "ACTIVE";
+      const { error } = await supabase.from("community_members").insert({
+        community_id: community.id,
+        user_id: user.id,
+        role: "MEMBER",
+        status,
+        display_name: user.email?.split("@")[0] || "Membro",
+      });
+      if (error) throw error;
+      return status;
+    },
+    onSuccess: (status) => {
+      queryClient.invalidateQueries({ queryKey: ["circle-member"] });
+      queryClient.invalidateQueries({ queryKey: ["about-member"] });
+      if (status === "PENDING") {
+        toast.success("Solicitação enviada! Aguarde aprovação.");
+      } else {
+        toast.success("Bem-vindo à comunidade!");
+        if (community) notifyMemberJoined(community.id, user?.email?.split("@")[0] || "Novo membro", "");
+        navigate(`/circles/${slug}/feed`);
+      }
+    },
+    onError: () => toast.error("Erro ao entrar na comunidade"),
+  });
 
   // Parse gallery from community data
   const serverGallery: GalleryItem[] = (() => {
