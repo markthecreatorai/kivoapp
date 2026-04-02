@@ -1,46 +1,54 @@
 
 
-## Fix: Criador não aparece como OWNER e perfil Kivo não é puxado
+## Fix: Criador não vira OWNER ao criar comunidade via MyCommunities
 
-### Causa raiz (2 bugs)
+### Causa raiz
 
-**Bug 1 — About page insere MEMBER direto, sem usar RPC:**
-`CircleAbout.tsx` linha 222 faz `supabase.from("community_members").insert({ role: "MEMBER" })` ao invés de usar a RPC `join_community`. Quando o criador visita `/circles/:slug/about` e clica "Entrar na Comunidade", ele é inserido como MEMBER.
+Em `MyCommunities.tsx` linha 134, o criador é inserido diretamente na tabela `community_members` com `role: "OWNER"`. Porém, a política de RLS da tabela só permite insert com `role = 'MEMBER'`:
 
-**Bug 2 — RPC `join_community` usa ON CONFLICT DO NOTHING:**
-Mesmo que o `CircleDashboard` chame a RPC com `p_role: 'OWNER'` depois, como a row MEMBER já existe, o `ON CONFLICT DO NOTHING` ignora silenciosamente. O criador nunca vira OWNER.
+```sql
+-- RLS atual:
+with_check: (user_id = auth.uid()) AND (role = 'MEMBER')
+```
 
-**Bug 3 — Display name usa email prefix:**
-Tanto o About quanto o Dashboard usam `user.email?.split("@")[0]` ao invés de buscar o nome do perfil Kivo (`profiles.display_name`).
+O insert com `role: "OWNER"` é **silenciosamente rejeitado** pelo RLS. O criador nunca se torna OWNER.
 
-### Fix imediato — dados atuais
+A RPC `join_community` é `SECURITY DEFINER` e **bypassa RLS**, suportando qualquer role. Mas o `MyCommunities` não a usa.
 
-Corrigir o registro atual do Lucas na comunidade `creatoracademyceo`:
-- Atualizar role de MEMBER para OWNER
-- Atualizar display_name de "lucaslopescarrijo" para "Lucas Carrijo"
+### Mudanças
 
-### Mudanças no código
+**`src/pages/circle/MyCommunities.tsx`**
 
-**1. `src/pages/circle/CircleAbout.tsx`**
-- Trocar o `insert` direto pela RPC `join_community` (que já resolve display_name, avatar e username automaticamente)
-- Isso garante consistência e usa SECURITY DEFINER para bypass de RLS
+1. Substituir o insert direto (linhas 133-140):
+```typescript
+// ANTES (falha silenciosamente por RLS):
+await supabase.from("community_members").insert({
+  community_id: community.id,
+  user_id: user.id,
+  role: "OWNER",
+  ...
+});
 
-**2. Migration SQL — Alterar RPC `join_community`**
-- Trocar `ON CONFLICT DO NOTHING` por `ON CONFLICT (community_id, user_id) DO UPDATE SET role = EXCLUDED.role` somente quando o novo role é mais privilegiado (OWNER > ADMIN > MEMBER)
-- Isso permite que a chamada de OWNER sempre promova um MEMBER existente
-- Também atualizar display_name e avatar se estiverem vazios
+// DEPOIS (usa RPC SECURITY DEFINER):
+await supabase.rpc("join_community", {
+  p_community_id: community.id,
+  p_user_id: user.id,
+  p_display_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Owner",
+  p_role: "OWNER",
+  p_status: "ACTIVE",
+});
+```
 
-**3. `src/pages/circle/CircleDashboard.tsx`**
-- Buscar display_name do perfil Kivo antes de chamar a RPC (fallback para email prefix)
+2. Adicionar criação dos 4 espaços padrão (Geral, Anúncios, Perguntas, Conquistas) após criar a comunidade — mesmo padrão do `CircleDashboard`
 
-### Resultado
-- Criador sempre será OWNER da comunidade que criou
-- Display name e avatar puxam dados do perfil Kivo
-- Join via about page usa a RPC padronizada
-- Usuários existentes com role incorreto podem ser corrigidos via re-chamada da RPC
+3. Remover `CircleDashboard.tsx` (arquivo órfão, sem rota, código duplicado)
 
 ### Arquivos alterados
-1. `src/pages/circle/CircleAbout.tsx` — usar RPC `join_community` no join
-2. `src/pages/circle/CircleDashboard.tsx` — buscar display_name do perfil
-3. Nova migration SQL — atualizar RPC para `ON CONFLICT DO UPDATE` com promoção de role + fix dados Lucas
+1. `src/pages/circle/MyCommunities.tsx` — usar RPC + criar espaços padrão
+2. Deletar `src/pages/circle/CircleDashboard.tsx` — código órfão
+
+### Resultado
+- Criador sempre será OWNER (RPC bypassa RLS)
+- Espaços padrão criados automaticamente
+- Código duplicado eliminado
 
