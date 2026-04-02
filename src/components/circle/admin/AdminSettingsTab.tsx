@@ -177,8 +177,8 @@ export default function AdminSettingsTab({ community, member }: Props) {
           <div>
             <Label>Imagem de capa</Label>
             <div className="mt-1.5">
-              {community.cover_image_url && (
-                <img src={community.cover_image_url} alt="" className="h-20 w-full object-cover rounded-lg mb-2 border border-border" />
+              {(coverPreview || community.cover_image_url) && (
+                <img src={coverPreview || community.cover_image_url} alt="" className="h-20 w-full object-cover rounded-lg mb-2 border border-border" />
               )}
               <label className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:underline">
                 <Upload className="h-4 w-4" />Enviar capa
