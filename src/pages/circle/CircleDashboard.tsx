@@ -43,7 +43,7 @@ export default function CircleDashboard() {
       const slug = currentWorkspace.slug + "-circle";
 
       // Upsert: idempotent — ignores if already exists
-      const { data: comm, error } = await supabase
+      const { data: community, error } = await supabase
         .from("communities")
         .upsert(
           {
@@ -53,26 +53,12 @@ export default function CircleDashboard() {
             description: "Comunidade oficial",
             access_type: "OPEN",
           },
-          { onConflict: "workspace_id", ignoreDuplicates: true }
+          { onConflict: "workspace_id" }
         )
-        .select()
-        .maybeSingle();
+        .select("id,slug")
+        .single();
 
-      // If upsert returned nothing (already existed), fetch existing
-      let community = comm;
-      if (!community) {
-        const { data: existing } = await supabase
-          .from("communities")
-          .select("*")
-          .eq("workspace_id", currentWorkspace.id)
-          .maybeSingle();
-        if (existing) {
-          navigate(`/circles/${existing.slug}/feed`, { replace: true });
-          return existing;
-        }
-        if (error) throw error;
-        throw new Error("Failed to create or find community");
-      }
+      if (error) throw error;
 
       // Add creator as OWNER via RPC (has ON CONFLICT DO NOTHING)
       await supabase.rpc("join_community", {
