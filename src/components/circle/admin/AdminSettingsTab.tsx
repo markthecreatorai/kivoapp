@@ -111,6 +111,10 @@ export default function AdminSettingsTab({ community, member }: Props) {
   });
 
   const uploadImage = async (file: File, type: "cover" | "icon") => {
+    const previewUrl = URL.createObjectURL(file);
+    if (type === "cover") setCoverPreview(previewUrl);
+    else setIconPreview(previewUrl);
+
     const ext = file.name.split(".").pop();
     const path = `${community.id}/${type}-${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("community").upload(path, file, { upsert: true });
