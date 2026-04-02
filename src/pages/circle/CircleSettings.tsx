@@ -1,8 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useUpdateMemberProfile } from "@/hooks/useUpdateMemberProfile";
 import { Button } from "@/components/ui/button";

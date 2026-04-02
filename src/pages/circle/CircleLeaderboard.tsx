@@ -114,7 +114,7 @@ export default function CircleLeaderboard() {
         .update({ level_names: levelNames } as any)
         .eq("id", community.id);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["community-slug", slug] });
       toast.success("Nomes dos níveis salvos!");
       setSettingsOpen(false);
     } catch {
