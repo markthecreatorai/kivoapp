@@ -135,7 +135,7 @@ const SECTION_ITEMS = [
 ];
 
 export default function CircleSettings() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
