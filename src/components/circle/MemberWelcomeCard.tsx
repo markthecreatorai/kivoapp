@@ -23,9 +23,10 @@ export default function MemberWelcomeCard({ communityId, memberId, slug }: Membe
   const [dismissed, setDismissed] = useState(() =>
     localStorage.getItem(DISMISSED_KEY(communityId, memberId)) === "true"
   );
-  const [collapsed, setCollapsed] = useState(() =>
-    localStorage.getItem(COLLAPSED_KEY(communityId, memberId)) === "true"
-  );
+  const [collapsed, setCollapsed] = useState(() => {
+    const stored = localStorage.getItem(COLLAPSED_KEY(communityId, memberId));
+    return stored === null ? true : stored === "true";
+  });
 
   // Fetch active tasks
   const { data: tasks } = useQuery({
