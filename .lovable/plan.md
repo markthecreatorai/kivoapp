@@ -1,19 +1,52 @@
 
 
-## Fix: uq_community_workspace constraint violation (race condition)
+## Fix definitivo: uq_community_workspace
 
 ### Causa raiz
-O guard atual faz `select` antes do `insert`, mas existe uma race condition: se o `select` não encontrar a comunidade (por RLS ou timing), o `insert` falha com a constraint. A solução correta é usar **upsert** com `ignoreDuplicates: true`, tornando a operação idempotente.
+
+O `upsert` com `ignoreDuplicates: true` usa `ON CONFLICT DO NOTHING`, que **não retorna a row existente**. O PostgREST/Supabase JS client interpreta isso como erro em alguns casos, especialmente quando combinado com `.select()`. O fluxo atual falha porque:
+
+1. `upsert(..., { ignoreDuplicates: true })` → não insere, não retorna dados
+2. O fallback `select` pode falhar por RLS ou timing
+3. O erro da constraint vaza para o `onError`
+
+### Solução
+
+Trocar para `upsert` **sem** `ignoreDuplicates` (faz `ON CONFLICT DO UPDATE`). Isso sempre retorna a row, seja nova ou existente. O update é idempotente pois seta os mesmos valores.
 
 ### Mudanças em `src/pages/circle/CircleDashboard.tsx`
 
-1. Trocar `.insert(...)` por `.upsert(..., { onConflict: 'workspace_id', ignoreDuplicates: true })` na criação da comunidade
-2. Após o upsert, se não retornou dados (já existia), buscar a comunidade existente e redirecionar
-3. Usar `join_community` RPC (que já tem `ON CONFLICT DO NOTHING`) para o member insert
-4. Manter o `onError` com tratamento de 23505 como fallback de segurança
+```typescript
+// ANTES (linha 46-59):
+const { data: comm, error } = await supabase
+  .from("communities")
+  .upsert({...}, { onConflict: "workspace_id", ignoreDuplicates: true })
+  .select()
+  .maybeSingle();
+
+// DEPOIS:
+const { data: comm, error } = await supabase
+  .from("communities")
+  .upsert({
+    workspace_id: currentWorkspace.id,
+    name: currentWorkspace.name + " Circle",
+    slug,
+    description: "Comunidade oficial",
+    access_type: "OPEN",
+  }, { onConflict: "workspace_id" })
+  .select("id,slug")
+  .single();
+
+if (error) throw error;
+```
+
+Remover o bloco de fallback (linhas 61-75) pois o `upsert` sem `ignoreDuplicates` sempre retorna a row. O resto (join_community RPC, default spaces) permanece igual.
+
+### Arquivo alterado
+1. `src/pages/circle/CircleDashboard.tsx`
 
 ### Resultado
-- Operação idempotente sem race condition
-- Duplo clique ou retry não causa erro
-- Redireciona automaticamente se comunidade já existe
+- `ON CONFLICT (workspace_id) DO UPDATE` sempre retorna a row
+- Sem race condition, sem erro de constraint
+- Operação 100% idempotente
 
