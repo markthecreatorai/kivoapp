@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Settings, Users, LayoutGrid, CreditCard, Flag } from "lucide-react";
@@ -15,17 +15,17 @@ import AdminSubscriptionsTab from "@/components/circle/admin/AdminSubscriptionsT
 import AdminModerationTab from "@/components/circle/admin/AdminModerationTab";
 
 export default function CircleAdmin() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
-      const { data } = await supabase.from("communities").select("*").eq("workspace_id", currentWorkspace.id).single();
+      if (!slug) return null;
+      const { data } = await supabase.from("communities").select("*").eq("slug", slug).eq("is_active", true).maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   const { data: member } = useQuery({

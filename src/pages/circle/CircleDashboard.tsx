@@ -16,7 +16,7 @@ export default function CircleDashboard() {
   const queryClient = useQueryClient();
 
   const { data: community, isLoading } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-ws", currentWorkspace?.id],
     queryFn: async () => {
       if (!currentWorkspace) return null;
       const { data } = await supabase

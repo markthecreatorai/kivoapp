@@ -1,34 +1,34 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { LayoutGrid, Search, Plus, Shield } from "lucide-react";
 import SpaceFormModal from "@/components/circle/SpaceFormModal";
 
 export default function CircleSpaces() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
+      if (!slug) return null;
       const { data } = await supabase
         .from("communities")
         .select("*")
-        .eq("workspace_id", currentWorkspace.id)
-        .single();
+        .eq("slug", slug)
+        .eq("is_active", true)
+        .maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   const { data: member } = useQuery({

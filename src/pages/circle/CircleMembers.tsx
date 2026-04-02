@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Users, Search, Flame, Info } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
@@ -17,20 +17,20 @@ const MAX_VISIBLE = 30;
 const ROLE_PRIORITY: Record<string, number> = { OWNER: 0, ADMIN: 1, MODERATOR: 2, MEMBER: 3 };
 
 export default function CircleMembers() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const [search, setSearch] = useState("");
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
+      if (!slug) return null;
       const { data } = await supabase
         .from("communities").select("*")
-        .eq("workspace_id", currentWorkspace.id).single();
+        .eq("slug", slug).eq("is_active", true).maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   // Fetch total count separately

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export default function CircleLeaderboard() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -26,15 +26,15 @@ export default function CircleLeaderboard() {
   const queryClient = useQueryClient();
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
+      if (!slug) return null;
       const { data } = await supabase
         .from("communities").select("*")
-        .eq("workspace_id", currentWorkspace.id).single();
+        .eq("slug", slug).eq("is_active", true).maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   const { data: member } = useQuery({
@@ -114,7 +114,7 @@ export default function CircleLeaderboard() {
         .update({ level_names: levelNames } as any)
         .eq("id", community.id);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["community-slug", slug] });
       toast.success("Nomes dos níveis salvos!");
       setSettingsOpen(false);
     } catch {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createNotification } from "@/lib/notifications";
 
 export default function CircleMessages() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedConv, setSelectedConv] = useState<string | null>(null);
@@ -29,13 +29,13 @@ export default function CircleMessages() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
-      const { data } = await supabase.from("communities").select("*").eq("workspace_id", currentWorkspace.id).maybeSingle();
+      if (!slug) return null;
+      const { data } = await supabase.from("communities").select("*").eq("slug", slug).eq("is_active", true).maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   const { data: member } = useQuery({
