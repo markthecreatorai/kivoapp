@@ -742,7 +742,7 @@ export default function CircleClassroom() {
             open={showFormModal}
             onOpenChange={(open) => { setShowFormModal(open); if (!open) setEditingCourse(null); }}
             communityId={community.id}
-            workspaceId={currentWorkspace?.id}
+            workspaceId={community?.workspace_id}
             course={editingCourse}
             nextPosition={0}
           />
