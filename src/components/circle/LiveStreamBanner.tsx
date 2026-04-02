@@ -34,7 +34,7 @@ export default function LiveStreamBanner({ communityId, onWatch, isAdmin, onCrea
   const liveNow = streams?.filter((s: any) => s.status === "LIVE") || [];
   const scheduled = streams?.filter((s: any) => s.status === "SCHEDULED") || [];
 
-  if (!liveNow.length && !scheduled.length) return null;
+  if (!liveNow.length) return null;
 
   return (
     <div className="space-y-2">
