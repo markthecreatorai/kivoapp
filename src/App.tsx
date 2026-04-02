@@ -96,9 +96,16 @@ const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
 const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
 
 // Public community pages
-const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
+
+/** Redirect /circles/:slug → /circles/:slug/about preserving query params */
+function CommunitySlugRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  return <Navigate to={`/circles/${slug}/about${qs ? `?${qs}` : ""}`} replace />;
+}
 
 /** Redirect /circle-settings?section=X and /circle/settings?section=X → first community settings */
 function CircleSettingsRedirect() {
@@ -280,8 +287,8 @@ const App = () => (
                 {/* Legacy redirect: /circle → /circles */}
                 <Route path="/circle" element={<Navigate to="/circles" replace />} />
 
-                {/* Public community landing (no auth required) */}
-                <Route path="/circles/:slug" element={<CommunityLanding />} />
+                {/* Redirect to about page */}
+                <Route path="/circles/:slug" element={<CommunitySlugRedirect />} />
                 <Route path="/circles/:slug/plans" element={<CommunitySelectPlan />} />
 
                 {/* Authenticated circle pages — persistent CircleLayout with Outlet */}

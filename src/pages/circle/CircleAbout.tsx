@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -11,10 +11,11 @@ import { Label } from "@/components/ui/label";
 import {
   Users, Globe, CreditCard, CheckCircle, Play,
   Upload, Link2, Pencil, X, Plus, Eye, EyeOff,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UserPlus, Lock, ShoppingCart, LogIn,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { notifyMemberJoined } from "@/lib/notifications";
 import {
   DndContext,
   DragOverlay,
@@ -128,6 +129,7 @@ function getVideoThumbnail(url: string): string | null {
 export default function CircleAbout() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -192,8 +194,54 @@ export default function CircleAbout() {
     enabled: !!community?.id,
   });
 
+  const isMember = !!member;
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
   const isAdminEditing = isAdmin && !previewMode;
+
+  // Entitlement check for FREE_WITH_PRODUCT
+  const { data: hasEntitlement } = useQuery({
+    queryKey: ["about-entitlement", community?.linked_product_id, user?.id],
+    queryFn: async () => {
+      if (!community?.linked_product_id || !user) return false;
+      const { data } = await supabase
+        .from("entitlements" as any)
+        .select("id")
+        .eq("product_id", community.linked_product_id)
+        .is("revoked_at", null)
+        .limit(1);
+      return ((data as any[])?.length || 0) > 0;
+    },
+    enabled: !!community?.linked_product_id && !!user && community?.access_type === "FREE_WITH_PRODUCT" && !isMember,
+  });
+
+  // Join community mutation
+  const joinCommunity = useMutation({
+    mutationFn: async () => {
+      if (!community || !user) throw new Error("Missing data");
+      const status = community.require_approval ? "PENDING" : "ACTIVE";
+      const { error } = await supabase.from("community_members").insert({
+        community_id: community.id,
+        user_id: user.id,
+        role: "MEMBER",
+        status,
+        display_name: user.email?.split("@")[0] || "Membro",
+      });
+      if (error) throw error;
+      return status;
+    },
+    onSuccess: (status) => {
+      queryClient.invalidateQueries({ queryKey: ["circle-member"] });
+      queryClient.invalidateQueries({ queryKey: ["about-member"] });
+      if (status === "PENDING") {
+        toast.success("Solicitação enviada! Aguarde aprovação.");
+      } else {
+        toast.success("Bem-vindo à comunidade!");
+        if (community) notifyMemberJoined(community.id, user?.email?.split("@")[0] || "Novo membro", "");
+        navigate(`/circles/${slug}/feed`);
+      }
+    },
+    onError: () => toast.error("Erro ao entrar na comunidade"),
+  });
 
   // Parse gallery from community data
   const serverGallery: GalleryItem[] = (() => {
@@ -532,7 +580,41 @@ export default function CircleAbout() {
         )}
       </div>
 
-      {/* ── DESCRIPTION ── */}
+      {/* ── JOIN CTA for non-members ── */}
+      {!isMember && community && (
+        <div className="pt-1">
+          {!user ? (
+            <Button size="lg" onClick={() => navigate(`/login?redirect=/circles/${slug}/about`)} className="w-full md:w-auto">
+              <LogIn className="h-5 w-5 mr-2" /> Entrar para participar
+            </Button>
+          ) : community.access_type === "OPEN" ? (
+            <Button size="lg" onClick={() => joinCommunity.mutate()} disabled={joinCommunity.isPending} className="w-full md:w-auto">
+              <UserPlus className="h-5 w-5 mr-2" />
+              {community.require_approval ? "Solicitar Entrada" : "Entrar na Comunidade"}
+            </Button>
+          ) : community.access_type === "FREE_WITH_PRODUCT" ? (
+            hasEntitlement ? (
+              <Button size="lg" onClick={() => joinCommunity.mutate()} disabled={joinCommunity.isPending} className="w-full md:w-auto">
+                <UserPlus className="h-5 w-5 mr-2" /> Entrar na Comunidade
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Lock className="h-4 w-4" /> Acesso incluso na compra do produto vinculado
+                </div>
+                <Button size="lg" onClick={() => navigate(`/checkout/${community.linked_product_id}`)} className="w-full md:w-auto">
+                  <ShoppingCart className="h-5 w-5 mr-2" /> Comprar para Acessar
+                </Button>
+              </div>
+            )
+          ) : community.access_type === "PAID_SUBSCRIPTION" ? (
+            <Button size="lg" onClick={() => navigate(`/circles/${slug}/plans`)} className="w-full md:w-auto">
+              <CreditCard className="h-5 w-5 mr-2" /> Ver planos
+            </Button>
+          ) : null}
+        </div>
+      )}
+
       {editingDescription && isAdminEditing ? (
         <div className="space-y-2">
           <div className="relative">

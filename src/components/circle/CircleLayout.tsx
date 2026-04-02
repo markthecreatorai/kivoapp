@@ -17,18 +17,12 @@ import {
   Users,
   Calendar,
   BookOpen,
-  Bell,
-  ChevronLeft,
   LogIn,
   ShieldX,
   Clock,
-  ShoppingCart,
   UserPlus,
   Eye,
-  Lock,
-  Mail,
   SlidersHorizontal,
-  LayoutGrid,
   Star,
   Settings,
   User,
@@ -37,7 +31,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -222,21 +215,6 @@ export default function CircleLayout() {
     enabled: !!member,
   });
 
-  const { data: previewPosts } = useQuery({
-    queryKey: ["circle-preview-posts", community?.id],
-    queryFn: async () => {
-      if (!community) return [];
-      const { data } = await supabase
-        .from("community_posts")
-        .select("*, author:community_members!author_id(display_name, avatar_url)")
-        .eq("community_id", community.id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(3);
-      return data || [];
-    },
-    enabled: !!community && !member,
-  });
 
   const joinCommunity = useMutation({
     mutationFn: async () => {
@@ -308,9 +286,46 @@ export default function CircleLayout() {
     );
   }
 
-  // Not logged in — redirect to community landing
+  // Check if current route is the /about page (allow without auth/member)
+  const isAboutPage = location.pathname.endsWith("/about");
+
+  // Not logged in — allow about page, redirect others
   if (!user) {
-    return <Navigate to={`/circles/${slug}`} replace />;
+    if (isAboutPage && community) {
+      // Render layout with Outlet for about page (no member needed)
+      return (
+        <div className="min-h-screen bg-muted/40 flex flex-col">
+          <header className="sticky top-0 z-30 bg-card border-b border-border">
+            <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
+              <div className="flex items-center gap-2">
+                {community.icon_url ? (
+                  <img src={community.icon_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                ) : (
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                  </div>
+                )}
+                <span className="font-semibold text-foreground">{community.name}</span>
+              </div>
+              <div className="flex-1" />
+              <Button size="sm" onClick={() => navigate(`/login?redirect=/circles/${slug}/about`)}>
+                <LogIn className="h-4 w-4 mr-1.5" /> Entrar
+              </Button>
+            </div>
+          </header>
+          <main className="flex-1 pb-6">
+            <div className="max-w-5xl mx-auto flex gap-0">
+              <div className="flex-1 min-w-0">
+                <Suspense fallback={<PageSkeleton />}>
+                  <Outlet />
+                </Suspense>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+    return <Navigate to={`/circles/${slug}/about`} replace />;
   }
 
   // No community
@@ -364,89 +379,11 @@ export default function CircleLayout() {
       return <CirclePaywall community={community} />;
     }
 
-    // Landing page for non-members (OPEN / FREE_WITH_PRODUCT)
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="relative h-48 md:h-64 bg-gradient-to-br from-primary/20 via-primary/10 to-muted overflow-hidden">
-          {community.cover_image_url && (
-            <img src={community.cover_image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-        </div>
-        <div className="max-w-2xl mx-auto px-4 -mt-16 relative z-10 pb-12">
-          <div className="flex items-end gap-4 mb-6">
-            {community.icon_url ? (
-              <img src={community.icon_url} alt="" className="h-20 w-20 rounded-2xl object-cover border-4 border-background shadow-lg" />
-            ) : (
-              <div className="h-20 w-20 rounded-2xl bg-primary/10 border-4 border-background shadow-lg flex items-center justify-center">
-                <MessageSquare className="h-8 w-8 text-primary" />
-              </div>
-            )}
-            <div className="pb-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">{community.name}</h1>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                <span className="flex items-center gap-1"><Users className="h-4 w-4" />{community.member_count} membros</span>
-                <span className="flex items-center gap-1"><MessageSquare className="h-4 w-4" />{community.post_count} posts</span>
-              </div>
-            </div>
-          </div>
-          {community.description && <p className="text-muted-foreground mb-6">{community.description}</p>}
-          <div className="mb-8">
-            {community.access_type === "OPEN" && (
-              <Button size="lg" onClick={() => joinCommunity.mutate()} disabled={joinCommunity.isPending} className="w-full md:w-auto">
-                <UserPlus className="h-5 w-5 mr-2" />
-                {community.require_approval ? "Solicitar Entrada" : "Entrar na Comunidade"}
-              </Button>
-            )}
-            {community.access_type === "FREE_WITH_PRODUCT" && (
-              <>
-                {hasEntitlement ? (
-                  <Button size="lg" onClick={() => { if (!autoJoin.isPending && !autoJoin.isSuccess) autoJoin.mutate(); }} disabled={autoJoin.isPending} className="w-full md:w-auto">
-                    <UserPlus className="h-5 w-5 mr-2" />Entrar na Comunidade
-                  </Button>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Lock className="h-4 w-4" /><span>Acesso incluso na compra do produto vinculado</span>
-                    </div>
-                    <Button size="lg" onClick={() => navigate(`/checkout/${community.linked_product_id}`)} className="w-full md:w-auto">
-                      <ShoppingCart className="h-5 w-5 mr-2" />Comprar para Acessar
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          {previewPosts && previewPosts.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Posts recentes</h3>
-              {previewPosts.map((post: any, i: number) => (
-                <Card key={post.id} className={cn("p-4 relative overflow-hidden", i > 0 && "blur-[2px] pointer-events-none select-none")}>
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={post.author?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {(post.author?.display_name || "U").charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm">{post.author?.display_name || "Membro"}</span>
-                      <h4 className="font-semibold text-foreground mt-1">{post.title}</h4>
-                      {post.body && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{post.body}</p>}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-                  <Eye className="h-4 w-4" /> Entre para ver todos os posts
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    // Non-member: redirect to about page (which shows join button)
+    if (!isAboutPage) {
+      return <Navigate to={`/circles/${slug}/about`} replace />;
+    }
+    // If already on about page, fall through to render layout with Outlet
   }
 
   // ── PAID_SUBSCRIPTION: active member but subscription not active? ──
