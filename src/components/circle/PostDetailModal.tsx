@@ -330,9 +330,11 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
     }
   };
 
-  /* ── Body truncation ─── */
+  /* ── Body with auto-linked URLs ─── */
+  const linkifyText = (text: string) =>
+    text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-primary underline break-all">$1</a>');
   const bodyHtml = post?.body
-    ? post.body.startsWith("<") ? post.body : `<p>${post.body.replace(/\n/g, "<br/>")}</p>`
+    ? post.body.startsWith("<") ? linkifyText(post.body) : `<p>${linkifyText(post.body.replace(/\n/g, "<br/>"))}</p>`
     : "";
   const isLongBody = (post?.body || "").length > 600;
 
