@@ -96,9 +96,16 @@ const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
 const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
 
 // Public community pages
-const CommunityLanding = lazy(() => import("./pages/CommunityLanding"));
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
 const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
+
+/** Redirect /circles/:slug → /circles/:slug/about preserving query params */
+function CommunitySlugRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  return <Navigate to={`/circles/${slug}/about${qs ? `?${qs}` : ""}`} replace />;
+}
 
 /** Redirect /circle-settings?section=X and /circle/settings?section=X → first community settings */
 function CircleSettingsRedirect() {
