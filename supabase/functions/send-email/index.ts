@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
           providerMessageId = result?.id || result?.messageId || null;
         }
       } catch (err) {
-        sendError = `Network error: ${err.message}`;
+        sendError = `Network error: ${(err as Error).message}`;
         console.error("Email send error:", err);
       }
     } else {
