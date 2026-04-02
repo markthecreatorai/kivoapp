@@ -25,21 +25,20 @@ import CommentSection from "@/components/circle/CommentSection";
 import { createNotification } from "@/lib/notifications";
 
 export default function CirclePostDetail() {
-  const { id: postId } = useParams();
+  const { id: postId, slug } = useParams();
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
-      const { data } = await supabase.from("communities").select("*").eq("workspace_id", currentWorkspace.id).single();
+      if (!slug) return null;
+      const { data } = await supabase.from("communities").select("*").eq("slug", slug).eq("is_active", true).maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   const { data: member } = useQuery({

@@ -18,17 +18,18 @@ export default function CircleSpaces() {
   const [showCreate, setShowCreate] = useState(false);
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", slug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
+      if (!slug) return null;
       const { data } = await supabase
         .from("communities")
         .select("*")
-        .eq("workspace_id", currentWorkspace.id)
-        .single();
+        .eq("slug", slug)
+        .eq("is_active", true)
+        .maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!slug,
   });
 
   const { data: member } = useQuery({

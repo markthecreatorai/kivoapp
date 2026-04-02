@@ -89,15 +89,15 @@ export default function CircleFeed() {
   }, [communitySlug]);
 
   const { data: community } = useQuery({
-    queryKey: ["community", currentWorkspace?.id],
+    queryKey: ["community-slug", communitySlug],
     queryFn: async () => {
-      if (!currentWorkspace) return null;
+      if (!communitySlug) return null;
       const { data } = await supabase
         .from("communities").select("*")
-        .eq("workspace_id", currentWorkspace.id).single();
+        .eq("slug", communitySlug).eq("is_active", true).maybeSingle();
       return data;
     },
-    enabled: !!currentWorkspace,
+    enabled: !!communitySlug,
   });
 
   const { data: member } = useQuery({
