@@ -287,8 +287,8 @@ const App = () => (
                 {/* Legacy redirect: /circle → /circles */}
                 <Route path="/circle" element={<Navigate to="/circles" replace />} />
 
-                {/* Public community landing (no auth required) */}
-                <Route path="/circles/:slug" element={<CommunityLanding />} />
+                {/* Redirect to about page */}
+                <Route path="/circles/:slug" element={<CommunitySlugRedirect />} />
                 <Route path="/circles/:slug/plans" element={<CommunitySelectPlan />} />
 
                 {/* Authenticated circle pages — persistent CircleLayout with Outlet */}
