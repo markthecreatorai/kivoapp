@@ -58,7 +58,7 @@ export default function CircleFeed() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [showCompose, setShowCompose] = useState(false);
-  const [filter, setFilter] = useState<"recent" | "popular">("recent");
+  const [filter, setFilter] = useState<"default" | "new" | "top" | "unread">("default");
   const [activeSpaceId, setActiveSpaceId] = useState<string>("all");
   const [showLiveForm, setShowLiveForm] = useState(false);
   const [watchingStream, setWatchingStream] = useState<any>(null);
