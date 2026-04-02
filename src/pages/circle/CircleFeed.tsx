@@ -50,7 +50,6 @@ function InviteDialogBody({ slug }: { slug: string }) {
 }
 
 export default function CircleFeed() {
-  const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const { slug: communitySlug, spaceSlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
