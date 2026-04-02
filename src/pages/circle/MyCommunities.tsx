@@ -130,14 +130,24 @@ export default function MyCommunities() {
         .single();
       if (error) throw error;
 
-      // Add creator as OWNER member
-      await supabase.from("community_members").insert({
-        community_id: community.id,
-        user_id: user.id,
-        role: "OWNER",
-        status: "ACTIVE",
-        display_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Owner",
+      // Add creator as OWNER member (uses SECURITY DEFINER to bypass RLS)
+      const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Owner";
+      await supabase.rpc("join_community", {
+        p_community_id: community.id,
+        p_user_id: user.id,
+        p_display_name: displayName,
+        p_role: "OWNER",
+        p_status: "ACTIVE",
       });
+
+      // Create default spaces
+      const defaultSpaces = [
+        { community_id: community.id, name: "Geral", slug: "geral", emoji: "💬", is_default: true, position: 0 },
+        { community_id: community.id, name: "Anúncios", slug: "anuncios", emoji: "📢", only_admins_can_post: true, position: 1 },
+        { community_id: community.id, name: "Perguntas", slug: "perguntas", emoji: "❓", position: 2 },
+        { community_id: community.id, name: "Conquistas", slug: "conquistas", emoji: "🏆", position: 3 },
+      ];
+      await supabase.from("community_spaces").upsert(defaultSpaces, { onConflict: "community_id,slug", ignoreDuplicates: true });
 
       return community;
     },
