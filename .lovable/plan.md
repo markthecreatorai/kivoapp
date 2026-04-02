@@ -1,45 +1,27 @@
 
 
-## Fix: Drag-and-drop estilo Trello (sem elástico, acompanha o mouse)
+## Preview instantâneo de banner e ícone no admin settings
 
-### Causa raiz
-O `SortableThumb` usa `transform` e `transition` do `useSortable`, que gera animação de retorno ao soltar. Falta um `DragOverlay` — o componente do dnd-kit que renderiza uma cópia "fantasma" que acompanha o mouse, enquanto os itens reais apenas trocam de posição instantaneamente.
-
-O erro `closestCenter is not defined` é de cache antigo — o código atual já usa `pointerWithin`.
+### Problema
+Ao fazer upload de banner ou ícone, a imagem só aparece após salvar + recarregar porque o `<img>` lê direto de `community.cover_image_url`. O `invalidateQueries` dispara refetch, mas há delay perceptível.
 
 ### Solução
+Adicionar estado local de preview (`coverPreview` / `iconPreview`) em ambos os componentes. Ao selecionar o arquivo, criar URL local via `URL.createObjectURL(file)` e exibir imediatamente, antes mesmo do upload terminar. O upload continua acontecendo em background.
 
-**`src/pages/circle/CircleAbout.tsx`**
+### Mudanças
 
-1. **Importar `DragOverlay`** do `@dnd-kit/core`
+**`src/components/circle/admin/AdminGeneralTab.tsx`**
+- Adicionar `const [coverPreview, setCoverPreview] = useState<string | null>(null)` e `iconPreview` idem
+- Na função `uploadImage`: chamar `setCoverPreview(URL.createObjectURL(file))` (ou icon) **antes** do upload
+- No `<img>` da capa: `src={coverPreview || community.cover_image_url}`
+- No `<img>` do ícone: `src={iconPreview || community.icon_url}`
+- Limpar preview no cleanup (`URL.revokeObjectURL`)
 
-2. **Adicionar estado `activeId`** para rastrear qual item está sendo arrastado
-
-3. **`SortableThumb` — remover transition e esconder item arrastado**:
-   - `transition: undefined` (sem animação de retorno)
-   - `opacity: isDragging ? 0 : 1` (esconde o item original, o overlay mostra a cópia)
-
-4. **Adicionar handlers `onDragStart` e `onDragCancel`** ao `DndContext`:
-   - `onDragStart`: seta `activeId` e inicializa `localGallery`
-   - `onDragCancel`: limpa `activeId` e `localGallery`
-
-5. **Adicionar `<DragOverlay dropAnimation={null}>`** após `SortableContext`:
-   - Renderiza uma cópia estática do thumbnail ativo
-   - `dropAnimation={null}` = sem animação ao soltar (encaixa instantâneo)
-
-```text
-Fluxo:
-  onDragStart → salva activeId, copia gallery p/ local
-  onDragOver  → reordena localGallery (já funciona)  
-  onDragEnd   → persiste, limpa activeId e localGallery
-  DragOverlay → mostra cópia do item sob o cursor
-```
-
-### Arquivos alterados
-1. `src/pages/circle/CircleAbout.tsx` — adicionar DragOverlay, ajustar SortableThumb, adicionar onDragStart/onDragCancel
+**`src/components/circle/admin/AdminSettingsTab.tsx`**
+- Mesma abordagem: estados locais de preview + `createObjectURL` antes do upload + fallback para URL do banco
 
 ### Resultado
-- Item acompanha o mouse suavemente (overlay)
-- Thumbnails trocam de posição em tempo real sem animação elástica
-- Ao soltar, item encaixa instantaneamente na posição final
+- Imagem aparece instantaneamente ao selecionar o arquivo
+- Upload continua normalmente em background
+- Sem necessidade de recarregar página
 
