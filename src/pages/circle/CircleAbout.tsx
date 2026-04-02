@@ -221,13 +221,13 @@ export default function CircleAbout() {
       const status = community.require_approval ? "PENDING" : "ACTIVE";
 
       // Fetch Kivo profile display_name
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
         .from("profiles")
         .select("display_name")
         .eq("id", user.id)
         .maybeSingle();
 
-      const displayName = profile?.display_name || user.email?.split("@")[0] || "Membro";
+      const displayName = (profile as any)?.display_name || user.email?.split("@")[0] || "Membro";
 
       const { error } = await supabase.rpc("join_community" as any, {
         p_community_id: community.id,

@@ -61,13 +61,13 @@ export default function CircleDashboard() {
       if (error) throw error;
 
       // Fetch Kivo profile display_name
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
         .from("profiles")
         .select("display_name")
         .eq("id", user.id)
         .maybeSingle();
 
-      const displayName = profile?.display_name || user.email?.split("@")[0] || "Creator";
+      const displayName = (profile as any)?.display_name || user.email?.split("@")[0] || "Creator";
 
       // Add creator as OWNER via RPC (now supports role promotion)
       await supabase.rpc("join_community", {
