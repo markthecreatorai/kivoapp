@@ -26,6 +26,8 @@ interface Props {
 
 export default function AdminGeneralTab({ community }: Props) {
   const queryClient = useQueryClient();
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: community.name || "",
@@ -67,6 +69,10 @@ export default function AdminGeneralTab({ community }: Props) {
   });
 
   const uploadImage = async (file: File, type: "cover" | "icon") => {
+    const previewUrl = URL.createObjectURL(file);
+    if (type === "cover") setCoverPreview(previewUrl);
+    else setIconPreview(previewUrl);
+
     const ext = file.name.split(".").pop();
     const path = `${community.id}/${type}-${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage
@@ -174,9 +180,9 @@ export default function AdminGeneralTab({ community }: Props) {
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Imagem de capa</Label>
-          {community.cover_image_url && (
+          {(coverPreview || community.cover_image_url) && (
             <img
-              src={community.cover_image_url}
+              src={coverPreview || community.cover_image_url}
               alt="Capa"
               className="h-24 w-full object-cover rounded-xl border border-gray-100"
             />
@@ -195,9 +201,9 @@ export default function AdminGeneralTab({ community }: Props) {
         </div>
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Ícone / Logo</Label>
-          {community.icon_url && (
+          {(iconPreview || community.icon_url) && (
             <img
-              src={community.icon_url}
+              src={iconPreview || community.icon_url}
               alt="Ícone"
               className="h-16 w-16 object-cover rounded-2xl border border-gray-100"
             />

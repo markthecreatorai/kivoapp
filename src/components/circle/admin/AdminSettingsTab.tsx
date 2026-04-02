@@ -25,6 +25,8 @@ interface Props {
 export default function AdminSettingsTab({ community, member }: Props) {
   const queryClient = useQueryClient();
   const { currentWorkspace } = useWorkspace();
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const { inviteLinks, createLink, deactivateLink, copyLink } = useInviteLinks(
     community.id,
     member?.id || ""
@@ -109,6 +111,10 @@ export default function AdminSettingsTab({ community, member }: Props) {
   });
 
   const uploadImage = async (file: File, type: "cover" | "icon") => {
+    const previewUrl = URL.createObjectURL(file);
+    if (type === "cover") setCoverPreview(previewUrl);
+    else setIconPreview(previewUrl);
+
     const ext = file.name.split(".").pop();
     const path = `${community.id}/${type}-${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("community").upload(path, file, { upsert: true });
@@ -171,8 +177,8 @@ export default function AdminSettingsTab({ community, member }: Props) {
           <div>
             <Label>Imagem de capa</Label>
             <div className="mt-1.5">
-              {community.cover_image_url && (
-                <img src={community.cover_image_url} alt="" className="h-20 w-full object-cover rounded-lg mb-2 border border-border" />
+              {(coverPreview || community.cover_image_url) && (
+                <img src={coverPreview || community.cover_image_url} alt="" className="h-20 w-full object-cover rounded-lg mb-2 border border-border" />
               )}
               <label className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:underline">
                 <Upload className="h-4 w-4" />Enviar capa
@@ -184,8 +190,8 @@ export default function AdminSettingsTab({ community, member }: Props) {
           <div>
             <Label>Ícone / Logo</Label>
             <div className="mt-1.5">
-              {community.icon_url && (
-                <img src={community.icon_url} alt="" className="h-16 w-16 object-cover rounded-xl mb-2 border border-border" />
+              {(iconPreview || community.icon_url) && (
+                <img src={iconPreview || community.icon_url} alt="" className="h-16 w-16 object-cover rounded-xl mb-2 border border-border" />
               )}
               <label className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:underline">
                 <Upload className="h-4 w-4" />Enviar ícone
