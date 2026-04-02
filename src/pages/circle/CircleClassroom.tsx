@@ -103,7 +103,7 @@ interface CircleLesson {
 
 // ─── Component ───────────────────────────────────────────────
 export default function CircleClassroom() {
-  const { currentWorkspace } = useWorkspace();
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
