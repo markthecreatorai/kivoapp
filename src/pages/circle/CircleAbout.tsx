@@ -580,7 +580,41 @@ export default function CircleAbout() {
         )}
       </div>
 
-      {/* ── DESCRIPTION ── */}
+      {/* ── JOIN CTA for non-members ── */}
+      {!isMember && community && (
+        <div className="pt-1">
+          {!user ? (
+            <Button size="lg" onClick={() => navigate(`/login?redirect=/circles/${slug}/about`)} className="w-full md:w-auto">
+              <LogIn className="h-5 w-5 mr-2" /> Entrar para participar
+            </Button>
+          ) : community.access_type === "OPEN" ? (
+            <Button size="lg" onClick={() => joinCommunity.mutate()} disabled={joinCommunity.isPending} className="w-full md:w-auto">
+              <UserPlus className="h-5 w-5 mr-2" />
+              {community.require_approval ? "Solicitar Entrada" : "Entrar na Comunidade"}
+            </Button>
+          ) : community.access_type === "FREE_WITH_PRODUCT" ? (
+            hasEntitlement ? (
+              <Button size="lg" onClick={() => joinCommunity.mutate()} disabled={joinCommunity.isPending} className="w-full md:w-auto">
+                <UserPlus className="h-5 w-5 mr-2" /> Entrar na Comunidade
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Lock className="h-4 w-4" /> Acesso incluso na compra do produto vinculado
+                </div>
+                <Button size="lg" onClick={() => navigate(`/checkout/${community.linked_product_id}`)} className="w-full md:w-auto">
+                  <ShoppingCart className="h-5 w-5 mr-2" /> Comprar para Acessar
+                </Button>
+              </div>
+            )
+          ) : community.access_type === "PAID_SUBSCRIPTION" ? (
+            <Button size="lg" onClick={() => navigate(`/circles/${slug}/plans`)} className="w-full md:w-auto">
+              <CreditCard className="h-5 w-5 mr-2" /> Ver planos
+            </Button>
+          ) : null}
+        </div>
+      )}
+
       {editingDescription && isAdminEditing ? (
         <div className="space-y-2">
           <div className="relative">
