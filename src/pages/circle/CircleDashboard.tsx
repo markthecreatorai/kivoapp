@@ -42,7 +42,7 @@ export default function CircleDashboard() {
 
       const slug = currentWorkspace.slug + "-circle";
 
-      // Upsert: idempotent — ignores if already exists
+      // Upsert by slug for idempotency. Workspace can now have multiple communities.
       const { data: community, error } = await supabase
         .from("communities")
         .upsert(
@@ -53,7 +53,7 @@ export default function CircleDashboard() {
             description: "Comunidade oficial",
             access_type: "OPEN",
           },
-          { onConflict: "workspace_id" }
+          { onConflict: "slug" }
         )
         .select("id,slug")
         .single();
@@ -87,9 +87,9 @@ export default function CircleDashboard() {
       toast.success("Comunidade criada com sucesso!");
     },
     onError: (err: any) => {
-      if (err?.message?.includes("uq_community_workspace") || err?.code === "23505") {
+      if (err?.code === "23505") {
         queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
-        toast.info("Comunidade já existe! Redirecionando...");
+        toast.info("Comunidade já existe com esse identificador.");
       } else {
         toast.error("Erro ao criar comunidade");
       }
