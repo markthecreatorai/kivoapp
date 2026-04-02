@@ -25,6 +25,8 @@ interface Props {
 export default function AdminSettingsTab({ community, member }: Props) {
   const queryClient = useQueryClient();
   const { currentWorkspace } = useWorkspace();
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const { inviteLinks, createLink, deactivateLink, copyLink } = useInviteLinks(
     community.id,
     member?.id || ""
