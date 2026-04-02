@@ -201,9 +201,9 @@ export default function AdminGeneralTab({ community }: Props) {
         </div>
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Ícone / Logo</Label>
-          {community.icon_url && (
+          {(iconPreview || community.icon_url) && (
             <img
-              src={community.icon_url}
+              src={iconPreview || community.icon_url}
               alt="Ícone"
               className="h-16 w-16 object-cover rounded-2xl border border-gray-100"
             />

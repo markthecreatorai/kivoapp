@@ -190,8 +190,8 @@ export default function AdminSettingsTab({ community, member }: Props) {
           <div>
             <Label>Ícone / Logo</Label>
             <div className="mt-1.5">
-              {community.icon_url && (
-                <img src={community.icon_url} alt="" className="h-16 w-16 object-cover rounded-xl mb-2 border border-border" />
+              {(iconPreview || community.icon_url) && (
+                <img src={iconPreview || community.icon_url} alt="" className="h-16 w-16 object-cover rounded-xl mb-2 border border-border" />
               )}
               <label className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:underline">
                 <Upload className="h-4 w-4" />Enviar ícone
