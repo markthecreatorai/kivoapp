@@ -17,12 +17,12 @@ interface PeriodFilterProps {
 
 export function PeriodFilter({ selectedPeriod, onPeriodChange }: PeriodFilterProps) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1">
       {periods.map((period) => (
         <button
           key={period.label}
           className={cn(
-            "px-3 py-1.5 text-xs font-medium rounded-full border transition-all",
+
             selectedPeriod === period.value
               ? "bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-foreground))] border-[hsl(var(--nav-active)/0.3)]"
               : "bg-background text-muted-foreground border-border/60 hover:border-border hover:text-foreground"

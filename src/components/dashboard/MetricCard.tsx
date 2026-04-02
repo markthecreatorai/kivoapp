@@ -16,16 +16,16 @@ export function MetricCard({ title, value, icon: Icon, change, prefix = "", suff
   const formattedValue = typeof value === 'number' ? value.toLocaleString() : value;
 
   return (
-    <Card className="bg-card border border-border/40 shadow-none rounded-xl">
-      <CardContent className="p-5">
+    <Card className="bg-card border border-border/35 shadow-none rounded-lg">
+      <CardContent className="p-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             {title}
           </p>
           {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-foreground">
+          <span className="text-xl md:text-2xl font-semibold text-foreground">
             {prefix}{formattedValue}{suffix}
           </span>
           {change !== undefined && change !== 0 && (

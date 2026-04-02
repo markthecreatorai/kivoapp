@@ -19,10 +19,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* Thin topbar — always mounted */}
-          <header className="h-12 flex items-center border-b border-border/40 bg-background shrink-0">
-            <div className="flex items-center px-4">
-              <SidebarTrigger className="lg:inline-flex" />
-            </div>
+          <header className="h-11 flex items-center justify-between border-b border-border/30 bg-background/95 px-3 shrink-0">
+            <SidebarTrigger className="lg:inline-flex" />
+            {!isMobile && (
+              <div className="text-[11px] font-medium text-muted-foreground tracking-wide uppercase">
+                Kivo Dashboard
+              </div>
+            )}
           </header>
 
           {/* Page content swaps here — sidebar/topbar persist, fade-in on swap */}

@@ -34,11 +34,11 @@ export function PaymentMethodsCard({
   const total = methods.reduce((s, m) => s + m.amount, 0) || 1;
 
   return (
-    <Card className="bg-card border border-border/40 shadow-none rounded-xl">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base font-semibold">Métodos de pagamento</CardTitle>
+    <Card className="bg-card border border-border/35 shadow-none rounded-lg">
+      <CardHeader className="pb-3 px-4 pt-4">
+        <CardTitle className="text-sm font-semibold">Métodos de pagamento</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4 px-4 pb-4">
         {/* Distribution bar */}
         <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
           {methods.map((m, i) => {

@@ -185,20 +185,20 @@ export default function Dashboard() {
   const storeRevenue = sourceData.find((s) => s.source_type === "store")?.total_revenue || 0;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-5 space-y-5 max-w-6xl mx-auto">
       {/* Email Verification */}
       <EmailVerificationBanner />
       <DashboardUpgradeCard />
       <OnboardingChecklist />
 
       {/* Page title + filters */}
-      <div className="space-y-3">
-        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+      <div className="space-y-2">
+        <h1 className="text-lg md:text-xl font-semibold text-foreground">Dashboard</h1>
         <PeriodFilter selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
       </div>
 
       {/* 3 KPI cards — total */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MetricCard
           title="Total em vendas"
           value={formatCurrency(metrics.totalRevenue)}
@@ -237,7 +237,7 @@ export default function Dashboard() {
       <PaymentMethodsCard />
 
       {/* 2 charts side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <SalesPerformanceChart data={chartData.map((d) => ({ date: d.date, sales: d.sales }))} />
         <TicketChart data={chartData.map((d) => ({ date: d.date, ticket: d.ticket }))} />
       </div>
