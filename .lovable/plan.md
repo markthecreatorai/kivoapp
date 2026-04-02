@@ -1,46 +1,38 @@
 
 
-## Fix: "duplicate key value violates unique constraint uq_community_workspace"
+## Reordenar feed e reduzir card de boas-vindas (padrão Skool)
 
-### Causa raiz
-A tabela `communities` tem constraint `uq_community_workspace` que permite apenas 1 comunidade por workspace. Já existe uma comunidade para o workspace atual, mas em certas condições (cache, timing de query) o botão "Criar Comunidade" aparece e o usuário clica, causando o erro.
+### Problema
+1. A ordem dos elementos no feed não segue o padrão Skool (imagem de referência)
+2. O card "Bem-vindo! Comece por aqui" ocupa muito espaço, atrapalhando a visualização dos posts fixados
+3. O dropdown de filtro mostra "Mais recentes / Mais curtidos" em vez do padrão Skool (Padrão, Novos, Top, Não lidos)
 
-### Solução
+### Mudanças em `src/pages/circle/CircleFeed.tsx`
 
-**`src/pages/circle/CircleDashboard.tsx`**
-
-1. Na mutation `createCommunity`, antes do `insert`, verificar se já existe uma comunidade para o workspace. Se existir, redirecionar direto para o feed em vez de tentar criar.
-
-2. No `onError`, detectar o erro de constraint duplicada e tratar com mensagem amigável + redirect automático (refetch da query para pegar a comunidade existente).
-
-3. Usar `upsert` ou `onConflict` não é necessário — basta o guard + tratamento de erro.
-
-### Mudanças concretas
-
-```typescript
-// No início do mutationFn, adicionar:
-const { data: existing } = await supabase
-  .from("communities")
-  .select("slug")
-  .eq("workspace_id", currentWorkspace.id)
-  .maybeSingle();
-
-if (existing?.slug) {
-  navigate(`/circles/${existing.slug}/feed`, { replace: true });
-  return existing;
-}
-
-// No onError, melhorar tratamento:
-onError: (err: any) => {
-  if (err?.message?.includes("uq_community_workspace") || err?.code === "23505") {
-    queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
-    toast.info("Comunidade já existe! Redirecionando...");
-  } else {
-    toast.error("Erro ao criar comunidade");
-  }
-}
+**1. Reordenar elementos para seguir o Skool:**
+```
+Composer → Event banner → Live banner → Category pills + filtro → Admin checklist → Member welcome → Posts
 ```
 
+**2. Atualizar filtro dropdown para padrão Skool:**
+- "Padrão" (default — pinned first + recentes)
+- "Novos" (new — por data)
+- "Top" (top — mais curtidos)
+- "Não lidos" (unread — placeholder)
+
+**3. Reduzir tamanho do card de boas-vindas:**
+- Remover o card de onboarding hardcoded (linhas 443-482) — já existe o `MemberWelcomeCard` que faz a mesma coisa
+- Mover `AdminSetupChecklist` e `MemberWelcomeCard` para depois das pills
+
+### Mudanças em `src/components/circle/MemberWelcomeCard.tsx`
+
+**4. Tornar o card mais compacto:**
+- Reduzir padding (px-3 py-2 no header, pb-3 nos tasks)
+- Tasks com py-1.5 em vez de py-2.5
+- Iniciar colapsado por padrão
+- Remover progress bar (ocupa espaço desnecessário)
+
 ### Arquivos alterados
-1. `src/pages/circle/CircleDashboard.tsx` — guard de existência + tratamento de erro de constraint
+1. `src/pages/circle/CircleFeed.tsx` — reordenar elementos, atualizar filtro, remover onboarding duplicado
+2. `src/components/circle/MemberWelcomeCard.tsx` — layout mais compacto
 
