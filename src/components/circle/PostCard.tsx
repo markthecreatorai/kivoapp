@@ -127,6 +127,7 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
 }
 
 export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, memberRole, onOpenPost, onDeletePost }: PostCardProps) {
+  const queryClient = useQueryClient();
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
   const thumbnail = firstImage || videoThumb;
@@ -261,6 +262,19 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
               >
                 <Flag className="h-3.5 w-3.5 mr-2" />Denunciar post
               </DropdownMenuItem>
+              {(memberRole === 'OWNER' || memberRole === 'ADMIN') && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    supabase.from("community_posts").update({ is_pinned: !post.is_pinned }).eq("id", post.id).then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
+                      toast.success(post.is_pinned ? "Post desfixado" : "Post fixado");
+                    });
+                  }}
+                >
+                  <Pin className="h-3.5 w-3.5 mr-2" />{post.is_pinned ? "Desfixar" : "Fixar"}
+                </DropdownMenuItem>
+              )}
               {(post.author_id === memberId || memberRole === 'OWNER' || memberRole === 'ADMIN') && (
                 <>
                   <DropdownMenuSeparator />
