@@ -23,9 +23,10 @@ export default function MemberWelcomeCard({ communityId, memberId, slug }: Membe
   const [dismissed, setDismissed] = useState(() =>
     localStorage.getItem(DISMISSED_KEY(communityId, memberId)) === "true"
   );
-  const [collapsed, setCollapsed] = useState(() =>
-    localStorage.getItem(COLLAPSED_KEY(communityId, memberId)) === "true"
-  );
+  const [collapsed, setCollapsed] = useState(() => {
+    const stored = localStorage.getItem(COLLAPSED_KEY(communityId, memberId));
+    return stored === null ? true : stored === "true";
+  });
 
   // Fetch active tasks
   const { data: tasks } = useQuery({
@@ -117,34 +118,24 @@ export default function MemberWelcomeCard({ communityId, memberId, slug }: Membe
   return (
     <Card className="rounded-xl border-0 overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-3 py-2">
         <button onClick={handleToggle} className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-bold text-foreground">Bem-vindo! Comece por aqui</span>
-          <span className="text-xs text-muted-foreground font-medium">{doneCount}/{totalTasks}</span>
-          {collapsed ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />}
+          <span className="text-xs font-bold text-foreground">Bem-vindo! Comece por aqui</span>
+          <span className="text-[11px] text-muted-foreground font-medium">{doneCount}/{totalTasks}</span>
+          {collapsed ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronUp className="h-3 w-3 text-muted-foreground" />}
         </button>
         <button
           onClick={handleDismiss}
-          className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted"
+          className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-muted"
           title="Ocultar por agora"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
-      </div>
-
-      {/* Progress bar */}
-      <div className="px-4 pb-2">
-        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-500"
-            style={{ width: `${totalTasks > 0 ? (doneCount / totalTasks) * 100 : 0}%` }}
-          />
-        </div>
       </div>
 
       {/* Tasks */}
       {!collapsed && (
-        <div className="px-4 pb-4 space-y-1">
+        <div className="px-3 pb-3 space-y-0.5">
           {tasks.map((task: any) => {
             const isDone = progress?.has(task.id);
             return (
@@ -153,25 +144,20 @@ export default function MemberWelcomeCard({ communityId, memberId, slug }: Membe
                 onClick={() => handleTaskClick(task)}
                 disabled={isDone || completeTask.isPending}
                 className={cn(
-                  "flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-lg transition-colors",
+                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg transition-colors",
                   isDone ? "opacity-60 cursor-default" : "hover:bg-muted/60 cursor-pointer"
                 )}
               >
                 {isDone ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                 ) : (
-                  <Circle className="h-5 w-5 text-muted-foreground/50 shrink-0" />
+                  <Circle className="h-4 w-4 text-muted-foreground/50 shrink-0" />
                 )}
-                <div className="flex-1 min-w-0">
-                  <span className={cn("text-sm font-medium block", isDone ? "line-through text-muted-foreground" : "text-foreground")}>
-                    {task.title}
-                  </span>
-                  {task.description && !isDone && (
-                    <span className="text-xs text-muted-foreground">{task.description}</span>
-                  )}
-                </div>
+                <span className={cn("text-xs font-medium", isDone ? "line-through text-muted-foreground" : "text-foreground")}>
+                  {task.title}
+                </span>
                 {task.target_url && !isDone && (
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 ml-auto" />
                 )}
               </button>
             );
