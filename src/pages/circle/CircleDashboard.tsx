@@ -40,58 +40,60 @@ export default function CircleDashboard() {
     mutationFn: async () => {
       if (!currentWorkspace || !user) throw new Error("Missing data");
 
-      // Guard: check if community already exists for this workspace
-      const { data: existing } = await supabase
-        .from("communities")
-        .select("slug")
-        .eq("workspace_id", currentWorkspace.id)
-        .maybeSingle();
-
-      if (existing?.slug) {
-        navigate(`/circles/${existing.slug}/feed`, { replace: true });
-        return existing;
-      }
-
       const slug = currentWorkspace.slug + "-circle";
+
+      // Upsert: idempotent — ignores if already exists
       const { data: comm, error } = await supabase
         .from("communities")
-        .insert({
-          workspace_id: currentWorkspace.id,
-          name: currentWorkspace.name + " Circle",
-          slug,
-          description: "Comunidade oficial",
-          access_type: "OPEN",
-        })
+        .upsert(
+          {
+            workspace_id: currentWorkspace.id,
+            name: currentWorkspace.name + " Circle",
+            slug,
+            description: "Comunidade oficial",
+            access_type: "OPEN",
+          },
+          { onConflict: "workspace_id", ignoreDuplicates: true }
+        )
         .select()
-        .single();
-      if (error) throw error;
+        .maybeSingle();
 
-      // Add creator as OWNER member
-      const { error: memberError } = await supabase
-        .from("community_members")
-        .insert({
-          community_id: comm.id,
-          user_id: user.id,
-          role: "OWNER",
-          status: "ACTIVE",
-          display_name: user.email?.split("@")[0] || "Creator",
-        });
-      if (memberError) throw memberError;
+      // If upsert returned nothing (already existed), fetch existing
+      let community = comm;
+      if (!community) {
+        const { data: existing } = await supabase
+          .from("communities")
+          .select("*")
+          .eq("workspace_id", currentWorkspace.id)
+          .maybeSingle();
+        if (existing) {
+          navigate(`/circles/${existing.slug}/feed`, { replace: true });
+          return existing;
+        }
+        if (error) throw error;
+        throw new Error("Failed to create or find community");
+      }
 
-      // Create 4 default spaces
+      // Add creator as OWNER via RPC (has ON CONFLICT DO NOTHING)
+      await supabase.rpc("join_community", {
+        p_community_id: community.id,
+        p_user_id: user.id,
+        p_display_name: user.email?.split("@")[0] || "Creator",
+        p_role: "OWNER",
+        p_status: "ACTIVE",
+      });
+
+      // Create 4 default spaces (ignore duplicates silently)
       const defaultSpaces = [
-        { community_id: comm.id, name: "Geral", slug: "geral", emoji: "💬", is_default: true, position: 0 },
-        { community_id: comm.id, name: "Anúncios", slug: "anuncios", emoji: "📢", only_admins_can_post: true, position: 1 },
-        { community_id: comm.id, name: "Perguntas", slug: "perguntas", emoji: "❓", position: 2 },
-        { community_id: comm.id, name: "Conquistas", slug: "conquistas", emoji: "🏆", position: 3 },
+        { community_id: community.id, name: "Geral", slug: "geral", emoji: "💬", is_default: true, position: 0 },
+        { community_id: community.id, name: "Anúncios", slug: "anuncios", emoji: "📢", only_admins_can_post: true, position: 1 },
+        { community_id: community.id, name: "Perguntas", slug: "perguntas", emoji: "❓", position: 2 },
+        { community_id: community.id, name: "Conquistas", slug: "conquistas", emoji: "🏆", position: 3 },
       ];
 
-      const { error: spaceError } = await supabase
-        .from("community_spaces")
-        .insert(defaultSpaces);
-      if (spaceError) throw spaceError;
+      await supabase.from("community_spaces").upsert(defaultSpaces, { onConflict: "community_id,slug", ignoreDuplicates: true });
 
-      return comm;
+      return community;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["community"] });
