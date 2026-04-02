@@ -1,27 +1,46 @@
 
 
-## Preview instantâneo de banner e ícone no admin settings
+## Fix: "duplicate key value violates unique constraint uq_community_workspace"
 
-### Problema
-Ao fazer upload de banner ou ícone, a imagem só aparece após salvar + recarregar porque o `<img>` lê direto de `community.cover_image_url`. O `invalidateQueries` dispara refetch, mas há delay perceptível.
+### Causa raiz
+A tabela `communities` tem constraint `uq_community_workspace` que permite apenas 1 comunidade por workspace. Já existe uma comunidade para o workspace atual, mas em certas condições (cache, timing de query) o botão "Criar Comunidade" aparece e o usuário clica, causando o erro.
 
 ### Solução
-Adicionar estado local de preview (`coverPreview` / `iconPreview`) em ambos os componentes. Ao selecionar o arquivo, criar URL local via `URL.createObjectURL(file)` e exibir imediatamente, antes mesmo do upload terminar. O upload continua acontecendo em background.
 
-### Mudanças
+**`src/pages/circle/CircleDashboard.tsx`**
 
-**`src/components/circle/admin/AdminGeneralTab.tsx`**
-- Adicionar `const [coverPreview, setCoverPreview] = useState<string | null>(null)` e `iconPreview` idem
-- Na função `uploadImage`: chamar `setCoverPreview(URL.createObjectURL(file))` (ou icon) **antes** do upload
-- No `<img>` da capa: `src={coverPreview || community.cover_image_url}`
-- No `<img>` do ícone: `src={iconPreview || community.icon_url}`
-- Limpar preview no cleanup (`URL.revokeObjectURL`)
+1. Na mutation `createCommunity`, antes do `insert`, verificar se já existe uma comunidade para o workspace. Se existir, redirecionar direto para o feed em vez de tentar criar.
 
-**`src/components/circle/admin/AdminSettingsTab.tsx`**
-- Mesma abordagem: estados locais de preview + `createObjectURL` antes do upload + fallback para URL do banco
+2. No `onError`, detectar o erro de constraint duplicada e tratar com mensagem amigável + redirect automático (refetch da query para pegar a comunidade existente).
 
-### Resultado
-- Imagem aparece instantaneamente ao selecionar o arquivo
-- Upload continua normalmente em background
-- Sem necessidade de recarregar página
+3. Usar `upsert` ou `onConflict` não é necessário — basta o guard + tratamento de erro.
+
+### Mudanças concretas
+
+```typescript
+// No início do mutationFn, adicionar:
+const { data: existing } = await supabase
+  .from("communities")
+  .select("slug")
+  .eq("workspace_id", currentWorkspace.id)
+  .maybeSingle();
+
+if (existing?.slug) {
+  navigate(`/circles/${existing.slug}/feed`, { replace: true });
+  return existing;
+}
+
+// No onError, melhorar tratamento:
+onError: (err: any) => {
+  if (err?.message?.includes("uq_community_workspace") || err?.code === "23505") {
+    queryClient.invalidateQueries({ queryKey: ["community", currentWorkspace?.id] });
+    toast.info("Comunidade já existe! Redirecionando...");
+  } else {
+    toast.error("Erro ao criar comunidade");
+  }
+}
+```
+
+### Arquivos alterados
+1. `src/pages/circle/CircleDashboard.tsx` — guard de existência + tratamento de erro de constraint
 
