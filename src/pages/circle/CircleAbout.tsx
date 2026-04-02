@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -11,10 +11,11 @@ import { Label } from "@/components/ui/label";
 import {
   Users, Globe, CreditCard, CheckCircle, Play,
   Upload, Link2, Pencil, X, Plus, Eye, EyeOff,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UserPlus, Lock, ShoppingCart, LogIn,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { notifyMemberJoined } from "@/lib/notifications";
 import {
   DndContext,
   DragOverlay,
