@@ -180,9 +180,9 @@ export default function AdminGeneralTab({ community }: Props) {
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Imagem de capa</Label>
-          {community.cover_image_url && (
+          {(coverPreview || community.cover_image_url) && (
             <img
-              src={community.cover_image_url}
+              src={coverPreview || community.cover_image_url}
               alt="Capa"
               className="h-24 w-full object-cover rounded-xl border border-gray-100"
             />
