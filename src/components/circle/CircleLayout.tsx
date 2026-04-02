@@ -17,18 +17,12 @@ import {
   Users,
   Calendar,
   BookOpen,
-  Bell,
-  ChevronLeft,
   LogIn,
   ShieldX,
   Clock,
-  ShoppingCart,
   UserPlus,
   Eye,
-  Lock,
-  Mail,
   SlidersHorizontal,
-  LayoutGrid,
   Star,
   Settings,
   User,
@@ -37,7 +31,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
