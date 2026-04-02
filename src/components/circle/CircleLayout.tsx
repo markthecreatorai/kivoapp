@@ -222,21 +222,6 @@ export default function CircleLayout() {
     enabled: !!member,
   });
 
-  const { data: previewPosts } = useQuery({
-    queryKey: ["circle-preview-posts", community?.id],
-    queryFn: async () => {
-      if (!community) return [];
-      const { data } = await supabase
-        .from("community_posts")
-        .select("*, author:community_members!author_id(display_name, avatar_url)")
-        .eq("community_id", community.id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(3);
-      return data || [];
-    },
-    enabled: !!community && !member,
-  });
 
   const joinCommunity = useMutation({
     mutationFn: async () => {
