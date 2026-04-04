@@ -93,6 +93,29 @@ export default function PostComposer({
     }
   }, [user, images.length]);
 
+  const ALLOWED_MIMES = [
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf",
+    "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/zip", "application/x-rar-compressed", "application/gzip",
+  ];
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+  const MAX_ATTACHMENTS = 5;
+
+  const handleAttachmentAdd = useCallback((files: FileList | null) => {
+    if (!files) return;
+    const remaining = MAX_ATTACHMENTS - attachments.length;
+    const newFiles: PendingAttachment[] = [];
+    for (const file of Array.from(files).slice(0, remaining)) {
+      if (file.size > MAX_FILE_SIZE) { toast.error(`${file.name} excede 20MB`); continue; }
+      if (!ALLOWED_MIMES.includes(file.type)) { toast.error(`${file.name}: tipo não permitido`); continue; }
+      const pa: PendingAttachment = { file };
+      if (file.type.startsWith("image/")) pa.previewUrl = URL.createObjectURL(file);
+      newFiles.push(pa);
+    }
+    setAttachments((prev) => [...prev, ...newFiles]);
+  }, [attachments.length]);
+
   const createPost = useMutation({
     mutationFn: async () => {
       if (!selectedSpace || !title.trim()) throw new Error("Preencha categoria e título");
