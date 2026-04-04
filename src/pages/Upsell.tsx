@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Loader2, Clock, ArrowRight, Zap } from "lucide-react";
+import { trackEvent } from "@/lib/tracking";
 
 interface UpsellOffer {
   id: string;
@@ -13,6 +14,7 @@ interface UpsellOffer {
   headline: string | null;
   description: string | null;
   special_price: number;
+  cta_text: string | null;
 }
 
 interface UpsellProduct {
@@ -20,10 +22,7 @@ interface UpsellProduct {
   name: string;
   thumbnail_url: string | null;
   short_description: string | null;
-}
-
-interface UpsellPrice {
-  amount: number;
+  workspace_id: string;
 }
 
 export default function Upsell() {
@@ -37,16 +36,13 @@ export default function Upsell() {
   const [originalPrice, setOriginalPrice] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes
+  const [timeLeft, setTimeLeft] = useState(15 * 60);
 
   // Timer
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 0) {
-          clearInterval(interval);
-          return 0;
-        }
+        if (prev <= 0) { clearInterval(interval); return 0; }
         return prev - 1;
       });
     }, 1000);
@@ -62,20 +58,17 @@ export default function Upsell() {
 
       const { data: offerData } = await supabase
         .from("upsell_offers")
-        .select("id, trigger_product_id, upsell_product_id, type, headline, description, special_price")
+        .select("id, trigger_product_id, upsell_product_id, type, headline, description, special_price, cta_text")
         .eq("id", offerId)
         .eq("is_active", true)
         .maybeSingle();
 
-      if (!offerData) {
-        navigateToSuccess();
-        return;
-      }
+      if (!offerData) { navigateToSuccess(); return; }
       setOffer(offerData);
 
       const { data: prod } = await supabase
         .from("products")
-        .select("id, name, thumbnail_url, short_description")
+        .select("id, name, thumbnail_url, short_description, workspace_id")
         .eq("id", offerData.upsell_product_id)
         .maybeSingle();
       setProduct(prod);
@@ -88,6 +81,16 @@ export default function Upsell() {
         .eq("is_active", true)
         .maybeSingle();
       if (priceData) setOriginalPrice(priceData.amount);
+
+      // Track upsell shown
+      trackEvent("upsell_shown", {
+        offer_id: offerData.id,
+        offer_type: offerData.type,
+        upsell_product_id: offerData.upsell_product_id,
+        trigger_product_id: offerData.trigger_product_id,
+        special_price: offerData.special_price,
+        order_id: orderId,
+      }, prod?.workspace_id);
 
       setLoading(false);
     }
@@ -103,23 +106,45 @@ export default function Upsell() {
     if (!offer || !orderId) return;
     setProcessing(true);
 
+    // Track upsell accepted
+    trackEvent("upsell_accepted", {
+      offer_id: offer.id,
+      offer_type: offer.type,
+      upsell_product_id: offer.upsell_product_id,
+      trigger_product_id: offer.trigger_product_id,
+      special_price: offer.special_price,
+      original_price: originalPrice,
+      order_id: orderId,
+    }, product?.workspace_id);
+
     try {
       const res = await supabase.functions.invoke("create-payment", {
         body: {
           product_id: offer.upsell_product_id,
-          price_id: null, // use special_price
+          price_id: null,
           method: "upsell",
-          workspace_id: null, // will be resolved by function
+          workspace_id: product?.workspace_id || null,
           upsell_offer_id: offer.id,
           parent_order_id: orderId,
           amount: offer.special_price,
-          customer: {}, // reuse from parent order
+          customer: {},
         },
       });
 
       if (res.error) throw new Error(res.error.message);
-    } catch (e) {
+
+      trackEvent("upsell_payment_succeeded", {
+        offer_id: offer.id,
+        order_id: orderId,
+        amount: offer.special_price,
+      }, product?.workspace_id);
+    } catch (e: any) {
       console.error("Upsell error:", e);
+      trackEvent("upsell_payment_failed", {
+        offer_id: offer.id,
+        order_id: orderId,
+        error: e.message,
+      }, product?.workspace_id);
     }
 
     navigateToSuccess();
@@ -127,6 +152,16 @@ export default function Upsell() {
 
   const handleDecline = async () => {
     if (!offer) { navigateToSuccess(); return; }
+
+    // Track upsell declined
+    trackEvent("upsell_declined", {
+      offer_id: offer.id,
+      offer_type: offer.type,
+      upsell_product_id: offer.upsell_product_id,
+      trigger_product_id: offer.trigger_product_id,
+      special_price: offer.special_price,
+      order_id: orderId,
+    }, product?.workspace_id);
 
     // Check for downsell
     const { data: downsells } = await supabase
@@ -153,9 +188,9 @@ export default function Upsell() {
     );
   }
 
-  if (!offer || !product) {
-    return null;
-  }
+  if (!offer || !product) return null;
+
+  const ctaLabel = offer.cta_text || `SIM! Eu quero por apenas ${formatCurrency(offer.special_price)}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/50">
@@ -195,7 +230,7 @@ export default function Upsell() {
           {product.short_description && (
             <p className="text-sm text-muted-foreground">{product.short_description}</p>
           )}
-          
+
           {/* Pricing */}
           <div className="flex items-center gap-3">
             {originalPrice > offer.special_price && (
@@ -220,7 +255,7 @@ export default function Upsell() {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                SIM! Eu quero por apenas {formatCurrency(offer.special_price)}
+                {ctaLabel}
                 <ArrowRight className="w-5 h-5" />
               </>
             )}
