@@ -516,6 +516,23 @@ export default function Checkout() {
           onRemove={() => setAppliedCoupon(null)}
         />
 
+        {/* Order Bumps */}
+        {orderBumps.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              🔥 Aproveite e adicione
+            </p>
+            {orderBumps.map((bump) => (
+              <OrderBumpCard
+                key={bump.id}
+                bump={bump}
+                checked={selectedBumps.has(bump.bump_product_id)}
+                onToggle={toggleBump}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Customer Form */}
         <CustomerForm
           data={customer}
