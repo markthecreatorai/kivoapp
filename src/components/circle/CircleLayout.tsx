@@ -68,10 +68,11 @@ const ALL_TABS: Record<string, { label: string; icon: typeof MessageSquare; path
   members: { label: "Membros", icon: Users, pathSuffix: "members" },
   leaderboard: { label: "Ranking", icon: Trophy, pathSuffix: "leaderboard" },
   events: { label: "Calendário", icon: Calendar, pathSuffix: "events" },
+  resources: { label: "Recursos", icon: FolderOpen, pathSuffix: "resources" },
   about: { label: "Sobre", icon: Star, pathSuffix: "about" },
 };
 
-const DEFAULT_TAB_ORDER = ["feed", "classroom", "members", "leaderboard", "events", "about"];
+const DEFAULT_TAB_ORDER = ["feed", "classroom", "members", "leaderboard", "events", "resources", "about"];
 
 function getTabItems(slug: string, community?: any) {
   const tabsConfig = community?.tabs_config as Record<string, boolean> | null;
