@@ -6,6 +6,7 @@ import { CustomerForm } from "@/components/checkout/CustomerForm";
 import { CouponSection } from "@/components/checkout/CouponSection";
 import { PaymentTabs, type CardData } from "@/components/checkout/PaymentTabs";
 import { OrderTotal } from "@/components/checkout/OrderTotal";
+import { OrderBumpCard, type OrderBump } from "@/components/checkout/OrderBumpCard";
 import { validateCPF } from "@/lib/cpf";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, Lock, RefreshCw } from "lucide-react";
@@ -59,6 +60,8 @@ export default function Checkout() {
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
+  const [selectedBumps, setSelectedBumps] = useState<Set<string>>(new Set());
 
   // Load product + price (supports ?session= recovery param)
   useEffect(() => {
@@ -162,6 +165,43 @@ export default function Checkout() {
       setPrice(priceData);
       setLoading(false);
       trackEvent("checkout_started", { product_id: prod.id, product_name: prod.name }, prod.workspace_id);
+
+      // Fetch order bumps for this product
+      const { data: bumpsData } = await supabase
+        .from("order_bumps")
+        .select("id, bump_product_id, headline, description, position")
+        .eq("main_product_id", prod.id)
+        .eq("is_active", true)
+        .order("position");
+
+      if (bumpsData && bumpsData.length > 0) {
+        const bumpProductIds = bumpsData.map((b) => b.bump_product_id);
+        const { data: bumpProducts } = await supabase
+          .from("products")
+          .select("id, name, thumbnail_url")
+          .in("id", bumpProductIds);
+        const { data: bumpPrices } = await supabase
+          .from("prices")
+          .select("product_id, amount")
+          .in("product_id", bumpProductIds)
+          .eq("is_default", true)
+          .eq("is_active", true);
+
+        const enriched: OrderBump[] = bumpsData.map((b) => {
+          const bp = bumpProducts?.find((p) => p.id === b.bump_product_id);
+          const bpr = bumpPrices?.find((p) => p.product_id === b.bump_product_id);
+          return {
+            id: b.id,
+            bump_product_id: b.bump_product_id,
+            headline: b.headline,
+            description: b.description,
+            bump_product_name: bp?.name || "Produto",
+            bump_product_thumbnail: bp?.thumbnail_url || null,
+            bump_price: bpr?.amount || 0,
+          };
+        }).filter((b) => b.bump_price > 0);
+        setOrderBumps(enriched);
+      }
     }
     load();
   }, [productSlug, searchParams]);
@@ -183,13 +223,33 @@ export default function Checkout() {
     return sessionStorage.getItem("kivo_affiliate_link_id") || undefined;
   })();
 
+  // Bump toggle
+  const toggleBump = useCallback((bumpProductId: string) => {
+    setSelectedBumps((prev) => {
+      const next = new Set(prev);
+      if (next.has(bumpProductId)) {
+        next.delete(bumpProductId);
+        trackEvent("order_bump_removed", { bump_product_id: bumpProductId }, product?.workspace_id);
+      } else {
+        next.add(bumpProductId);
+        trackEvent("order_bump_added", { bump_product_id: bumpProductId }, product?.workspace_id);
+      }
+      return next;
+    });
+  }, [product]);
+
   // Price calculations
-  const subtotal = price?.amount ?? 0;
+  const bumpAmount = useMemo(
+    () => orderBumps.filter((b) => selectedBumps.has(b.bump_product_id)).reduce((sum, b) => sum + b.bump_price, 0),
+    [orderBumps, selectedBumps]
+  );
+  const subtotal = (price?.amount ?? 0) + bumpAmount;
   const couponDiscount = appliedCoupon?.discount ?? 0;
-  const pixDiscountAmount = price?.pix_discount_percent ? subtotal * (price.pix_discount_percent / 100) : null;
+  const pixDiscountAmount = price?.pix_discount_percent ? (price.amount) * (price.pix_discount_percent / 100) : null;
   const pixTotal = pixDiscountAmount ? subtotal - couponDiscount - pixDiscountAmount : null;
   const cardTotal = subtotal - couponDiscount;
   const currentTotal = activeTab === "pix" && pixTotal ? pixTotal : cardTotal;
+  const selectedBumpIds = useMemo(() => Array.from(selectedBumps), [selectedBumps]);
 
   // Save email on blur for checkout recovery
   const handleEmailBlur = useCallback(async () => {
@@ -250,6 +310,7 @@ export default function Checkout() {
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
+          bump_product_ids: selectedBumpIds,
         },
       });
       if (res.error) throw new Error(res.error.message);
@@ -296,6 +357,7 @@ export default function Checkout() {
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
+          bump_product_ids: selectedBumpIds,
         },
       });
       if (res.error) throw new Error(res.error.message);
@@ -341,6 +403,7 @@ export default function Checkout() {
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
+          bump_product_ids: selectedBumpIds,
         },
       });
       if (res.error) throw new Error(res.error.message);
@@ -453,6 +516,23 @@ export default function Checkout() {
           onRemove={() => setAppliedCoupon(null)}
         />
 
+        {/* Order Bumps */}
+        {orderBumps.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              🔥 Aproveite e adicione
+            </p>
+            {orderBumps.map((bump) => (
+              <OrderBumpCard
+                key={bump.id}
+                bump={bump}
+                checked={selectedBumps.has(bump.bump_product_id)}
+                onToggle={toggleBump}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Customer Form */}
         <CustomerForm
           data={customer}
@@ -495,10 +575,10 @@ export default function Checkout() {
 
         {/* Order Total */}
         <OrderTotal
-          subtotal={subtotal}
+          subtotal={price?.amount ?? 0}
           discount={couponDiscount}
           pixDiscount={activeTab === "pix" ? pixDiscountAmount : null}
-          bumpAmount={0}
+          bumpAmount={bumpAmount}
           total={currentTotal}
           showPix={activeTab === "pix"}
         />
