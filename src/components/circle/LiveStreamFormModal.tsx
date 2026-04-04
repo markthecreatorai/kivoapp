@@ -82,11 +82,10 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
     }
   };
 
-  const embedType = detectEmbedType(embedUrl);
+  const detectedProvider = detectProvider(embedUrl);
+  const embedType = detectedProvider.type;
   const isValidUrl = embedUrl.trim().length > 0 && (
-    embedType === "youtube" ? !!extractYouTubeId(embedUrl) :
-    embedType === "twitch" ? !!extractTwitchChannel(embedUrl) :
-    embedUrl.startsWith("http")
+    detectedProvider.extractId(embedUrl) !== null || embedUrl.startsWith("http")
   );
 
   const saveMutation = useMutation({
@@ -103,6 +102,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : (goLiveNow ? new Date().toISOString() : null),
         started_at: goLiveNow ? new Date().toISOString() : null,
         chat_enabled: chatEnabled,
+        access_rule: accessRule,
       };
 
       if (isEditing) {
