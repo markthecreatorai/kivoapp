@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import EmojiPicker from "@/components/circle/EmojiPicker";
 import GifPicker from "@/components/circle/GifPicker";
 import { checkSpam } from "@/lib/antispam";
+import { AttachmentComposerPreview, type PendingAttachment } from "@/components/circle/PostAttachments";
 
 interface PostComposerProps {
   communityId: string;
