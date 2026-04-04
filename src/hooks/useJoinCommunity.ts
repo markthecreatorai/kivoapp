@@ -307,6 +307,20 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
         }
       }
 
+      // Grant member invite bonus if ref code present
+      if (memberRefCode && status === "ACTIVE") {
+        const refLink = await validateMemberRef(memberRefCode);
+        if (refLink && refLink.community_id === community.id) {
+          await grantInviteBonus(
+            community.id,
+            refLink.member_id,
+            userId,
+            refLink.id,
+            "joined"
+          );
+        }
+      }
+
       if (status === "PENDING") {
         toast.success("Solicitação enviada! Aguarde aprovação.");
       } else {
