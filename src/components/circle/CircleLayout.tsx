@@ -98,7 +98,7 @@ export default function CircleLayout() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, userWorkspaces } = useWorkspace();
   const { user, loading: authLoading, signOut } = useAuth();
   const queryClient = useQueryClient();
 
