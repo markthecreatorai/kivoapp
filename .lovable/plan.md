@@ -1,38 +1,60 @@
 
-## Recuperação de Carrinho Abandonado — O que já existe vs. o que falta
+## Convites com Bônus — Plano de Implementação
 
-### ✅ Já implementado
-- Edge Function `abandoned-cart-recovery` (detecta sessões abandonadas, agenda 3 emails)
-- Edge Function `send-recovery-emails` (envia emails com templates, cancela se compra concluída)
-- Tabelas `checkout_sessions` (com `abandoned_at`, `recovered_checkout`) e `recovery_emails`
-- Métricas de recuperação na página Analytics (carrinhos recuperados, taxa, receita)
-- Email onBlur no Checkout salva sessão
+### Estado atual
+- Tabela `community_invite_links` existe (admin-only, code, max_uses, uses_count)
+- Hook `useInviteLinks` e `AdminInviteTab` funcionais
+- Join flow via `/join/:slug?invite=<code>`
+- Sistema de pontos/gamificação já existe (community_members.points, level)
 
-### 🔧 O que falta (3 itens)
+### O que será criado
 
-#### 1. Link de retomada no Checkout
-**`src/pages/Checkout.tsx`**
-- Ler `?session=<id>` da URL
-- Carregar `checkout_sessions` + `checkout_line_items` para restaurar produto, email e contexto
-- Marcar `recovered_checkout = true` ao completar pagamento
-- Trackear `cart_recovered` no analytics
+#### 1. Migration SQL — 3 tabelas novas
 
-#### 2. Seção dedicada de Recovery no Analytics
-**`src/pages/Analytics.tsx`**
-- Expandir a seção de "Cart Recovery" com:
-  - Total de carrinhos abandonados
-  - Emails enviados vs. abertos (se disponível)
-  - Receita recuperada com gráfico de tendência
-  - Lista dos últimos carrinhos recuperados
+**`member_invite_links`** — link de convite pessoal por membro
+- member_id, community_id, code (unique), uses_count, is_active, created_at
 
-#### 3. Garantir cron jobs das Edge Functions
-- Verificar/criar pg_cron para `abandoned-cart-recovery` (a cada 15min)
-- Verificar/criar pg_cron para `send-recovery-emails` (a cada 5min)
+**`invite_events`** — rastreio de quem entrou via convite
+- invite_link_id, inviter_member_id, invitee_user_id, community_id, event_type (joined|paid|reward_granted), created_at
 
-### Arquivos alterados
-1. `src/pages/Checkout.tsx` — restaurar sessão via query param
-2. `src/pages/Analytics.tsx` — seção expandida de recovery
+**`invite_rewards`** — configuração de bônus por comunidade
+- community_id (unique), points_per_invite, points_per_paid_invite, reward_type (points|discount|access), is_active
+
+**Anti-fraude:**
+- UNIQUE(invitee_user_id, community_id) em invite_events — impede duplicidade
+- CHECK: inviter ≠ invitee na aplicação
+- Janela mínima de 24h entre criação da conta e concessão de bônus
+
+**RLS:**
+- Membros ativos veem seus próprios links e eventos
+- Admin configura rewards
+- Qualquer um lê links ativos (para validação no join)
+
+#### 2. Hook `useMemberInvite` 
+- Gera/busca link pessoal do membro
+- Lista convites enviados com status (entrou, pagou, bônus concedido)
+- Copiar link
+
+#### 3. Componente `MyInvitesPanel`
+- Card no perfil do membro ou tab dedicada
+- Link pessoal com botão copiar
+- Tabela de convidados (nome, status, bônus)
+- Contador de pontos ganhos via convites
+
+#### 4. Lógica de concessão de bônus
+- No `useJoinCommunity` — ao entrar via invite, registrar evento + dar pontos
+- Anti-fraude: verificar self-invite, duplicidade, janela mínima
+
+#### 5. Config admin — `AdminInviteTab` expandido
+- Seção "Bônus de convite" com toggle e configuração de pontos
+
+### Arquivos
+1. Migration SQL (3 tabelas + RLS + indexes)
+2. `src/hooks/useMemberInvite.ts` — hook do membro
+3. `src/components/circle/MyInvitesPanel.tsx` — UI do membro
+4. `src/hooks/useJoinCommunity.ts` — adicionar lógica de bônus
+5. `src/components/circle/admin/AdminInviteTab.tsx` — seção de config
 
 ### Riscos
-- Sem risco a funcionalidades existentes (checkout normal não afetado)
-- Rollback: remover lógica de `?session=` do Checkout
+- Sem impacto no fluxo de join existente (lógica aditiva)
+- Rollback: dropar tabelas novas, reverter código
