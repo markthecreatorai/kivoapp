@@ -732,6 +732,13 @@ export default function CircleClassroom() {
                 </div>
               )}
             </div>
+
+            {/* Quiz Editor for admins */}
+            {isAdmin && (
+              <div className="mt-4 pt-4 border-t border-border/50">
+                <QuizEditor courseId={selectedCourseId} />
+              </div>
+            )}
           </ScrollArea>
 
           {/* ── Right: Lesson Editor / Content ── */}
