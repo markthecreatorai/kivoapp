@@ -337,7 +337,14 @@ export default function PostComposer({
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
           </button>
           <button
-            onClick={() => { setLinkModalUrl(""); setShowLinkModal(true); }}
+            onClick={() => attachmentInputRef.current?.click()}
+            disabled={attachments.length >= MAX_ATTACHMENTS}
+            className={cn("p-2 rounded-lg transition-colors", attachments.length > 0 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50", "disabled:opacity-40")}
+            title={`Anexar arquivo (${attachments.length}/${MAX_ATTACHMENTS})`}
+          >
+            <FileUp className="h-4 w-4" />
+          </button>
+          <button
             className={cn("p-2 rounded-lg transition-colors", linkUrl ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
             title="Link"
           >
