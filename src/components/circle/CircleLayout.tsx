@@ -409,6 +409,16 @@ export default function CircleLayout() {
       <header className="sticky top-0 z-30 bg-card border-b border-border">
         <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
           <div className="flex items-center gap-1 min-w-0">
+            {(currentWorkspace || userWorkspaces.length > 0) && (
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors mr-1"
+                title="Voltar ao workspace"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Workspace</span>
+              </button>
+            )}
             <CommunitySwitcher currentCommunity={community} />
           </div>
 
