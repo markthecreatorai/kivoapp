@@ -229,6 +229,13 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
       {/* Interactive Poll */}
       {isPoll && <div onClick={(e) => e.stopPropagation()}><PollSection post={post} memberId={memberId} /></div>}
 
+      {/* Attachments */}
+      {postAttachments && postAttachments.length > 0 && (
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          <PostAttachmentsDisplay attachments={postAttachments} compact />
+        </div>
+      )}
+
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-border flex items-center gap-1">
         <div onClick={(e) => e.stopPropagation()}>
