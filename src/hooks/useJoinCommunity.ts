@@ -106,15 +106,14 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
 
       // Award points to inviter
       if (points > 0) {
-        await supabase
+        const { data: currentMember } = await (supabase as any)
           .from("community_members")
-          .update({ points: (await supabase
-            .from("community_members")
-            .select("points")
-            .eq("id", inviterMemberId)
-            .single()
-            .then(r => r.data?.points || 0)) + points
-          })
+          .select("total_points")
+          .eq("id", inviterMemberId)
+          .single();
+        await (supabase as any)
+          .from("community_members")
+          .update({ total_points: (currentMember?.total_points || 0) + points })
           .eq("id", inviterMemberId);
       }
 
