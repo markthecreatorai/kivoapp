@@ -98,6 +98,7 @@ const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
 const CircleResources = lazy(() => import("./pages/circle/CircleResources"));
 const CircleTasks = lazy(() => import("./pages/circle/CircleTasks"));
 const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
+const VerifyCertificate = lazy(() => import("./pages/VerifyCertificate"));
 
 // Public community pages
 const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
@@ -322,6 +323,9 @@ const App = () => (
                 <Route path="/c/:slug" element={<LegacyCRedirect />} />
                 <Route path="/circle-settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
                 <Route path="/circle/settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
+
+                {/* Certificate verification */}
+                <Route path="/verify/:code" element={<VerifyCertificate />} />
 
                 {/* Public community discovery */}
                 <Route path="/circles/explore" element={<CommunityDiscovery />} />

@@ -1130,6 +1130,73 @@ export type Database = {
           },
         ]
       }
+      circle_certificates: {
+        Row: {
+          certificate_code: string
+          community_id: string
+          course_id: string
+          course_name: string
+          created_at: string
+          creator_name: string | null
+          hours: number | null
+          id: string
+          issued_at: string
+          member_id: string
+          pdf_url: string | null
+          student_name: string
+        }
+        Insert: {
+          certificate_code?: string
+          community_id: string
+          course_id: string
+          course_name: string
+          created_at?: string
+          creator_name?: string | null
+          hours?: number | null
+          id?: string
+          issued_at?: string
+          member_id: string
+          pdf_url?: string | null
+          student_name: string
+        }
+        Update: {
+          certificate_code?: string
+          community_id?: string
+          course_id?: string
+          course_name?: string
+          created_at?: string
+          creator_name?: string | null
+          hours?: number | null
+          id?: string
+          issued_at?: string
+          member_id?: string
+          pdf_url?: string | null
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_certificates_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "circle_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_certificates_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_course_entitlements: {
         Row: {
           course_id: string

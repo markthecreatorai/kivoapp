@@ -8,11 +8,12 @@ import {
   BookOpen, Play, Crown, Plus,
   FileText, Circle, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
-  Lock, Copy, Trash2, GripVertical,
+  Lock, Copy, Trash2, GripVertical, Award, Download,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCertificate, generateCertificatePDF } from "@/hooks/useCertificate";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -99,6 +100,73 @@ interface CircleLesson {
   type: string;
   parent_id: string | null;
   resources?: any[] | null;
+}
+
+// ─── Certificate Button (shown at 100% progress) ────────────
+function CertificateButton({ memberId, courseId, communityId, courseName, communityName, studentName }: {
+  memberId: string | null; courseId: string; communityId: string;
+  courseName: string; communityName: string; studentName: string;
+}) {
+  const { certificate, isLoading, generateCertificate } = useCertificate(memberId, courseId);
+
+  const handleDownload = async (cert: any) => {
+    const blob = await generateCertificatePDF(cert);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `certificado-${cert.certificate_code}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (isLoading) return null;
+
+  if (certificate) {
+    return (
+      <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-center space-y-2">
+        <div className="flex items-center justify-center gap-1.5">
+          <Award className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold text-primary">Certificado Emitido!</span>
+        </div>
+        <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => handleDownload(certificate)}>
+          <Download className="h-3.5 w-3.5 mr-1.5" /> Baixar Certificado
+        </Button>
+        <a
+          href={`/verify/${certificate.certificate_code}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-muted-foreground hover:text-primary underline block"
+        >
+          Verificar autenticidade
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4">
+      <Button
+        size="sm"
+        className="w-full text-xs"
+        onClick={() =>
+          generateCertificate.mutate({
+            communityId,
+            studentName,
+            courseName,
+            creatorName: communityName,
+          })
+        }
+        disabled={generateCertificate.isPending}
+      >
+        {generateCertificate.isPending ? (
+          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+        ) : (
+          <Award className="h-3.5 w-3.5 mr-1.5" />
+        )}
+        Emitir Certificado
+      </Button>
+    </div>
+  );
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -477,6 +545,9 @@ export default function CircleClassroom() {
                 <Progress value={percent} className="h-1.5 flex-1 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
                 <p className="text-[10px] text-muted-foreground mt-1">{completedPages}/{totalPages} aulas concluídas</p>
               </div>
+
+              {/* Certificate button when 100% */}
+              {percent === 100 && <CertificateButton memberId={member?.id || null} courseId={selectedCourseId} communityId={community?.id || ""} courseName={selectedCourse.name} communityName={community?.name || "Kivo"} studentName={member?.display_name || user?.email || "Aluno"} />}
 
               {/* Items tree */}
               <div className="space-y-0.5">
