@@ -761,6 +761,8 @@ export default function CircleClassroom() {
                       markStarted.mutate(nextLesson.id);
                     } : undefined}
                   />
+                  {/* Show quiz player below lesson when course is complete */}
+                  {member?.id && percent === 100 && <div className="mt-6"><QuizPlayer courseId={selectedCourseId} memberId={member.id} /></div>}
                 </div>
               ) : (
                 <div className="space-y-6">
