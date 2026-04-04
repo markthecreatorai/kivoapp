@@ -136,6 +136,10 @@ export default function MemberDashboard() {
             <span className="font-semibold text-foreground">Meus Cursos</span>
           </div>
           <div className="flex items-center gap-3">
+            <Link to="/member/library" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <FolderDown className="w-4 h-4" />
+              <span className="hidden sm:inline">Downloads</span>
+            </Link>
             <span className="text-xs text-muted-foreground hidden sm:block">{userEmail}</span>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-1">
               <LogOut className="w-4 h-4" /> Sair
