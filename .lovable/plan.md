@@ -1,52 +1,53 @@
 
-## Live/Aulas ao Vivo — Zoom & Jitsi Providers
+## Biblioteca de Downloads — Vault Unificado
 
 ### Estado atual
-- Sistema de live streams já funciona com YouTube, Twitch e custom embed
-- Tabela `community_live_streams` com `embed_type` e `embed_url`
-- Viewer com chat em tempo real, contador de espectadores
-- Integração com calendário de eventos
+- `MemberLibrary.tsx` já existe com: entitlements → products → delivery_url
+- Download com URL assinada funcional para bucket `private-files`
+- Filtro por tipo e busca por nome
+- Rota `/member/library` já registrada
 
-### Plano de implementação
+### Problema
+- Modelo atual é 1:1 (produto → 1 arquivo via delivery_url)
+- Não suporta múltiplos assets por produto, assets de cursos/comunidades
+- Sem auditoria granular de downloads
 
-#### 1. Migração SQL
-- Adicionar novos valores de `embed_type`: suporte a `zoom` e `jitsi`
-- Adicionar coluna `access_rule` (all | level | tier | members) e `access_value` na tabela `community_live_streams` para controle de acesso por plano/membro
-- Adicionar coluna `recording_password` (opcional, para salas Zoom protegidas)
+### Plano
 
-#### 2. Provider Adapter Layer (`src/lib/liveProviders.ts`)
-- Interface `LiveProvider` com métodos: `getEmbedUrl()`, `getJoinUrl()`, `supportsEmbed()`
-- Adapters: `ZoomAdapter`, `JitsiAdapter`, `YouTubeAdapter`, `TwitchAdapter`, `CustomAdapter`
-- Factory function `getLiveProvider(type, url)` retorna o adapter correto
-- Jitsi: embed via iframe (meet.jit.si), sem API key necessária
-- Zoom: link direto para join (não embeddable), fallback para "Abrir no Zoom"
+#### 1. Migração SQL — 3 tabelas novas
+- **content_assets**: `workspace_id, owner_type (product|lesson|community_resource), owner_id, title, file_path, mime_type, size_bytes`
+- **user_asset_entitlements**: `workspace_id, user_id, asset_id, source_type (purchase|subscription|manual), source_id, granted_at, revoked_at`
+- **asset_download_logs**: `workspace_id, user_id, asset_id, downloaded_at, ip_hash, user_agent`
 
-#### 3. UI — LiveStreamFormModal
-- Adicionar Zoom e Jitsi no seletor de plataforma
-- Preview do tipo detectado automaticamente pela URL
-- Campo de controle de acesso (dropdown: Todos / Nível / Plano / Membros específicos)
+RLS:
+- Usuários leem assets com entitlement ativo (`revoked_at IS NULL`)
+- Admins do workspace gerenciam tudo
+- Download logs: próprio usuário + admin
 
-#### 4. UI — LiveStreamViewer (EmbedPlayer)
-- Jitsi: embed via iframe com API do Jitsi Meet
-- Zoom: botão "Entrar na sala Zoom" (Zoom não permite embed de terceiros)
-- Verificação de acesso antes de mostrar o player
+#### 2. Reescrever `MemberLibrary.tsx`
+- Query: `user_asset_entitlements` → `content_assets` com join
+- Manter fallback para sistema legado (products com delivery_url)
+- Filtros: origem (produto/curso/comunidade), tipo de arquivo, período
+- Busca por título
+- Download seguro com URL assinada (5 min)
+- Log em `asset_download_logs`
+- Analytics: `library_viewed`, `asset_download_clicked`
+- Estado vazio amigável
+- Infinite scroll (20 itens por página)
 
-#### 5. Arquivos alterados/criados
+#### 3. Arquivos
 | Arquivo | Ação |
 |---|---|
-| Migration SQL | Novas colunas em `community_live_streams` |
-| `src/lib/liveProviders.ts` | **Novo** — adapter pattern |
-| `src/components/circle/LiveStreamFormModal.tsx` | Zoom/Jitsi no form |
-| `src/components/circle/LiveStreamViewer.tsx` | Zoom/Jitsi no player |
+| Migration SQL | 3 tabelas + RLS + índices |
+| `src/pages/MemberLibrary.tsx` | Reescrita com dual-source (assets + legado) |
 
 #### Critérios de aceite
-- ✅ Criar live com Zoom ou Jitsi funcional
-- ✅ Jitsi embeddado, Zoom abre em nova aba
-- ✅ Controle de acesso por plano/membro
-- ✅ Adapter pattern desacoplado — fácil adicionar novos providers
-- ✅ Sem regressão em YouTube/Twitch/custom
+- ✅ Usuário só vê assets com entitlement ativo
+- ✅ Links expiram em 5 minutos
+- ✅ Filtros e busca sem degradação
+- ✅ Sem acesso direto ao storage sem autorização
+- ✅ Fallback mantém products com delivery_url funcionando
 
 #### Riscos
-- Zoom não permite embed — UX de "abrir em nova aba" é o melhor possível
-- Jitsi público (meet.jit.si) pode ter limites de uso; self-hosted é futuro
-- Rollback: remover colunas novas + reverter código
+- Tabelas novas ficam vazias até criadores cadastrarem assets — fallback legado garante continuidade
+- Rollback: drop 3 tabelas + reverter MemberLibrary

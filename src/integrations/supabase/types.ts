@@ -509,6 +509,51 @@ export type Database = {
           },
         ]
       }
+      asset_download_logs: {
+        Row: {
+          asset_id: string
+          downloaded_at: string
+          id: string
+          ip_hash: string | null
+          user_agent: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          asset_id: string
+          downloaded_at?: string
+          id?: string
+          ip_hash?: string | null
+          user_agent?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          asset_id?: string
+          downloaded_at?: string
+          id?: string
+          ip_hash?: string | null
+          user_agent?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_download_logs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "content_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_download_logs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -3591,6 +3636,53 @@ export type Database = {
             columns: ["linked_product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_assets: {
+        Row: {
+          created_at: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          owner_id: string
+          owner_type: string
+          size_bytes: number | null
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          owner_id: string
+          owner_type: string
+          size_bytes?: number | null
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          owner_id?: string
+          owner_type?: string
+          size_bytes?: number | null
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_assets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -7252,6 +7344,54 @@ export type Database = {
           },
         ]
       }
+      user_asset_entitlements: {
+        Row: {
+          asset_id: string
+          granted_at: string
+          id: string
+          revoked_at: string | null
+          source_id: string | null
+          source_type: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          asset_id: string
+          granted_at?: string
+          id?: string
+          revoked_at?: string | null
+          source_id?: string | null
+          source_type: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          asset_id?: string
+          granted_at?: string
+          id?: string
+          revoked_at?: string | null
+          source_id?: string | null
+          source_type?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_asset_entitlements_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "content_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_asset_entitlements_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_chat_preferences: {
         Row: {
           chat_email_enabled: boolean
@@ -8114,6 +8254,10 @@ export type Database = {
       }
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_workspace_admin: {
+        Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
       join_community: {
