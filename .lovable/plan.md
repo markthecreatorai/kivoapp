@@ -1,16 +1,38 @@
 
 
-## Adicionar "Voltar para o workspace" no CommunitySwitcher
+## "Voltar para o workspace" — Verificação e Ajuste
 
-### Mudança
+### Status atual
 
-**`src/components/circle/CommunitySwitcher.tsx`**
+O código já possui o botão "Voltar para o workspace" no CommunitySwitcher (popover) com a condição correta:
 
-- Importar `ArrowLeft` do lucide-react
-- Usar `useWorkspace()` já importado para checar `currentWorkspace`
-- Adicionar botão "Voltar para o workspace" no bloco de ações (linha ~142), antes de "Criar comunidade", visível apenas quando `currentWorkspace` existe
-- Ao clicar, navega para `/dashboard` e fecha o popover
+```tsx
+{(currentWorkspace || userWorkspaces.length > 0) && (
+  <button onClick={() => navigate("/dashboard")}>
+    Voltar para o workspace
+  </button>
+)}
+```
 
-### Resultado
-Usuários que possuem workspace veem a opção de voltar ao painel principal direto do switcher de comunidades. Quem não tem workspace (apenas membro de comunidades) não vê o botão.
+A query de `workspace_members` retorna dados corretamente (confirmado via network requests). O botão **deveria** estar visível para o seu usuário.
+
+### Possível problema
+
+O botão está dentro do **popover** (clique no nome da comunidade no topo). Pode não estar aparecendo por:
+1. O preview ainda não recarregou com o código atualizado
+2. Você está olhando na versão publicada (kivostore.lovable.app) que precisa de re-publish
+
+### Proposta de melhoria
+
+Para tornar mais visível e garantir que funcione, vou:
+
+1. **Adicionar um botão "Voltar" fixo no header do CircleLayout** (fora do popover) — visível apenas para usuários com workspace Kivo
+   - Ícone `ArrowLeft` + texto "Workspace" no header, ao lado do CommunitySwitcher
+   - Condição: `userWorkspaces.length > 0` (tem conta Kivo criador)
+   - Usuários que são **só membros de comunidades** (sem workspace) não veem o botão
+
+2. **Manter o botão dentro do popover** como está
+
+### Arquivo alterado
+1. `src/components/circle/CircleLayout.tsx` — adicionar botão "Voltar ao workspace" no header
 
