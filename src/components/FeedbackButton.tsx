@@ -47,10 +47,10 @@ export function FeedbackButton() {
         <Button
           variant="outline"
           size="sm"
-          className="fixed bottom-20 lg:bottom-4 right-4 z-50 shadow-lg gap-2"
+          className="fixed bottom-24 lg:bottom-4 right-4 z-40 shadow-lg gap-2 lg:px-3 px-2 lg:h-9 h-9 min-w-0"
         >
           <MessageSquare className="w-4 h-4" />
-          Reportar problema
+          <span className="hidden lg:inline">Reportar problema</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
