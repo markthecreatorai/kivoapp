@@ -32,6 +32,7 @@ import ReactionBar from "@/components/circle/ReactionBar";
 import GifPicker from "@/components/circle/GifPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { X as XIcon, Image as ImageIcon } from "lucide-react";
+import { PostAttachmentsDisplay, type Attachment } from "@/components/circle/PostAttachments";
 
 interface PostDetailModalProps {
   postId: string;
