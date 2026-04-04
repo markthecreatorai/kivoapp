@@ -394,6 +394,91 @@ export default function AdminInviteTab({ community, member }: Props) {
           Abrimos seu cliente de e-mail com o convite pronto e copiamos o link para fallback.
         </p>
       </div>
+
+      {/* Invite Bonus Config */}
+      <InviteBonusConfig communityId={community.id} />
+    </div>
+  );
+}
+
+function InviteBonusConfig({ communityId }: { communityId: string }) {
+  const queryClient = useQueryClient();
+  const [pointsPerInvite, setPointsPerInvite] = useState(10);
+  const [pointsPerPaid, setPointsPerPaid] = useState(50);
+  const [isActive, setIsActive] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load existing config
+  useState(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("invite_rewards" as any)
+        .select("*")
+        .eq("community_id", communityId)
+        .maybeSingle();
+      if (data) {
+        setPointsPerInvite((data as any).points_per_invite || 10);
+        setPointsPerPaid((data as any).points_per_paid_invite || 50);
+        setIsActive((data as any).is_active || false);
+      }
+      setLoaded(true);
+    })();
+  });
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any)
+        .from("invite_rewards")
+        .upsert({
+          community_id: communityId,
+          points_per_invite: pointsPerInvite,
+          points_per_paid_invite: pointsPerPaid,
+          is_active: isActive,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "community_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invite-rewards"] });
+      toast.success("Configuração de bônus salva!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  if (!loaded) return null;
+
+  return (
+    <div className="space-y-4 pt-4 border-t border-border">
+      <h3 className="text-sm font-semibold text-foreground">🎁 Bônus de Convite</h3>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">Ativar bônus por convite</span>
+        <Switch checked={isActive} onCheckedChange={setIsActive} />
+      </div>
+      {isActive && (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground">Pontos por convite (entrada)</label>
+            <Input
+              type="number"
+              min={0}
+              value={pointsPerInvite}
+              onChange={(e) => setPointsPerInvite(Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Pontos por convite (pagou)</label>
+            <Input
+              type="number"
+              min={0}
+              value={pointsPerPaid}
+              onChange={(e) => setPointsPerPaid(Number(e.target.value))}
+            />
+          </div>
+          <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+            {save.isPending ? "Salvando..." : "Salvar configuração"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -21,12 +21,14 @@ export default function JoinCommunity() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite") || undefined;
+  const memberRefCode = searchParams.get("ref") || undefined;
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const { fetchCommunity, signupAndJoin, joinAsExistingUser, isLoading } = useJoinCommunity(
     slug || "",
-    inviteCode
+    inviteCode,
+    memberRefCode
   );
 
   const [showForm, setShowForm] = useState(false);
