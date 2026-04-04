@@ -1,18 +1,18 @@
 
+## Fix: FeedbackButton — mobile icon-only + mais espaço acima do bottom nav
 
-## Fix: FeedbackButton sobrepondo bottom nav no mobile
+### Mudanças em `src/components/FeedbackButton.tsx`
 
-### Problema
-O botão "Reportar problema" está fixo em `bottom-4 right-4` (16px do fundo), mas o bottom navigation tem ~60px de altura. No mobile, o botão fica por cima do menu.
+1. **Mobile: só ícone** — esconder texto "Reportar problema" em telas < lg
+   - Adicionar `hidden lg:inline` no texto
+   - Usar `size="icon"` no mobile via classes condicionais
 
-### Solução
-Ajustar o posicionamento do botão para subir acima do bottom nav no mobile:
+2. **Mais espaço acima do bottom nav** — subir o botão
+   - Trocar `bottom-20` (80px) por `bottom-24` (96px) no mobile — garante ~28px de folga acima do bottom nav (~68px)
+   - Manter `lg:bottom-4` no desktop
 
-**`src/components/FeedbackButton.tsx`** — linha 50:
-- Trocar `bottom-4` por `bottom-20 lg:bottom-4`
-- `bottom-20` (80px) no mobile garante que fique acima do bottom nav (~68px com safe area)
-- `lg:bottom-4` mantém o posicionamento original no desktop (onde não há bottom nav)
+3. **Reduzir z-index** — trocar `z-50` por `z-40` para não sobrepor menus que usam z-50
 
-### Arquivo alterado
-1. `src/components/FeedbackButton.tsx` — classe responsiva no botão
-
+### Resultado
+- Mobile: botão circular pequeno (só ícone 💬), acima do bottom nav sem sobreposição
+- Desktop: mantém texto "Reportar problema" e posição original
