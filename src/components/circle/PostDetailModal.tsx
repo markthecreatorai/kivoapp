@@ -205,6 +205,19 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
     enabled: !!community,
   });
 
+  // Fetch post attachments
+  const { data: postAttachments } = useQuery({
+    queryKey: ["post-attachments", postId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_post_attachments")
+        .select("id, file_path, file_name, mime_type, size_bytes")
+        .eq("post_id", postId);
+      return (data || []) as Attachment[];
+    },
+    enabled: !!postId && open,
+  });
+
   /* ── Derived state ─── */
   const isMuted = member?.status === "MUTED";
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN" || member?.role === "MODERATOR";
