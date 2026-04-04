@@ -303,6 +303,10 @@ export default function Checkout() {
       if (data?.error) throw new Error(data.error);
       if (data?.status === "paid" || data?.status === "authorized") {
         trackEvent("payment_succeeded", { method: "credit_card", order_id: data.order_id }, product.workspace_id);
+        if (isRecovery && sessionId) {
+          await supabase.from("checkout_sessions").update({ recovered_checkout: true, status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", sessionId);
+          trackEvent("cart_recovered", { session_id: sessionId, order_id: data.order_id, method: "credit_card" }, product.workspace_id);
+        }
         await supabase.functions.invoke("post-purchase", { body: { order_id: data.order_id } });
         navigate(`/order/success/${data.order_id}`);
       } else {
