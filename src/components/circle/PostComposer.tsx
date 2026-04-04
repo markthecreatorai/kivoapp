@@ -143,6 +143,8 @@ export default function PostComposer({
         postData.poll_options = validOptions.map((text, i) => ({
           id: `opt_${i}_${Date.now()}`, text: text.trim(), votes: 0,
         }));
+        postData.poll_allow_multiple = pollAllowMultiple;
+        if (pollEndsAt) postData.poll_ends_at = new Date(pollEndsAt).toISOString();
       }
 
       const { data: post, error } = await supabase.from("community_posts").insert(postData).select().single();
