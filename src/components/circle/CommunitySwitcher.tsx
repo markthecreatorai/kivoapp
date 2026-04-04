@@ -10,7 +10,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { ChevronDown, ChevronUp, Search, Plus, Compass, MessageSquare, Settings } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Plus, Compass, MessageSquare, Settings, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import KivoLogo from "@/assets/kivo-logo.svg";
 
