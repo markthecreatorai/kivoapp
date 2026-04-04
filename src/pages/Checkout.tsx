@@ -379,6 +379,10 @@ export default function Checkout() {
           clearInterval(pollInterval);
           setPaymentSuccess(true);
           trackEvent("payment_succeeded", { method: "pix", order_id: orderId }, product?.workspace_id);
+          if (isRecovery && sessionId) {
+            await supabase.from("checkout_sessions").update({ recovered_checkout: true, status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", sessionId);
+            trackEvent("cart_recovered", { session_id: sessionId, order_id: orderId, method: "pix" }, product?.workspace_id);
+          }
           await supabase.functions.invoke("post-purchase", { body: { order_id: orderId } });
           navigate(`/order/success/${orderId}`);
         }
