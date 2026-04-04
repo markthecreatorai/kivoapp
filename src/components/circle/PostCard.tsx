@@ -48,6 +48,9 @@ const ROLE_LABEL: Record<string, string> = {
 function PollSection({ post, memberId }: { post: any; memberId?: string }) {
   const queryClient = useQueryClient();
   const options = (post.poll_options || []) as Array<{ id: string; text: string; votes?: number }>;
+  const allowMultiple = !!post.poll_allow_multiple;
+  const pollEndsAt = post.poll_ends_at ? new Date(post.poll_ends_at) : null;
+  const isExpired = pollEndsAt ? pollEndsAt < new Date() : false;
 
   const { data: votes } = useQuery({
     queryKey: ["poll-votes", post.id],
@@ -60,20 +63,34 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
     },
   });
 
-  const myVote = votes?.find((v: any) => v.member_id === memberId)?.option_id;
-  const hasVoted = !!myVote;
-  const totalVotes = votes?.length || 0;
+  const myVotes = votes?.filter((v: any) => v.member_id === memberId).map((v: any) => v.option_id) || [];
+  const hasVoted = myVotes.length > 0;
+  const totalVotes = allowMultiple
+    ? new Set(votes?.map((v: any) => v.member_id)).size
+    : votes?.length || 0;
 
   const voteMutation = useMutation({
     mutationFn: async (optionId: string) => {
       if (!memberId) throw new Error("Not a member");
-      // Remove existing vote first
-      await supabase.from("community_poll_votes").delete().eq("post_id", post.id).eq("member_id", memberId);
-      // Insert new vote
-      const { error } = await supabase.from("community_poll_votes").insert({
-        post_id: post.id, member_id: memberId, option_id: optionId,
-      });
-      if (error) throw error;
+      if (isExpired) throw new Error("Enquete encerrada");
+      if (allowMultiple) {
+        // Toggle: if already voted for this option, remove; else add
+        if (myVotes.includes(optionId)) {
+          await supabase.from("community_poll_votes").delete().eq("post_id", post.id).eq("member_id", memberId).eq("option_id", optionId);
+        } else {
+          const { error } = await supabase.from("community_poll_votes").insert({
+            post_id: post.id, member_id: memberId, option_id: optionId,
+          });
+          if (error) throw error;
+        }
+      } else {
+        // Single vote: remove existing, insert new
+        await supabase.from("community_poll_votes").delete().eq("post_id", post.id).eq("member_id", memberId);
+        const { error } = await supabase.from("community_poll_votes").insert({
+          post_id: post.id, member_id: memberId, option_id: optionId,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["poll-votes", post.id] });
@@ -82,27 +99,28 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
   });
 
   const getVoteCount = (optionId: string) => votes?.filter((v: any) => v.option_id === optionId).length || 0;
-  const getPercent = (optionId: string) => totalVotes === 0 ? 0 : Math.round((getVoteCount(optionId) / totalVotes) * 100);
+  const totalOptionVotes = votes?.length || 0;
+  const getPercent = (optionId: string) => totalOptionVotes === 0 ? 0 : Math.round((getVoteCount(optionId) / totalOptionVotes) * 100);
 
   return (
     <div className="mt-3 space-y-2">
       {options.map((opt) => {
         const percent = getPercent(opt.id);
-        const isMyVote = myVote === opt.id;
+        const isMyVote = myVotes.includes(opt.id);
 
         return (
           <button
             key={opt.id}
-            onClick={() => !voteMutation.isPending && memberId && voteMutation.mutate(opt.id)}
-            disabled={!memberId || voteMutation.isPending}
+            onClick={() => !voteMutation.isPending && memberId && !isExpired && voteMutation.mutate(opt.id)}
+            disabled={!memberId || voteMutation.isPending || isExpired}
             className={cn(
               "w-full relative rounded-lg border px-4 py-2.5 text-left text-sm transition-colors overflow-hidden",
               isMyVote ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-              !memberId && "cursor-default"
+              (!memberId || isExpired) && "cursor-default opacity-75"
             )}
           >
             {/* Progress bar background */}
-            {hasVoted && (
+            {(hasVoted || isExpired) && (
               <div
                 className={cn(
                   "absolute inset-y-0 left-0 transition-all duration-500",
@@ -115,7 +133,7 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
               <span className={cn("font-medium", isMyVote && "text-primary")}>
                 {opt.text}
               </span>
-              {hasVoted && (
+              {(hasVoted || isExpired) && (
                 <span className={cn("text-xs font-semibold ml-2", isMyVote ? "text-primary" : "text-muted-foreground")}>
                   {percent}%
                 </span>
@@ -124,7 +142,15 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
           </button>
         );
       })}
-      <p className="text-xs text-muted-foreground">{totalVotes} vote{totalVotes !== 1 ? "s" : ""}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{totalVotes} participante{totalVotes !== 1 ? "s" : ""}</p>
+        {isExpired && <span className="text-xs text-destructive font-medium">Encerrada</span>}
+        {pollEndsAt && !isExpired && (
+          <span className="text-xs text-muted-foreground">
+            Encerra em {pollEndsAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
