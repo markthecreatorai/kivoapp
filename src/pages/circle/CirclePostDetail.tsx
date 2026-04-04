@@ -82,19 +82,34 @@ export default function CirclePostDetail() {
     enabled: !!postId,
   });
 
-  const { data: userReactions } = useQuery({
-    queryKey: ["circle-post-reactions", member?.id, postId],
+  const { data: allPostReactions } = useQuery({
+    queryKey: ["circle-post-reactions-multi", postId],
     queryFn: async () => {
-      if (!member) return { postLiked: false, commentLikes: [] as string[] };
-      const { data: postReaction } = await supabase.from("community_reactions").select("id").eq("member_id", member.id).eq("post_id", postId!).maybeSingle();
-      const { data: commentReactions } = await supabase.from("community_reactions").select("comment_id").eq("member_id", member.id).not("comment_id", "is", null);
-      return {
-        postLiked: !!postReaction,
-        commentLikes: commentReactions?.map((r: any) => r.comment_id) || [],
-      };
+      const { data } = await supabase
+        .from("community_reactions")
+        .select("post_id, emoji, member_id")
+        .eq("post_id", postId!)
+        .not("post_id", "is", null);
+      return data || [];
     },
-    enabled: !!member && !!postId,
+    enabled: !!postId,
   });
+
+  const getPostReactions = () => {
+    const grouped: Record<string, { count: number; reacted: boolean }> = {};
+    for (const r of (allPostReactions || [])) {
+      if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, reacted: false };
+      grouped[r.emoji].count++;
+      if (r.member_id === member?.id) grouped[r.emoji].reacted = true;
+    }
+    return Object.entries(grouped).map(([emoji, data]) => ({ emoji, ...data }));
+  };
+
+  // Legacy compat for userReactions
+  const userReactions = {
+    postLiked: (allPostReactions || []).some((r: any) => r.member_id === member?.id),
+    commentLikes: [] as string[],
+  };
 
   const { data: pollVotes } = useQuery({
     queryKey: ["circle-poll-votes", postId, member?.id],
