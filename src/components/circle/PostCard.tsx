@@ -137,6 +137,18 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
   const roleLabel = ROLE_LABEL[post.author?.role];
   const isPoll = post.post_type === "POLL" && post.poll_options;
 
+  // Fetch attachments
+  const { data: postAttachments } = useQuery({
+    queryKey: ["post-attachments", post.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_post_attachments")
+        .select("id, file_path, file_name, mime_type, size_bytes")
+        .eq("post_id", post.id);
+      return (data || []) as Attachment[];
+    },
+  });
+
   return (
     <div
       onClick={() => onOpenPost?.(post.id)}
