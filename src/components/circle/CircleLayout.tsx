@@ -29,6 +29,7 @@ import {
   LogOut,
   Trophy,
   ArrowLeft,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
