@@ -622,6 +622,13 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                       <p className="text-xs text-muted-foreground text-center">{totalPollVotes} votos</p>
                     </div>
                   )}
+
+                  {/* Attachments */}
+                  {postAttachments && postAttachments.length > 0 && (
+                    <div className="mt-4">
+                      <PostAttachmentsDisplay attachments={postAttachments} />
+                    </div>
+                  )}
                 </div>
 
                 {/* ═══ ACTION BAR ═══ */}
