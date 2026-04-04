@@ -232,7 +232,7 @@ function QuestionsList({ quizId }: { quizId: string }) {
         .select("*")
         .eq("quiz_id", quizId)
         .order("position");
-      return (data || []) as (QuizQuestion & { id: string })[];
+      return (data || []) as unknown as (QuizQuestion & { id: string })[];
     },
   });
 

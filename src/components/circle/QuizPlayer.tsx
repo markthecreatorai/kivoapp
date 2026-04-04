@@ -94,7 +94,7 @@ export default function QuizPlayer({ courseId, memberId }: { courseId: string; m
         .select("*")
         .eq("quiz_id", activeQuizId)
         .order("position");
-      return (data || []) as Question[];
+      return (data || []) as unknown as Question[];
     },
     enabled: !!activeQuizId,
   });
