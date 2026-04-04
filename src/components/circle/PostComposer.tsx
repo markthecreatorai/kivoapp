@@ -308,12 +308,12 @@ export default function PostComposer({
                 )}
               </div>
             ))}
-            {pollOptions.length < 6 && (
+            {pollOptions.length < 10 && (
               <button
                 onClick={() => setPollOptions([...pollOptions, ""])}
                 className="text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 uppercase tracking-wide"
               >
-                + Adicionar opção
+                + Adicionar opção ({pollOptions.length}/10)
               </button>
             )}
             {/* Poll settings */}

@@ -45,12 +45,13 @@ const ROLE_LABEL: Record<string, string> = {
   MODERATOR: "Mod",
 };
 
-function PollSection({ post, memberId }: { post: any; memberId?: string }) {
+function PollSection({ post, memberId, memberRole, isAuthor }: { post: any; memberId?: string; memberRole?: string; isAuthor?: boolean }) {
   const queryClient = useQueryClient();
   const options = (post.poll_options || []) as Array<{ id: string; text: string; votes?: number }>;
   const allowMultiple = !!post.poll_allow_multiple;
   const pollEndsAt = post.poll_ends_at ? new Date(post.poll_ends_at) : null;
   const isExpired = pollEndsAt ? pollEndsAt < new Date() : false;
+  const canClose = !isExpired && (isAuthor || memberRole === "OWNER" || memberRole === "ADMIN" || memberRole === "MODERATOR");
 
   const { data: votes } = useQuery({
     queryKey: ["poll-votes", post.id],
@@ -74,7 +75,6 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
       if (!memberId) throw new Error("Not a member");
       if (isExpired) throw new Error("Enquete encerrada");
       if (allowMultiple) {
-        // Toggle: if already voted for this option, remove; else add
         if (myVotes.includes(optionId)) {
           await supabase.from("community_poll_votes").delete().eq("post_id", post.id).eq("member_id", memberId).eq("option_id", optionId);
         } else {
@@ -84,7 +84,6 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
           if (error) throw error;
         }
       } else {
-        // Single vote: remove existing, insert new
         await supabase.from("community_poll_votes").delete().eq("post_id", post.id).eq("member_id", memberId);
         const { error } = await supabase.from("community_poll_votes").insert({
           post_id: post.id, member_id: memberId, option_id: optionId,
@@ -97,6 +96,13 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
     },
     onError: () => toast.error("Erro ao votar"),
   });
+
+  const closePoll = async () => {
+    await supabase.from("community_posts").update({ poll_ends_at: new Date().toISOString() }).eq("id", post.id);
+    queryClient.invalidateQueries({ queryKey: ["poll-votes", post.id] });
+    queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
+    toast.success("Enquete encerrada");
+  };
 
   const getVoteCount = (optionId: string) => votes?.filter((v: any) => v.option_id === optionId).length || 0;
   const totalOptionVotes = votes?.length || 0;
@@ -119,7 +125,6 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
               (!memberId || isExpired) && "cursor-default opacity-75"
             )}
           >
-            {/* Progress bar background */}
             {(hasVoted || isExpired) && (
               <div
                 className={cn(
@@ -149,6 +154,11 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
           <span className="text-xs text-muted-foreground">
             Encerra em {pollEndsAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
           </span>
+        )}
+        {canClose && (
+          <button onClick={closePoll} className="text-xs text-destructive hover:underline">
+            Encerrar
+          </button>
         )}
       </div>
     </div>
