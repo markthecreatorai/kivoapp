@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/tracking";
 
 interface JoinFormData {
   display_name: string;
