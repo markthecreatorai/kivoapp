@@ -46,6 +46,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accessRule, setAccessRule] = useState("all");
 
   useEffect(() => {
     if (stream) {
