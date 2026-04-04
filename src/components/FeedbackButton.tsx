@@ -47,7 +47,7 @@ export function FeedbackButton() {
         <Button
           variant="outline"
           size="sm"
-          className="fixed bottom-4 right-4 z-50 shadow-lg gap-2"
+          className="fixed bottom-20 lg:bottom-4 right-4 z-50 shadow-lg gap-2"
         >
           <MessageSquare className="w-4 h-4" />
           Reportar problema
