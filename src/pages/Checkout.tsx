@@ -223,13 +223,33 @@ export default function Checkout() {
     return sessionStorage.getItem("kivo_affiliate_link_id") || undefined;
   })();
 
+  // Bump toggle
+  const toggleBump = useCallback((bumpProductId: string) => {
+    setSelectedBumps((prev) => {
+      const next = new Set(prev);
+      if (next.has(bumpProductId)) {
+        next.delete(bumpProductId);
+        trackEvent("order_bump_removed", { bump_product_id: bumpProductId }, product?.workspace_id);
+      } else {
+        next.add(bumpProductId);
+        trackEvent("order_bump_added", { bump_product_id: bumpProductId }, product?.workspace_id);
+      }
+      return next;
+    });
+  }, [product]);
+
   // Price calculations
-  const subtotal = price?.amount ?? 0;
+  const bumpAmount = useMemo(
+    () => orderBumps.filter((b) => selectedBumps.has(b.bump_product_id)).reduce((sum, b) => sum + b.bump_price, 0),
+    [orderBumps, selectedBumps]
+  );
+  const subtotal = (price?.amount ?? 0) + bumpAmount;
   const couponDiscount = appliedCoupon?.discount ?? 0;
-  const pixDiscountAmount = price?.pix_discount_percent ? subtotal * (price.pix_discount_percent / 100) : null;
+  const pixDiscountAmount = price?.pix_discount_percent ? (price.amount) * (price.pix_discount_percent / 100) : null;
   const pixTotal = pixDiscountAmount ? subtotal - couponDiscount - pixDiscountAmount : null;
   const cardTotal = subtotal - couponDiscount;
   const currentTotal = activeTab === "pix" && pixTotal ? pixTotal : cardTotal;
+  const selectedBumpIds = useMemo(() => Array.from(selectedBumps), [selectedBumps]);
 
   // Save email on blur for checkout recovery
   const handleEmailBlur = useCallback(async () => {
