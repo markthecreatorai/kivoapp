@@ -60,6 +60,8 @@ export default function Checkout() {
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
+  const [selectedBumps, setSelectedBumps] = useState<Set<string>>(new Set());
 
   // Load product + price (supports ?session= recovery param)
   useEffect(() => {
