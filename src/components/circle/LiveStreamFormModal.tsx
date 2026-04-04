@@ -25,6 +25,14 @@ function extractTwitchChannel(url: string): string | null {
 }
 export { extractYouTubeId, extractTwitchChannel, detectEmbedType };
 
+interface LiveStreamFormModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  communityId: string;
+  memberId: string;
+  stream?: any;
+}
+
 export default function LiveStreamFormModal({ open, onOpenChange, communityId, memberId, stream }: LiveStreamFormModalProps) {
   const queryClient = useQueryClient();
   const isEditing = !!stream;
