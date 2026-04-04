@@ -232,6 +232,20 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
         }
       }
 
+      // 4. Grant member invite bonus if ref code present
+      if (memberRefCode && status === "ACTIVE") {
+        const refLink = await validateMemberRef(memberRefCode);
+        if (refLink && refLink.community_id === community.id) {
+          await grantInviteBonus(
+            community.id,
+            refLink.member_id,
+            authData.user.id,
+            refLink.id,
+            "joined"
+          );
+        }
+      }
+
       // 4. Feedback to user
       if (status === "PENDING") {
         toast.success("Conta criada! Sua entrada na comunidade aguarda aprovação.");
