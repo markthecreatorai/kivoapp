@@ -12,7 +12,7 @@ interface JoinFormData {
 
 type JoinAnswers = Array<{ question_id?: string; question: string; answer: string }>;
 
-export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
+export function useJoinCommunity(communitySlug: string, inviteCode?: string, memberRefCode?: string) {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
