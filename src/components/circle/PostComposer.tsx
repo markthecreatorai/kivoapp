@@ -314,6 +314,14 @@ export default function PostComposer({
             )}
           </div>
         )}
+
+        {/* Attachment previews */}
+        {attachments.length > 0 && (
+          <AttachmentComposerPreview
+            files={attachments}
+            onRemove={(i) => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+          />
+        )}
       </div>
 
       {/* Footer toolbar */}
