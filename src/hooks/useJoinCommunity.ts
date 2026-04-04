@@ -28,7 +28,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
     return data;
   };
 
-  // Validate invite code if provided
+  // Validate invite code if provided (admin invite links)
   const validateInviteCode = async (communityId: string, code: string) => {
     const { data } = await (supabase as any)
       .from("community_invite_links")
@@ -41,6 +41,104 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string) {
     if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
     if (data.max_uses && data.uses_count >= data.max_uses) return null;
     return data;
+  };
+
+  // Validate member invite ref code
+  const validateMemberRef = async (code: string) => {
+    const { data } = await (supabase as any)
+      .from("member_invite_links")
+      .select("id, member_id, community_id, code, uses_count, is_active")
+      .eq("code", code)
+      .eq("is_active", true)
+      .maybeSingle();
+    return data;
+  };
+
+  // Grant invite bonus points with anti-fraud checks
+  const grantInviteBonus = async (
+    communityId: string,
+    inviterMemberId: string,
+    inviteeUserId: string,
+    inviteLinkId: string,
+    eventType: "joined" | "paid" = "joined"
+  ) => {
+    try {
+      // Anti-fraud: check self-invite
+      const { data: inviterMember } = await supabase
+        .from("community_members")
+        .select("user_id")
+        .eq("id", inviterMemberId)
+        .maybeSingle();
+
+      if (inviterMember?.user_id === inviteeUserId) return; // self-invite blocked
+
+      // Get reward config
+      const { data: rewardConfig } = await (supabase as any)
+        .from("invite_rewards")
+        .select("*")
+        .eq("community_id", communityId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!rewardConfig) return;
+
+      const points = eventType === "paid"
+        ? rewardConfig.points_per_paid_invite
+        : rewardConfig.points_per_invite;
+
+      // Insert event (unique constraint prevents duplicates)
+      const { error: eventErr } = await (supabase as any)
+        .from("invite_events")
+        .insert({
+          invite_link_id: inviteLinkId,
+          inviter_member_id: inviterMemberId,
+          invitee_user_id: inviteeUserId,
+          community_id: communityId,
+          event_type: eventType,
+          points_awarded: points,
+        });
+
+      if (eventErr) {
+        if (eventErr.message?.includes("duplicate") || eventErr.message?.includes("unique")) return;
+        console.error("Invite event error:", eventErr);
+        return;
+      }
+
+      // Award points to inviter
+      if (points > 0) {
+        await supabase
+          .from("community_members")
+          .update({ points: (await supabase
+            .from("community_members")
+            .select("points")
+            .eq("id", inviterMemberId)
+            .single()
+            .then(r => r.data?.points || 0)) + points
+          })
+          .eq("id", inviterMemberId);
+      }
+
+      // Increment uses_count on invite link
+      await (supabase as any)
+        .from("member_invite_links")
+        .update({ uses_count: (await (supabase as any)
+          .from("member_invite_links")
+          .select("uses_count")
+          .eq("id", inviteLinkId)
+          .single()
+          .then((r: any) => r.data?.uses_count || 0)) + 1
+        })
+        .eq("id", inviteLinkId);
+
+      trackEvent("invite_bonus_granted", {
+        community_id: communityId,
+        inviter_member_id: inviterMemberId,
+        event_type: eventType,
+        points,
+      });
+    } catch (err) {
+      console.error("Grant invite bonus error:", err);
+    }
   };
 
   /**
