@@ -218,18 +218,16 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-border flex items-center gap-1">
-        <button
-          onClick={(e) => { e.stopPropagation(); if (!isMuted) onToggleLike(post.id); }}
-          disabled={isMuted}
-          className={cn(
-            "flex items-center gap-1 text-[13px] transition-colors px-1.5 py-0.5 rounded-md",
-            liked ? "text-primary" : "text-muted-foreground hover:text-primary hover:bg-muted/50",
-            isMuted && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <ThumbsUp className={cn("h-[14px] w-[14px]", liked && "fill-current")} />
-          {post.like_count > 0 && <span>{post.like_count}</span>}
-        </button>
+        <div onClick={(e) => e.stopPropagation()}>
+          <ReactionBar
+            targetType="post"
+            targetId={post.id}
+            memberId={memberId}
+            communityId={communityId}
+            isMuted={isMuted}
+            reactions={reactions}
+          />
+        </div>
 
         <button
           onClick={(e) => { e.stopPropagation(); onOpenPost?.(post.id); }}
