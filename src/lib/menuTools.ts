@@ -10,9 +10,12 @@ export interface MenuToolItem {
 export const coreItems: MenuToolItem[] = [
   { id: "home", title: "Home", url: "/dashboard", description: "", icon: "Home" },
   { id: "store", title: "Minha Loja", url: "/store", description: "", icon: "Store" },
-  { id: "earnings", title: "Renda", url: "/earnings", description: "", icon: "DollarSign" },
-  { id: "analytics", title: "Analytics", url: "/analytics", description: "", icon: "BarChart3" },
+  { id: "circles", title: "Circles", url: "/circles", description: "", icon: "MessagesSquare" },
+  { id: "earnings", title: "Vendas", url: "/earnings", description: "", icon: "DollarSign" },
+  { id: "analytics", title: "Relatórios", url: "/analytics", description: "", icon: "BarChart3" },
   { id: "clients", title: "Clientes", url: "/clients", description: "", icon: "Heart" },
+  { id: "calendar", title: "Calendar", url: "/appointments", description: "", icon: "CalendarCheck" },
+  { id: "autodm", title: "AutoDM", url: "/autodm", description: "", icon: "Zap" },
 ];
 
 /** Toggleable items shown in the "Mais" page */
