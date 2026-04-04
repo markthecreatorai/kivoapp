@@ -18,13 +18,12 @@ import {
   Zap,
   MessageSquare,
   CalendarDays,
-  CalendarCheck,
-  Plus,
   Heart,
   FileText,
   MoreVertical,
   User,
-  Grid3X3,
+  Plus,
+  CalendarCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate, Link } from "react-router-dom";
@@ -40,8 +39,6 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useWorkspace } from "@/contexts/WorkspaceProvider";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isAdminUser } from "@/lib/admin";
@@ -59,7 +56,22 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import kivoSymbol from "@/assets/kivo-symbol.svg";
-import { getMenuToolsState, menuToolItems } from "@/lib/menuTools";
+import { getMenuToolsState, optionalItems } from "@/lib/menuTools";
+import type React from "react";
+import { useWorkspace } from "@/contexts/WorkspaceProvider";
+
+/* ── Icon map for optional items ── */
+const iconMap: Record<string, React.ElementType> = {
+  MessagesSquare,
+  CalendarCheck,
+  Users,
+  Tag,
+  UserCheck,
+  Mail,
+  Send,
+  Receipt,
+  FileText,
+};
 
 interface NavItem {
   title: string;
@@ -67,26 +79,12 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-const primaryItems: NavItem[] = [
+const coreNavItems: NavItem[] = [
   { title: "Home", url: "/dashboard", icon: Home },
   { title: "Minha Loja", url: "/store", icon: Store },
-  { title: "Circles", url: "/circles", icon: MessagesSquare },
   { title: "Renda", url: "/earnings", icon: DollarSign },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Heart },
-  { title: "Agendamentos", url: "/appointments", icon: CalendarCheck },
-];
-
-const moreItems: NavItem[] = [
-  { title: "Indicações", url: "/referrals", icon: Users },
-  { title: "Cupons", url: "/coupons", icon: Tag },
-  { title: "Logs Pagamento", url: "/payment-logs", icon: FileText },
-  { title: "Leads", url: "/leads", icon: UserCheck },
-  { title: "Email Flows", url: "/email-flows", icon: Mail },
-  { title: "Campanhas", url: "/email-campaigns", icon: Send },
-  { title: "Afiliados", url: "/affiliates", icon: Users },
-  { title: "Fiscal", url: "/fiscal", icon: Receipt },
-  { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
 const adminItems: NavItem[] = [
@@ -115,7 +113,7 @@ export function AppSidebar() {
   const { currentWorkspace } = useWorkspace();
   const { signOut, user } = useAuth();
   const isAdmin = isAdminUser(user);
-  const [menuToolsState, setMenuToolsState] = useState<Record<string, boolean>>(() => getMenuToolsState());
+  const [menuToolsState, setLocalToolsState] = useState<Record<string, boolean>>(() => getMenuToolsState());
 
   const { data: avatarUrl } = useQuery({
     queryKey: ["sidebar-avatar", currentWorkspace?.id],
@@ -142,23 +140,26 @@ export function AppSidebar() {
     "Usuário";
 
   useEffect(() => {
-    const syncMenuTools = () => setMenuToolsState(getMenuToolsState());
-    window.addEventListener("kivo:menu-tools-updated", syncMenuTools as EventListener);
-    return () => window.removeEventListener("kivo:menu-tools-updated", syncMenuTools as EventListener);
+    const sync = () => setLocalToolsState(getMenuToolsState());
+    window.addEventListener("kivo:menu-tools-updated", sync as EventListener);
+    return () => window.removeEventListener("kivo:menu-tools-updated", sync as EventListener);
   }, []);
 
-  const isMenuEnabled = (url: string) => {
-    const match = menuToolItems.find((item) => item.url === url);
-    if (!match) return true;
-    return menuToolsState[match.id] !== false;
-  };
+  /* Build active optional nav items */
+  const activeOptionalNavItems: NavItem[] = optionalItems
+    .filter((item) => menuToolsState[item.id] === true)
+    .map((item) => ({
+      title: item.title,
+      url: item.url,
+      icon: iconMap[item.icon] || Store,
+    }));
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
 
   const navItemClass = (active: boolean) =>
     cn(
-      "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors group",
+      "flex items-center gap-3 rounded-lg px-4 py-2.5 text-[15px] font-medium transition-colors group",
       active
         ? "bg-primary/10 text-primary"
         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -177,7 +178,7 @@ export function AppSidebar() {
           >
             <item.icon
               className={cn(
-                "h-4 w-4 flex-shrink-0",
+                "h-5 w-5 flex-shrink-0",
                 active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
               )}
             />
@@ -192,19 +193,24 @@ export function AppSidebar() {
     const active = isActive("/menu-tools");
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild tooltip={collapsed ? "Ver mais" : undefined}>
+        <SidebarMenuButton asChild tooltip={collapsed ? "Mais" : undefined}>
           <NavLink
             to="/menu-tools"
-            className={cn(navItemClass(active), collapsed && "justify-center px-0")}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-4 py-2.5 text-[15px] font-medium transition-colors group",
+              active
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            ,collapsed && "justify-center px-0")}
             activeClassName="bg-primary/10 text-primary"
           >
-            <Grid3X3
+            <Plus
               className={cn(
-                "h-4 w-4 flex-shrink-0",
+                "h-5 w-5 flex-shrink-0",
                 active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
               )}
             />
-            {!collapsed && <span>Ver mais</span>}
+            {!collapsed && <span>Mais</span>}
           </NavLink>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -213,7 +219,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/40">
-      <SidebarHeader className="border-b border-border/30 bg-sidebar px-3 py-3">
+      {/* ── Header ── */}
+      <SidebarHeader className="border-b border-border/30 bg-sidebar px-4 py-4">
         <Link
           to="/dashboard"
           className={cn("flex items-center transition-all duration-200", collapsed ? "justify-center" : "gap-2")}
@@ -221,44 +228,34 @@ export function AppSidebar() {
           <img
             src={collapsed ? kivoSymbol : kivoLogo}
             alt="Kivo"
-            className={cn("object-contain", collapsed ? "h-6 w-6" : "h-6")}
+            className={cn("object-contain", collapsed ? "h-7 w-7" : "h-7")}
           />
         </Link>
-
-        {!collapsed && currentWorkspace && (
-          <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Store className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">{currentWorkspace.name || "Minha Loja"}</span>
-            </div>
-          </div>
-        )}
       </SidebarHeader>
 
-      <SidebarContent className="bg-sidebar px-2 py-3">
-        {!collapsed ? (
-          <Button size="sm" className="mb-3 h-8 w-full gap-2 text-xs" onClick={() => navigate("/products/new")}>
-            <Plus className="h-3.5 w-3.5" />
-            Criar produto
-          </Button>
-        ) : (
-          <div className="mb-3 flex justify-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" className="h-8 w-8" onClick={() => navigate("/products/new")}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Criar produto</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
+      {/* ── Content ── */}
+      <SidebarContent className="bg-sidebar px-3 py-4">
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {primaryItems.filter((item) => isMenuEnabled(item.url)).map(renderNavItem)}
-              {moreItems.filter((item) => isMenuEnabled(item.url)).map(renderNavItem)}
+            <SidebarMenu className="space-y-1.5">
+              {coreNavItems.map(renderNavItem)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {activeOptionalNavItems.length > 0 && (
+          <SidebarGroup className="mt-3 border-t border-border/30 pt-3 p-0">
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1.5">
+                {activeOptionalNavItems.map(renderNavItem)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        <SidebarGroup className="mt-3 border-t border-border/30 pt-3 p-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-1.5">
               {renderMoreLink()}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -267,7 +264,7 @@ export function AppSidebar() {
         {isAdmin && (
           <SidebarGroup className="mt-3 border-t border-border/30 pt-3 p-0">
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
+              <SidebarMenu className="space-y-1.5">
                 {adminItems.map(renderNavItem)}
               </SidebarMenu>
             </SidebarGroupContent>
@@ -275,15 +272,16 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border/30 bg-sidebar px-3 py-2.5">
-        <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-2")}>
+      {/* ── Footer ── */}
+      <SidebarFooter className="border-t border-border/30 bg-sidebar px-4 py-3">
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
           {collapsed ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-9 w-9">
                     <AvatarImage src={resolvedAvatar || ""} />
-                    <AvatarFallback className="text-[11px] font-semibold text-muted-foreground bg-muted">
+                    <AvatarFallback className="text-xs font-semibold text-muted-foreground bg-muted">
                       {getInitials(displayName, user?.email)}
                     </AvatarFallback>
                   </Avatar>
@@ -310,13 +308,13 @@ export function AppSidebar() {
             </DropdownMenu>
           ) : (
             <>
-              <Avatar className="h-8 w-8 flex-shrink-0">
+              <Avatar className="h-9 w-9 flex-shrink-0">
                 <AvatarImage src={resolvedAvatar || ""} />
-                <AvatarFallback className="text-[11px] font-semibold text-muted-foreground bg-muted">
+                <AvatarFallback className="text-xs font-semibold text-muted-foreground bg-muted">
                   {getInitials(displayName, user?.email)}
                 </AvatarFallback>
               </Avatar>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">{displayName}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{displayName}</span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">

@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { Grid3X3 } from "lucide-react";
-import { getMenuToolsState, menuToolItems, setMenuToolsState } from "@/lib/menuTools";
+import { Pin } from "lucide-react";
+import { getMenuToolsState, optionalItems, setMenuToolsState } from "@/lib/menuTools";
+import {
+  Home, Store, DollarSign, BarChart3, Heart,
+  MessagesSquare, CalendarCheck, Users, Tag, UserCheck,
+  Mail, Send, Receipt, FileText,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type React from "react";
+
+const iconMap: Record<string, React.ElementType> = {
+  Home, Store, DollarSign, BarChart3, Heart,
+  MessagesSquare, CalendarCheck, Users, Tag, UserCheck,
+  Mail, Send, Receipt, FileText,
+};
 
 export default function MenuTools() {
   const [toolsState, setToolsState] = useState<Record<string, boolean>>(() => getMenuToolsState());
@@ -15,7 +26,7 @@ export default function MenuTools() {
   }, []);
 
   const enabledCount = useMemo(
-    () => menuToolItems.filter((item) => toolsState[item.id] !== false).length,
+    () => optionalItems.filter((item) => toolsState[item.id] === true).length,
     [toolsState]
   );
 
@@ -25,49 +36,50 @@ export default function MenuTools() {
     setMenuToolsState(next);
   };
 
-  const enableAll = () => {
-    const next = Object.fromEntries(menuToolItems.map((item) => [item.id, true]));
-    setToolsState(next);
-    setMenuToolsState(next);
-  };
-
   return (
-    <div className="p-4 md:p-5 max-w-3xl mx-auto space-y-5 pb-24 lg:pb-5">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6 pb-24 lg:pb-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-semibold text-foreground flex items-center gap-2">
-          <Grid3X3 className="h-5 w-5" />
-          Ver mais
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Escolha quais ferramentas devem aparecer no menu lateral. Ativas: {enabledCount}/{menuToolItems.length}
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">Mais opções</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Ative ferramentas para fixá-las no menu lateral. {enabledCount} ativa{enabledCount !== 1 ? "s" : ""}.
         </p>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Ferramentas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {menuToolItems.map((item) => (
-            <div key={item.id} className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
-              <div>
-                <p className="text-sm font-medium text-foreground">{item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.url}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {optionalItems.map((item) => {
+          const Icon = iconMap[item.icon] || Store;
+          const active = toolsState[item.id] === true;
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "flex items-center gap-4 rounded-xl border p-4 transition-colors",
+                active ? "border-primary/30 bg-primary/5" : "border-border/60 bg-card"
+              )}
+            >
+              <div className={cn(
+                "flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl",
+                active ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+              )}>
+                <Icon className="h-5 w-5" />
               </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                  {active && <Pin className="h-3 w-3 text-primary" />}
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+              </div>
+
               <Switch
-                checked={toolsState[item.id] !== false}
+                checked={active}
                 onCheckedChange={(enabled) => toggleTool(item.id, enabled)}
               />
             </div>
-          ))}
-
-          <div className="pt-2">
-            <Button variant="outline" size="sm" onClick={enableAll}>
-              Ativar todas
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -2,30 +2,39 @@ export interface MenuToolItem {
   id: string;
   title: string;
   url: string;
+  description: string;
+  icon: string; // lucide icon name
 }
 
-export const menuToolItems: MenuToolItem[] = [
-  { id: "home", title: "Home", url: "/dashboard" },
-  { id: "store", title: "Minha Loja", url: "/store" },
-  { id: "circles", title: "Circles", url: "/circles" },
-  { id: "earnings", title: "Renda", url: "/earnings" },
-  { id: "analytics", title: "Analytics", url: "/analytics" },
-  { id: "clients", title: "Clientes", url: "/clients" },
-  { id: "appointments", title: "Agendamentos", url: "/appointments" },
-  { id: "referrals", title: "Indicações", url: "/referrals" },
-  { id: "coupons", title: "Cupons", url: "/coupons" },
-  { id: "payment-logs", title: "Logs Pagamento", url: "/payment-logs" },
-  { id: "leads", title: "Leads", url: "/leads" },
-  { id: "email-flows", title: "Email Flows", url: "/email-flows" },
-  { id: "email-campaigns", title: "Campanhas", url: "/email-campaigns" },
-  { id: "affiliates", title: "Afiliados", url: "/affiliates" },
-  { id: "fiscal", title: "Fiscal", url: "/fiscal" },
-  { id: "settings", title: "Configurações", url: "/settings" },
+/** Always visible in sidebar – cannot be toggled off */
+export const coreItems: MenuToolItem[] = [
+  { id: "home", title: "Home", url: "/dashboard", description: "", icon: "Home" },
+  { id: "store", title: "Minha Loja", url: "/store", description: "", icon: "Store" },
+  { id: "earnings", title: "Renda", url: "/earnings", description: "", icon: "DollarSign" },
+  { id: "analytics", title: "Analytics", url: "/analytics", description: "", icon: "BarChart3" },
+  { id: "clients", title: "Clientes", url: "/clients", description: "", icon: "Heart" },
 ];
+
+/** Toggleable items shown in the "Mais" page */
+export const optionalItems: MenuToolItem[] = [
+  { id: "circles", title: "Circles", url: "/circles", description: "Crie comunidades!", icon: "MessagesSquare" },
+  { id: "appointments", title: "Agendamentos", url: "/appointments", description: "Gerencie seus agendamentos!", icon: "CalendarCheck" },
+  { id: "referrals", title: "Indicações", url: "/referrals", description: "Ganhe renda passiva com indicações!", icon: "Users" },
+  { id: "coupons", title: "Cupons", url: "/coupons", description: "Crie cupons de desconto!", icon: "Tag" },
+  { id: "leads", title: "Leads", url: "/leads", description: "Capture e gerencie leads!", icon: "UserCheck" },
+  { id: "email-flows", title: "Email Flows", url: "/email-flows", description: "Envie emails automáticos!", icon: "Mail" },
+  { id: "email-campaigns", title: "Campanhas", url: "/email-campaigns", description: "Envie campanhas de email!", icon: "Send" },
+  { id: "affiliates", title: "Afiliados", url: "/affiliates", description: "Gerencie seus afiliados!", icon: "Users" },
+  { id: "fiscal", title: "Fiscal", url: "/fiscal", description: "Emita notas fiscais!", icon: "Receipt" },
+  { id: "payment-logs", title: "Logs Pagamento", url: "/payment-logs", description: "Acompanhe logs de pagamento!", icon: "FileText" },
+];
+
+/** Combined list for backward compat */
+export const menuToolItems: MenuToolItem[] = [...coreItems, ...optionalItems];
 
 export const menuToolsStorageKey = "kivo.sidebar.menu.tools.v1";
 
-const defaultToolMap = Object.fromEntries(menuToolItems.map((item) => [item.id, true])) as Record<string, boolean>;
+const defaultToolMap = Object.fromEntries(optionalItems.map((item) => [item.id, false])) as Record<string, boolean>;
 
 export function getMenuToolsState(): Record<string, boolean> {
   if (typeof window === "undefined") return defaultToolMap;
