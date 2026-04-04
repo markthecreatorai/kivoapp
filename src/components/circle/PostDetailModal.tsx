@@ -28,6 +28,7 @@ import LevelBadge from "@/components/circle/LevelBadge";
 import { createNotification } from "@/lib/notifications";
 import { checkSpam } from "@/lib/antispam";
 import EmojiPicker from "@/components/circle/EmojiPicker";
+import ReactionBar from "@/components/circle/ReactionBar";
 import GifPicker from "@/components/circle/GifPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { X as XIcon, Image as ImageIcon } from "lucide-react";
@@ -141,16 +142,46 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
     enabled: !!postId && open,
   });
 
-  const { data: userReactions } = useQuery({
-    queryKey: ["circle-post-reactions", member?.id, postId],
+  // Fetch all reactions for this post (all users, for grouping)
+  const { data: allPostReactions } = useQuery({
+    queryKey: ["circle-post-reactions-multi", postId],
     queryFn: async () => {
-      if (!member) return { postLiked: false, commentLikes: [] as string[] };
-      const { data: pr } = await supabase.from("community_reactions").select("id").eq("member_id", member.id).eq("post_id", postId).maybeSingle();
-      const { data: cr } = await supabase.from("community_reactions").select("comment_id").eq("member_id", member.id).not("comment_id", "is", null);
-      return { postLiked: !!pr, commentLikes: cr?.map((r: any) => r.comment_id) || [] };
+      const { data } = await supabase
+        .from("community_reactions")
+        .select("post_id, comment_id, emoji, member_id")
+        .or(`post_id.eq.${postId},comment_id.not.is.null`)
+        .not("post_id", "is", null);
+      // Also get comment reactions for this post's comments
+      const { data: cr } = await supabase
+        .from("community_reactions")
+        .select("comment_id, emoji, member_id")
+        .not("comment_id", "is", null);
+      return { postReactions: data || [], commentReactions: cr || [] };
     },
-    enabled: !!member && !!postId && open,
+    enabled: !!postId && open,
   });
+
+  // Build grouped reactions for a target
+  const getReactionsFor = (type: "post" | "comment", targetId: string) => {
+    const source = type === "post"
+      ? (allPostReactions?.postReactions || []).filter((r: any) => r.post_id === targetId)
+      : (allPostReactions?.commentReactions || []).filter((r: any) => r.comment_id === targetId);
+    const grouped: Record<string, { count: number; reacted: boolean }> = {};
+    for (const r of source) {
+      if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, reacted: false };
+      grouped[r.emoji].count++;
+      if (r.member_id === member?.id) grouped[r.emoji].reacted = true;
+    }
+    return Object.entries(grouped).map(([emoji, data]) => ({ emoji, ...data }));
+  };
+
+  // Legacy compat
+  const userReactions = {
+    postLiked: (allPostReactions?.postReactions || []).some((r: any) => r.post_id === postId && r.member_id === member?.id),
+    commentLikes: (allPostReactions?.commentReactions || [])
+      .filter((r: any) => r.member_id === member?.id)
+      .map((r: any) => r.comment_id) as string[],
+  };
 
   const { data: pollVotes } = useQuery({
     queryKey: ["circle-poll-votes", postId, member?.id],
@@ -581,11 +612,14 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
 
                 {/* ═══ ACTION BAR ═══ */}
                 <div className="px-5 py-3 border-y border-border flex items-center gap-4">
-                  <button onClick={() => !isMuted && togglePostLike.mutate()} disabled={isMuted}
-                    className={cn("flex items-center gap-1.5 text-sm font-medium transition-all", userReactions?.postLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-                    <ThumbsUp className={cn("h-4 w-4", userReactions?.postLiked && "fill-current")} />
-                    {post.like_count > 0 && <span>{post.like_count}</span>}
-                  </button>
+                  <ReactionBar
+                    targetType="post"
+                    targetId={postId}
+                    memberId={member?.id}
+                    communityId={community?.id}
+                    isMuted={isMuted}
+                    reactions={getReactionsFor("post", postId)}
+                  />
                   <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <MessageCircle className="h-4 w-4" />
                     {topComments.length} {topComments.length === 1 ? "comentário" : "comentários"}
@@ -756,11 +790,15 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                             )}
 
                             <div className="flex items-center gap-3 mt-2">
-                              <button onClick={() => !isMuted && toggleCommentLike.mutate(comment.id)} disabled={isMuted}
-                                className={cn("flex items-center gap-1 text-xs transition-all", cLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-                                <ThumbsUp className={cn("h-3.5 w-3.5", cLiked && "fill-current")} />
-                                {comment.like_count > 0 && <span>{comment.like_count}</span>}
-                              </button>
+                              <ReactionBar
+                                targetType="comment"
+                                targetId={comment.id}
+                                memberId={member?.id}
+                                communityId={community?.id}
+                                isMuted={isMuted}
+                                reactions={getReactionsFor("comment", comment.id)}
+                                compact
+                              />
                               {!post.is_locked && !isMuted && (
                                 <button onClick={() => {
                                   if (replyTo === comment.id) {
@@ -844,11 +882,15 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                     </div>
                                     <p className="text-xs text-foreground mt-0.5 whitespace-pre-wrap">{renderMentions(reply.body)}</p>
                                     <div className="flex items-center gap-3 mt-1">
-                                      <button onClick={() => !isMuted && toggleCommentLike.mutate(reply.id)} disabled={isMuted}
-                                        className={cn("flex items-center gap-1 text-[10px]", rLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-                                        <ThumbsUp className={cn("h-3 w-3", rLiked && "fill-current")} />
-                                        {reply.like_count > 0 && <span>{reply.like_count}</span>}
-                                      </button>
+                                      <ReactionBar
+                                        targetType="comment"
+                                        targetId={reply.id}
+                                        memberId={member?.id}
+                                        communityId={community?.id}
+                                        isMuted={isMuted}
+                                        reactions={getReactionsFor("comment", reply.id)}
+                                        compact
+                                      />
                                       {!post.is_locked && !isMuted && (
                                         <button onClick={() => {
                                           setReplyTo(comment.id);

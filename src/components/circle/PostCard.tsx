@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThumbsUp, MessageCircle, Pin, BarChart3, Play, Flag, MoreHorizontal, Trash2 } from "lucide-react";
+import { MessageCircle, Pin, BarChart3, Play, Flag, MoreHorizontal, Trash2 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
+import ReactionBar, { type ReactionData } from "@/components/circle/ReactionBar";
 import { toast } from "sonner";
 
 interface PostCardProps {
@@ -21,6 +22,7 @@ interface PostCardProps {
   communityId?: string;
   memberId?: string;
   memberRole?: string;
+  reactions?: ReactionData[];
   onOpenPost?: (postId: string) => void;
   onDeletePost?: (postId: string) => void;
 }
@@ -126,7 +128,7 @@ function PollSection({ post, memberId }: { post: any; memberId?: string }) {
   );
 }
 
-export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, memberRole, onOpenPost, onDeletePost }: PostCardProps) {
+export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace = true, communityId, memberId, memberRole, reactions = [], onOpenPost, onDeletePost }: PostCardProps) {
   const queryClient = useQueryClient();
   const videoThumb = getVideoThumb(post.video_url);
   const firstImage = post.images && (post.images as string[]).length > 0 ? (post.images as string[])[0] : null;
@@ -216,18 +218,16 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-border flex items-center gap-1">
-        <button
-          onClick={(e) => { e.stopPropagation(); if (!isMuted) onToggleLike(post.id); }}
-          disabled={isMuted}
-          className={cn(
-            "flex items-center gap-1 text-[13px] transition-colors px-1.5 py-0.5 rounded-md",
-            liked ? "text-primary" : "text-muted-foreground hover:text-primary hover:bg-muted/50",
-            isMuted && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <ThumbsUp className={cn("h-[14px] w-[14px]", liked && "fill-current")} />
-          {post.like_count > 0 && <span>{post.like_count}</span>}
-        </button>
+        <div onClick={(e) => e.stopPropagation()}>
+          <ReactionBar
+            targetType="post"
+            targetId={post.id}
+            memberId={memberId}
+            communityId={communityId}
+            isMuted={isMuted}
+            reactions={reactions}
+          />
+        </div>
 
         <button
           onClick={(e) => { e.stopPropagation(); onOpenPost?.(post.id); }}

@@ -184,87 +184,41 @@ export default function CircleFeed() {
     enabled: !!community,
   });
 
-  const { data: userReactions } = useQuery({
-    queryKey: ["circle-reactions", member?.id],
+  // Fetch all reactions for current feed posts (grouped by post + emoji + user)
+  const { data: allReactions } = useQuery({
+    queryKey: ["circle-reactions-multi", community?.id, member?.id],
     queryFn: async () => {
-      if (!member) return [];
+      if (!community) return [];
       const { data } = await supabase
-        .from("community_reactions").select("post_id")
-        .eq("member_id", member.id);
-      return data?.map((r: any) => r.post_id) || [];
+        .from("community_reactions")
+        .select("post_id, emoji, member_id")
+        .not("post_id", "is", null)
+        .in("post_id", (posts || []).map((p: any) => p.id));
+      return data || [];
     },
-    enabled: !!member,
+    enabled: !!community && !!posts && posts.length > 0,
   });
 
-  // Onboarding checklist data
-  const { data: memberCommentCount } = useQuery({
-    queryKey: ["circle-member-comments-count", member?.id],
-    queryFn: async () => {
-      if (!member) return 0;
-      const { count } = await supabase.from("community_comments")
-        .select("id", { count: "exact", head: true })
-        .eq("author_id", member.id);
-      return count || 0;
-    },
-    enabled: !!member && !(member as any).onboarding_dismissed,
-  });
-
-  const { data: lessonProgress } = useQuery({
-    queryKey: ["circle-lesson-progress-count", member?.id],
-    queryFn: async () => {
-      if (!member) return 0;
-      const { count } = await supabase.from("circle_lesson_progress")
-        .select("id", { count: "exact", head: true })
-        .eq("member_id", member.id);
-      return count || 0;
-    },
-    enabled: !!member && !(member as any).onboarding_dismissed,
-  });
-
-  const onboardingTasks = useMemo(() => [
-    { label: "Assistir vídeo de introdução", icon: PlayCircle, done: (lessonProgress || 0) > 0, link: community?.slug ? `/circles/${community.slug}/classroom` : "#" },
-    { label: "Encontrar um post e deixar um comentário", icon: MessageSquare, done: (memberCommentCount || 0) > 0, link: "#" },
-    { label: "Baixar o app", icon: Smartphone, done: false, link: "#" },
-  ], [lessonProgress, memberCommentCount, community?.slug]);
-
-  const allOnboardingDone = onboardingTasks.every((t) => t.done);
-  const showOnboarding = member && !(member as any).onboarding_dismissed && !allOnboardingDone;
-
-  const handleDismissOnboarding = async () => {
-    if (!member) return;
-    await supabase.from("community_members").update({ onboarding_dismissed: true } as any).eq("id", member.id);
-    queryClient.invalidateQueries({ queryKey: ["circle-member"] });
+  // Build grouped reactions per post
+  const getPostReactions = (postId: string) => {
+    if (!allReactions) return [];
+    const postReacts = allReactions.filter((r: any) => r.post_id === postId);
+    const grouped: Record<string, { count: number; reacted: boolean }> = {};
+    for (const r of postReacts) {
+      if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, reacted: false };
+      grouped[r.emoji].count++;
+      if (r.member_id === member?.id) grouped[r.emoji].reacted = true;
+    }
+    return Object.entries(grouped).map(([emoji, data]) => ({ emoji, ...data }));
   };
+
+  // Legacy compat: check if user has any reaction on a post
+  const userReactions = allReactions
+    ?.filter((r: any) => r.member_id === member?.id)
+    .map((r: any) => r.post_id) || [];
 
   const isMuted = member?.status === "MUTED";
   const isAdminMember = member?.role === "OWNER" || member?.role === "ADMIN" || member?.role === "MODERATOR";
-
-  const toggleLike = useMutation({
-    mutationFn: async (postId: string) => {
-      if (!member || !community) throw new Error("Not a member");
-      const liked = userReactions?.includes(postId);
-      if (liked) {
-        await supabase.from("community_reactions").delete().eq("member_id", member.id).eq("post_id", postId);
-      } else {
-        await supabase.from("community_reactions").insert({ member_id: member.id, post_id: postId, emoji: "❤️" });
-        const post = posts?.find((p: any) => p.id === postId);
-        if (post && post.author_id !== member.id) {
-          await supabase.from("community_points_log").insert({
-            community_id: community.id, member_id: post.author_id,
-            action: "LIKE_RECEIVED", points: community.points_per_like_received,
-            reference_id: postId, reference_type: "post", description: "Recebeu um like",
-          });
-          await supabase.from("community_members")
-            .update({ total_points: (post.author?.total_points || 0) + community.points_per_like_received })
-            .eq("id", post.author_id);
-        }
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["circle-reactions"] });
-    },
-  });
 
   // Determine if user can post in the currently filtered space
   const currentSpace = effectiveSpaceId ? spaces?.find((s: any) => s.id === effectiveSpaceId) : null;
@@ -480,12 +434,13 @@ export default function CircleFeed() {
               key={post.id}
               post={post}
               liked={userReactions?.includes(post.id) || false}
-              onToggleLike={(id) => toggleLike.mutate(id)}
+              onToggleLike={() => {}}
               isMuted={isMuted}
               showSpace={!effectiveSpaceId}
               communityId={community?.id}
               memberId={member?.id}
               memberRole={member?.role}
+              reactions={getPostReactions(post.id)}
               onOpenPost={handleOpenPost}
               onDeletePost={async (id) => {
                 const { data, error } = await supabase.rpc("soft_delete_post", { p_post_id: id });
