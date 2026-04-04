@@ -263,7 +263,7 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
       </div>
 
       {/* Interactive Poll */}
-      {isPoll && <div onClick={(e) => e.stopPropagation()}><PollSection post={post} memberId={memberId} memberRole={memberRole} isAuthor={post.author?.user_id === memberId} /></div>}
+      {isPoll && <div onClick={(e) => e.stopPropagation()}><PollSection post={post} memberId={memberId} memberRole={memberRole} isAuthor={post.author_id === memberId} /></div>}
 
       {/* Attachments */}
       {postAttachments && postAttachments.length > 0 && (
