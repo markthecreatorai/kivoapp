@@ -408,19 +408,65 @@ export default function Analytics() {
         </CardContent>
       </Card>
 
-      {/* Cart Recovery */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <MetricCard
-          title="Carrinhos Recuperados"
-          value={`${recoveredSessions.length} (${formatCurrency(recoveredRevenue)})`}
-          icon={RefreshCw}
-        />
-        <MetricCard
-          title="Taxa de Recuperação"
-          value={`${recoveryRate}%`}
-          icon={ShoppingCart}
-        />
-      </div>
+      {/* Cart Recovery Dashboard */}
+      <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <RefreshCw className="h-5 w-5 text-primary" />
+            Recuperação de Carrinho
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Metric cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground">Abandonados</p>
+              <p className="text-xl font-bold text-foreground">{abandonedSessions.length}</p>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground">Emails Enviados</p>
+              <p className="text-xl font-bold text-foreground">{recoveryEmails.filter(e => e.sent_at).length}</p>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground">Recuperados</p>
+              <p className="text-xl font-bold text-primary">{recoveredSessions.length}</p>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground">Receita Recuperada</p>
+              <p className="text-xl font-bold text-primary">{formatCurrency(recoveredRevenue)}</p>
+            </div>
+          </div>
+
+          {/* Recovery rate bar */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Taxa de recuperação</span>
+              <span className="font-semibold text-foreground">{recoveryRate}%</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2.5">
+              <div
+                className="bg-primary h-2.5 rounded-full transition-all"
+                style={{ width: `${Math.min(Number(recoveryRate), 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Recent recovered sessions */}
+          {recoveredSessions.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">Últimos carrinhos recuperados</p>
+              <div className="space-y-2">
+                {recoveredSessions.slice(0, 5).map((s) => (
+                  <div key={s.id} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2">
+                    <span className="text-xs text-muted-foreground font-mono">{s.id.slice(0, 8)}…</span>
+                    <span className="text-sm font-semibold text-primary">{formatCurrency(Number(s.total_amount || 0))}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
