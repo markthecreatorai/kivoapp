@@ -24,6 +24,7 @@ import {
   User,
   Plus,
   CalendarCheck,
+  ChevronDown,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate, Link } from "react-router-dom";
@@ -50,7 +51,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +72,7 @@ const iconMap: Record<string, React.ElementType> = {
   Send,
   Receipt,
   FileText,
+  Zap,
 };
 
 interface NavItem {
@@ -82,9 +84,12 @@ interface NavItem {
 const coreNavItems: NavItem[] = [
   { title: "Home", url: "/dashboard", icon: Home },
   { title: "Minha Loja", url: "/store", icon: Store },
-  { title: "Renda", url: "/earnings", icon: DollarSign },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Circles", url: "/circles", icon: MessagesSquare },
+  { title: "Vendas", url: "/earnings", icon: DollarSign },
+  { title: "Relatórios", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Heart },
+  { title: "Calendar", url: "/appointments", icon: CalendarCheck },
+  { title: "AutoDM", url: "/autodm", icon: Zap },
 ];
 
 const adminItems: NavItem[] = [
