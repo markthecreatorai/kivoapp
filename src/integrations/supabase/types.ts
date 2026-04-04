@@ -4290,6 +4290,102 @@ export type Database = {
           },
         ]
       }
+      invite_events: {
+        Row: {
+          community_id: string
+          created_at: string
+          event_type: string
+          id: string
+          invite_link_id: string
+          invitee_user_id: string
+          inviter_member_id: string
+          points_awarded: number
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          invite_link_id: string
+          invitee_user_id: string
+          inviter_member_id: string
+          points_awarded?: number
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          invite_link_id?: string
+          invitee_user_id?: string
+          inviter_member_id?: string
+          points_awarded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_events_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invite_events_invite_link_id_fkey"
+            columns: ["invite_link_id"]
+            isOneToOne: false
+            referencedRelation: "member_invite_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invite_events_inviter_member_id_fkey"
+            columns: ["inviter_member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invite_rewards: {
+        Row: {
+          community_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          points_per_invite: number
+          points_per_paid_invite: number
+          reward_type: string
+          updated_at: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          points_per_invite?: number
+          points_per_paid_invite?: number
+          reward_type?: string
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          points_per_invite?: number
+          points_per_paid_invite?: number
+          reward_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_rewards_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: true
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
@@ -4660,6 +4756,51 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_invite_links: {
+        Row: {
+          code: string
+          community_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          member_id: string
+          uses_count: number
+        }
+        Insert: {
+          code?: string
+          community_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          member_id: string
+          uses_count?: number
+        }
+        Update: {
+          code?: string
+          community_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          member_id?: string
+          uses_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_invite_links_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_invite_links_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
             referencedColumns: ["id"]
           },
         ]
