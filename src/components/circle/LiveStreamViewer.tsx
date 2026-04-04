@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Users, Send, MessageCircle, Radio, Pencil } from "lucide-react";
+import { X, Users, Send, MessageCircle, Radio, Pencil, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { extractYouTubeId, extractTwitchChannel } from "./LiveStreamFormModal";
+import { getProvider } from "@/lib/liveProviders";
 
 interface LiveStreamViewerProps {
   stream: any;
@@ -24,39 +24,45 @@ interface LiveStreamViewerProps {
 }
 
 function EmbedPlayer({ stream }: { stream: any }) {
-  if (stream.embed_type === "youtube") {
-    const videoId = extractYouTubeId(stream.embed_url);
-    if (!videoId) return <div className="bg-muted flex items-center justify-center h-full text-muted-foreground">URL inválida</div>;
+  const provider = getProvider(stream.embed_type);
+
+  if (!provider.supportsEmbed) {
+    // Zoom or other non-embeddable providers
     return (
-      <iframe
-        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-        className="w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        title={stream.title}
-      />
+      <div className="bg-muted flex flex-col items-center justify-center h-full gap-4 p-6">
+        <div className="text-center space-y-2">
+          <p className="text-lg font-semibold text-foreground">{provider.label}</p>
+          <p className="text-sm text-muted-foreground">
+            Esta plataforma não suporta embed. Clique abaixo para entrar na sala.
+          </p>
+        </div>
+        <Button asChild size="lg">
+          <a href={provider.getJoinUrl(stream.embed_url)} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Entrar na sala {provider.label}
+          </a>
+        </Button>
+      </div>
     );
   }
 
-  if (stream.embed_type === "twitch") {
-    const channel = extractTwitchChannel(stream.embed_url);
-    if (!channel) return <div className="bg-muted flex items-center justify-center h-full text-muted-foreground">URL inválida</div>;
+  const embedUrl = provider.getEmbedUrl(stream.embed_url);
+  if (!embedUrl) {
     return (
-      <iframe
-        src={`https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}`}
-        className="w-full h-full"
-        allowFullScreen
-        title={stream.title}
-      />
+      <div className="bg-muted flex items-center justify-center h-full text-muted-foreground">
+        URL inválida
+      </div>
     );
   }
 
   return (
-    <div className="bg-muted flex items-center justify-center h-full">
-      <a href={stream.embed_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
-        Abrir transmissão externa
-      </a>
-    </div>
+    <iframe
+      src={embedUrl}
+      className="w-full h-full"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; camera; microphone"
+      allowFullScreen
+      title={stream.title}
+    />
   );
 }
 

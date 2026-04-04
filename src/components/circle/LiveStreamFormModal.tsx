@@ -8,8 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Video, Radio, Calendar, Link as LinkIcon, Trash2, Upload, ImageIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Video, Radio, Calendar, Link as LinkIcon, Trash2, Upload, ImageIcon, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { detectProvider, getProvider, PROVIDER_OPTIONS } from "@/lib/liveProviders";
+
+// Keep legacy exports for backwards compat
+function detectEmbedType(url: string): string {
+  return detectProvider(url).type;
+}
+function extractYouTubeId(url: string): string | null {
+  return getProvider("youtube").extractId(url);
+}
+function extractTwitchChannel(url: string): string | null {
+  return getProvider("twitch").extractId(url);
+}
+export { extractYouTubeId, extractTwitchChannel, detectEmbedType };
 
 interface LiveStreamFormModalProps {
   open: boolean;
@@ -18,25 +32,6 @@ interface LiveStreamFormModalProps {
   memberId: string;
   stream?: any;
 }
-
-function detectEmbedType(url: string): "youtube" | "twitch" | "custom" {
-  if (!url) return "custom";
-  if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
-  if (url.includes("twitch.tv")) return "twitch";
-  return "custom";
-}
-
-function extractYouTubeId(url: string): string | null {
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/live\/)([^&\s?/]+)/);
-  return match ? match[1] : null;
-}
-
-function extractTwitchChannel(url: string): string | null {
-  const match = url.match(/twitch\.tv\/([^/?]+)/);
-  return match ? match[1] : null;
-}
-
-export { extractYouTubeId, extractTwitchChannel, detectEmbedType };
 
 export default function LiveStreamFormModal({ open, onOpenChange, communityId, memberId, stream }: LiveStreamFormModalProps) {
   const queryClient = useQueryClient();
@@ -51,6 +46,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accessRule, setAccessRule] = useState("all");
 
   useEffect(() => {
     if (stream) {
@@ -61,9 +57,10 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
       setChatEnabled(stream.chat_enabled ?? true);
       setGoLiveNow(false);
       setCoverImage(stream.cover_image_url || null);
+      setAccessRule(stream.access_rule || "all");
     } else {
       setTitle(""); setDescription(""); setEmbedUrl(""); setScheduledAt("");
-      setChatEnabled(true); setGoLiveNow(false); setCoverImage(null);
+      setChatEnabled(true); setGoLiveNow(false); setCoverImage(null); setAccessRule("all");
     }
   }, [stream, open]);
 
@@ -85,11 +82,10 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
     }
   };
 
-  const embedType = detectEmbedType(embedUrl);
+  const detectedProvider = detectProvider(embedUrl);
+  const embedType = detectedProvider.type;
   const isValidUrl = embedUrl.trim().length > 0 && (
-    embedType === "youtube" ? !!extractYouTubeId(embedUrl) :
-    embedType === "twitch" ? !!extractTwitchChannel(embedUrl) :
-    embedUrl.startsWith("http")
+    detectedProvider.extractId(embedUrl) !== null || embedUrl.startsWith("http")
   );
 
   const saveMutation = useMutation({
@@ -106,6 +102,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : (goLiveNow ? new Date().toISOString() : null),
         started_at: goLiveNow ? new Date().toISOString() : null,
         chat_enabled: chatEnabled,
+        access_rule: accessRule,
       };
 
       if (isEditing) {
@@ -172,7 +169,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
                   starts_at: scheduledDate,
                   ends_at: endsAt,
                   meeting_url: embedUrl.trim(),
-                  meeting_platform: embedType === "youtube" ? "youtube" : embedType === "twitch" ? "twitch" : "custom",
+                  meeting_platform: embedType,
                   status: goLiveNow ? "ACTIVE" : "SCHEDULED",
                   live_stream_id: (latestStream as any).id,
                   cover_image_url: coverImage,
@@ -257,30 +254,43 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
           <div>
             <Label htmlFor="live-url" className="flex items-center gap-1.5">
               <LinkIcon className="h-3.5 w-3.5" />
-              URL do YouTube ou Twitch *
+              URL da transmissão *
             </Label>
             <Input
               id="live-url"
-              placeholder="https://youtube.com/watch?v=... ou https://twitch.tv/..."
+              placeholder="https://youtube.com/... • zoom.us/j/... • meet.jit.si/..."
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}
             />
             {embedUrl && (
               <div className="flex items-center gap-1.5 mt-1.5">
-                {embedType === "youtube" && (
-                  <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">▶ YouTube</span>
-                )}
-                {embedType === "twitch" && (
-                  <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded">📺 Twitch</span>
-                )}
-                {embedType === "custom" && (
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">🔗 Link externo</span>
-                )}
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  {detectedProvider.label}
+                  {!detectedProvider.supportsEmbed && " (abre em nova aba)"}
+                </span>
                 {!isValidUrl && (
                   <span className="text-xs text-destructive">URL inválida</span>
                 )}
               </div>
             )}
+          </div>
+
+          {/* Access control */}
+          <div>
+            <Label className="flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5" />
+              Quem pode assistir
+            </Label>
+            <Select value={accessRule} onValueChange={setAccessRule}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os membros</SelectItem>
+                <SelectItem value="level">Por nível</SelectItem>
+                <SelectItem value="tier">Por plano/tier</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {!isEditing && (
