@@ -48,6 +48,10 @@ export default function PostComposer({
   const [linkUrl, setLinkUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
+  // Attachments state
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
   const [pollOptions, setPollOptions] = useState<string[]>(["", "", ""]);
