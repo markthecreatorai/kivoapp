@@ -102,6 +102,73 @@ interface CircleLesson {
   resources?: any[] | null;
 }
 
+// ─── Certificate Button (shown at 100% progress) ────────────
+function CertificateButton({ memberId, courseId, communityId, courseName, communityName, studentName }: {
+  memberId: string | null; courseId: string; communityId: string;
+  courseName: string; communityName: string; studentName: string;
+}) {
+  const { certificate, isLoading, generateCertificate } = useCertificate(memberId, courseId);
+
+  const handleDownload = async (cert: any) => {
+    const blob = await generateCertificatePDF(cert);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `certificado-${cert.certificate_code}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (isLoading) return null;
+
+  if (certificate) {
+    return (
+      <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-center space-y-2">
+        <div className="flex items-center justify-center gap-1.5">
+          <Award className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold text-primary">Certificado Emitido!</span>
+        </div>
+        <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => handleDownload(certificate)}>
+          <Download className="h-3.5 w-3.5 mr-1.5" /> Baixar Certificado
+        </Button>
+        <a
+          href={`/verify/${certificate.certificate_code}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-muted-foreground hover:text-primary underline block"
+        >
+          Verificar autenticidade
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4">
+      <Button
+        size="sm"
+        className="w-full text-xs"
+        onClick={() =>
+          generateCertificate.mutate({
+            communityId,
+            studentName,
+            courseName,
+            creatorName: communityName,
+          })
+        }
+        disabled={generateCertificate.isPending}
+      >
+        {generateCertificate.isPending ? (
+          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+        ) : (
+          <Award className="h-3.5 w-3.5 mr-1.5" />
+        )}
+        Emitir Certificado
+      </Button>
+    </div>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────
 export default function CircleClassroom() {
   const { slug } = useParams<{ slug: string }>();
