@@ -217,6 +217,9 @@ export default function CircleFeed() {
     ?.filter((r: any) => r.member_id === member?.id)
     .map((r: any) => r.post_id) || [];
 
+  const isMuted = member?.status === "MUTED";
+  const isAdminMember = member?.role === "OWNER" || member?.role === "ADMIN" || member?.role === "MODERATOR";
+
   // Determine if user can post in the currently filtered space
   const currentSpace = effectiveSpaceId ? spaces?.find((s: any) => s.id === effectiveSpaceId) : null;
   const canPost = currentSpace?.only_admins_can_post ? isAdminMember : true;
