@@ -255,6 +255,7 @@ const App = () => (
                   <Route path="/leads/email" element={<LeadEmail />} />
                   <Route path="/appointments" element={<Appointments />} />
                   <Route path="/payment-logs" element={<PaymentLogs />} />
+                  <Route path="/autodm" element={<AutoDM />} />
                   <Route path="/fiscal" element={<FiscalClosing />} />
                   <Route path="/email-campaigns" element={<EmailCampaigns />} />
                 </Route>
