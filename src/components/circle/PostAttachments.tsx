@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Download, Image as ImageIcon, File, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
