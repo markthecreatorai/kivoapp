@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import CourseFormModal from "@/components/circle/CourseFormModal";
 import CourseCardMenu from "@/components/circle/CourseCardMenu";
 import LessonEditor from "@/components/circle/LessonEditor";
+import QuizEditor from "@/components/circle/QuizEditor";
+import QuizPlayer from "@/components/circle/QuizPlayer";
 import {
   DndContext,
   closestCenter,
