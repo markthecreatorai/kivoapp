@@ -222,7 +222,11 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const isMuted = member?.status === "MUTED";
   const isAdmin = member?.role === "OWNER" || member?.role === "ADMIN" || member?.role === "MODERATOR";
   const isAuthor = post?.author?.user_id === user?.id;
+  const pollEndsAt = post?.poll_ends_at ? new Date(post.poll_ends_at) : null;
+  const isPollExpired = pollEndsAt ? pollEndsAt < new Date() : false;
+  const allowMultiple = !!post?.poll_allow_multiple;
   const totalPollVotes = pollVotes?.allVotes.length || 0;
+  const totalPollParticipants = new Set(pollVotes?.allVotes.map((v: any) => v.member_id || "")).size;
   const getVoteCount = (oid: string) => pollVotes?.allVotes.filter((v: any) => v.option_id === oid).length || 0;
   const videoEmbed = post ? getVideoEmbed(post.video_url) : null;
   const images = (post?.images as string[]) || [];
