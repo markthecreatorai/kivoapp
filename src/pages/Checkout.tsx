@@ -578,7 +578,7 @@ export default function Checkout() {
           subtotal={subtotal}
           discount={couponDiscount}
           pixDiscount={activeTab === "pix" ? pixDiscountAmount : null}
-          bumpAmount={0}
+          bumpAmount={bumpAmount}
           total={currentTotal}
           showPix={activeTab === "pix"}
         />
