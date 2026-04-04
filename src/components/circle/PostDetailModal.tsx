@@ -612,11 +612,14 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
 
                 {/* ═══ ACTION BAR ═══ */}
                 <div className="px-5 py-3 border-y border-border flex items-center gap-4">
-                  <button onClick={() => !isMuted && togglePostLike.mutate()} disabled={isMuted}
-                    className={cn("flex items-center gap-1.5 text-sm font-medium transition-all", userReactions?.postLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-                    <ThumbsUp className={cn("h-4 w-4", userReactions?.postLiked && "fill-current")} />
-                    {post.like_count > 0 && <span>{post.like_count}</span>}
-                  </button>
+                  <ReactionBar
+                    targetType="post"
+                    targetId={postId}
+                    memberId={member?.id}
+                    communityId={community?.id}
+                    isMuted={isMuted}
+                    reactions={getReactionsFor("post", postId)}
+                  />
                   <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <MessageCircle className="h-4 w-4" />
                     {topComments.length} {topComments.length === 1 ? "comentário" : "comentários"}
