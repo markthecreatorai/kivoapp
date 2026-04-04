@@ -8,7 +8,7 @@ import {
   BookOpen, Play, Crown, Plus,
   FileText, Circle, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
-  Lock, Copy, Trash2, GripVertical,
+  Lock, Copy, Trash2, GripVertical, Award, Download,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
