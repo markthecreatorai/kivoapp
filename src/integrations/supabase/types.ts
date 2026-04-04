@@ -3188,15 +3188,67 @@ export type Database = {
           },
         ]
       }
+      community_resource_events: {
+        Row: {
+          community_id: string
+          created_at: string
+          event_type: string
+          id: string
+          member_id: string
+          resource_id: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          member_id: string
+          resource_id: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          member_id?: string
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_resource_events_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_resource_events_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_resource_events_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "community_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_resources: {
         Row: {
           access_rule: string
           allowed_tier_ids: string[] | null
+          archived_at: string | null
           category: string | null
+          click_count: number
           community_id: string
           created_at: string
           created_by: string
           description: string | null
+          download_count: number
           external_url: string | null
           file_name: string | null
           file_path: string | null
@@ -3213,11 +3265,14 @@ export type Database = {
         Insert: {
           access_rule?: string
           allowed_tier_ids?: string[] | null
+          archived_at?: string | null
           category?: string | null
+          click_count?: number
           community_id: string
           created_at?: string
           created_by: string
           description?: string | null
+          download_count?: number
           external_url?: string | null
           file_name?: string | null
           file_path?: string | null
@@ -3234,11 +3289,14 @@ export type Database = {
         Update: {
           access_rule?: string
           allowed_tier_ids?: string[] | null
+          archived_at?: string | null
           category?: string | null
+          click_count?: number
           community_id?: string
           created_at?: string
           created_by?: string
           description?: string | null
+          download_count?: number
           external_url?: string | null
           file_name?: string | null
           file_path?: string | null
