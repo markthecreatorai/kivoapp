@@ -28,7 +28,7 @@ export default function CommunitySwitcher({ currentCommunity }: CommunitySwitche
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, userWorkspaces } = useWorkspace();
 
   const { data: communities = [] } = useQuery({
     queryKey: ["user-communities-switcher", user?.id],
