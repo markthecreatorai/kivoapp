@@ -245,23 +245,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1.5">
               {coreNavItems.map(renderNavItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {activeOptionalNavItems.length > 0 && (
-          <SidebarGroup className="mt-3 border-t border-border/30 pt-3 p-0">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1.5">
-                {activeOptionalNavItems.map(renderNavItem)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        <SidebarGroup className="mt-3 border-t border-border/30 pt-3 p-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1.5">
+              {activeOptionalNavItems.map(renderNavItem)}
               {renderMoreLink()}
             </SidebarMenu>
           </SidebarGroupContent>
