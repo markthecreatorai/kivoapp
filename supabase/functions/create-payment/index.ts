@@ -329,14 +329,13 @@ Deno.serve(async (req) => {
           },
         };
       } else if (method === "credit_card") {
-        const charge = await callAsaas("/payments", {
+        const chargePayload: any = {
           customer: asaasCustomerId,
           billingType: "CREDIT_CARD",
           value: amountBRL,
           description: product.name,
           externalReference: order.id,
           dueDate: new Date().toISOString().slice(0, 10),
-          installmentCount: selectedInstallments > 1 ? selectedInstallments : undefined,
           creditCard: {
             holderName: card.holder_name,
             number: card.number.replace(/\s/g, ""),
@@ -351,7 +350,20 @@ Deno.serve(async (req) => {
             phone: customer.phone?.replace(/\D/g, "") || undefined,
             postalCode: customer.zip || undefined,
           },
-        }, asaasApiKey);
+        };
+
+        // Only add installmentCount for 2+ installments (Asaas rejects installmentCount=1)
+        if (selectedInstallments > 1) {
+          chargePayload.installmentCount = selectedInstallments;
+        }
+
+        const charge = await callAsaas("/payments", chargePayload, asaasApiKey);
+
+        // Asaas returns installmentValue when installments > 1
+        const installmentValue = charge.installmentValue || (amountBRL / selectedInstallments);
+        const totalWithInterest = selectedInstallments > 1
+          ? (charge.installmentValue ? charge.installmentValue * selectedInstallments : amountBRL)
+          : amountBRL;
 
         gatewayResult = {
           status: charge.status === "CONFIRMED" || charge.status === "RECEIVED" ? "paid" : "pending",
@@ -359,6 +371,9 @@ Deno.serve(async (req) => {
           provider: "asaas",
           card_last4: card.number.replace(/\s/g, "").slice(-4),
           card_brand: charge.creditCard?.creditCardBrand || "unknown",
+          installments: selectedInstallments,
+          installment_value: installmentValue,
+          total_with_interest: totalWithInterest,
         };
       } else if (method === "boleto") {
         const charge = await callAsaas("/payments", {
@@ -451,6 +466,11 @@ Deno.serve(async (req) => {
       response.message = "Pagamento aprovado";
       response.card_last4 = gatewayResult.card_last4;
       response.card_brand = gatewayResult.card_brand;
+      if (gatewayResult.installments > 1) {
+        response.installments = gatewayResult.installments;
+        response.installment_value = gatewayResult.installment_value;
+        response.total_with_interest = gatewayResult.total_with_interest;
+      }
     }
 
     return new Response(JSON.stringify(response), {

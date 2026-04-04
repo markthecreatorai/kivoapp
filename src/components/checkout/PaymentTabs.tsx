@@ -7,6 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { QrCode, CreditCard, FileText, Copy, Check, Loader2, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { formatCardNumber, formatExpiry, detectCardBrand } from "@/lib/cpf";
+import { supabase } from "@/integrations/supabase/client";
+
+interface InstallmentOption {
+  number: number;
+  value: number;
+  total: number;
+  interest_rate: number;
+  has_interest: boolean;
+}
 
 interface PaymentTabsProps {
   total: number;
@@ -75,6 +84,59 @@ export function PaymentTabs({
   });
   const [copied, setCopied] = useState(false);
   const [pixExpired, setPixExpired] = useState(false);
+  const [installmentOptions, setInstallmentOptions] = useState<InstallmentOption[]>([]);
+  const [loadingInstallments, setLoadingInstallments] = useState(false);
+
+  // Fetch real installment rates from Asaas
+  useEffect(() => {
+    if (maxInstallments <= 1 || total <= 0) {
+      setInstallmentOptions([{ number: 1, value: total, total, interest_rate: 0, has_interest: false }]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingInstallments(true);
+
+    (async () => {
+      try {
+        const res = await supabase.functions.invoke("simulate-installments", {
+          body: { amount: total, max_installments: maxInstallments },
+        });
+
+        if (cancelled) return;
+
+        if (res.data?.installments?.length) {
+          setInstallmentOptions(res.data.installments);
+        } else {
+          // Fallback: simple division (no interest shown)
+          setInstallmentOptions(
+            Array.from({ length: maxInstallments }, (_, i) => ({
+              number: i + 1,
+              value: Math.round((total / (i + 1)) * 100) / 100,
+              total,
+              interest_rate: 0,
+              has_interest: false,
+            }))
+          );
+        }
+      } catch {
+        // Fallback
+        setInstallmentOptions(
+          Array.from({ length: maxInstallments }, (_, i) => ({
+            number: i + 1,
+            value: Math.round((total / (i + 1)) * 100) / 100,
+            total,
+            interest_rate: 0,
+            has_interest: false,
+          }))
+        );
+      } finally {
+        if (!cancelled) setLoadingInstallments(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [total, maxInstallments]);
 
   const copyToClipboard = async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -84,20 +146,27 @@ export function PaymentTabs({
 
   const brand = detectCardBrand(card.number);
 
-  const installmentOptions = Array.from({ length: maxInstallments }, (_, i) => {
-    const n = i + 1;
-    const installmentValue = total / n;
-    return { value: n, label: n === 1 ? `1x de ${formatCurrency(total)} (sem juros)` : `${n}x de ${formatCurrency(installmentValue)}` };
-  });
+  const selectedOption = installmentOptions.find(o => o.number === card.installments) || installmentOptions[0];
+  const cardTotal = selectedOption?.total || total;
+
+  const formatInstallmentLabel = (opt: InstallmentOption) => {
+    if (opt.number === 1) {
+      return `1x de ${formatCurrency(opt.value)} (sem juros)`;
+    }
+    if (opt.has_interest) {
+      return `${opt.number}x de ${formatCurrency(opt.value)} (total ${formatCurrency(opt.total)})`;
+    }
+    return `${opt.number}x de ${formatCurrency(opt.value)} (sem juros)`;
+  };
 
   if (paymentSuccess) {
     return (
-      <div className="p-6 bg-green-50 border border-green-200 rounded-xl text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-green-600" />
+      <div className="p-6 bg-accent/10 border border-accent/30 rounded-xl text-center">
+        <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check className="w-8 h-8 text-accent" />
         </div>
-        <h3 className="text-lg font-bold text-green-800">Pagamento confirmado! 🎉</h3>
-        <p className="text-sm text-green-700 mt-2">Você receberá os detalhes por email em instantes.</p>
+        <h3 className="text-lg font-bold text-foreground">Pagamento confirmado! 🎉</h3>
+        <p className="text-sm text-muted-foreground mt-2">Você receberá os detalhes por email em instantes.</p>
       </div>
     );
   }
@@ -115,19 +184,16 @@ export function PaymentTabs({
         <TabsContent value="pix" className="mt-4 space-y-4">
           {pixData && !pixExpired ? (
             <div className="text-center space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm font-semibold text-green-800">⏳ Aguardando pagamento PIX</p>
+              <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
+                <p className="text-sm font-semibold text-foreground">⏳ Aguardando pagamento PIX</p>
               </div>
 
-              {/* Countdown */}
               <PixCountdown expiresAt={pixData.expires_at} onExpired={() => setPixExpired(true)} />
 
-              {/* QR Code image */}
               {pixData.qr_code_url && (
                 <img src={pixData.qr_code_url} alt="QR Code PIX" className="w-48 h-48 mx-auto rounded-lg border" />
               )}
 
-              {/* Copy-paste code */}
               <div className="bg-muted p-3 rounded-lg">
                 <p className="text-[10px] text-muted-foreground mb-1">Código Copia e Cola</p>
                 <p className="text-xs text-foreground break-all font-mono select-all leading-relaxed">
@@ -147,15 +213,15 @@ export function PaymentTabs({
           ) : pixExpired ? (
             <div className="text-center space-y-3">
               <p className="text-sm text-destructive font-medium">QR Code expirado</p>
-              <Button onClick={() => { setPixExpired(false); onPayPix(); }} disabled={paymentLoading} className="w-full h-12 bg-green-600 hover:bg-green-700">
+              <Button onClick={() => { setPixExpired(false); onPayPix(); }} disabled={paymentLoading} className="w-full h-12">
                 {paymentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gerar novo PIX"}
               </Button>
             </div>
           ) : (
             <div className="text-center space-y-3">
               {pixTotal && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <p className="text-sm text-green-800 font-semibold">
+                <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
+                  <p className="text-sm text-foreground font-semibold">
                     Pague via PIX por apenas {formatCurrency(pixTotal)}
                   </p>
                 </div>
@@ -163,7 +229,7 @@ export function PaymentTabs({
               <Button
                 onClick={onPayPix}
                 disabled={paymentLoading}
-                className="w-full h-14 text-base font-bold bg-green-600 hover:bg-green-700"
+                className="w-full h-14 text-base font-bold"
               >
                 {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Gerar PIX ${formatCurrency(pixTotal ?? total)}`}
               </Button>
@@ -225,28 +291,44 @@ export function PaymentTabs({
           {maxInstallments > 1 && (
             <div className="space-y-1">
               <Label className="text-sm">Parcelas</Label>
-              <Select
-                value={String(card.installments)}
-                onValueChange={(v) => setCard({ ...card, installments: parseInt(v) })}
-              >
-                <SelectTrigger className="h-12">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {installmentOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {loadingInstallments ? (
+                <div className="h-12 flex items-center justify-center border rounded-md bg-muted/30">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mr-2" />
+                  <span className="text-xs text-muted-foreground">Calculando parcelas...</span>
+                </div>
+              ) : (
+                <Select
+                  value={String(card.installments)}
+                  onValueChange={(v) => setCard({ ...card, installments: parseInt(v) })}
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {installmentOptions.map((opt) => (
+                      <SelectItem key={opt.number} value={String(opt.number)}>
+                        {formatInstallmentLabel(opt)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {/* Show interest info */}
+              {selectedOption?.has_interest && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Total com juros: {formatCurrency(selectedOption.total)}
+                  {selectedOption.interest_rate > 0 && ` (${selectedOption.interest_rate.toFixed(2)}% a.m.)`}
+                </p>
+              )}
             </div>
           )}
 
           <Button
             onClick={() => onPayCard(card)}
-            disabled={paymentLoading}
+            disabled={paymentLoading || loadingInstallments}
             className="w-full h-14 text-base font-bold"
           >
-            {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(total)}`}
+            {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(cardTotal)}`}
           </Button>
           {paymentError && <p className="text-sm text-destructive text-center">{paymentError}</p>}
         </TabsContent>
