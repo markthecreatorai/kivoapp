@@ -57,9 +57,10 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
       setChatEnabled(stream.chat_enabled ?? true);
       setGoLiveNow(false);
       setCoverImage(stream.cover_image_url || null);
+      setAccessRule(stream.access_rule || "all");
     } else {
       setTitle(""); setDescription(""); setEmbedUrl(""); setScheduledAt("");
-      setChatEnabled(true); setGoLiveNow(false); setCoverImage(null);
+      setChatEnabled(true); setGoLiveNow(false); setCoverImage(null); setAccessRule("all");
     }
   }, [stream, open]);
 
