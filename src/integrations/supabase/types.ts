@@ -2164,6 +2164,8 @@ export type Database = {
       }
       community_live_streams: {
         Row: {
+          access_rule: string
+          access_value: string | null
           chat_enabled: boolean
           community_id: string
           created_at: string
@@ -2173,6 +2175,7 @@ export type Database = {
           embed_url: string
           ended_at: string | null
           id: string
+          recording_password: string | null
           recording_url: string | null
           scheduled_at: string | null
           started_at: string | null
@@ -2182,6 +2185,8 @@ export type Database = {
           viewer_count: number
         }
         Insert: {
+          access_rule?: string
+          access_value?: string | null
           chat_enabled?: boolean
           community_id: string
           created_at?: string
@@ -2191,6 +2196,7 @@ export type Database = {
           embed_url: string
           ended_at?: string | null
           id?: string
+          recording_password?: string | null
           recording_url?: string | null
           scheduled_at?: string | null
           started_at?: string | null
@@ -2200,6 +2206,8 @@ export type Database = {
           viewer_count?: number
         }
         Update: {
+          access_rule?: string
+          access_value?: string | null
           chat_enabled?: boolean
           community_id?: string
           created_at?: string
@@ -2209,6 +2217,7 @@ export type Database = {
           embed_url?: string
           ended_at?: string | null
           id?: string
+          recording_password?: string | null
           recording_url?: string | null
           scheduled_at?: string | null
           started_at?: string | null
