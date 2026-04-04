@@ -235,6 +235,31 @@ Deno.serve(async (req) => {
       console.log(`Split recorded for order ${order.id}: gross=${grossAmount} gw=${split.gatewayFee} plat=${split.platformFee} aff=${split.affiliateFee} net=${split.creatorNet}`);
     }
 
+    // 7. AUTO NFS-e EMISSION
+    try {
+      const { data: fiscalSettings } = await supabase
+        .from("fiscal_settings")
+        .select("is_auto_emission, nfse_provider")
+        .eq("workspace_id", order.workspace_id)
+        .maybeSingle();
+
+      if (fiscalSettings?.is_auto_emission && fiscalSettings?.nfse_provider) {
+        const fnUrl = `${supabaseUrl}/functions/v1/emit-nfse`;
+        const resp = await fetch(fnUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({ order_id: order.id }),
+        });
+        const nfseResult = await resp.json();
+        console.log(`Auto NFS-e for order ${order.id}:`, nfseResult);
+      }
+    } catch (nfseErr) {
+      console.error("Auto NFS-e error (non-fatal):", nfseErr);
+    }
+
     return new Response(
       JSON.stringify({ success: true, order_id: order.id }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
