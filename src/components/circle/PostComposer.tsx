@@ -55,6 +55,8 @@ export default function PostComposer({
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
   const [pollOptions, setPollOptions] = useState<string[]>(["", "", ""]);
+  const [pollAllowMultiple, setPollAllowMultiple] = useState(false);
+  const [pollEndsAt, setPollEndsAt] = useState("");
 
   // Inline sections toggled by toolbar
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -141,6 +143,8 @@ export default function PostComposer({
         postData.poll_options = validOptions.map((text, i) => ({
           id: `opt_${i}_${Date.now()}`, text: text.trim(), votes: 0,
         }));
+        postData.poll_allow_multiple = pollAllowMultiple;
+        if (pollEndsAt) postData.poll_ends_at = new Date(pollEndsAt).toISOString();
       }
 
       const { data: post, error } = await supabase.from("community_posts").insert(postData).select().single();
@@ -275,7 +279,7 @@ export default function PostComposer({
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-foreground">Enquete</span>
               <button
-                onClick={() => { setShowPoll(false); setPollOptions(["", "", ""]); }}
+                onClick={() => { setShowPoll(false); setPollOptions(["", "", ""]); setPollAllowMultiple(false); setPollEndsAt(""); }}
                 className="text-xs text-destructive hover:underline"
               >
                 Remover
@@ -312,6 +316,27 @@ export default function PostComposer({
                 + Adicionar opção
               </button>
             )}
+            {/* Poll settings */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pollAllowMultiple}
+                  onChange={(e) => setPollAllowMultiple(e.target.checked)}
+                  className="rounded border-border"
+                />
+                Permitir múltiplos votos
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Encerrar em:</span>
+                <input
+                  type="datetime-local"
+                  value={pollEndsAt}
+                  onChange={(e) => setPollEndsAt(e.target.value)}
+                  className="text-xs bg-muted/30 rounded-lg px-2 py-1 border border-border outline-none text-foreground"
+                />
+              </div>
+            </div>
           </div>
         )}
 
