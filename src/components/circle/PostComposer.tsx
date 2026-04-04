@@ -146,6 +146,26 @@ export default function PostComposer({
       const { data: post, error } = await supabase.from("community_posts").insert(postData).select().single();
       if (error) throw error;
 
+      // Upload attachments
+      if (attachments.length > 0 && user) {
+        for (const att of attachments) {
+          const ext = att.file.name.split(".").pop();
+          const filePath = `${user.id}/${post.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("community-post-attachments")
+            .upload(filePath, att.file);
+          if (upErr) { console.error("Attachment upload error:", upErr); continue; }
+          await supabase.from("community_post_attachments").insert({
+            post_id: post.id,
+            uploader_id: memberId,
+            file_path: filePath,
+            file_name: att.file.name,
+            mime_type: att.file.type,
+            size_bytes: att.file.size,
+          });
+        }
+      }
+
       await supabase.from("community_points_log").insert({
         community_id: communityId, member_id: memberId, action: "POST_CREATED",
         points: pointsPerPost, reference_id: post.id, reference_type: "post", description: "Criou um post",
