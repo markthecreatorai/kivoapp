@@ -3067,6 +3067,87 @@ export type Database = {
           },
         ]
       }
+      community_resources: {
+        Row: {
+          access_rule: string
+          allowed_tier_ids: string[] | null
+          category: string | null
+          community_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          external_url: string | null
+          file_name: string | null
+          file_path: string | null
+          id: string
+          is_published: boolean
+          mime_type: string | null
+          min_level: number | null
+          resource_type: string
+          size_bytes: number | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          access_rule?: string
+          allowed_tier_ids?: string[] | null
+          category?: string | null
+          community_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          is_published?: boolean
+          mime_type?: string | null
+          min_level?: number | null
+          resource_type?: string
+          size_bytes?: number | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          access_rule?: string
+          allowed_tier_ids?: string[] | null
+          category?: string | null
+          community_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          is_published?: boolean
+          mime_type?: string | null
+          min_level?: number | null
+          resource_type?: string
+          size_bytes?: number | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_resources_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_resources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_space_subscriptions: {
         Row: {
           created_at: string
