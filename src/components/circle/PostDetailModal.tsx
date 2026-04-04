@@ -882,11 +882,15 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                                     </div>
                                     <p className="text-xs text-foreground mt-0.5 whitespace-pre-wrap">{renderMentions(reply.body)}</p>
                                     <div className="flex items-center gap-3 mt-1">
-                                      <button onClick={() => !isMuted && toggleCommentLike.mutate(reply.id)} disabled={isMuted}
-                                        className={cn("flex items-center gap-1 text-[10px]", rLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-                                        <ThumbsUp className={cn("h-3 w-3", rLiked && "fill-current")} />
-                                        {reply.like_count > 0 && <span>{reply.like_count}</span>}
-                                      </button>
+                                      <ReactionBar
+                                        targetType="comment"
+                                        targetId={reply.id}
+                                        memberId={member?.id}
+                                        communityId={community?.id}
+                                        isMuted={isMuted}
+                                        reactions={getReactionsFor("comment", reply.id)}
+                                        compact
+                                      />
                                       {!post.is_locked && !isMuted && (
                                         <button onClick={() => {
                                           setReplyTo(comment.id);
