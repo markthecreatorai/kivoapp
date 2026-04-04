@@ -434,12 +434,13 @@ export default function CircleFeed() {
               key={post.id}
               post={post}
               liked={userReactions?.includes(post.id) || false}
-              onToggleLike={(id) => toggleLike.mutate(id)}
+              onToggleLike={() => {}}
               isMuted={isMuted}
               showSpace={!effectiveSpaceId}
               communityId={community?.id}
               memberId={member?.id}
               memberRole={member?.role}
+              reactions={getPostReactions(post.id)}
               onOpenPost={handleOpenPost}
               onDeletePost={async (id) => {
                 const { data, error } = await supabase.rpc("soft_delete_post", { p_post_id: id });
