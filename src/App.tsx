@@ -76,8 +76,8 @@ const AdminChargebacks = lazy(() => import("./pages/AdminChargebacks"));
 const FinancialHealthDashboard = lazy(() => import("./pages/FinancialHealthDashboard"));
 const GoLiveChecklist = lazy(() => import("./pages/GoLiveChecklist"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
+const AutoDM = lazy(() => import("./pages/AutoDM"));
 
-// Circle pages
 const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
 const CircleFeed = lazy(() => import("./pages/circle/CircleFeed"));
 const CircleMembers = lazy(() => import("./pages/circle/CircleMembers"));
@@ -255,6 +255,7 @@ const App = () => (
                   <Route path="/leads/email" element={<LeadEmail />} />
                   <Route path="/appointments" element={<Appointments />} />
                   <Route path="/payment-logs" element={<PaymentLogs />} />
+                  <Route path="/autodm" element={<AutoDM />} />
                   <Route path="/fiscal" element={<FiscalClosing />} />
                   <Route path="/email-campaigns" element={<EmailCampaigns />} />
                 </Route>

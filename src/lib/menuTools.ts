@@ -10,15 +10,16 @@ export interface MenuToolItem {
 export const coreItems: MenuToolItem[] = [
   { id: "home", title: "Home", url: "/dashboard", description: "", icon: "Home" },
   { id: "store", title: "Minha Loja", url: "/store", description: "", icon: "Store" },
-  { id: "earnings", title: "Renda", url: "/earnings", description: "", icon: "DollarSign" },
-  { id: "analytics", title: "Analytics", url: "/analytics", description: "", icon: "BarChart3" },
+  { id: "circles", title: "Circles", url: "/circles", description: "", icon: "MessagesSquare" },
+  { id: "earnings", title: "Vendas", url: "/earnings", description: "", icon: "DollarSign" },
+  { id: "analytics", title: "Relatórios", url: "/analytics", description: "", icon: "BarChart3" },
   { id: "clients", title: "Clientes", url: "/clients", description: "", icon: "Heart" },
+  { id: "calendar", title: "Calendar", url: "/appointments", description: "", icon: "CalendarCheck" },
+  { id: "autodm", title: "AutoDM", url: "/autodm", description: "", icon: "Zap" },
 ];
 
 /** Toggleable items shown in the "Mais" page */
 export const optionalItems: MenuToolItem[] = [
-  { id: "circles", title: "Circles", url: "/circles", description: "Crie comunidades!", icon: "MessagesSquare" },
-  { id: "appointments", title: "Agendamentos", url: "/appointments", description: "Gerencie seus agendamentos!", icon: "CalendarCheck" },
   { id: "referrals", title: "Indicações", url: "/referrals", description: "Ganhe renda passiva com indicações!", icon: "Users" },
   { id: "coupons", title: "Cupons", url: "/coupons", description: "Crie cupons de desconto!", icon: "Tag" },
   { id: "leads", title: "Leads", url: "/leads", description: "Capture e gerencie leads!", icon: "UserCheck" },

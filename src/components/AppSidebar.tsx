@@ -24,6 +24,7 @@ import {
   User,
   Plus,
   CalendarCheck,
+  ChevronDown,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate, Link } from "react-router-dom";
@@ -50,7 +51,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +72,7 @@ const iconMap: Record<string, React.ElementType> = {
   Send,
   Receipt,
   FileText,
+  Zap,
 };
 
 interface NavItem {
@@ -82,9 +84,12 @@ interface NavItem {
 const coreNavItems: NavItem[] = [
   { title: "Home", url: "/dashboard", icon: Home },
   { title: "Minha Loja", url: "/store", icon: Store },
-  { title: "Renda", url: "/earnings", icon: DollarSign },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Circles", url: "/circles", icon: MessagesSquare },
+  { title: "Vendas", url: "/earnings", icon: DollarSign },
+  { title: "Relatórios", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Heart },
+  { title: "Calendar", url: "/appointments", icon: CalendarCheck },
+  { title: "AutoDM", url: "/autodm", icon: Zap },
 ];
 
 const adminItems: NavItem[] = [
@@ -264,9 +269,30 @@ export function AppSidebar() {
         {isAdmin && (
           <SidebarGroup className="mt-3 border-t border-border/30 pt-3 p-0">
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-1.5">
-                {adminItems.map(renderNavItem)}
-              </SidebarMenu>
+              <Collapsible>
+                <SidebarMenuItem className="list-none">
+                  <CollapsibleTrigger className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-[15px] font-medium transition-colors group",
+                    adminItems.some(i => isActive(i.url))
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                    collapsed && "justify-center px-0"
+                  )}>
+                    <Shield className={cn("h-5 w-5 flex-shrink-0", adminItems.some(i => isActive(i.url)) ? "text-primary" : "text-muted-foreground")} />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 text-left">Admin</span>
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </>
+                    )}
+                  </CollapsibleTrigger>
+                </SidebarMenuItem>
+                <CollapsibleContent>
+                  <SidebarMenu className="mt-1 space-y-0.5 pl-4">
+                    {adminItems.map(renderNavItem)}
+                  </SidebarMenu>
+                </CollapsibleContent>
+              </Collapsible>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
