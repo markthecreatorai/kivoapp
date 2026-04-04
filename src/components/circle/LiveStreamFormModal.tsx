@@ -8,34 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Video, Radio, Calendar, Link as LinkIcon, Trash2, Upload, ImageIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Video, Radio, Calendar, Link as LinkIcon, Trash2, Upload, ImageIcon, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { detectProvider, getProvider, PROVIDER_OPTIONS } from "@/lib/liveProviders";
 
-interface LiveStreamFormModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  communityId: string;
-  memberId: string;
-  stream?: any;
+// Keep legacy exports for backwards compat
+function detectEmbedType(url: string): string {
+  return detectProvider(url).type;
 }
-
-function detectEmbedType(url: string): "youtube" | "twitch" | "custom" {
-  if (!url) return "custom";
-  if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
-  if (url.includes("twitch.tv")) return "twitch";
-  return "custom";
-}
-
 function extractYouTubeId(url: string): string | null {
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/live\/)([^&\s?/]+)/);
-  return match ? match[1] : null;
+  return getProvider("youtube").extractId(url);
 }
-
 function extractTwitchChannel(url: string): string | null {
-  const match = url.match(/twitch\.tv\/([^/?]+)/);
-  return match ? match[1] : null;
+  return getProvider("twitch").extractId(url);
 }
-
 export { extractYouTubeId, extractTwitchChannel, detectEmbedType };
 
 export default function LiveStreamFormModal({ open, onOpenChange, communityId, memberId, stream }: LiveStreamFormModalProps) {
