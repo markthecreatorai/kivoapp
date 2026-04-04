@@ -140,7 +140,7 @@ export default function CommunitySwitcher({ currentCommunity }: CommunitySwitche
 
         {/* Actions */}
         <div className="px-1">
-          {currentWorkspace && (
+          {(currentWorkspace || userWorkspaces.length > 0) && (
             <button
               onClick={() => { setOpen(false); navigate("/dashboard"); }}
               className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-muted/60 transition-colors text-foreground"
