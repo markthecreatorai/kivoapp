@@ -95,6 +95,7 @@ const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
 const CircleProfile = lazy(() => import("./pages/circle/CircleProfile"));
 const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
 const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
+const CircleResources = lazy(() => import("./pages/circle/CircleResources"));
 const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
 
 // Public community pages
