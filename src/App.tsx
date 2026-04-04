@@ -324,6 +324,9 @@ const App = () => (
                 <Route path="/circle-settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
                 <Route path="/circle/settings" element={<ProtectedRoute requireWorkspace={false}><CircleSettingsRedirect /></ProtectedRoute>} />
 
+                {/* Certificate verification */}
+                <Route path="/verify/:code" element={<VerifyCertificate />} />
+
                 {/* Public community discovery */}
                 <Route path="/circles/explore" element={<CommunityDiscovery />} />
                 {/* Legacy redirects */}

@@ -479,6 +479,9 @@ export default function CircleClassroom() {
                 <p className="text-[10px] text-muted-foreground mt-1">{completedPages}/{totalPages} aulas concluídas</p>
               </div>
 
+              {/* Certificate button when 100% */}
+              {percent === 100 && <CertificateButton memberId={member?.id || null} courseId={selectedCourseId} communityId={community?.id || ""} courseName={selectedCourse.name} communityName={community?.name || "Kivo"} studentName={member?.display_name || user?.email || "Aluno"} />}
+
               {/* Items tree */}
               <div className="space-y-0.5">
                 {orderedItems.map(({ type, item, children }) => {
