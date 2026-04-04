@@ -300,8 +300,17 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const votePoll = useMutation({
     mutationFn: async (optionId: string) => {
       if (!member) throw new Error("Missing");
-      if (pollVotes?.userVotes.includes(optionId)) return;
-      await supabase.from("community_poll_votes").insert({ post_id: postId, member_id: member.id, option_id: optionId });
+      if (isPollExpired) throw new Error("Enquete encerrada");
+      if (allowMultiple) {
+        if (pollVotes?.userVotes.includes(optionId)) {
+          await supabase.from("community_poll_votes").delete().eq("post_id", postId).eq("member_id", member.id).eq("option_id", optionId);
+        } else {
+          await supabase.from("community_poll_votes").insert({ post_id: postId, member_id: member.id, option_id: optionId });
+        }
+      } else {
+        await supabase.from("community_poll_votes").delete().eq("post_id", postId).eq("member_id", member.id);
+        await supabase.from("community_poll_votes").insert({ post_id: postId, member_id: member.id, option_id: optionId });
+      }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["circle-poll-votes"] }); toast.success("Voto registrado!"); },
   });
