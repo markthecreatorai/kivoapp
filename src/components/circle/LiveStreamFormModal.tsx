@@ -254,30 +254,43 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
           <div>
             <Label htmlFor="live-url" className="flex items-center gap-1.5">
               <LinkIcon className="h-3.5 w-3.5" />
-              URL do YouTube ou Twitch *
+              URL da transmissão *
             </Label>
             <Input
               id="live-url"
-              placeholder="https://youtube.com/watch?v=... ou https://twitch.tv/..."
+              placeholder="https://youtube.com/... • zoom.us/j/... • meet.jit.si/..."
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}
             />
             {embedUrl && (
               <div className="flex items-center gap-1.5 mt-1.5">
-                {embedType === "youtube" && (
-                  <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">▶ YouTube</span>
-                )}
-                {embedType === "twitch" && (
-                  <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded">📺 Twitch</span>
-                )}
-                {embedType === "custom" && (
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">🔗 Link externo</span>
-                )}
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  {detectedProvider.label}
+                  {!detectedProvider.supportsEmbed && " (abre em nova aba)"}
+                </span>
                 {!isValidUrl && (
                   <span className="text-xs text-destructive">URL inválida</span>
                 )}
               </div>
             )}
+          </div>
+
+          {/* Access control */}
+          <div>
+            <Label className="flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5" />
+              Quem pode assistir
+            </Label>
+            <Select value={accessRule} onValueChange={setAccessRule}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os membros</SelectItem>
+                <SelectItem value="level">Por nível</SelectItem>
+                <SelectItem value="tier">Por plano/tier</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {!isEditing && (
