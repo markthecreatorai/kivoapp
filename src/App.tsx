@@ -95,6 +95,7 @@ const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
 const CircleProfile = lazy(() => import("./pages/circle/CircleProfile"));
 const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
 const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
+const CircleResources = lazy(() => import("./pages/circle/CircleResources"));
 const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
 
 // Public community pages
@@ -308,6 +309,7 @@ const App = () => (
                   <Route path="/circles/:slug/post/:id" element={<CirclePostRedirect />} />
                   <Route path="/circles/:slug/settings" element={<CircleSettings />} />
                   <Route path="/circles/:slug/about" element={<CircleAbout />} />
+                  <Route path="/circles/:slug/resources" element={<CircleResources />} />
                   <Route path="/circles/:slug/profile" element={<CircleProfile />} />
                   <Route path="/circles/:slug/profile/:memberId" element={<CircleProfile />} />
                 </Route>

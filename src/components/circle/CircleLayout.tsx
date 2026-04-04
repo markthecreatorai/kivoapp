@@ -29,6 +29,7 @@ import {
   LogOut,
   Trophy,
   ArrowLeft,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -67,10 +68,11 @@ const ALL_TABS: Record<string, { label: string; icon: typeof MessageSquare; path
   members: { label: "Membros", icon: Users, pathSuffix: "members" },
   leaderboard: { label: "Ranking", icon: Trophy, pathSuffix: "leaderboard" },
   events: { label: "Calendário", icon: Calendar, pathSuffix: "events" },
+  resources: { label: "Recursos", icon: FolderOpen, pathSuffix: "resources" },
   about: { label: "Sobre", icon: Star, pathSuffix: "about" },
 };
 
-const DEFAULT_TAB_ORDER = ["feed", "classroom", "members", "leaderboard", "events", "about"];
+const DEFAULT_TAB_ORDER = ["feed", "classroom", "members", "leaderboard", "events", "resources", "about"];
 
 function getTabItems(slug: string, community?: any) {
   const tabsConfig = community?.tabs_config as Record<string, boolean> | null;
@@ -401,7 +403,7 @@ export default function CircleLayout() {
   const navItems = tabItems;
 
   // Determine showRightSidebar based on current route
-  const hideRightSidebar = location.pathname.includes("/settings") || location.pathname.includes("/profile") || location.pathname.includes("/classroom") || location.pathname.includes("/leaderboard");
+  const hideRightSidebar = location.pathname.includes("/settings") || location.pathname.includes("/profile") || location.pathname.includes("/classroom") || location.pathname.includes("/leaderboard") || location.pathname.includes("/resources");
 
   return (
     <div className="min-h-screen bg-muted/40 flex flex-col">
