@@ -621,18 +621,39 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         const count = getVoteCount(opt.id);
                         const pct = totalPollVotes > 0 ? Math.round((count / totalPollVotes) * 100) : 0;
                         const voted = pollVotes?.userVotes.includes(opt.id);
+                        const hasAnyVote = (pollVotes?.userVotes.length || 0) > 0;
                         return (
-                          <button key={opt.id} onClick={() => !isMuted && votePoll.mutate(opt.id)} disabled={isMuted || !!voted}
-                            className={cn("w-full text-left p-3 rounded-lg border transition-colors relative overflow-hidden", voted ? "border-primary bg-primary/5" : "border-border hover:border-primary/40")}>
-                            <div className="absolute inset-y-0 left-0 bg-primary/10 transition-all" style={{ width: `${pct}%` }} />
+                          <button key={opt.id} onClick={() => !isMuted && !isPollExpired && votePoll.mutate(opt.id)} disabled={isMuted || isPollExpired}
+                            className={cn("w-full text-left p-3 rounded-lg border transition-colors relative overflow-hidden", voted ? "border-primary bg-primary/5" : "border-border hover:border-primary/40", isPollExpired && "opacity-75 cursor-default")}>
+                            {(hasAnyVote || isPollExpired) && <div className="absolute inset-y-0 left-0 bg-primary/10 transition-all" style={{ width: `${pct}%` }} />}
                             <div className="relative flex justify-between items-center">
                               <span className="text-sm font-medium">{opt.text}</span>
-                              <span className="text-xs text-muted-foreground">{pct}% ({count})</span>
+                              {(hasAnyVote || isPollExpired) && <span className="text-xs text-muted-foreground">{pct}% ({count})</span>}
                             </div>
                           </button>
                         );
                       })}
-                      <p className="text-xs text-muted-foreground text-center">{totalPollVotes} votos</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">{allowMultiple ? totalPollParticipants : totalPollVotes} participante{(allowMultiple ? totalPollParticipants : totalPollVotes) !== 1 ? "s" : ""}</p>
+                        {isPollExpired && <span className="text-xs text-destructive font-medium">Encerrada</span>}
+                        {pollEndsAt && !isPollExpired && (
+                          <span className="text-xs text-muted-foreground">
+                            Encerra em {pollEndsAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                        {(isAdmin || isAuthor) && !isPollExpired && (
+                          <button
+                            onClick={async () => {
+                              await supabase.from("community_posts").update({ poll_ends_at: new Date().toISOString() }).eq("id", postId);
+                              queryClient.invalidateQueries({ queryKey: ["circle-post", postId] });
+                              toast.success("Enquete encerrada");
+                            }}
+                            className="text-xs text-destructive hover:underline"
+                          >
+                            Encerrar
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
