@@ -165,6 +165,43 @@ export default function Checkout() {
       setPrice(priceData);
       setLoading(false);
       trackEvent("checkout_started", { product_id: prod.id, product_name: prod.name }, prod.workspace_id);
+
+      // Fetch order bumps for this product
+      const { data: bumpsData } = await supabase
+        .from("order_bumps")
+        .select("id, bump_product_id, headline, description, position")
+        .eq("main_product_id", prod.id)
+        .eq("is_active", true)
+        .order("position");
+
+      if (bumpsData && bumpsData.length > 0) {
+        const bumpProductIds = bumpsData.map((b) => b.bump_product_id);
+        const { data: bumpProducts } = await supabase
+          .from("products")
+          .select("id, name, thumbnail_url")
+          .in("id", bumpProductIds);
+        const { data: bumpPrices } = await supabase
+          .from("prices")
+          .select("product_id, amount")
+          .in("product_id", bumpProductIds)
+          .eq("is_default", true)
+          .eq("is_active", true);
+
+        const enriched: OrderBump[] = bumpsData.map((b) => {
+          const bp = bumpProducts?.find((p) => p.id === b.bump_product_id);
+          const bpr = bumpPrices?.find((p) => p.product_id === b.bump_product_id);
+          return {
+            id: b.id,
+            bump_product_id: b.bump_product_id,
+            headline: b.headline,
+            description: b.description,
+            bump_product_name: bp?.name || "Produto",
+            bump_product_thumbnail: bp?.thumbnail_url || null,
+            bump_price: bpr?.amount || 0,
+          };
+        }).filter((b) => b.bump_price > 0);
+        setOrderBumps(enriched);
+      }
     }
     load();
   }, [productSlug, searchParams]);
