@@ -55,6 +55,8 @@ export default function PostComposer({
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
   const [pollOptions, setPollOptions] = useState<string[]>(["", "", ""]);
+  const [pollAllowMultiple, setPollAllowMultiple] = useState(false);
+  const [pollEndsAt, setPollEndsAt] = useState("");
 
   // Inline sections toggled by toolbar
   const [showLinkModal, setShowLinkModal] = useState(false);
