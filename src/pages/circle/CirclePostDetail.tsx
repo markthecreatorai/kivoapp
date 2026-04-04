@@ -21,6 +21,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
 import CommentSection from "@/components/circle/CommentSection";
+import ReactionBar from "@/components/circle/ReactionBar";
 import { createNotification } from "@/lib/notifications";
 
 export default function CirclePostDetail() {
