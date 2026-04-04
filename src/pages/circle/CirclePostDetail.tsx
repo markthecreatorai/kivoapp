@@ -402,15 +402,14 @@ export default function CirclePostDetail() {
 
         {/* Actions bar */}
         <div className="mt-4 flex items-center gap-4 pt-3 border-t border-border/40">
-          <button
-            onClick={() => !isMuted && togglePostLike.mutate()}
-            disabled={isMuted}
-            className={cn("flex items-center gap-1.5 text-sm transition-all",
-              userReactions?.postLiked ? "text-primary" : "text-muted-foreground hover:text-primary")}
-          >
-            <Heart className={cn("h-4 w-4 transition-transform", userReactions?.postLiked && "fill-current scale-110")} />
-            {post.like_count}
-          </button>
+          <ReactionBar
+            targetType="post"
+            targetId={postId!}
+            memberId={member?.id}
+            communityId={community?.id}
+            isMuted={isMuted}
+            reactions={getPostReactions()}
+          />
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <MessageCircle className="h-4 w-4" />{post.comment_count}
           </span>
