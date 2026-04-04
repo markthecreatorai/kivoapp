@@ -3527,6 +3527,48 @@ export type Database = {
           },
         ]
       }
+      download_logs: {
+        Row: {
+          created_at: string
+          customer_id: string
+          file_path: string
+          id: string
+          ip_address: string | null
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          file_path: string
+          id?: string
+          ip_address?: string | null
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          file_path?: string
+          id?: string
+          ip_address?: string | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "download_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "download_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_campaigns: {
         Row: {
           body_html: string
