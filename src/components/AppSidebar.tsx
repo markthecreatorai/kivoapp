@@ -90,6 +90,7 @@ const coreNavItems: NavItem[] = [
   { title: "Clientes", url: "/clients", icon: Heart },
   { title: "Calendar", url: "/appointments", icon: CalendarCheck },
   { title: "AutoDM", url: "/autodm", icon: Zap },
+  { title: "Afiliados Kivo", url: "/referrals", icon: Users },
 ];
 
 const adminItems: NavItem[] = [

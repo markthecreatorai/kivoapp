@@ -16,6 +16,7 @@ export const coreItems: MenuToolItem[] = [
   { id: "clients", title: "Clientes", url: "/clients", description: "", icon: "Heart" },
   { id: "calendar", title: "Calendar", url: "/appointments", description: "", icon: "CalendarCheck" },
   { id: "autodm", title: "AutoDM", url: "/autodm", description: "", icon: "Zap" },
+  { id: "referrals-kivo", title: "Afiliados Kivo", url: "/referrals", description: "", icon: "Users" },
 ];
 
 /** Toggleable items shown in the "Mais" page */
