@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import CourseFormModal from "@/components/circle/CourseFormModal";
 import CourseCardMenu from "@/components/circle/CourseCardMenu";
 import LessonEditor from "@/components/circle/LessonEditor";
+import QuizEditor from "@/components/circle/QuizEditor";
+import QuizPlayer from "@/components/circle/QuizPlayer";
 import {
   DndContext,
   closestCenter,
@@ -730,6 +732,13 @@ export default function CircleClassroom() {
                 </div>
               )}
             </div>
+
+            {/* Quiz Editor for admins */}
+            {isAdmin && (
+              <div className="mt-4 pt-4 border-t border-border/50">
+                <QuizEditor courseId={selectedCourseId} />
+              </div>
+            )}
           </ScrollArea>
 
           {/* ── Right: Lesson Editor / Content ── */}
@@ -752,13 +761,19 @@ export default function CircleClassroom() {
                       markStarted.mutate(nextLesson.id);
                     } : undefined}
                   />
+                  {/* Show quiz player below lesson when course is complete */}
+                  {member?.id && percent === 100 && <div className="mt-6"><QuizPlayer courseId={selectedCourseId} memberId={member.id} /></div>}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-64 text-muted-foreground">
-                  <div className="text-center">
-                    <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                    <p className="text-sm">Selecione uma aula para começar</p>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-center h-40 text-muted-foreground">
+                    <div className="text-center">
+                      <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+                      <p className="text-sm">Selecione uma aula para começar</p>
+                    </div>
                   </div>
+                  {/* Quiz player when no lesson selected */}
+                  {member?.id && <QuizPlayer courseId={selectedCourseId} memberId={member.id} />}
                 </div>
               )}
             </div>

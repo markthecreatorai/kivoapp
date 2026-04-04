@@ -3687,6 +3687,196 @@ export type Database = {
           },
         ]
       }
+      course_quiz_answers: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          id: string
+          is_correct: boolean
+          points_earned: number
+          question_id: string
+          selected_option: number
+        }
+        Insert: {
+          attempt_id: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          points_earned?: number
+          question_id: string
+          selected_option?: number
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          points_earned?: number
+          question_id?: string
+          selected_option?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quiz_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "course_quiz_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_quiz_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "course_quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_quiz_attempts: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          member_id: string
+          passed: boolean
+          quiz_id: string
+          score: number
+          started_at: string
+          total_points: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          member_id: string
+          passed?: boolean
+          quiz_id: string
+          score?: number
+          started_at?: string
+          total_points?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          member_id?: string
+          passed?: boolean
+          quiz_id?: string
+          score?: number
+          started_at?: string
+          total_points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quiz_attempts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "course_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_quiz_questions: {
+        Row: {
+          created_at: string
+          id: string
+          options: Json
+          points: number
+          position: number
+          question_text: string
+          quiz_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          options?: Json
+          points?: number
+          position?: number
+          question_text: string
+          quiz_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          options?: Json
+          points?: number
+          position?: number
+          question_text?: string
+          quiz_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "course_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_quizzes: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_published: boolean
+          is_required_for_certificate: boolean
+          max_attempts: number
+          passing_score: number
+          position: number
+          time_limit_minutes: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          is_required_for_certificate?: boolean
+          max_attempts?: number
+          passing_score?: number
+          position?: number
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          is_required_for_certificate?: boolean
+          max_attempts?: number
+          passing_score?: number
+          position?: number
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quizzes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "circle_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           cpf: string | null
