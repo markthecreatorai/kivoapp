@@ -169,7 +169,7 @@ export default function LiveStreamFormModal({ open, onOpenChange, communityId, m
                   starts_at: scheduledDate,
                   ends_at: endsAt,
                   meeting_url: embedUrl.trim(),
-                  meeting_platform: embedType === "youtube" ? "youtube" : embedType === "twitch" ? "twitch" : "custom",
+                  meeting_platform: embedType,
                   status: goLiveNow ? "ACTIVE" : "SCHEDULED",
                   live_stream_id: (latestStream as any).id,
                   cover_image_url: coverImage,
