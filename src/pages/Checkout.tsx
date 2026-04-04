@@ -575,7 +575,7 @@ export default function Checkout() {
 
         {/* Order Total */}
         <OrderTotal
-          subtotal={subtotal}
+          subtotal={price?.amount ?? 0}
           discount={couponDiscount}
           pixDiscount={activeTab === "pix" ? pixDiscountAmount : null}
           bumpAmount={bumpAmount}
