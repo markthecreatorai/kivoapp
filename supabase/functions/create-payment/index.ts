@@ -466,6 +466,11 @@ Deno.serve(async (req) => {
       response.message = "Pagamento aprovado";
       response.card_last4 = gatewayResult.card_last4;
       response.card_brand = gatewayResult.card_brand;
+      if (gatewayResult.installments > 1) {
+        response.installments = gatewayResult.installments;
+        response.installment_value = gatewayResult.installment_value;
+        response.total_with_interest = gatewayResult.total_with_interest;
+      }
     }
 
     return new Response(JSON.stringify(response), {
