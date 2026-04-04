@@ -763,11 +763,15 @@ export default function CircleClassroom() {
                   />
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-64 text-muted-foreground">
-                  <div className="text-center">
-                    <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                    <p className="text-sm">Selecione uma aula para começar</p>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-center h-40 text-muted-foreground">
+                    <div className="text-center">
+                      <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+                      <p className="text-sm">Selecione uma aula para começar</p>
+                    </div>
                   </div>
+                  {/* Quiz player when no lesson selected */}
+                  {member?.id && <QuizPlayer courseId={selectedCourseId} memberId={member.id} />}
                 </div>
               )}
             </div>
