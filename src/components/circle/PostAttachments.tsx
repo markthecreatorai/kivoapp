@@ -106,8 +106,7 @@ function ImageThumb({ attachment, compact }: { attachment: Attachment; compact?:
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState(false);
 
-  // Load signed URL on mount
-  useState(() => {
+  useEffect(() => {
     supabase.storage
       .from("community-post-attachments")
       .createSignedUrl(attachment.file_path, 3600)
@@ -115,7 +114,7 @@ function ImageThumb({ attachment, compact }: { attachment: Attachment; compact?:
         if (data) setUrl(data.signedUrl);
         setLoading(false);
       });
-  });
+  }, [attachment.file_path]);
 
   const size = compact ? "h-16 w-16" : "h-24 w-24";
 
