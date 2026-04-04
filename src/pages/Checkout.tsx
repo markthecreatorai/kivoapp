@@ -357,6 +357,7 @@ export default function Checkout() {
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
+          bump_product_ids: selectedBumpIds,
         },
       });
       if (res.error) throw new Error(res.error.message);
