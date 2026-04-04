@@ -228,7 +228,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-border/30 bg-sidebar px-4 py-4">
         <Link
           to="/dashboard"
-          className={cn("flex items-center transition-all duration-200", collapsed ? "justify-center" : "gap-2")}
+          className={cn("flex items-center transition-all duration-200", collapsed ? "justify-center" : "gap-2 pl-[6px] pt-[4px] pb-[4px] mb-0 mt-0")}
         >
           <img
             src={collapsed ? kivoSymbol : kivoLogo}
