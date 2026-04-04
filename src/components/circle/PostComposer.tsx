@@ -463,6 +463,15 @@ export default function PostComposer({
         onChange={(e) => handleImageUpload(e.target.files)}
       />
 
+      <input
+        ref={attachmentInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.zip,.rar,.gz,.jpg,.jpeg,.png,.gif,.webp"
+        multiple
+        className="hidden"
+        onChange={(e) => { handleAttachmentAdd(e.target.files); e.target.value = ""; }}
+      />
+
       {/* Link modal */}
       <Dialog open={showLinkModal} onOpenChange={setShowLinkModal}>
         <DialogContent className="sm:max-w-md p-6 [&>button[data-close]]:hidden [&>button]:hidden">
