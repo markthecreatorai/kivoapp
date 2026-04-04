@@ -6527,6 +6527,7 @@ export type Database = {
       upsell_offers: {
         Row: {
           created_at: string
+          cta_text: string | null
           currency: string
           description: string | null
           headline: string | null
@@ -6541,6 +6542,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cta_text?: string | null
           currency?: string
           description?: string | null
           headline?: string | null
@@ -6555,6 +6557,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cta_text?: string | null
           currency?: string
           description?: string | null
           headline?: string | null
