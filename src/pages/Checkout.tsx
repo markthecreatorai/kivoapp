@@ -58,10 +58,75 @@ export default function Checkout() {
   const [boletoData, setBoletoData] = useState<{ barcode: string; pdf_url: string; due_at?: string } | null>(null);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isRecovery, setIsRecovery] = useState(false);
 
-  // Load product + price
+  // Load product + price (supports ?session= recovery param)
   useEffect(() => {
     async function load() {
+      const recoverySessionId = searchParams.get("session");
+
+      // ── Recovery flow: restore from abandoned session ──
+      if (recoverySessionId) {
+        const { data: session } = await supabase
+          .from("checkout_sessions")
+          .select("id, email, workspace_id, coupon_code, status")
+          .eq("id", recoverySessionId)
+          .maybeSingle();
+
+        if (session && session.status === "ABANDONED") {
+          setSessionId(session.id);
+          setIsRecovery(true);
+          if (session.email) {
+            setCustomer((prev) => ({ ...prev, email: session.email! }));
+          }
+          if (session.coupon_code) {
+            setAppliedCoupon({ code: session.coupon_code, discount: 0 });
+          }
+          trackEvent("cart_recovery_started", { session_id: recoverySessionId }, session.workspace_id);
+
+          // Load product from line items
+          const { data: lineItems } = await supabase
+            .from("checkout_line_items")
+            .select("product_id")
+            .eq("checkout_session_id", session.id)
+            .limit(1);
+
+          if (lineItems && lineItems.length > 0) {
+            const { data: prod } = await supabase
+              .from("products")
+              .select("id, name, slug, thumbnail_url, short_description, sales_count, workspace_id")
+              .eq("id", lineItems[0].product_id)
+              .maybeSingle();
+
+            if (prod) {
+              const { data: priceData } = await supabase
+                .from("prices")
+                .select("id, amount, compare_at_amount, pix_discount_percent, max_installments, type")
+                .eq("product_id", prod.id)
+                .eq("is_default", true)
+                .eq("is_active", true)
+                .maybeSingle();
+
+              if (priceData) {
+                if (priceData.type === "RECURRING") {
+                  const { data: planData } = await supabase
+                    .from("subscription_plans")
+                    .select("billing_interval, trial_days")
+                    .eq("product_id", prod.id)
+                    .maybeSingle();
+                  if (planData) setSubPlan(planData);
+                }
+                setProduct(prod);
+                setPrice(priceData);
+                setLoading(false);
+                return;
+              }
+            }
+          }
+        }
+      }
+
+      // ── Normal flow via productSlug ──
       if (!productSlug) { setNotFound(true); setLoading(false); return; }
 
       const { data: prod } = await supabase
@@ -84,7 +149,6 @@ export default function Checkout() {
 
       if (!priceData) { setNotFound(true); setLoading(false); return; }
 
-      // Check for subscription plan
       if (priceData.type === "RECURRING") {
         const { data: planData } = await supabase
           .from("subscription_plans")
@@ -100,7 +164,7 @@ export default function Checkout() {
       trackEvent("checkout_started", { product_id: prod.id, product_name: prod.name }, prod.workspace_id);
     }
     load();
-  }, [productSlug]);
+  }, [productSlug, searchParams]);
 
   // UTM + affiliate from sessionStorage
   const utmSource = searchParams.get("utm_source") || sessionStorage.getItem("kivo_utm_source") || undefined;
@@ -239,6 +303,10 @@ export default function Checkout() {
       if (data?.error) throw new Error(data.error);
       if (data?.status === "paid" || data?.status === "authorized") {
         trackEvent("payment_succeeded", { method: "credit_card", order_id: data.order_id }, product.workspace_id);
+        if (isRecovery && sessionId) {
+          await supabase.from("checkout_sessions").update({ recovered_checkout: true, status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", sessionId);
+          trackEvent("cart_recovered", { session_id: sessionId, order_id: data.order_id, method: "credit_card" }, product.workspace_id);
+        }
         await supabase.functions.invoke("post-purchase", { body: { order_id: data.order_id } });
         navigate(`/order/success/${data.order_id}`);
       } else {
@@ -311,6 +379,10 @@ export default function Checkout() {
           clearInterval(pollInterval);
           setPaymentSuccess(true);
           trackEvent("payment_succeeded", { method: "pix", order_id: orderId }, product?.workspace_id);
+          if (isRecovery && sessionId) {
+            await supabase.from("checkout_sessions").update({ recovered_checkout: true, status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", sessionId);
+            trackEvent("cart_recovered", { session_id: sessionId, order_id: orderId, method: "pix" }, product?.workspace_id);
+          }
           await supabase.functions.invoke("post-purchase", { body: { order_id: orderId } });
           navigate(`/order/success/${orderId}`);
         }
