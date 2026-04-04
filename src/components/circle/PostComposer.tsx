@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2, Upload, ChevronDown, Check,
+  Paperclip, Link2, Video, BarChart3, Smile, X, Loader2, Upload, ChevronDown, Check, FileUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import EmojiPicker from "@/components/circle/EmojiPicker";
 import GifPicker from "@/components/circle/GifPicker";
 import { checkSpam } from "@/lib/antispam";
+import { AttachmentComposerPreview, type PendingAttachment } from "@/components/circle/PostAttachments";
 
 interface PostComposerProps {
   communityId: string;
@@ -46,6 +47,10 @@ export default function PostComposer({
   const [videoUrl, setVideoUrl] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  // Attachments state
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
@@ -88,6 +93,29 @@ export default function PostComposer({
     }
   }, [user, images.length]);
 
+  const ALLOWED_MIMES = [
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf",
+    "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/zip", "application/x-rar-compressed", "application/gzip",
+  ];
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+  const MAX_ATTACHMENTS = 5;
+
+  const handleAttachmentAdd = useCallback((files: FileList | null) => {
+    if (!files) return;
+    const remaining = MAX_ATTACHMENTS - attachments.length;
+    const newFiles: PendingAttachment[] = [];
+    for (const file of Array.from(files).slice(0, remaining)) {
+      if (file.size > MAX_FILE_SIZE) { toast.error(`${file.name} excede 20MB`); continue; }
+      if (!ALLOWED_MIMES.includes(file.type)) { toast.error(`${file.name}: tipo não permitido`); continue; }
+      const pa: PendingAttachment = { file };
+      if (file.type.startsWith("image/")) pa.previewUrl = URL.createObjectURL(file);
+      newFiles.push(pa);
+    }
+    setAttachments((prev) => [...prev, ...newFiles]);
+  }, [attachments.length]);
+
   const createPost = useMutation({
     mutationFn: async () => {
       if (!selectedSpace || !title.trim()) throw new Error("Preencha categoria e título");
@@ -117,6 +145,26 @@ export default function PostComposer({
 
       const { data: post, error } = await supabase.from("community_posts").insert(postData).select().single();
       if (error) throw error;
+
+      // Upload attachments
+      if (attachments.length > 0 && user) {
+        for (const att of attachments) {
+          const ext = att.file.name.split(".").pop();
+          const filePath = `${user.id}/${post.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("community-post-attachments")
+            .upload(filePath, att.file);
+          if (upErr) { console.error("Attachment upload error:", upErr); continue; }
+          await supabase.from("community_post_attachments").insert({
+            post_id: post.id,
+            uploader_id: memberId,
+            file_path: filePath,
+            file_name: att.file.name,
+            mime_type: att.file.type,
+            size_bytes: att.file.size,
+          });
+        }
+      }
 
       await supabase.from("community_points_log").insert({
         community_id: communityId, member_id: memberId, action: "POST_CREATED",
@@ -266,6 +314,14 @@ export default function PostComposer({
             )}
           </div>
         )}
+
+        {/* Attachment previews */}
+        {attachments.length > 0 && (
+          <AttachmentComposerPreview
+            files={attachments}
+            onRemove={(i) => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+          />
+        )}
       </div>
 
       {/* Footer toolbar */}
@@ -281,7 +337,14 @@ export default function PostComposer({
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
           </button>
           <button
-            onClick={() => { setLinkModalUrl(""); setShowLinkModal(true); }}
+            onClick={() => attachmentInputRef.current?.click()}
+            disabled={attachments.length >= MAX_ATTACHMENTS}
+            className={cn("p-2 rounded-lg transition-colors", attachments.length > 0 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50", "disabled:opacity-40")}
+            title={`Anexar arquivo (${attachments.length}/${MAX_ATTACHMENTS})`}
+          >
+            <FileUp className="h-4 w-4" />
+          </button>
+          <button
             className={cn("p-2 rounded-lg transition-colors", linkUrl ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
             title="Link"
           >
@@ -398,6 +461,15 @@ export default function PostComposer({
         multiple
         className="hidden"
         onChange={(e) => handleImageUpload(e.target.files)}
+      />
+
+      <input
+        ref={attachmentInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.zip,.rar,.gz,.jpg,.jpeg,.png,.gif,.webp"
+        multiple
+        className="hidden"
+        onChange={(e) => { handleAttachmentAdd(e.target.files); e.target.value = ""; }}
       />
 
       {/* Link modal */}

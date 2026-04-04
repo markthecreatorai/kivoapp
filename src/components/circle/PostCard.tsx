@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageCircle, Pin, BarChart3, Play, Flag, MoreHorizontal, Trash2 } from "lucide-react";
+import { MessageCircle, Pin, BarChart3, Play, Flag, MoreHorizontal, Trash2, Paperclip } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import LevelBadge from "@/components/circle/LevelBadge";
 import ReactionBar, { type ReactionData } from "@/components/circle/ReactionBar";
+import { PostAttachmentsDisplay, type Attachment } from "@/components/circle/PostAttachments";
 import { toast } from "sonner";
 
 interface PostCardProps {
@@ -136,6 +137,18 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
   const roleLabel = ROLE_LABEL[post.author?.role];
   const isPoll = post.post_type === "POLL" && post.poll_options;
 
+  // Fetch attachments
+  const { data: postAttachments } = useQuery({
+    queryKey: ["post-attachments", post.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_post_attachments")
+        .select("id, file_path, file_name, mime_type, size_bytes")
+        .eq("post_id", post.id);
+      return (data || []) as Attachment[];
+    },
+  });
+
   return (
     <div
       onClick={() => onOpenPost?.(post.id)}
@@ -215,6 +228,13 @@ export default function PostCard({ post, liked, onToggleLike, isMuted, showSpace
 
       {/* Interactive Poll */}
       {isPoll && <div onClick={(e) => e.stopPropagation()}><PollSection post={post} memberId={memberId} /></div>}
+
+      {/* Attachments */}
+      {postAttachments && postAttachments.length > 0 && (
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          <PostAttachmentsDisplay attachments={postAttachments} compact />
+        </div>
+      )}
 
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-border flex items-center gap-1">

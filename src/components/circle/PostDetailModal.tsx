@@ -32,6 +32,7 @@ import ReactionBar from "@/components/circle/ReactionBar";
 import GifPicker from "@/components/circle/GifPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { X as XIcon, Image as ImageIcon } from "lucide-react";
+import { PostAttachmentsDisplay, type Attachment } from "@/components/circle/PostAttachments";
 
 interface PostDetailModalProps {
   postId: string;
@@ -202,6 +203,19 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
       return data || [];
     },
     enabled: !!community,
+  });
+
+  // Fetch post attachments
+  const { data: postAttachments } = useQuery({
+    queryKey: ["post-attachments", postId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_post_attachments")
+        .select("id, file_path, file_name, mime_type, size_bytes")
+        .eq("post_id", postId);
+      return (data || []) as Attachment[];
+    },
+    enabled: !!postId && open,
   });
 
   /* ── Derived state ─── */
@@ -606,6 +620,13 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                         );
                       })}
                       <p className="text-xs text-muted-foreground text-center">{totalPollVotes} votos</p>
+                    </div>
+                  )}
+
+                  {/* Attachments */}
+                  {postAttachments && postAttachments.length > 0 && (
+                    <div className="mt-4">
+                      <PostAttachmentsDisplay attachments={postAttachments} />
                     </div>
                   )}
                 </div>
