@@ -52,16 +52,15 @@ describe("Checkout Flow Tests", () => {
 
   describe("Product Loading", () => {
     it("shows loading state initially", async () => {
-      // Mock product query that hangs
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn(() => new Promise(() => {})), // never resolves
-            }),
-          }),
-        }),
-      });
+      const chainMock = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn(() => new Promise(() => {})),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+      };
+      mockFrom.mockReturnValue(chainMock);
 
       const Checkout = (await import("@/pages/Checkout")).default;
       render(
