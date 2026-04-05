@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks(id, { getModuleInfo }) {
           if (id.includes("node_modules")) {
+            if (id.includes("zxcvbn")) return "vendor-zxcvbn";
             if (id.includes("react-dom")) return "vendor-react";
             if (id.includes("react-router-dom")) return "vendor-react";
             if (id.includes("/react/")) return "vendor-react";
