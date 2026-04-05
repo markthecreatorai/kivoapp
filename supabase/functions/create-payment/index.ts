@@ -9,10 +9,12 @@ const corsHeaders = {
 // ── Asaas API ──
 
 function getAsaasBase() {
-  const env = Deno.env.get("ASAAS_ENV") || "sandbox";
-  return env === "production"
+  const env = (Deno.env.get("ASAAS_ENV") || "sandbox").trim().toLowerCase();
+  const base = env === "production"
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/api/v3";
+  console.log(`Asaas env="${env}" base="${base}"`);
+  return base;
 }
 
 async function callAsaas(path: string, body: unknown, apiKey: string, method = "POST") {
