@@ -276,6 +276,73 @@ Deno.serve(async (req) => {
         }
 
         console.log(`Split recorded for order ${order.id}: gross=${grossAmount} gw=${split.gatewayFee} plat=${split.platformFee} aff=${split.affiliateFee} net=${split.creatorNet}`);
+
+        // 6b. Create affiliate commission if affiliate_link_id present
+        if (split.affiliateFee > 0) {
+          try {
+            // Get affiliate_link_id from the order or checkout_session
+            let affiliateLinkId: string | null = null;
+
+            const { data: orderRow } = await supabase
+              .from("orders")
+              .select("affiliate_link_id")
+              .eq("id", order.id)
+              .single();
+            affiliateLinkId = orderRow?.affiliate_link_id || null;
+
+            if (!affiliateLinkId && order.checkout_session_id) {
+              const { data: sess } = await supabase
+                .from("checkout_sessions")
+                .select("affiliate_link_id")
+                .eq("id", order.checkout_session_id)
+                .single();
+              affiliateLinkId = sess?.affiliate_link_id || null;
+            }
+
+            if (affiliateLinkId) {
+              const { data: affLink } = await supabase
+                .from("affiliate_links")
+                .select("affiliate_id")
+                .eq("id", affiliateLinkId)
+                .single();
+
+              if (affLink) {
+                // Check idempotency
+                const { data: existingComm } = await supabase
+                  .from("commissions")
+                  .select("id")
+                  .eq("order_id", order.id)
+                  .eq("affiliate_id", affLink.affiliate_id)
+                  .maybeSingle();
+
+                if (!existingComm) {
+                  const holdDays = rule.hold_days || 14;
+                  const holdUntil = new Date();
+                  holdUntil.setDate(holdUntil.getDate() + holdDays);
+
+                  await supabase.from("commissions").insert({
+                    affiliate_id: affLink.affiliate_id,
+                    order_id: order.id,
+                    amount: split.affiliateFee,
+                    status: "PENDING",
+                    hold_until: holdUntil.toISOString(),
+                  });
+
+                  // Mark attribution as converted
+                  await supabase
+                    .from("affiliate_attributions")
+                    .update({ converted_at: new Date().toISOString() })
+                    .eq("affiliate_link_id", affiliateLinkId)
+                    .is("converted_at", null);
+
+                  console.log(`Commission created: affiliate=${affLink.affiliate_id} amount=${split.affiliateFee} order=${order.id}`);
+                }
+              }
+            }
+          } catch (commErr) {
+            console.error("Commission creation error (non-fatal):", commErr);
+          }
+        }
       } else {
         console.log(`Split already exists for order ${order.id}, skipping`);
       }
