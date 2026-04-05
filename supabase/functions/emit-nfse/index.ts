@@ -6,6 +6,111 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Provider adapter interface
+interface NfsePayload {
+  document: string;
+  customerName: string;
+  customerEmail: string;
+  description: string;
+  serviceAmount: number; // in BRL (cents / 100)
+  taxRate: number;
+  orderId: string;
+}
+
+interface NfseResult {
+  externalId?: string;
+  invoiceNumber?: string;
+  verificationCode?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  raw: any;
+}
+
+async function emitViaEnotas(apiKey: string, payload: NfsePayload): Promise<NfseResult> {
+  const resp = await fetch(
+    `https://api.enotas.com.br/v2/empresas/${payload.document}/nfes`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tipo: "NFS-e",
+        cliente: {
+          nome: payload.customerName,
+          email: payload.customerEmail,
+        },
+        servico: {
+          descricao: payload.description,
+          valorTotal: payload.serviceAmount / 100,
+          issRetido: false,
+        },
+      }),
+    }
+  );
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(JSON.stringify(data));
+  return {
+    externalId: data?.id,
+    invoiceNumber: data?.numero,
+    verificationCode: data?.codigo_verificacao,
+    pdfUrl: data?.url_danfse,
+    xmlUrl: data?.url_xml,
+    raw: data,
+  };
+}
+
+async function emitViaFocusNfe(apiKey: string, payload: NfsePayload): Promise<NfseResult> {
+  const ref = `kivo-${payload.orderId.slice(0, 12)}`;
+  const resp = await fetch(
+    `https://api.focusnfe.com.br/v2/nfse?ref=${ref}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${btoa(apiKey + ":")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prestador: { cnpj: payload.document },
+        tomador: {
+          razao_social: payload.customerName,
+          email: payload.customerEmail,
+        },
+        servico: {
+          discriminacao: payload.description,
+          valor_servicos: payload.serviceAmount / 100,
+          iss_retido: false,
+          aliquota: payload.taxRate,
+        },
+      }),
+    }
+  );
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(JSON.stringify(data));
+  return {
+    externalId: data?.nfse_id,
+    invoiceNumber: data?.numero_nfse,
+    verificationCode: data?.codigo_verificacao,
+    pdfUrl: data?.pdf_url,
+    xmlUrl: data?.xml_url,
+    raw: data,
+  };
+}
+
+async function logEvent(
+  supabase: any,
+  invoiceId: string,
+  eventType: string,
+  payload: Record<string, any> = {}
+) {
+  await supabase.from("fiscal_invoice_events").insert({
+    invoice_id: invoiceId,
+    event_type: eventType,
+    payload_json: payload,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,7 +126,6 @@ Deno.serve(async (req) => {
     let invoiceRecord: any = null;
 
     if (invoice_id) {
-      // Retry existing invoice
       const { data } = await supabase
         .from("fiscal_invoices")
         .select("*, orders!inner(workspace_id, total_amount, customer_name, customer_email, order_number)")
@@ -30,7 +134,7 @@ Deno.serve(async (req) => {
       invoiceRecord = data;
       if (!invoiceRecord) throw new Error("Invoice not found");
     } else if (order_id) {
-      // Check idempotency
+      // Idempotency check
       const { data: existing } = await supabase
         .from("fiscal_invoices")
         .select("id, status")
@@ -66,15 +170,15 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!fiscal) {
-      // No fiscal settings — just create pending record
       if (!invoiceRecord) {
-        await supabase.from("fiscal_invoices").insert({
+        const { data: newInv } = await supabase.from("fiscal_invoices").insert({
           workspace_id: order.workspace_id,
           order_id: order.id,
           status: "pending",
           service_amount: Number(order.total_amount),
           tax_amount: 0,
-        });
+        }).select("id").single();
+        if (newInv) await logEvent(supabase, newInv.id, "created", { reason: "no_fiscal_settings" });
       }
       return new Response(JSON.stringify({ ok: true, status: "pending", reason: "no_fiscal_settings" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -105,6 +209,7 @@ Deno.serve(async (req) => {
         attempts: (invoiceRecord.attempts || 0) + 1,
       }).eq("id", invoiceRecord.id);
       currentInvoiceId = invoiceRecord.id;
+      await logEvent(supabase, currentInvoiceId, retry ? "retry_requested" : "reprocessed", { attempt: (invoiceRecord.attempts || 0) + 1 });
     } else {
       const { data: newInv } = await supabase
         .from("fiscal_invoices")
@@ -112,138 +217,87 @@ Deno.serve(async (req) => {
         .select("id")
         .single();
       currentInvoiceId = newInv!.id;
+      await logEvent(supabase, currentInvoiceId, "created", { provider, order_id: order.id });
     }
 
-    // Try to emit via provider API
-    let emissionResult: any = null;
-
-    if (provider === "enotas") {
-      const enotasKey = Deno.env.get("ENOTAS_API_KEY");
-      if (!enotasKey) {
-        await supabase.from("fiscal_invoices").update({
-          status: "failed",
-          error_message: "ENOTAS_API_KEY não configurada",
-        }).eq("id", currentInvoiceId);
-        throw new Error("ENOTAS_API_KEY not configured");
-      }
-
-      // eNotas API call (simplified)
-      try {
-        const resp = await fetch("https://api.enotas.com.br/v2/empresas/" + (fiscal.document || "") + "/nfes", {
-          method: "POST",
-          headers: {
-            "Authorization": `Basic ${enotasKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tipo: "NFS-e",
-            cliente: {
-              nome: order.customer_name || "Cliente",
-              email: order.customer_email,
-            },
-            servico: {
-              descricao: `Produto digital - Pedido ${order.order_number || order.id.slice(0, 8)}`,
-              valorTotal: serviceAmount / 100,
-              issRetido: false,
-            },
-          }),
-        });
-        emissionResult = await resp.json();
-        if (!resp.ok) throw new Error(JSON.stringify(emissionResult));
-      } catch (providerErr: any) {
-        await supabase.from("fiscal_invoices").update({
-          status: "failed",
-          error_message: providerErr.message?.slice(0, 500),
-        }).eq("id", currentInvoiceId);
-
-        // Audit log
-        await supabase.from("audit_logs").insert({
-          workspace_id: order.workspace_id,
-          entity_type: "fiscal_invoice",
-          entity_id: currentInvoiceId,
-          action: "nfse_emission_failed",
-          metadata: { error: providerErr.message?.slice(0, 200), provider },
-        });
-
-        throw providerErr;
-      }
-    } else if (provider === "focusnfe") {
-      const focusKey = Deno.env.get("FOCUSNFE_API_KEY");
-      if (!focusKey) {
-        await supabase.from("fiscal_invoices").update({
-          status: "failed",
-          error_message: "FOCUSNFE_API_KEY não configurada",
-        }).eq("id", currentInvoiceId);
-        throw new Error("FOCUSNFE_API_KEY not configured");
-      }
-
-      // Focus NFe API call (simplified)
-      try {
-        const ref = `kivo-${order.id.slice(0, 12)}`;
-        const resp = await fetch(`https://api.focusnfe.com.br/v2/nfse?ref=${ref}`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Basic ${btoa(focusKey + ":")}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            prestador: { cnpj: fiscal.document },
-            tomador: {
-              razao_social: order.customer_name || "Cliente",
-              email: order.customer_email,
-            },
-            servico: {
-              discriminacao: `Produto digital - Pedido ${order.order_number || order.id.slice(0, 8)}`,
-              valor_servicos: serviceAmount / 100,
-              iss_retido: false,
-              aliquota: taxRate,
-            },
-          }),
-        });
-        emissionResult = await resp.json();
-        if (!resp.ok) throw new Error(JSON.stringify(emissionResult));
-      } catch (providerErr: any) {
-        await supabase.from("fiscal_invoices").update({
-          status: "failed",
-          error_message: providerErr.message?.slice(0, 500),
-        }).eq("id", currentInvoiceId);
-
-        await supabase.from("audit_logs").insert({
-          workspace_id: order.workspace_id,
-          entity_type: "fiscal_invoice",
-          entity_id: currentInvoiceId,
-          action: "nfse_emission_failed",
-          metadata: { error: providerErr.message?.slice(0, 200), provider },
-        });
-
-        throw providerErr;
-      }
-    } else {
-      // No provider configured — leave as pending
+    // Emit via provider adapter
+    if (!provider || (provider !== "enotas" && provider !== "focusnfe")) {
       return new Response(JSON.stringify({ ok: true, status: "pending", reason: "no_provider" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Success — update invoice
+    const apiKeyName = provider === "enotas" ? "ENOTAS_API_KEY" : "FOCUSNFE_API_KEY";
+    const apiKey = Deno.env.get(apiKeyName);
+    if (!apiKey) {
+      await supabase.from("fiscal_invoices").update({
+        status: "failed",
+        error_message: `${apiKeyName} não configurada`,
+      }).eq("id", currentInvoiceId);
+      await logEvent(supabase, currentInvoiceId, "failed", { error: `${apiKeyName} missing` });
+      throw new Error(`${apiKeyName} not configured`);
+    }
+
+    const nfsePayload: NfsePayload = {
+      document: fiscal.document || "",
+      customerName: order.customer_name || "Cliente",
+      customerEmail: order.customer_email || "",
+      description: `Produto digital - Pedido ${order.order_number || order.id.slice(0, 8)}`,
+      serviceAmount,
+      taxRate,
+      orderId: order.id,
+    };
+
+    let result: NfseResult;
+    try {
+      await logEvent(supabase, currentInvoiceId, "emission_started", { provider });
+      result = provider === "enotas"
+        ? await emitViaEnotas(apiKey, nfsePayload)
+        : await emitViaFocusNfe(apiKey, nfsePayload);
+    } catch (providerErr: any) {
+      const errMsg = providerErr.message?.slice(0, 500);
+      await supabase.from("fiscal_invoices").update({
+        status: "failed",
+        error_message: errMsg,
+      }).eq("id", currentInvoiceId);
+
+      await logEvent(supabase, currentInvoiceId, "emission_failed", { error: errMsg, provider });
+
+      await supabase.from("audit_logs").insert({
+        workspace_id: order.workspace_id,
+        entity_type: "fiscal_invoice",
+        entity_id: currentInvoiceId,
+        action: "nfse_emission_failed",
+        metadata: { error: providerErr.message?.slice(0, 200), provider },
+      });
+
+      throw providerErr;
+    }
+
+    // Success
     await supabase.from("fiscal_invoices").update({
       status: "issued",
       issued_at: new Date().toISOString(),
-      external_id: emissionResult?.id || emissionResult?.nfse_id || null,
-      invoice_number: emissionResult?.numero || emissionResult?.numero_nfse || null,
-      verification_code: emissionResult?.codigo_verificacao || null,
-      pdf_url: emissionResult?.url_danfse || emissionResult?.pdf_url || null,
-      xml_url: emissionResult?.url_xml || emissionResult?.xml_url || null,
+      external_id: result.externalId || null,
+      invoice_number: result.invoiceNumber || null,
+      verification_code: result.verificationCode || null,
+      pdf_url: result.pdfUrl || null,
+      xml_url: result.xmlUrl || null,
       error_message: null,
     }).eq("id", currentInvoiceId);
 
-    // Audit success
+    await logEvent(supabase, currentInvoiceId, "issued", {
+      provider,
+      invoice_number: result.invoiceNumber,
+      external_id: result.externalId,
+    });
+
     await supabase.from("audit_logs").insert({
       workspace_id: order.workspace_id,
       entity_type: "fiscal_invoice",
       entity_id: currentInvoiceId,
       action: "nfse_issued",
-      metadata: { provider, invoice_number: emissionResult?.numero },
+      metadata: { provider, invoice_number: result.invoiceNumber },
     });
 
     return new Response(JSON.stringify({ ok: true, status: "issued", invoice_id: currentInvoiceId }), {
@@ -252,7 +306,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error("emit-nfse error:", err);
     return new Response(JSON.stringify({ ok: false, error: err.message }), {
-      status: 200, // don't fail hard
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
