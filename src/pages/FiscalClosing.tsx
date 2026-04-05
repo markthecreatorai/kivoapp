@@ -12,6 +12,7 @@ import { Download, RefreshCw, FileText, AlertCircle, CheckCircle2 } from "lucide
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/tracking";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Pendente", variant: "secondary" },
@@ -99,6 +100,7 @@ export default function FiscalClosing() {
   // Retry emission
   const retryMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
+      trackEvent("nfse_reprocess_requested", { invoice_id: invoiceId });
       const { error } = await supabase.functions.invoke("emit-nfse", {
         body: { invoice_id: invoiceId, retry: true },
       });
