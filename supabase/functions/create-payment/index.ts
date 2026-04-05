@@ -501,7 +501,12 @@ Deno.serve(async (req) => {
 
     // If paid immediately (credit card)
     if (paymentStatus === "SUCCEEDED") {
-      await supabase.from("orders").update({ status: "COMPLETED", paid_at: new Date().toISOString() }).eq("id", order.id);
+      const { error: orderUpdateErr } = await supabase.from("orders").update({ status: "COMPLETED", paid_at: new Date().toISOString() }).eq("id", order.id);
+      if (orderUpdateErr) {
+        console.error("Failed to update order to COMPLETED:", JSON.stringify(orderUpdateErr));
+      } else {
+        console.log("Order updated to COMPLETED:", order.id);
+      }
       if (checkout_session_id) {
         await supabase.from("checkout_sessions").update({ status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", checkout_session_id);
       }
