@@ -25,19 +25,8 @@ export default function VerifyCertificate() {
     },
     enabled: !!code,
   });
-    queryKey: ["verify-certificate", code],
-    queryFn: async () => {
-      if (!code) return null;
-      const { data, error } = await (supabase as any)
-        .from("circle_certificates")
-        .select("*")
-        .eq("certificate_code", code.toUpperCase())
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!code,
-  });
+
+
 
   const handleDownload = async () => {
     if (!certificate) return;
