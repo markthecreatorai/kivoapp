@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import kivoLogo from "@/assets/kivo-logo.svg";
 
 type Status = "loading" | "success" | "error";
 
@@ -52,8 +53,8 @@ export default function AuthCallback() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary">Kivo</h1>
+        <div className="text-center flex justify-center">
+          <img src={kivoLogo} alt="Kivo" className="h-10" />
         </div>
 
         <Card className="shadow-sm border">
