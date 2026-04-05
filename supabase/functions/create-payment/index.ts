@@ -394,8 +394,10 @@ Deno.serve(async (req) => {
             name: customer.name,
             email: customer.email,
             cpfCnpj: cpf,
-            phone: customer.phone?.replace(/\D/g, "") || undefined,
-            postalCode: customer.zip || undefined,
+            phone: customer.phone?.replace(/\D/g, "") || "11999999999",
+            postalCode: customer.zip || "01310100",
+            addressNumber: customer.address_number || "100",
+            address: customer.address || "Av Paulista",
           },
         };
 
