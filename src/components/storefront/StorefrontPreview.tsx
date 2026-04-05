@@ -152,7 +152,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       case 'lead_form':
         return (
           <div 
-            className="w-full p-4 border rounded-[16px]"
+            className={cn("w-full p-4 border", getCardClass())}
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             <p className="font-medium mb-3" style={{ color: currentTheme.text_color }}>
