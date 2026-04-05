@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     // Get order details
     const { data: order } = await supabase
       .from("orders")
-      .select("id, workspace_id, product_id, customer_email, customer_name, total_amount, payment_method, customer_id, checkout_session_id")
+      .select("id, workspace_id, product_id, customer_email, customer_name, total_amount, payment_method, customer_id, checkout_session_id, status")
       .eq("id", order_id)
       .single();
 
@@ -77,13 +77,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1. Create entitlement if customer exists
+    // Idempotency: skip if already completed
+    if (order.status === "COMPLETED") {
+      console.log(`Post-purchase: Order ${order_id} already COMPLETED, skipping`);
+      return new Response(
+        JSON.stringify({ success: true, order_id: order.id, skipped: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 1. Create entitlement if customer exists (idempotent)
     if (order.customer_id && order.product_id) {
-      await supabase.from("entitlements").insert({
-        customer_id: order.customer_id,
-        product_id: order.product_id,
-        order_id: order.id,
-      });
+      const { data: existingEnt } = await supabase
+        .from("entitlements")
+        .select("id")
+        .eq("order_id", order.id)
+        .eq("product_id", order.product_id)
+        .eq("customer_id", order.customer_id)
+        .maybeSingle();
+
+      if (!existingEnt) {
+        await supabase.from("entitlements").insert({
+          customer_id: order.customer_id,
+          product_id: order.product_id,
+          order_id: order.id,
+        });
+      }
     }
 
     // 1b. Grant community tier if product is linked to a tier
@@ -169,19 +188,28 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Update product sales_count
+    // 3. Update product sales_count (idempotent check via split_entries)
     if (order.product_id) {
-      const { data: product } = await supabase
-        .from("products")
-        .select("sales_count")
-        .eq("id", order.product_id)
-        .single();
+      const { data: existingSplit } = await supabase
+        .from("split_entries")
+        .select("id")
+        .eq("order_id", order.id)
+        .maybeSingle();
 
-      if (product) {
-        await supabase
+      // Only increment sales_count if we haven't processed splits yet
+      if (!existingSplit) {
+        const { data: product } = await supabase
           .from("products")
-          .update({ sales_count: (product.sales_count || 0) + 1 })
-          .eq("id", order.product_id);
+          .select("sales_count")
+          .eq("id", order.product_id)
+          .single();
+
+        if (product) {
+          await supabase
+            .from("products")
+            .update({ sales_count: (product.sales_count || 0) + 1 })
+            .eq("id", order.product_id);
+        }
       }
     }
 
