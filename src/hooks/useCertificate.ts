@@ -80,8 +80,9 @@ export function useCertificate(memberId: string | null, courseId: string | null)
       }
       return data as CertificateData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["circle-certificate", memberId, courseId] });
+      trackEvent("certificate_issued", { course_id: courseId, member_id: memberId });
       toast.success("Certificado emitido! 🎓");
     },
     onError: (err: any) => toast.error(err.message),
