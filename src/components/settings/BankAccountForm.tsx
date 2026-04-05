@@ -99,6 +99,14 @@ export function BankAccountForm() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const acc = accounts.find(a => a.id === id);
+      if (acc?.is_default && accounts.length > 1) {
+        // Promote another account to default before deleting
+        const next = accounts.find(a => a.id !== id);
+        if (next) {
+          await supabase.from("bank_accounts").update({ is_default: true }).eq("id", next.id);
+        }
+      }
       const { error } = await supabase.from("bank_accounts").delete().eq("id", id);
       if (error) throw error;
     },
@@ -106,6 +114,7 @@ export function BankAccountForm() {
       toast.success("Conta removida");
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
     },
+    onError: (e: any) => toast.error(e.message || "Erro ao remover conta"),
   });
 
   const setDefaultMutation = useMutation({

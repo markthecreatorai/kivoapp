@@ -63,13 +63,13 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
 
       if (wErr) throw wErr;
 
-      // 2. Reserve balance in ledger
+      // 2. Reserve balance in ledger (status must be 'available' to be counted by get_wallet_balance)
       const { error: lErr } = await supabase.from("wallet_ledger").insert({
         workspace_id: workspaceId!,
         withdrawal_id: withdrawal.id,
         type: "withdrawal",
         amount: -availableBalance,
-        status: "settled",
+        status: "available",
         description: `Saque #${withdrawal.id.slice(0, 8)}`,
       });
 

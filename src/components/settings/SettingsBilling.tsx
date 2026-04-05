@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Download, Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useCancelSubscription } from "@/hooks/useCancelSubscription";
@@ -119,9 +120,9 @@ export function SettingsBilling() {
                   </Button>
                 )}
                 <Button asChild>
-                  <a href="/billing/upgrade-flow?source_ui=settings_billing" rel="nofollow">
+                  <Link to="/billing/upgrade-flow?source_ui=settings_billing">
                     {isFree || sub?.status === "canceled" ? "Assinar Plano" : "Trocar Plano"}
-                  </a>
+                  </Link>
                 </Button>
               </div>
             </>
