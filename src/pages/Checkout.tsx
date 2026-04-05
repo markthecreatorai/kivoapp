@@ -573,6 +573,7 @@ export default function Checkout() {
           paymentLoading={paymentLoading}
           paymentError={paymentError}
           paymentSuccess={paymentSuccess}
+          onTabChange={setActiveTab}
         />
 
         {/* Payment error with retry - only shown if not already visible in PaymentTabs */}
