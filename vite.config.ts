@@ -37,7 +37,6 @@ export default defineConfig(({ mode }) => ({
           "vendor-editor": [
             "@tiptap/react",
             "@tiptap/starter-kit",
-            "@tiptap/pm",
             "@tiptap/extension-link",
             "@tiptap/extension-image",
             "@tiptap/extension-youtube",
