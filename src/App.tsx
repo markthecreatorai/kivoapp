@@ -363,12 +363,13 @@ const App = () => (
                 <Route path="/:slug" element={<GlobalTrackingWrapper><PublicStorefront /></GlobalTrackingWrapper>} />
                 <Route path="*" element={<GlobalTrackingWrapper><NotFound /></GlobalTrackingWrapper>} />
               </Routes>
-            </Suspense>
-          </WorkspaceProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+              </SuspenseWithTimeout>
+            </WorkspaceProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
