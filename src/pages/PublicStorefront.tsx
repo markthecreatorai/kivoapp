@@ -390,10 +390,12 @@ export default function PublicStorefront() {
     const config = block.config as Record<string, unknown>;
 
     switch (block.type) {
-      case "link":
+      case "link": {
+        const linkUrl = (config.url as string) || "";
+        if (!linkUrl) return null; // Don't render empty links
         return (
           <a
-            href={(config.url as string) || "#"}
+            href={linkUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackEvent("LINK_CLICKED")}
@@ -403,6 +405,7 @@ export default function PublicStorefront() {
             {(config.title as string) || "Link"}
           </a>
         );
+      }
 
       case "product": {
         const product = products.find((p) => p.id === config.product_id);
