@@ -4780,6 +4780,38 @@ export type Database = {
           },
         ]
       }
+      fiscal_invoice_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          invoice_id: string
+          payload_json: Json | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          invoice_id: string
+          payload_json?: Json | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          invoice_id?: string
+          payload_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_invoice_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_invoices: {
         Row: {
           attempts: number
