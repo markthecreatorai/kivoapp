@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Loader2, BookOpen, LogOut, Award, Clock, FolderDown,
   Play, Flame, Target, Trophy, ChevronRight, Users,
+  CheckCircle2, Sparkles, History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { trackEvent } from "@/lib/tracking";
 
 interface CourseEntitlement {
   product_id: string;
@@ -29,6 +31,14 @@ interface CourseProgress {
   lastLessonId: string | null;
 }
 
+interface RecentLesson {
+  lessonId: string;
+  lessonTitle: string;
+  courseName: string;
+  productId: string;
+  completedAt: string;
+}
+
 export default function MemberDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -40,6 +50,7 @@ export default function MemberDashboard() {
   const [hasDownloads, setHasDownloads] = useState(false);
   const [loginStreak, setLoginStreak] = useState(0);
   const [communities, setCommunities] = useState<{ id: string; name: string; slug: string; icon_url: string | null }[]>([]);
+  const [recentLessons, setRecentLessons] = useState<RecentLesson[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -47,6 +58,9 @@ export default function MemberDashboard() {
       if (!user) { navigate("/member/login"); return; }
       setUserEmail(user.email || null);
       setUserName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Aluno");
+
+      // Track
+      trackEvent("student_portal_viewed", {}, undefined);
 
       // Customer lookup
       const { data: customer } = await supabase
@@ -74,7 +88,7 @@ export default function MemberDashboard() {
       // Products + check downloads
       const { data: products } = await supabase
         .from("products")
-        .select("id, name, thumbnail_url, type, delivery_url")
+        .select("id, name, thumbnail_url, type, delivery_url, workspace_id")
         .in("id", productIds);
 
       if (products) {
@@ -95,10 +109,12 @@ export default function MemberDashboard() {
 
       // Progress for each course (parallelized)
       const progressEntries: Record<string, CourseProgress> = {};
+      const allRecentLessons: RecentLesson[] = [];
+
       await Promise.all(courseEntitlements.map(async (course) => {
         const { data: contents } = await supabase
           .from("member_content")
-          .select("id")
+          .select("id, title")
           .eq("product_id", course.product_id)
           .eq("type", "lesson");
 
@@ -126,6 +142,25 @@ export default function MemberDashboard() {
               lastLessonId = p.member_content_id;
             }
           }
+
+          // Collect recently completed lessons
+          const completedRecently = progress
+            .filter(p => p.completed && p.last_accessed_at)
+            .sort((a, b) => (b.last_accessed_at || "").localeCompare(a.last_accessed_at || ""))
+            .slice(0, 5);
+
+          for (const p of completedRecently) {
+            const content = contents.find(c => c.id === p.member_content_id);
+            if (content) {
+              allRecentLessons.push({
+                lessonId: p.member_content_id,
+                lessonTitle: content.title || "Aula sem título",
+                courseName: course.product.name,
+                productId: course.product_id,
+                completedAt: p.last_accessed_at!,
+              });
+            }
+          }
         }
 
         progressEntries[course.product_id] = {
@@ -136,7 +171,13 @@ export default function MemberDashboard() {
           lastLessonId,
         };
       }));
+
       setProgressMap(progressEntries);
+      setRecentLessons(
+        allRecentLessons
+          .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
+          .slice(0, 8)
+      );
 
       // Communities the user is a member of
       const { data: memberships } = await supabase
@@ -156,7 +197,7 @@ export default function MemberDashboard() {
         if (comms) setCommunities(comms);
       }
 
-      // Login streak (count consecutive days with lesson_progress entries)
+      // Login streak
       if (progress_has_data(progressEntries)) {
         const { data: recentProgress } = await supabase
           .from("lesson_progress")
@@ -175,7 +216,7 @@ export default function MemberDashboard() {
             d.setDate(d.getDate() - i);
             const key = d.toISOString().slice(0, 10);
             if (days.has(key)) { streak++; }
-            else if (i > 0) break; // allow today to not have activity yet
+            else if (i > 0) break;
           }
           setLoginStreak(streak);
         }
@@ -201,13 +242,43 @@ export default function MemberDashboard() {
     for (const course of courses) {
       const p = progressMap[course.product_id];
       if (!p || p.total === 0 || (p.completed === p.total)) continue;
-      if (!p.lastAccessedAt) continue;
-      if (!best || (p.lastAccessedAt > (best.progress.lastAccessedAt || ""))) {
+      if (!best || ((p.lastAccessedAt || "") > (best.progress.lastAccessedAt || ""))) {
         best = { course, progress: p };
+      }
+    }
+    // If no recently accessed, pick first incomplete
+    if (!best) {
+      for (const course of courses) {
+        const p = progressMap[course.product_id];
+        if (p && p.total > 0 && p.completed < p.total) {
+          best = { course, progress: p };
+          break;
+        }
       }
     }
     return best;
   }, [courses, progressMap]);
+
+  // Recommendations: courses not started or communities not yet joined
+  const recommendations = useMemo(() => {
+    const items: { type: "course" | "community"; id: string; name: string; thumbnail?: string | null; slug?: string }[] = [];
+
+    // Courses with 0% progress
+    for (const course of courses) {
+      const p = progressMap[course.product_id];
+      if (p && p.total > 0 && p.completed === 0) {
+        items.push({ type: "course", id: course.product_id, name: course.product.name, thumbnail: course.product.thumbnail_url });
+      }
+    }
+
+    // Communities user hasn't visited much (just list them as suggestions)
+    for (const comm of communities) {
+      if (items.length >= 4) break;
+      items.push({ type: "community", id: comm.id, name: comm.name, thumbnail: comm.icon_url, slug: comm.slug });
+    }
+
+    return items.slice(0, 4);
+  }, [courses, progressMap, communities]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -271,6 +342,7 @@ export default function MemberDashboard() {
           {resumeCourse && (
             <Link
               to={`/member/course/${resumeCourse.course.product_id}`}
+              onClick={() => trackEvent("continue_learning_clicked", { product_id: resumeCourse.course.product_id })}
               className="block bg-primary/5 border border-primary/20 rounded-xl p-4 hover:bg-primary/10 transition-colors"
             >
               <div className="flex items-center gap-4">
@@ -286,7 +358,7 @@ export default function MemberDashboard() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-primary font-semibold uppercase tracking-wider">Continuar assistindo</p>
+                  <p className="text-xs text-primary font-semibold uppercase tracking-wider">Continuar estudando</p>
                   <p className="font-semibold text-foreground truncate mt-0.5">
                     {resumeCourse.course.product.name}
                   </p>
@@ -367,7 +439,11 @@ export default function MemberDashboard() {
                       </div>
                     )}
 
-                    <Link to={`/member/course/${course.product_id}`} className="block">
+                    <Link
+                      to={`/member/course/${course.product_id}`}
+                      onClick={() => trackEvent("active_course_opened", { product_id: course.product_id })}
+                      className="block"
+                    >
                       {course.product.thumbnail_url ? (
                         <img
                           src={course.product.thumbnail_url}
@@ -408,6 +484,71 @@ export default function MemberDashboard() {
           </section>
         )}
 
+        {/* Recent Activity */}
+        {recentLessons.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-base font-semibold text-foreground">Atividade Recente</h2>
+            </div>
+            <div className="space-y-2">
+              {recentLessons.map((lesson) => (
+                <Link
+                  key={lesson.lessonId}
+                  to={`/member/course/${lesson.productId}`}
+                  className="flex items-center gap-3 p-3 bg-card rounded-lg border hover:shadow-sm transition-shadow"
+                >
+                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{lesson.lessonTitle}</p>
+                    <p className="text-xs text-muted-foreground truncate">{lesson.courseName}</p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {formatRelativeDate(lesson.completedAt)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Recommended for you */}
+        {recommendations.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h2 className="text-base font-semibold text-foreground">Recomendado para você</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {recommendations.map((rec) => (
+                <Link
+                  key={rec.id}
+                  to={rec.type === "course" ? `/member/course/${rec.id}` : `/circles/${rec.slug}/feed`}
+                  onClick={() => trackEvent("recommendation_clicked", { type: rec.type, id: rec.id })}
+                  className="flex items-center gap-3 p-3 bg-card rounded-xl border hover:shadow-sm transition-shadow"
+                >
+                  {rec.thumbnail ? (
+                    <img src={rec.thumbnail} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      {rec.type === "course" ? <BookOpen className="w-5 h-5 text-primary" /> : <Users className="w-5 h-5 text-primary" />}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{rec.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {rec.type === "course" ? "Comece agora" : "Explorar comunidade"}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Communities */}
         {communities.length > 0 && (
           <section className="space-y-3">
@@ -441,7 +582,7 @@ export default function MemberDashboard() {
   );
 }
 
-// Helpers
+// ─── Helpers ───
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -452,6 +593,21 @@ function getGreeting() {
 
 function progress_has_data(map: Record<string, CourseProgress>) {
   return Object.values(map).some(p => p.total > 0);
+}
+
+function formatRelativeDate(isoDate: string) {
+  const now = new Date();
+  const d = new Date(isoDate);
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "agora";
+  if (diffMin < 60) return `${diffMin}min atrás`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h atrás`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD === 1) return "ontem";
+  if (diffD < 7) return `${diffD}d atrás`;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
