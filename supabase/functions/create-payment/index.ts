@@ -9,10 +9,12 @@ const corsHeaders = {
 // ── Asaas API ──
 
 function getAsaasBase() {
-  const env = Deno.env.get("ASAAS_ENV") || "sandbox";
-  return env === "production"
+  const env = (Deno.env.get("ASAAS_ENV") || "sandbox").trim().toLowerCase();
+  const base = env === "production"
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/api/v3";
+  console.log(`Asaas env="${env}" base="${base}"`);
+  return base;
 }
 
 async function callAsaas(path: string, body: unknown, apiKey: string, method = "POST") {
@@ -331,6 +333,7 @@ Deno.serve(async (req) => {
     // ─── Payment Processing ───
     let gatewayResult: any;
 
+    try {
     if (useAsaas) {
       console.log("Processing via Asaas for workspace", workspace_id);
 
@@ -447,6 +450,21 @@ Deno.serve(async (req) => {
     } else {
       console.log("Processing in SIMULATED mode (no gateway credentials)");
       gatewayResult = simulatePayment(method, totalAmount);
+    }
+    } catch (gatewayErr) {
+      // Mark order as FAILED when gateway rejects
+      console.error("Gateway error, marking order FAILED:", (gatewayErr as Error).message);
+      await supabase.from("orders").update({ status: "FAILED" }).eq("id", order.id);
+      if (checkout_session_id) {
+        await supabase.from("checkout_sessions").update({ status: "FAILED" }).eq("id", checkout_session_id);
+      }
+      return new Response(JSON.stringify({
+        error: (gatewayErr as Error).message || "Erro no gateway de pagamento",
+        order_id: order.id,
+        status: "FAILED",
+      }), {
+        status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Create payment record
