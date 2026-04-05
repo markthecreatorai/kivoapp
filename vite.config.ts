@@ -18,4 +18,34 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-ui": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-select",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-accordion",
+            "@radix-ui/react-scroll-area",
+          ],
+          "vendor-charts": ["recharts"],
+          "vendor-editor": [
+            "@tiptap/react",
+            "@tiptap/starter-kit",
+            "@tiptap/pm",
+            "@tiptap/extension-link",
+            "@tiptap/extension-image",
+            "@tiptap/extension-youtube",
+          ],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-supabase": ["@supabase/supabase-js"],
+        },
+      },
+    },
+  },
 }));
