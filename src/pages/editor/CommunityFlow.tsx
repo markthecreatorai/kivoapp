@@ -68,8 +68,8 @@ export default function CommunityFlow({
     queryKey: ["workspace_circles", currentWorkspace?.id],
     queryFn: async () => {
       if (!currentWorkspace?.id) return [];
-      const { data, error } = await (supabase as any)
-        .from("circles")
+      const { data, error } = await supabase
+        .from("communities")
         .select("*")
         .eq("workspace_id", currentWorkspace.id);
       if (error) throw error;
@@ -475,8 +475,8 @@ export default function CommunityFlow({
 
                     <div className="flex items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
                        <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden border">
-                          {linkedCircle?.logo_url ? (
-                             <img src={linkedCircle.logo_url} className="w-full h-full object-cover" />
+                           {linkedCircle?.icon_url ? (
+                              <img src={linkedCircle.icon_url} className="w-full h-full object-cover" />
                           ) : <Users className="w-6 h-6 text-slate-400" />}
                        </div>
                        <div className="flex-1">
@@ -515,7 +515,7 @@ export default function CommunityFlow({
                                       }}
                                    >
                                       <div className="w-10 h-10 rounded-md bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                                          {circle.logo_url ? <img src={circle.logo_url} className="w-full h-full object-cover" /> : <Users className="w-5 h-5 text-slate-400" />}
+                                          {circle.icon_url ? <img src={circle.icon_url} className="w-full h-full object-cover" /> : <Users className="w-5 h-5 text-slate-400" />}
                                       </div>
                                       <p className="font-semibold text-sm flex-1">{circle.name}</p>
                                       {form.circleId === circle.id && <CheckCircle2 className="w-5 h-5 text-slate-800 dark:text-slate-400" />}

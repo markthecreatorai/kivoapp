@@ -852,9 +852,15 @@ export default function Store() {
     },
   });
 
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja excluir este produto? Esta ação pode ser desfeita pelo suporte.")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
   const duplicateProductMutation = useMutation({
     mutationFn: async (product: any) => {
-      // Deep copy product, create new one with " - Cópia" suffix
+      if (!product) throw new Error("Produto não encontrado");
       const { data, error } = await supabase
         .from("products")
         .insert([{
@@ -871,6 +877,20 @@ export default function Store() {
         .single();
       
       if (error) throw error;
+
+      // Duplicate prices from original product
+      const defaultPrice = product.prices?.find((p: any) => p.is_default);
+      if (defaultPrice && data) {
+        await supabase.from("prices").insert({
+          product_id: data.id,
+          amount: defaultPrice.amount,
+          compare_at_amount: defaultPrice.compare_at_amount,
+          pix_discount_percent: defaultPrice.pix_discount_percent,
+          max_installments: defaultPrice.max_installments,
+          type: defaultPrice.type,
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -1121,7 +1141,7 @@ export default function Store() {
                 navigate={navigate}
                 onArchive={(id) => archiveMutation.mutate(id)}
                 onTogglePublish={(id) => togglePublishMutation.mutate(id)}
-                onDelete={(id) => deleteMutation.mutate(id)}
+                onDelete={(id) => handleDelete(id)}
                 onDuplicate={(id) => duplicateProductMutation.mutate(products.find((p: any) => p.id === id))}
               />
             </TabsContent>

@@ -92,16 +92,12 @@ export default function Products() {
       const product = products.find((p: any) => p.id === productId);
       if (!product || !currentWorkspace) return;
 
-      const { data: slugData } = await supabase.rpc("generate_unique_slug", {
-        base_name: product.name + " cópia",
-      });
-
       const { data: newProduct, error } = await supabase
         .from("products")
         .insert({
           workspace_id: currentWorkspace.id,
           name: product.name + " (cópia)",
-          slug: slugData || product.slug + "-copy",
+          slug: (product.slug || "product") + "-copy-" + Date.now().toString(36),
           type: product.type,
           status: "DRAFT" as const,
           description: product.description,
@@ -276,7 +272,11 @@ export default function Products() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => deleteMutation.mutate(product.id)}
+                          onClick={() => {
+                            if (confirm("Tem certeza que deseja excluir este produto?")) {
+                              deleteMutation.mutate(product.id);
+                            }
+                          }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" /> Excluir
                         </DropdownMenuItem>
