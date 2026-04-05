@@ -9,7 +9,7 @@ const mockSignOut = vi.fn();
 const mockResetPasswordForEmail = vi.fn();
 const mockSignInWithOAuth = vi.fn();
 const mockGetSession = vi.fn();
-const mockOnAuthStateChange = vi.fn(() => ({
+const mockOnAuthStateChange = vi.fn((_cb: any) => ({
   data: { subscription: { unsubscribe: vi.fn() } },
 }));
 const mockRefreshSession = vi.fn();
