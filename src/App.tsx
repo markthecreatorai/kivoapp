@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,9 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SuspenseWithTimeout } from "@/components/SuspenseWithTimeout";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // Lazy-loaded pages
 const Login = lazy(() => import("./pages/Login"));
