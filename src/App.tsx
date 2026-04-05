@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,102 +11,105 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SuspenseWithTimeout } from "@/components/SuspenseWithTimeout";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // Lazy-loaded pages
-const Login = lazy(() => import("./pages/Login"));
-const Signup = lazy(() => import("./pages/Signup"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
-const AuthCallback = lazy(() => import("./pages/AuthCallback"));
-const Income = lazy(() => import("./pages/Income"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Customers = lazy(() => import("./pages/Customers"));
-const Products = lazy(() => import("./pages/Products"));
-const CreateProduct = lazy(() => import("./pages/CreateProduct"));
-const NewProduct = lazy(() => import("./pages/NewProduct"));
-const ProductEditor = lazy(() => import("./pages/ProductEditor"));
-const CourseBuilder = lazy(() => import("./pages/CourseBuilder"));
-const StorefrontEditor = lazy(() => import("./pages/StorefrontEditor"));
-const Store = lazy(() => import("./pages/Store"));
-const PublicStorefront = lazy(() => import("./pages/PublicStorefront"));
-const Checkout = lazy(() => import("./pages/Checkout"));
-const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
-const Upsell = lazy(() => import("./pages/Upsell"));
-const MemberLogin = lazy(() => import("./pages/MemberLogin"));
-const MemberDashboard = lazy(() => import("./pages/MemberDashboard"));
-const MemberCourse = lazy(() => import("./pages/MemberCourse"));
-const MemberBilling = lazy(() => import("./pages/MemberBilling"));
-const MemberLibrary = lazy(() => import("./pages/MemberLibrary"));
-const MemberCertificates = lazy(() => import("./pages/MemberCertificates"));
-const Affiliates = lazy(() => import("./pages/Affiliates"));
-const ReferralsDashboard = lazy(() => import("./pages/ReferralsDashboard"));
-const AffiliateApply = lazy(() => import("./pages/AffiliateApply"));
-const AffiliateDashboard = lazy(() => import("./pages/AffiliateDashboard"));
-const Leads = lazy(() => import("./pages/Leads"));
-const LeadSegments = lazy(() => import("./pages/LeadSegments"));
-const LeadEmail = lazy(() => import("./pages/LeadEmail"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const Settings = lazy(() => import("./pages/Settings"));
-const MenuTools = lazy(() => import("./pages/MenuTools"));
-const Coupons = lazy(() => import("./pages/Coupons"));
-const EmailFlows = lazy(() => import("./pages/EmailFlows"));
-const Appointments = lazy(() => import("./pages/Appointments"));
-const BookAppointment = lazy(() => import("./pages/BookAppointment"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
-const BillingCancel = lazy(() => import("./pages/BillingCancel"));
-const UpgradeFlow = lazy(() => import("./pages/UpgradeFlow"));
-const PaymentLogs = lazy(() => import("./pages/PaymentLogs"));
-const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
-const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
-const AnalyticsExecutive = lazy(() => import("./pages/AnalyticsExecutive"));
-const LandingPage = lazy(() => import("./pages/LandingPage"));
-const Privacy = lazy(() => import("./pages/Privacy"));
-const Terms = lazy(() => import("./pages/Terms"));
-const GtmDashboard = lazy(() => import("./pages/GtmDashboard"));
-const GtmPlaybook = lazy(() => import("./pages/GtmPlaybook"));
-const AcquisitionPipeline = lazy(() => import("./pages/AcquisitionPipeline"));
-const OpsDashboard = lazy(() => import("./pages/OpsDashboard"));
-const LaunchReadiness = lazy(() => import("./pages/LaunchReadiness"));
-const OpsFeedback = lazy(() => import("./pages/OpsFeedback"));
-const OpsWeekPlan = lazy(() => import("./pages/OpsWeekPlan"));
-const FinancialHealth = lazy(() => import("./pages/FinancialHealth"));
-const CreatorFinance = lazy(() => import("./pages/CreatorFinance"));
-const AdminPayouts = lazy(() => import("./pages/AdminPayouts"));
-const AdminRiskReview = lazy(() => import("./pages/AdminRiskReview"));
-const AdminChargebacks = lazy(() => import("./pages/AdminChargebacks"));
-const FinancialHealthDashboard = lazy(() => import("./pages/FinancialHealthDashboard"));
-const GoLiveChecklist = lazy(() => import("./pages/GoLiveChecklist"));
-const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
-const AutoDM = lazy(() => import("./pages/AutoDM"));
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const Signup = lazyWithRetry(() => import("./pages/Signup"));
+const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const VerifyEmail = lazyWithRetry(() => import("./pages/VerifyEmail"));
+const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
+const Income = lazyWithRetry(() => import("./pages/Income"));
+const Onboarding = lazyWithRetry(() => import("./pages/Onboarding"));
+const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+const Customers = lazyWithRetry(() => import("./pages/Customers"));
+const Products = lazyWithRetry(() => import("./pages/Products"));
+const CreateProduct = lazyWithRetry(() => import("./pages/CreateProduct"));
+const NewProduct = lazyWithRetry(() => import("./pages/NewProduct"));
+const ProductEditor = lazyWithRetry(() => import("./pages/ProductEditor"));
+const CourseBuilder = lazyWithRetry(() => import("./pages/CourseBuilder"));
+const StorefrontEditor = lazyWithRetry(() => import("./pages/StorefrontEditor"));
+const Store = lazyWithRetry(() => import("./pages/Store"));
+const PublicStorefront = lazyWithRetry(() => import("./pages/PublicStorefront"));
+const Checkout = lazyWithRetry(() => import("./pages/Checkout"));
+const OrderSuccess = lazyWithRetry(() => import("./pages/OrderSuccess"));
+const Upsell = lazyWithRetry(() => import("./pages/Upsell"));
+const MemberLogin = lazyWithRetry(() => import("./pages/MemberLogin"));
+const MemberDashboard = lazyWithRetry(() => import("./pages/MemberDashboard"));
+const MemberCourse = lazyWithRetry(() => import("./pages/MemberCourse"));
+const MemberBilling = lazyWithRetry(() => import("./pages/MemberBilling"));
+const MemberLibrary = lazyWithRetry(() => import("./pages/MemberLibrary"));
+const MemberCertificates = lazyWithRetry(() => import("./pages/MemberCertificates"));
+const Affiliates = lazyWithRetry(() => import("./pages/Affiliates"));
+const ReferralsDashboard = lazyWithRetry(() => import("./pages/ReferralsDashboard"));
+const AffiliateApply = lazyWithRetry(() => import("./pages/AffiliateApply"));
+const AffiliateDashboard = lazyWithRetry(() => import("./pages/AffiliateDashboard"));
+const Leads = lazyWithRetry(() => import("./pages/Leads"));
+const LeadSegments = lazyWithRetry(() => import("./pages/LeadSegments"));
+const LeadEmail = lazyWithRetry(() => import("./pages/LeadEmail"));
+const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
+const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const MenuTools = lazyWithRetry(() => import("./pages/MenuTools"));
+const Coupons = lazyWithRetry(() => import("./pages/Coupons"));
+const EmailFlows = lazyWithRetry(() => import("./pages/EmailFlows"));
+const Appointments = lazyWithRetry(() => import("./pages/Appointments"));
+const BookAppointment = lazyWithRetry(() => import("./pages/BookAppointment"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const Pricing = lazyWithRetry(() => import("./pages/Pricing"));
+const BillingSuccess = lazyWithRetry(() => import("./pages/BillingSuccess"));
+const BillingCancel = lazyWithRetry(() => import("./pages/BillingCancel"));
+const UpgradeFlow = lazyWithRetry(() => import("./pages/UpgradeFlow"));
+const PaymentLogs = lazyWithRetry(() => import("./pages/PaymentLogs"));
+const FiscalClosing = lazyWithRetry(() => import("./pages/FiscalClosing"));
+const EmailCampaigns = lazyWithRetry(() => import("./pages/EmailCampaigns"));
+const AnalyticsExecutive = lazyWithRetry(() => import("./pages/AnalyticsExecutive"));
+const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
+const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
+const Terms = lazyWithRetry(() => import("./pages/Terms"));
+const GtmDashboard = lazyWithRetry(() => import("./pages/GtmDashboard"));
+const GtmPlaybook = lazyWithRetry(() => import("./pages/GtmPlaybook"));
+const AcquisitionPipeline = lazyWithRetry(() => import("./pages/AcquisitionPipeline"));
+const OpsDashboard = lazyWithRetry(() => import("./pages/OpsDashboard"));
+const LaunchReadiness = lazyWithRetry(() => import("./pages/LaunchReadiness"));
+const OpsFeedback = lazyWithRetry(() => import("./pages/OpsFeedback"));
+const OpsWeekPlan = lazyWithRetry(() => import("./pages/OpsWeekPlan"));
+const FinancialHealth = lazyWithRetry(() => import("./pages/FinancialHealth"));
+const CreatorFinance = lazyWithRetry(() => import("./pages/CreatorFinance"));
+const AdminPayouts = lazyWithRetry(() => import("./pages/AdminPayouts"));
+const AdminRiskReview = lazyWithRetry(() => import("./pages/AdminRiskReview"));
+const AdminChargebacks = lazyWithRetry(() => import("./pages/AdminChargebacks"));
+const FinancialHealthDashboard = lazyWithRetry(() => import("./pages/FinancialHealthDashboard"));
+const GoLiveChecklist = lazyWithRetry(() => import("./pages/GoLiveChecklist"));
+const AdminSubscriptions = lazyWithRetry(() => import("./pages/AdminSubscriptions"));
+const AutoDM = lazyWithRetry(() => import("./pages/AutoDM"));
 
-const CircleLayout = lazy(() => import("./components/circle/CircleLayout"));
-const CircleFeed = lazy(() => import("./pages/circle/CircleFeed"));
-const CircleMembers = lazy(() => import("./pages/circle/CircleMembers"));
-const CircleLeaderboard = lazy(() => import("./pages/circle/CircleLeaderboard"));
-const CircleEvents = lazy(() => import("./pages/circle/CircleEvents"));
-const CircleClassroom = lazy(() => import("./pages/circle/CircleClassroom"));
+const CircleLayout = lazyWithRetry(() => import("./components/circle/CircleLayout"));
+const CircleFeed = lazyWithRetry(() => import("./pages/circle/CircleFeed"));
+const CircleMembers = lazyWithRetry(() => import("./pages/circle/CircleMembers"));
+const CircleLeaderboard = lazyWithRetry(() => import("./pages/circle/CircleLeaderboard"));
+const CircleEvents = lazyWithRetry(() => import("./pages/circle/CircleEvents"));
+const CircleClassroom = lazyWithRetry(() => import("./pages/circle/CircleClassroom"));
 
-const CirclePostDetail = lazy(() => import("./pages/circle/CirclePostDetail"));
+const CirclePostDetail = lazyWithRetry(() => import("./pages/circle/CirclePostDetail"));
 
 // Redirect /c/:slug/post/:id → /c/:slug/feed?post=:id
-const CirclePostRedirect = lazy(() => import("./pages/circle/CirclePostRedirect"));
+const CirclePostRedirect = lazyWithRetry(() => import("./pages/circle/CirclePostRedirect"));
 
-const CircleSettings = lazy(() => import("./pages/circle/CircleSettings"));
-const CircleProfile = lazy(() => import("./pages/circle/CircleProfile"));
-const MyCommunities = lazy(() => import("./pages/circle/MyCommunities"));
-const CircleAbout = lazy(() => import("./pages/circle/CircleAbout"));
-const CircleResources = lazy(() => import("./pages/circle/CircleResources"));
-const CircleTasks = lazy(() => import("./pages/circle/CircleTasks"));
-const CommunitySelectPlan = lazy(() => import("./pages/circle/CommunitySelectPlan"));
-const VerifyCertificate = lazy(() => import("./pages/VerifyCertificate"));
+const CircleSettings = lazyWithRetry(() => import("./pages/circle/CircleSettings"));
+const CircleProfile = lazyWithRetry(() => import("./pages/circle/CircleProfile"));
+const MyCommunities = lazyWithRetry(() => import("./pages/circle/MyCommunities"));
+const CircleAbout = lazyWithRetry(() => import("./pages/circle/CircleAbout"));
+const CircleResources = lazyWithRetry(() => import("./pages/circle/CircleResources"));
+const CircleTasks = lazyWithRetry(() => import("./pages/circle/CircleTasks"));
+const CommunitySelectPlan = lazyWithRetry(() => import("./pages/circle/CommunitySelectPlan"));
+const VerifyCertificate = lazyWithRetry(() => import("./pages/VerifyCertificate"));
 
 // Public community pages
-const CommunityDiscovery = lazy(() => import("./pages/CommunityDiscovery"));
-const JoinRedirect = lazy(() => import("./pages/JoinRedirect"));
+const CommunityDiscovery = lazyWithRetry(() => import("./pages/CommunityDiscovery"));
+const JoinRedirect = lazyWithRetry(() => import("./pages/JoinRedirect"));
 
 /** Redirect /circles/:slug → /circles/:slug/about preserving query params */
 function CommunitySlugRedirect() {
@@ -210,14 +213,15 @@ function AdminShell() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <WorkspaceProvider>
-            <Suspense fallback={null}>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <WorkspaceProvider>
+              <SuspenseWithTimeout fallback={<PageSkeleton />}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
@@ -359,12 +363,13 @@ const App = () => (
                 <Route path="/:slug" element={<GlobalTrackingWrapper><PublicStorefront /></GlobalTrackingWrapper>} />
                 <Route path="*" element={<GlobalTrackingWrapper><NotFound /></GlobalTrackingWrapper>} />
               </Routes>
-            </Suspense>
-          </WorkspaceProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+              </SuspenseWithTimeout>
+            </WorkspaceProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
