@@ -100,6 +100,7 @@ export default function FiscalClosing() {
   // Retry emission
   const retryMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
+      trackEvent("nfse_reprocess_requested", { invoice_id: invoiceId });
       const { error } = await supabase.functions.invoke("emit-nfse", {
         body: { invoice_id: invoiceId, retry: true },
       });
