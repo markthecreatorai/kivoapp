@@ -414,8 +414,9 @@ Deno.serve(async (req) => {
           ? (charge.installmentValue ? charge.installmentValue * selectedInstallments : amountBRL)
           : amountBRL;
 
+        console.log("Asaas charge status:", charge.status);
         gatewayResult = {
-          status: charge.status === "CONFIRMED" || charge.status === "RECEIVED" ? "paid" : "pending",
+          status: ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH", "APPROVED"].includes(charge.status) ? "paid" : (charge.status === "DECLINED" || charge.status === "REFUNDED" ? "failed" : "pending"),
           gateway_payment_id: charge.id,
           provider: "asaas",
           card_last4: card.number.replace(/\s/g, "").slice(-4),
