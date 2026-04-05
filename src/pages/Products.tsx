@@ -272,7 +272,11 @@ export default function Products() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => deleteMutation.mutate(product.id)}
+                          onClick={() => {
+                            if (confirm("Tem certeza que deseja excluir este produto?")) {
+                              deleteMutation.mutate(product.id);
+                            }
+                          }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" /> Excluir
                         </DropdownMenuItem>

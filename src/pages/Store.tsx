@@ -1141,7 +1141,7 @@ export default function Store() {
                 navigate={navigate}
                 onArchive={(id) => archiveMutation.mutate(id)}
                 onTogglePublish={(id) => togglePublishMutation.mutate(id)}
-                onDelete={(id) => deleteMutation.mutate(id)}
+                onDelete={(id) => handleDelete(id)}
                 onDuplicate={(id) => duplicateProductMutation.mutate(products.find((p: any) => p.id === id))}
               />
             </TabsContent>
