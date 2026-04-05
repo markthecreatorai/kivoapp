@@ -86,6 +86,10 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
     }
   };
 
+  const getCardClass = () => {
+    return currentTheme.button_style === 'square' ? 'rounded-none' : 'rounded-lg';
+  };
+
   const visibleBlocks = blocks.filter(b => b.is_visible).sort((a, b) => a.position - b.position);
 
   const renderBlock = (block: StorefrontBlock) => {
