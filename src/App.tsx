@@ -38,6 +38,7 @@ const MemberDashboard = lazy(() => import("./pages/MemberDashboard"));
 const MemberCourse = lazy(() => import("./pages/MemberCourse"));
 const MemberBilling = lazy(() => import("./pages/MemberBilling"));
 const MemberLibrary = lazy(() => import("./pages/MemberLibrary"));
+const MemberCertificates = lazy(() => import("./pages/MemberCertificates"));
 const Affiliates = lazy(() => import("./pages/Affiliates"));
 const ReferralsDashboard = lazy(() => import("./pages/ReferralsDashboard"));
 const AffiliateApply = lazy(() => import("./pages/AffiliateApply"));
@@ -345,6 +346,7 @@ const App = () => (
                 <Route path="/member/course/:productId" element={<GlobalTrackingWrapper><MemberCourse /></GlobalTrackingWrapper>} />
                 <Route path="/member/billing" element={<GlobalTrackingWrapper><MemberBilling /></GlobalTrackingWrapper>} />
                 <Route path="/member/library" element={<GlobalTrackingWrapper><MemberLibrary /></GlobalTrackingWrapper>} />
+                <Route path="/member/certificates" element={<GlobalTrackingWrapper><MemberCertificates /></GlobalTrackingWrapper>} />
                 <Route path="/book/:productSlug" element={<GlobalTrackingWrapper><BookAppointment /></GlobalTrackingWrapper>} />
                 <Route path="/affiliate/apply/:workspaceSlug" element={<GlobalTrackingWrapper><AffiliateApply /></GlobalTrackingWrapper>} />
                 <Route path="/affiliate/dashboard" element={<GlobalTrackingWrapper><AffiliateDashboard /></GlobalTrackingWrapper>} />

@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { trackEvent } from "@/lib/tracking";
 import { Award, CheckCircle2, XCircle, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generateCertificatePDF } from "@/hooks/useCertificate";
@@ -18,10 +20,13 @@ export default function VerifyCertificate() {
         .eq("certificate_code", code.toUpperCase())
         .maybeSingle();
       if (error) throw error;
+      if (data) trackEvent("certificate_verified_public", { certificate_code: code });
       return data;
     },
     enabled: !!code,
   });
+
+
 
   const handleDownload = async () => {
     if (!certificate) return;
