@@ -14,17 +14,19 @@ const mockOnAuthStateChange = vi.fn(() => ({
 }));
 const mockRefreshSession = vi.fn();
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
-      signInWithPassword: (...args: any[]) => mockSignInWithPassword(...args),
-      signUp: (...args: any[]) => mockSignUp(...args),
-      signOut: (...args: any[]) => mockSignOut(...args),
-      resetPasswordForEmail: (...args: any[]) => mockResetPasswordForEmail(...args),
-      signInWithOAuth: (...args: any[]) => mockSignInWithOAuth(...args),
-      getSession: (...args: any[]) => mockGetSession(...args),
-      onAuthStateChange: (...args: any[]) => mockOnAuthStateChange(...args),
-      refreshSession: (...args: any[]) => mockRefreshSession(...args),
+      signInWithPassword: (arg: any) => mockSignInWithPassword(arg),
+      signUp: (arg: any) => mockSignUp(arg),
+      signOut: () => mockSignOut(),
+      resetPasswordForEmail: (email: string, opts?: any) => mockResetPasswordForEmail(email, opts),
+      signInWithOAuth: (arg: any) => mockSignInWithOAuth(arg),
+      getSession: () => mockGetSession(),
+      onAuthStateChange: (cb: any) => mockOnAuthStateChange(cb),
+      refreshSession: () => mockRefreshSession(),
     },
   },
 }));
