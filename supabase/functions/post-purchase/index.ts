@@ -227,40 +227,58 @@ Deno.serve(async (req) => {
         .eq("id", order.checkout_session_id);
     }
 
-    // 6. SPLIT: Record split entry for this sale
+    // 6. SPLIT: Record split entry for this sale (idempotent)
     const grossAmount = Number(order.total_amount || 0);
     if (grossAmount > 0) {
-      const rule = await getSplitRule(supabase, order.workspace_id, order.product_id);
-      const split = calculateSplit(grossAmount, rule);
-      const availableAt = new Date();
-      availableAt.setDate(availableAt.getDate() + rule.hold_days);
+      const { data: existingSplitEntry } = await supabase
+        .from("split_entries")
+        .select("id")
+        .eq("order_id", order.id)
+        .maybeSingle();
 
-      // Insert split entry
-      await supabase.from("split_entries").insert({
-        workspace_id: order.workspace_id,
-        order_id: order.id,
-        split_rule_id: rule.id || null,
-        gross_amount: grossAmount,
-        gateway_fee: split.gatewayFee,
-        platform_fee: split.platformFee,
-        affiliate_fee: split.affiliateFee,
-        creator_net: split.creatorNet,
-        status: "pending",
-        available_at: availableAt.toISOString(),
-      });
+      if (!existingSplitEntry) {
+        const rule = await getSplitRule(supabase, order.workspace_id, order.product_id);
+        const split = calculateSplit(grossAmount, rule);
+        const availableAt = new Date();
+        availableAt.setDate(availableAt.getDate() + rule.hold_days);
 
-      // Also record in wallet_ledger for backward compatibility
-      await supabase.from("wallet_ledger").insert({
-        workspace_id: order.workspace_id,
-        order_id: order.id,
-        type: "sale",
-        amount: split.creatorNet,
-        status: "pending",
-        available_at: availableAt.toISOString(),
-        description: `Venda #${order.id.slice(0, 8)} (líq. ${split.creatorNet})`,
-      });
+        await supabase.from("split_entries").insert({
+          workspace_id: order.workspace_id,
+          order_id: order.id,
+          split_rule_id: rule.id || null,
+          gross_amount: grossAmount,
+          gateway_fee: split.gatewayFee,
+          platform_fee: split.platformFee,
+          affiliate_fee: split.affiliateFee,
+          creator_net: split.creatorNet,
+          status: "pending",
+          available_at: availableAt.toISOString(),
+        });
 
-      console.log(`Split recorded for order ${order.id}: gross=${grossAmount} gw=${split.gatewayFee} plat=${split.platformFee} aff=${split.affiliateFee} net=${split.creatorNet}`);
+        // Also record in wallet_ledger for backward compatibility
+        const { data: existingLedger } = await supabase
+          .from("wallet_ledger")
+          .select("id")
+          .eq("order_id", order.id)
+          .eq("type", "sale")
+          .maybeSingle();
+
+        if (!existingLedger) {
+          await supabase.from("wallet_ledger").insert({
+            workspace_id: order.workspace_id,
+            order_id: order.id,
+            type: "sale",
+            amount: split.creatorNet,
+            status: "pending",
+            available_at: availableAt.toISOString(),
+            description: `Venda #${order.id.slice(0, 8)} (líq. ${split.creatorNet})`,
+          });
+        }
+
+        console.log(`Split recorded for order ${order.id}: gross=${grossAmount} gw=${split.gatewayFee} plat=${split.platformFee} aff=${split.affiliateFee} net=${split.creatorNet}`);
+      } else {
+        console.log(`Split already exists for order ${order.id}, skipping`);
+      }
     }
 
     // 7. AUTO NFS-e EMISSION
