@@ -213,14 +213,15 @@ function AdminShell() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <WorkspaceProvider>
-            <Suspense fallback={null}>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <WorkspaceProvider>
+              <SuspenseWithTimeout fallback={<PageSkeleton />}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
