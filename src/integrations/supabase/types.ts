@@ -8151,6 +8151,45 @@ export type Database = {
       }
     }
     Views: {
+      appointment_availability: {
+        Row: {
+          end_time: string | null
+          product_id: string | null
+          scheduled_date: string | null
+          start_time: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          end_time?: string | null
+          product_id?: string | null
+          scheduled_date?: string | null
+          start_time?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          end_time?: string | null
+          product_id?: string | null
+          scheduled_date?: string | null
+          start_time?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_consistency_check: {
         Row: {
           check_name: string | null
