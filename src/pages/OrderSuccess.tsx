@@ -232,47 +232,63 @@ export default function OrderSuccess() {
   const renderDeliveryAction = () => {
     if (!product || !isPaid) return null;
 
-    switch (product.type) {
-      case "DIGITAL_PRODUCT":
-        return (
-          <Button
-            onClick={() => downloadUrl && window.open(downloadUrl, "_blank")}
-            disabled={!downloadUrl}
-            className="w-full h-14 text-base font-bold bg-green-600 hover:bg-green-700 gap-2"
-          >
-            <Download className="w-5 h-5" />
-            Baixar Arquivo
-          </Button>
-        );
-      case "ECOURSE":
-      case "MEMBERSHIP":
-        return (
-          <Button asChild className="w-full h-14 text-base font-bold gap-2">
-            <Link to="/member">
-              <GraduationCap className="w-5 h-5" />
-              Acessar Área de Membros
-            </Link>
-          </Button>
-        );
-      case "COACHING_CALL":
-        return (
-          <Button className="w-full h-14 text-base font-bold gap-2">
-            <Calendar className="w-5 h-5" />
-            Agendar sua Sessão
-          </Button>
-        );
-      case "LEAD_MAGNET":
-        return (
-          <div className="flex items-center gap-3 p-4 bg-muted rounded-xl">
-            <Mail className="w-6 h-6 text-primary shrink-0" />
-            <p className="text-sm text-foreground">
-              Enviamos o arquivo para seu email! Verifique sua caixa de entrada.
-            </p>
-          </div>
-        );
-      default:
-        return null;
+    const t = product.type?.toUpperCase();
+
+    // Digital products: DIGITAL, DIGITAL_PRODUCT
+    if (t === "DIGITAL" || t === "DIGITAL_PRODUCT") {
+      return (
+        <Button
+          onClick={() => downloadUrl && window.open(downloadUrl, "_blank")}
+          disabled={!downloadUrl}
+          className="w-full h-14 text-base font-bold bg-green-600 hover:bg-green-700 gap-2"
+        >
+          <Download className="w-5 h-5" />
+          Baixar Arquivo
+        </Button>
+      );
     }
+
+    // Courses / memberships
+    if (t === "COURSE" || t === "ECOURSE" || t === "MEMBERSHIP" || t === "SERVICE") {
+      return (
+        <Button asChild className="w-full h-14 text-base font-bold gap-2">
+          <Link to="/member">
+            <GraduationCap className="w-5 h-5" />
+            Acessar Área de Membros
+          </Link>
+        </Button>
+      );
+    }
+
+    if (t === "COACHING_CALL") {
+      return (
+        <Button className="w-full h-14 text-base font-bold gap-2">
+          <Calendar className="w-5 h-5" />
+          Agendar sua Sessão
+        </Button>
+      );
+    }
+
+    if (t === "LEAD_MAGNET") {
+      return (
+        <div className="flex items-center gap-3 p-4 bg-muted rounded-xl">
+          <Mail className="w-6 h-6 text-primary shrink-0" />
+          <p className="text-sm text-foreground">
+            Enviamos o arquivo para seu email! Verifique sua caixa de entrada.
+          </p>
+        </div>
+      );
+    }
+
+    // Fallback: generic success with member area link
+    return (
+      <Button asChild className="w-full h-14 text-base font-bold gap-2">
+        <Link to="/member">
+          <GraduationCap className="w-5 h-5" />
+          Acessar seu Conteúdo
+        </Link>
+      </Button>
+    );
   };
 
   return (
