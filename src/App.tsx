@@ -38,6 +38,7 @@ const MemberDashboard = lazy(() => import("./pages/MemberDashboard"));
 const MemberCourse = lazy(() => import("./pages/MemberCourse"));
 const MemberBilling = lazy(() => import("./pages/MemberBilling"));
 const MemberLibrary = lazy(() => import("./pages/MemberLibrary"));
+const MemberCertificates = lazy(() => import("./pages/MemberCertificates"));
 const Affiliates = lazy(() => import("./pages/Affiliates"));
 const ReferralsDashboard = lazy(() => import("./pages/ReferralsDashboard"));
 const AffiliateApply = lazy(() => import("./pages/AffiliateApply"));
