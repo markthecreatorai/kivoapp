@@ -120,14 +120,14 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
         if (!product) return null;
         return (
           <div 
-            className="w-full overflow-visible border pb-3"
+            className={cn("w-full overflow-hidden border pb-3", getCardClass())}
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             {product.thumbnail_url && (
               <img 
                 src={product.thumbnail_url} 
                 alt={product.name}
-                className="w-full h-32 object-cover rounded-t-lg"
+                className="w-full h-32 object-cover"
               />
             )}
             <div className="p-3">
@@ -499,7 +499,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
                     return (
                       <div
                         key={product.id}
-                        className="w-full overflow-hidden border rounded-xl"
+                        className={cn("w-full overflow-hidden border", getCardClass())}
                         style={{ borderColor: currentTheme.primary_color + '30' }}
                       >
                         {product.thumbnail_url && (
