@@ -346,13 +346,8 @@ export default function CircleLayout() {
     }
     return <Navigate to={`/circles/${slug}/about`} replace />;
   }
-          <h1 className="text-xl font-bold text-foreground">Comunidade não encontrada</h1>
-          <p className="text-sm text-muted-foreground">Esta comunidade não existe ou foi desativada.</p>
-          <Button variant="outline" onClick={() => navigate("/circles")}>Ver Comunidades</Button>
-        </Card>
-      </div>
-    );
-  }
+
+
 
   // Member status gates
   if (member) {
