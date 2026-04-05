@@ -1,53 +1,42 @@
 
-## Biblioteca de Downloads — Vault Unificado
 
-### Estado atual
-- `MemberLibrary.tsx` já existe com: entitlements → products → delivery_url
-- Download com URL assinada funcional para bucket `private-files`
-- Filtro por tipo e busca por nome
-- Rota `/member/library` já registrada
+## Configurar Login com Google
 
-### Problema
-- Modelo atual é 1:1 (produto → 1 arquivo via delivery_url)
-- Não suporta múltiplos assets por produto, assets de cursos/comunidades
-- Sem auditoria granular de downloads
+O código frontend para login com Google **já está implementado** (`Login.tsx` linha 136-159, com botão "Entrar com Google" e `signInWithOAuth`). O que falta é a configuração no lado do Google Cloud e do Supabase.
 
-### Plano
+### Passos para configurar
 
-#### 1. Migração SQL — 3 tabelas novas
-- **content_assets**: `workspace_id, owner_type (product|lesson|community_resource), owner_id, title, file_path, mime_type, size_bytes`
-- **user_asset_entitlements**: `workspace_id, user_id, asset_id, source_type (purchase|subscription|manual), source_id, granted_at, revoked_at`
-- **asset_download_logs**: `workspace_id, user_id, asset_id, downloaded_at, ip_hash, user_agent`
+**1. Google Cloud Console**
 
-RLS:
-- Usuários leem assets com entitlement ativo (`revoked_at IS NULL`)
-- Admins do workspace gerenciam tudo
-- Download logs: próprio usuário + admin
+- Acesse [Google Cloud Console](https://console.cloud.google.com/)
+- Crie ou selecione um projeto
+- Vá em **APIs & Services > OAuth consent screen** e configure:
+  - Adicione `wfuwenylojhabresnrvi.supabase.co` em **Authorized domains**
+  - Adicione os scopes: `email`, `profile`, `openid`
+- Vá em **APIs & Services > Credentials > Create Credentials > OAuth Client ID**
+  - Tipo: **Web application**
+  - **Authorized JavaScript origins**: adicione a URL do seu site (ex: `https://kivostore.lovable.app`)
+  - **Authorized redirect URLs**: adicione `https://wfuwenylojhabresnrvi.supabase.co/auth/v1/callback`
+- Copie o **Client ID** e **Client Secret** gerados
 
-#### 2. Reescrever `MemberLibrary.tsx`
-- Query: `user_asset_entitlements` → `content_assets` com join
-- Manter fallback para sistema legado (products com delivery_url)
-- Filtros: origem (produto/curso/comunidade), tipo de arquivo, período
-- Busca por título
-- Download seguro com URL assinada (5 min)
-- Log em `asset_download_logs`
-- Analytics: `library_viewed`, `asset_download_clicked`
-- Estado vazio amigável
-- Infinite scroll (20 itens por página)
+**2. Supabase Dashboard**
 
-#### 3. Arquivos
-| Arquivo | Ação |
-|---|---|
-| Migration SQL | 3 tabelas + RLS + índices |
-| `src/pages/MemberLibrary.tsx` | Reescrita com dual-source (assets + legado) |
+- Acesse [Authentication > Providers](https://supabase.com/dashboard/project/wfuwenylojhabresnrvi/auth/providers)
+- Ative o provider **Google**
+- Cole o **Client ID** e **Client Secret** obtidos no passo anterior
+- Salve
 
-#### Critérios de aceite
-- ✅ Usuário só vê assets com entitlement ativo
-- ✅ Links expiram em 5 minutos
-- ✅ Filtros e busca sem degradação
-- ✅ Sem acesso direto ao storage sem autorização
-- ✅ Fallback mantém products com delivery_url funcionando
+**3. URL Configuration (importante)**
 
-#### Riscos
-- Tabelas novas ficam vazias até criadores cadastrarem assets — fallback legado garante continuidade
-- Rollback: drop 3 tabelas + reverter MemberLibrary
+- Em [Authentication > URL Configuration](https://supabase.com/dashboard/project/wfuwenylojhabresnrvi/auth/url-configuration):
+  - **Site URL**: defina como a URL principal do app (ex: `https://kivostore.lovable.app`)
+  - **Redirect URLs**: adicione `https://kivostore.lovable.app/dashboard` e `https://kivostore.lovable.app/**`
+
+### Nenhuma alteração de código necessária
+
+O frontend já possui:
+- Botão "Entrar com Google" na página de login
+- `handleGoogleLogin` usando `signInWithOAuth({ provider: 'google' })`
+- Tratamento de erros OAuth via query params
+- Redirect para `/dashboard` após sucesso
+
