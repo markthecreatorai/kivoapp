@@ -194,6 +194,50 @@ Deno.serve(async (req) => {
       discountAmount += subtotal * (price.pix_discount_percent / 100);
     }
 
+    // Apply coupon discount
+    let couponDiscount = 0;
+    if (coupon_code) {
+      const { data: coupon } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("workspace_id", workspace_id)
+        .eq("code", coupon_code.toUpperCase())
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (coupon) {
+        const now = new Date();
+        const validFrom = new Date(coupon.valid_from);
+        const validUntil = coupon.valid_until ? new Date(coupon.valid_until) : null;
+        const withinDates = validFrom <= now && (!validUntil || validUntil >= now);
+        const withinUses = coupon.max_uses === null || coupon.current_uses < coupon.max_uses;
+
+        if (withinDates && withinUses) {
+          if (coupon.type === "PERCENT") {
+            couponDiscount = Math.round(subtotal * (coupon.value / 100) * 100) / 100;
+          } else {
+            couponDiscount = Math.min(coupon.value, subtotal);
+          }
+          discountAmount += couponDiscount;
+
+          // Increment usage
+          await supabase.from("coupons").update({
+            current_uses: (coupon.current_uses || 0) + 1,
+          }).eq("id", coupon.id);
+
+          // Record usage
+          if (customer.email) {
+            await supabase.from("coupon_usages").insert({
+              coupon_id: coupon.id,
+              customer_email: customer.email.toLowerCase(),
+              order_amount: subtotal,
+              discount_amount: couponDiscount,
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+
     const bumpItems: { product_id: string; price_id: string; amount: number }[] = [];
     if (bump_product_ids && Array.isArray(bump_product_ids)) {
       for (const bumpId of bump_product_ids) {

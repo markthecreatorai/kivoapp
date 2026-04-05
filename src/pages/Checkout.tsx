@@ -50,7 +50,7 @@ export default function Checkout() {
   const [customer, setCustomer] = useState({ name: "", email: "", cpf: "", phone: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
-  const [activeTab, setActiveTab] = useState("pix");
+  const [activeTab, setActiveTab] = useState<string>("pix");
 
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -283,10 +283,29 @@ export default function Checkout() {
     return Object.keys(errs).length === 0;
   }, [customer]);
 
-  // Coupon apply (stub - no coupons table yet, always fails)
-  const handleApplyCoupon = async (_code: string): Promise<boolean> => {
-    // TODO: implement coupon validation against DB
-    return false;
+  // Coupon validation via edge function
+  const handleApplyCoupon = async (code: string): Promise<boolean> => {
+    if (!product || !price) return false;
+    try {
+      const res = await supabase.functions.invoke("validate-coupon", {
+        body: {
+          code,
+          workspace_id: product.workspace_id,
+          customer_email: customer.email || undefined,
+          order_amount: price.amount,
+        },
+      });
+      if (res.error) return false;
+      const data = res.data;
+      if (data?.valid) {
+        setAppliedCoupon({ code: data.code, discount: data.discount });
+        trackEvent("coupon_applied", { code: data.code, discount: data.discount }, product.workspace_id);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   };
 
   // Payment handlers
@@ -554,10 +573,11 @@ export default function Checkout() {
           paymentLoading={paymentLoading}
           paymentError={paymentError}
           paymentSuccess={paymentSuccess}
+          onTabChange={setActiveTab}
         />
 
-        {/* Payment error with retry */}
-        {paymentError && !paymentSuccess && (
+        {/* Payment error with retry - only shown if not already visible in PaymentTabs */}
+        {paymentError && !paymentSuccess && activeTab !== "pix" && activeTab !== "card" && activeTab !== "boleto" && (
           <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-2">
             <p className="text-sm text-destructive font-medium">{paymentError}</p>
             <p className="text-xs text-muted-foreground">Verifique os dados e tente novamente. Seus dados estão salvos.</p>

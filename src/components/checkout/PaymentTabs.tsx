@@ -29,6 +29,7 @@ interface PaymentTabsProps {
   paymentLoading: boolean;
   paymentError: string | null;
   paymentSuccess: boolean;
+  onTabChange?: (tab: string) => void;
 }
 
 export interface CardData {
@@ -77,7 +78,8 @@ function PixCountdown({ expiresAt, onExpired }: { expiresAt: string; onExpired: 
 export function PaymentTabs({
   total, pixTotal, maxInstallments,
   onPayPix, onPayCard, onPayBoleto,
-  pixData, boletoData, paymentLoading, paymentError, paymentSuccess
+  pixData, boletoData, paymentLoading, paymentError, paymentSuccess,
+  onTabChange
 }: PaymentTabsProps) {
   const [card, setCard] = useState<CardData>({
     number: "", expiry: "", cvv: "", holder_name: "", installments: 1
@@ -174,7 +176,7 @@ export function PaymentTabs({
   return (
     <div className="p-4 bg-card rounded-xl border">
       <h2 className="text-base font-semibold text-foreground mb-3">Pagamento</h2>
-      <Tabs defaultValue="pix">
+      <Tabs defaultValue="pix" onValueChange={(v) => onTabChange?.(v)}>
         <TabsList className="w-full grid grid-cols-3">
           <TabsTrigger value="pix" className="text-xs gap-1"><QrCode className="w-3.5 h-3.5" />PIX</TabsTrigger>
           <TabsTrigger value="card" className="text-xs gap-1"><CreditCard className="w-3.5 h-3.5" />Cartão</TabsTrigger>
