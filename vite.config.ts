@@ -21,28 +21,23 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-ui": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-select",
-            "@radix-ui/react-tooltip",
-            "@radix-ui/react-accordion",
-            "@radix-ui/react-scroll-area",
-          ],
-          "vendor-charts": ["recharts"],
-          "vendor-editor": [
-            "@tiptap/react",
-            "@tiptap/starter-kit",
-            "@tiptap/extension-link",
-            "@tiptap/extension-image",
-            "@tiptap/extension-youtube",
-          ],
-          "vendor-query": ["@tanstack/react-query"],
-          "vendor-supabase": ["@supabase/supabase-js"],
+        manualChunks(id, { getModuleInfo }) {
+          if (id.includes("node_modules")) {
+            if (id.includes("zxcvbn")) return "vendor-zxcvbn";
+            if (id.includes("react-dom")) return "vendor-react";
+            if (id.includes("react-router-dom")) return "vendor-react";
+            if (id.includes("/react/")) return "vendor-react";
+            if (id.includes("@radix-ui")) return "vendor-ui";
+            if (id.includes("class-variance-authority") || id.includes("clsx") || id.includes("tailwind-merge")) return "vendor-ui";
+            if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+            if (id.includes("@tiptap") || id.includes("prosemirror") || id.includes("@tiptap/pm")) return "vendor-editor";
+            if (id.includes("@tanstack/react-query")) return "vendor-query";
+            if (id.includes("@supabase")) return "vendor-supabase";
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("date-fns")) return "vendor-date";
+            if (id.includes("zod") || id.includes("react-hook-form") || id.includes("@hookform")) return "vendor-forms";
+            if (id.includes("sonner") || id.includes("vaul") || id.includes("cmdk") || id.includes("embla-carousel")) return "vendor-misc";
+          }
         },
       },
     },
