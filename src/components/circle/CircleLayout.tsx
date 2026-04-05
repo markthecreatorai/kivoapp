@@ -333,9 +333,18 @@ export default function CircleLayout() {
     return <Navigate to={`/circles/${slug}/about`} replace />;
   }
 
-  // No community
+  // No community found — show 404
   if (!community) {
-    return <Suspense fallback={<PageSkeleton />}><Outlet /></Suspense>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-md p-8 text-center space-y-4">
+          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto" />
+          <h1 className="text-xl font-bold text-foreground">Comunidade não encontrada</h1>
+          <p className="text-sm text-muted-foreground">Esta comunidade não existe ou foi desativada.</p>
+          <Button variant="outline" onClick={() => navigate("/circles")}>Ver Comunidades</Button>
+        </Card>
+      </div>
+    );
   }
 
   // Member status gates
