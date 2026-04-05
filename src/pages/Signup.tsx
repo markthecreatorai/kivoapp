@@ -100,7 +100,7 @@ export default function Signup() {
             utm_medium: utmData.utm_medium || searchParams.get("utm_medium") || "",
             utm_campaign: utmData.utm_campaign || searchParams.get("utm_campaign") || "",
           },
-          emailRedirectTo: `${window.location.origin}/onboarding`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
