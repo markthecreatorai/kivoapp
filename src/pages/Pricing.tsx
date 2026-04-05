@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
-// Pricing page — renders upgrade flow inline
+// Pricing page — redirects to the public landing page pricing section
 export default function Pricing() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate("/billing/upgrade-flow?source=pricing_page", { replace: true });
+    navigate("/#pricing", { replace: true });
   }, [navigate]);
 
   return (
