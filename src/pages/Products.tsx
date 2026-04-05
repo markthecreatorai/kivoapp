@@ -92,16 +92,12 @@ export default function Products() {
       const product = products.find((p: any) => p.id === productId);
       if (!product || !currentWorkspace) return;
 
-      const { data: slugData } = await supabase.rpc("generate_unique_slug", {
-        base_name: product.name + " cópia",
-      });
-
       const { data: newProduct, error } = await supabase
         .from("products")
         .insert({
           workspace_id: currentWorkspace.id,
           name: product.name + " (cópia)",
-          slug: slugData || product.slug + "-copy",
+          slug: (product.slug || "product") + "-copy-" + Date.now().toString(36),
           type: product.type,
           status: "DRAFT" as const,
           description: product.description,
