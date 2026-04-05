@@ -212,15 +212,8 @@ export default function Checkout() {
   const utmCampaign = searchParams.get("utm_campaign") || sessionStorage.getItem("kivo_utm_campaign") || undefined;
   // Get affiliate link from localStorage (cookie-based) or sessionStorage fallback
   const affiliateLinkId = (() => {
-    try {
-      const raw = localStorage.getItem("kivo_affiliate_link_id");
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (new Date(data.expiresAt) > new Date()) return data.linkId;
-        localStorage.removeItem("kivo_affiliate_link_id");
-      }
-    } catch {}
-    return sessionStorage.getItem("kivo_affiliate_link_id") || undefined;
+    const stored = getStoredAffiliateLink();
+    return stored?.linkId || undefined;
   })();
 
   // Bump toggle
