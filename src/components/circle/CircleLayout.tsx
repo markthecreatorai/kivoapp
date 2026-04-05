@@ -225,12 +225,12 @@ export default function CircleLayout() {
     mutationFn: async () => {
       if (!community || !user) throw new Error("Missing data");
       const status = community.require_approval ? "PENDING" : "ACTIVE";
-      const { error } = await supabase.from("community_members").insert({
-        community_id: community.id,
-        user_id: user.id,
-        role: "MEMBER",
-        status,
-        display_name: user.email?.split("@")[0] || "Membro",
+      const { error } = await supabase.rpc("join_community", {
+        p_community_id: community.id,
+        p_user_id: user.id,
+        p_display_name: user.email?.split("@")[0] || "Membro",
+        p_role: "MEMBER",
+        p_status: status,
       });
       if (error) throw error;
       return status;
@@ -253,12 +253,12 @@ export default function CircleLayout() {
   const autoJoin = useMutation({
     mutationFn: async () => {
       if (!community || !user) throw new Error("Missing");
-      const { error } = await supabase.from("community_members").insert({
-        community_id: community.id,
-        user_id: user.id,
-        role: "MEMBER",
-        status: "ACTIVE",
-        display_name: user.email?.split("@")[0] || "Membro",
+      const { error } = await supabase.rpc("join_community", {
+        p_community_id: community.id,
+        p_user_id: user.id,
+        p_display_name: user.email?.split("@")[0] || "Membro",
+        p_role: "MEMBER",
+        p_status: "ACTIVE",
       });
       if (error) throw error;
     },
