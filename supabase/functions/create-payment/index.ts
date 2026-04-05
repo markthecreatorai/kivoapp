@@ -127,7 +127,9 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // Idempotency check
     if (idempotency_key) {
@@ -394,8 +396,10 @@ Deno.serve(async (req) => {
             name: customer.name,
             email: customer.email,
             cpfCnpj: cpf,
-            phone: customer.phone?.replace(/\D/g, "") || undefined,
-            postalCode: customer.zip || undefined,
+            phone: customer.phone?.replace(/\D/g, "") || "11999999999",
+            postalCode: customer.zip || "01310100",
+            addressNumber: customer.address_number || "100",
+            address: customer.address || "Av Paulista",
           },
         };
 
@@ -412,8 +416,9 @@ Deno.serve(async (req) => {
           ? (charge.installmentValue ? charge.installmentValue * selectedInstallments : amountBRL)
           : amountBRL;
 
+        console.log("Asaas charge status:", charge.status);
         gatewayResult = {
-          status: charge.status === "CONFIRMED" || charge.status === "RECEIVED" ? "paid" : "pending",
+          status: ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH", "APPROVED"].includes(charge.status) ? "paid" : (charge.status === "DECLINED" || charge.status === "REFUNDED" ? "failed" : "pending"),
           gateway_payment_id: charge.id,
           provider: "asaas",
           card_last4: card.number.replace(/\s/g, "").slice(-4),
@@ -499,7 +504,12 @@ Deno.serve(async (req) => {
 
     // If paid immediately (credit card)
     if (paymentStatus === "SUCCEEDED") {
-      await supabase.from("orders").update({ status: "COMPLETED", paid_at: new Date().toISOString() }).eq("id", order.id);
+      const { error: orderUpdateErr } = await supabase.from("orders").update({ status: "COMPLETED", paid_at: new Date().toISOString() }).eq("id", order.id);
+      if (orderUpdateErr) {
+        console.error("Failed to update order to COMPLETED:", JSON.stringify(orderUpdateErr));
+      } else {
+        console.log("Order updated to COMPLETED:", order.id);
+      }
       if (checkout_session_id) {
         await supabase.from("checkout_sessions").update({ status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", checkout_session_id);
       }
