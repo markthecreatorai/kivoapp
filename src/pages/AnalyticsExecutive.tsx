@@ -8,12 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DollarSign, TrendingUp, TrendingDown, Users, CreditCard, AlertTriangle,
   Mail, Download, ArrowUpRight, ArrowDownRight, Activity, BarChart3, UserCheck,
+  Info, RefreshCw, ShoppingBag, Percent,
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, Legend,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, Legend, AreaChart, Area,
 } from "recharts";
 import { format, subDays, startOfDay, subMonths, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +26,8 @@ const PERIODS = [
   { label: "7D", value: 7 },
   { label: "30D", value: 30 },
   { label: "90D", value: 90 },
+  { label: "180D", value: 180 },
+  { label: "1A", value: 365 },
 ] as const;
 
 const formatCurrency = (v: number) =>
@@ -31,12 +36,39 @@ const formatCurrency = (v: number) =>
 const formatCurrencyRaw = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+/* ── Metric definitions tooltip ── */
+const METRIC_DEFS: Record<string, string> = {
+  mrr: "MRR = soma do valor mensal das assinaturas ativas (community + workspace). Assinaturas yearly são divididas por 12.",
+  arr: "ARR = MRR × 12.",
+  churn: "Churn = assinaturas canceladas no período / total de assinaturas ativas no início do período × 100.",
+  ltv: "LTV = receita total acumulada / número de clientes únicos com pelo menos 1 compra paga.",
+  checkout_conversion: "Conversão de Checkout = pedidos pagos / sessões de checkout iniciadas × 100.",
+  gmv: "GMV = soma do valor total de todos os pedidos pagos no período.",
+};
+
+function MetricTooltip({ metricKey }: { metricKey: string }) {
+  const def = METRIC_DEFS[metricKey];
+  if (!def) return null;
+  return (
+    <TooltipProvider>
+      <UITooltip>
+        <TooltipTrigger asChild>
+          <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs">{def}</TooltipContent>
+      </UITooltip>
+    </TooltipProvider>
+  );
+}
+
 function StatCard({
-  title, value, previousValue, icon: Icon, format: fmt = "number",
+  title, value, previousValue, icon: Icon, format: fmt = "number", metricKey,
 }: {
-  title: string; value: number; previousValue?: number; icon: React.ElementType; format?: "currency" | "number" | "percent";
+  title: string; value: number; previousValue?: number; icon: React.ElementType;
+  format?: "currency" | "currency_raw" | "number" | "percent"; metricKey?: string;
 }) {
   const formatted = fmt === "currency" ? formatCurrency(value)
+    : fmt === "currency_raw" ? formatCurrencyRaw(value)
     : fmt === "percent" ? `${value.toFixed(1)}%`
     : value.toLocaleString("pt-BR");
 
@@ -47,7 +79,10 @@ function StatCard({
   return (
     <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+          {metricKey && <MetricTooltip metricKey={metricKey} />}
+        </div>
         <Icon className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
       <CardContent>
@@ -72,6 +107,7 @@ export default function AnalyticsExecutive() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id;
   const [periodDays, setPeriodDays] = useState(30);
+  const [productFilter, setProductFilter] = useState<string>("all");
 
   const now = useMemo(() => new Date(), []);
   const from = useMemo(() => startOfDay(subDays(now, periodDays)), [periodDays, now]);
@@ -87,11 +123,67 @@ export default function AnalyticsExecutive() {
     queryFn: async () => {
       const { data } = await supabase
         .from("orders")
-        .select("id, total_amount, status, payment_method, created_at, product_id")
+        .select("id, total_amount, status, payment_method, created_at, product_id, customer_email")
         .eq("workspace_id", workspaceId!)
         .gte("created_at", prevFromISO)
         .lte("created_at", toISO);
       return data ?? [];
+    },
+  });
+
+  // ── Products for filter ──
+  const { data: products = [] } = useQuery({
+    queryKey: ["exec-products", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("id, name")
+        .eq("workspace_id", workspaceId!)
+        .order("name");
+      return data ?? [];
+    },
+  });
+
+  // ── Subscriptions (circle) for MRR ──
+  const { data: circleSubscriptions = [] } = useQuery({
+    queryKey: ["exec-circle-subs", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("circle_subscriptions")
+        .select("id, status, plan_id, created_at, canceled_at, community_id")
+        .eq("community_id", workspaceId!); // community_id links to workspace indirectly
+      // Fetch all subs for all communities in workspace
+      const { data: communities } = await supabase
+        .from("communities")
+        .select("id")
+        .eq("workspace_id", workspaceId!);
+      if (!communities?.length) return [];
+      const communityIds = communities.map(c => c.id);
+      const { data: subs } = await supabase
+        .from("circle_subscriptions")
+        .select("id, status, plan_id, created_at, canceled_at")
+        .in("community_id", communityIds);
+      return subs ?? [];
+    },
+  });
+
+  // ── Circle plans for pricing ──
+  const { data: circlePlans = [] } = useQuery({
+    queryKey: ["exec-circle-plans", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data: communities } = await supabase
+        .from("communities")
+        .select("id")
+        .eq("workspace_id", workspaceId!);
+      if (!communities?.length) return [];
+      const { data: plans } = await supabase
+        .from("circle_plans")
+        .select("id, price_cents, interval, is_active")
+        .in("community_id", communities.map(c => c.id));
+      return plans ?? [];
     },
   });
 
@@ -156,7 +248,6 @@ export default function AnalyticsExecutive() {
     queryKey: ["exec-retention", periodDays],
     queryFn: async () => {
       const now = new Date();
-      // Get all workspaces with creation dates
       const { data: allWorkspaces } = await supabase
         .from("workspaces")
         .select("id, created_at")
@@ -164,66 +255,42 @@ export default function AnalyticsExecutive() {
 
       if (!allWorkspaces?.length) return null;
 
-      // "Active" = workspace has at least one order OR product created in the check window
       const checkRetention = async (daysAgo: number) => {
         const windowStart = subDays(now, daysAgo + periodDays).toISOString();
         const windowEnd = subDays(now, daysAgo).toISOString();
-        
-        // Workspaces that existed by windowEnd
-        const eligibleWs = allWorkspaces.filter(
-          ws => new Date(ws.created_at) <= new Date(windowEnd)
-        );
+        const eligibleWs = allWorkspaces.filter(ws => new Date(ws.created_at) <= new Date(windowEnd));
         if (eligibleWs.length === 0) return { rate: 0, eligible: 0, active: 0 };
-
         const eligibleIds = eligibleWs.map(ws => ws.id);
-
-        // Check for activity: orders or products created in window
         const { data: activeOrders } = await supabase
-          .from("orders")
-          .select("workspace_id")
+          .from("orders").select("workspace_id")
           .in("workspace_id", eligibleIds.slice(0, 100))
-          .gte("created_at", windowStart)
-          .lte("created_at", windowEnd);
-
+          .gte("created_at", windowStart).lte("created_at", windowEnd);
         const { data: activeProducts } = await supabase
-          .from("products")
-          .select("workspace_id")
+          .from("products").select("workspace_id")
           .in("workspace_id", eligibleIds.slice(0, 100))
-          .gte("created_at", windowStart)
-          .lte("created_at", windowEnd);
-
+          .gte("created_at", windowStart).lte("created_at", windowEnd);
         const activeSet = new Set([
           ...(activeOrders || []).map((o: any) => o.workspace_id),
           ...(activeProducts || []).map((p: any) => p.workspace_id),
         ]);
-
-        return {
-          rate: eligibleWs.length > 0 ? (activeSet.size / eligibleWs.length) * 100 : 0,
-          eligible: eligibleWs.length,
-          active: activeSet.size,
-        };
+        return { rate: eligibleWs.length > 0 ? (activeSet.size / eligibleWs.length) * 100 : 0, eligible: eligibleWs.length, active: activeSet.size };
       };
 
-      const [d1, d7, d30] = await Promise.all([
-        checkRetention(1),
-        checkRetention(7),
-        checkRetention(30),
-      ]);
-
-      // Previous period for comparison
-      const [prevD1, prevD7, prevD30] = await Promise.all([
-        checkRetention(1 + periodDays),
-        checkRetention(7 + periodDays),
-        checkRetention(30 + periodDays),
-      ]);
-
+      const [d1, d7, d30] = await Promise.all([checkRetention(1), checkRetention(7), checkRetention(30)]);
+      const [prevD1, prevD7, prevD30] = await Promise.all([checkRetention(1 + periodDays), checkRetention(7 + periodDays), checkRetention(30 + periodDays)]);
       return { d1, d7, d30, prevD1, prevD7, prevD30 };
     },
   });
 
+  // ── Filtered orders by product ──
+  const filteredOrders = useMemo(() => {
+    if (productFilter === "all") return orders;
+    return orders.filter(o => o.product_id === productFilter);
+  }, [orders, productFilter]);
+
   // ── Computed metrics ──
-  const currentOrders = useMemo(() => orders.filter(o => new Date(o.created_at) >= from), [orders, from]);
-  const previousOrders = useMemo(() => orders.filter(o => new Date(o.created_at) < from), [orders, from]);
+  const currentOrders = useMemo(() => filteredOrders.filter(o => new Date(o.created_at) >= from), [filteredOrders, from]);
+  const previousOrders = useMemo(() => filteredOrders.filter(o => new Date(o.created_at) < from), [filteredOrders, from]);
 
   const paidCurrent = currentOrders.filter(o => o.status === "PAID");
   const paidPrevious = previousOrders.filter(o => o.status === "PAID");
@@ -231,8 +298,57 @@ export default function AnalyticsExecutive() {
   const gmvCurrent = paidCurrent.reduce((s, o) => s + Number(o.total_amount || 0), 0);
   const gmvPrevious = paidPrevious.reduce((s, o) => s + Number(o.total_amount || 0), 0);
 
-  const netRevenueCurrent = paidCurrent.reduce((s, o) => s + Number(o.total_amount || 0), 0);
-  const netRevenuePrevious = paidPrevious.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+  // ── MRR / ARR ──
+  const { mrr, arr } = useMemo(() => {
+    const planMap = new Map(circlePlans.map(p => [p.id, p]));
+    let monthlyRevenue = 0;
+
+    circleSubscriptions
+      .filter(s => s.status === "active" || s.status === "trialing")
+      .forEach(sub => {
+        const plan = planMap.get(sub.plan_id);
+        if (!plan) return;
+        const cents = plan.price_cents || 0;
+        if (plan.interval === "monthly") monthlyRevenue += cents;
+        else if (plan.interval === "yearly") monthlyRevenue += Math.round(cents / 12);
+        else if (plan.interval === "quarterly") monthlyRevenue += Math.round(cents / 3);
+      });
+
+    return { mrr: monthlyRevenue, arr: monthlyRevenue * 12 };
+  }, [circleSubscriptions, circlePlans]);
+
+  // ── Churn rate ──
+  const churnRate = useMemo(() => {
+    const activeSubs = circleSubscriptions.filter(s => s.status === "active" || s.status === "trialing");
+    const canceledInPeriod = circleSubscriptions.filter(s =>
+      s.canceled_at && new Date(s.canceled_at) >= from && new Date(s.canceled_at) <= now
+    );
+    const startBase = activeSubs.length + canceledInPeriod.length;
+    return startBase > 0 ? (canceledInPeriod.length / startBase) * 100 : 0;
+  }, [circleSubscriptions, from, now]);
+
+  const prevChurnRate = useMemo(() => {
+    const canceledPrev = circleSubscriptions.filter(s =>
+      s.canceled_at && new Date(s.canceled_at) >= prevFrom && new Date(s.canceled_at) < from
+    );
+    const activeSubs = circleSubscriptions.filter(s => s.status === "active" || s.status === "trialing");
+    const startBase = activeSubs.length + canceledPrev.length;
+    return startBase > 0 ? (canceledPrev.length / startBase) * 100 : 0;
+  }, [circleSubscriptions, prevFrom, from]);
+
+  // ── LTV ──
+  const ltv = useMemo(() => {
+    const allPaidOrders = filteredOrders.filter(o => o.status === "PAID");
+    const totalRevenue = allPaidOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+    const uniqueCustomers = new Set(allPaidOrders.map(o => o.customer_email).filter(Boolean)).size;
+    return uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
+  }, [filteredOrders]);
+
+  // ── Checkout conversion ──
+  const checkoutConversion = useMemo(() => {
+    const started = checkouts.length;
+    return started > 0 ? (paidCurrent.length / started) * 100 : 0;
+  }, [checkouts, paidCurrent]);
 
   const currentLeads = leads.filter(l => new Date(l.created_at) >= from);
   const previousLeads = leads.filter(l => new Date(l.created_at) < from);
@@ -250,10 +366,7 @@ export default function AnalyticsExecutive() {
       const refunded = methodOrders.filter(o => o.status === "REFUNDED").length;
       return {
         method: method === "credit_card" ? "Cartão" : method === "pix" ? "PIX" : "Boleto",
-        total,
-        paid,
-        failed,
-        refunded,
+        total, paid, failed, refunded,
         approvalRate: total > 0 ? ((paid / total) * 100).toFixed(1) : "0",
       };
     });
@@ -266,11 +379,38 @@ export default function AnalyticsExecutive() {
       const day = format(new Date(o.created_at), "dd/MM");
       map[day] = (map[day] || 0) + Number(o.total_amount || 0);
     });
-    return Array.from({ length: Math.min(periodDays, 90) }, (_, i) => {
+    return Array.from({ length: Math.min(periodDays, 180) }, (_, i) => {
       const d = format(subDays(now, periodDays - 1 - i), "dd/MM");
       return { date: d, revenue: (map[d] || 0) / 100 };
     });
   }, [paidCurrent, periodDays, now]);
+
+  // ── MRR trend chart (monthly) ──
+  const mrrTrend = useMemo(() => {
+    const planMap = new Map(circlePlans.map(p => [p.id, p]));
+    const months: { month: string; mrr: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = subMonths(now, i);
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      let monthlyRev = 0;
+      circleSubscriptions
+        .filter(s => {
+          const created = new Date(s.created_at);
+          const canceled = s.canceled_at ? new Date(s.canceled_at) : null;
+          return created <= monthEnd && (!canceled || canceled > monthEnd);
+        })
+        .forEach(sub => {
+          const plan = planMap.get(sub.plan_id);
+          if (!plan) return;
+          const cents = plan.price_cents || 0;
+          if (plan.interval === "monthly") monthlyRev += cents;
+          else if (plan.interval === "yearly") monthlyRev += Math.round(cents / 12);
+          else if (plan.interval === "quarterly") monthlyRev += Math.round(cents / 3);
+        });
+      months.push({ month: format(d, "MMM", { locale: ptBR }), mrr: monthlyRev / 100 });
+    }
+    return months;
+  }, [circleSubscriptions, circlePlans, now]);
 
   // ── Funnel ──
   const funnelData = useMemo(() => {
@@ -308,6 +448,19 @@ export default function AnalyticsExecutive() {
     URL.revokeObjectURL(url);
   };
 
+  const exportFullReport = () => {
+    const reportData = paidCurrent.map(o => ({
+      id: o.id,
+      valor: Number(o.total_amount || 0) / 100,
+      status: o.status,
+      metodo: o.payment_method || "",
+      email: o.customer_email || "",
+      produto: o.product_id || "",
+      data: o.created_at,
+    }));
+    exportCSV(reportData, `relatorio-executivo-${format(now, "yyyy-MM-dd")}`);
+  };
+
   const loading = loadingOrders;
 
   return (
@@ -315,10 +468,25 @@ export default function AnalyticsExecutive() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard Executivo</h1>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard Executivo BI</h1>
           <p className="text-sm text-muted-foreground">Métricas de decisão do seu negócio</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Product filter */}
+          <Select value={productFilter} onValueChange={setProductFilter}>
+            <SelectTrigger className="w-44 h-9 text-sm">
+              <ShoppingBag className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Todos os produtos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os produtos</SelectItem>
+              {products.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Period selector */}
           <div className="flex gap-1 p-1 bg-card border border-border/50 rounded-lg shadow-sm">
             {PERIODS.map(p => (
               <Button
@@ -326,7 +494,7 @@ export default function AnalyticsExecutive() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
                   periodDays === p.value
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -337,10 +505,14 @@ export default function AnalyticsExecutive() {
               </Button>
             ))}
           </div>
+
+          <Button variant="outline" size="sm" onClick={exportFullReport} className="h-9">
+            <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Row 1: Revenue KPIs */}
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -352,21 +524,94 @@ export default function AnalyticsExecutive() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="GMV" value={gmvCurrent} previousValue={gmvPrevious} icon={DollarSign} format="currency" />
-          <StatCard title="Receita Líquida" value={netRevenueCurrent} previousValue={netRevenuePrevious} icon={TrendingUp} format="currency" />
+          <StatCard title="GMV" value={gmvCurrent} previousValue={gmvPrevious} icon={DollarSign} format="currency" metricKey="gmv" />
+          <StatCard title="MRR" value={mrr} icon={RefreshCw} format="currency" metricKey="mrr" />
+          <StatCard title="ARR" value={arr} icon={TrendingUp} format="currency" metricKey="arr" />
           <StatCard title="Vendas" value={paidCurrent.length} previousValue={paidPrevious.length} icon={CreditCard} />
+        </div>
+      )}
+
+      {/* Row 2: Subscription & Customer KPIs */}
+      {!loading && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Churn Rate"
+            value={churnRate}
+            previousValue={prevChurnRate > 0 ? prevChurnRate : undefined}
+            icon={TrendingDown}
+            format="percent"
+            metricKey="churn"
+          />
+          <StatCard title="LTV Médio" value={ltv} icon={Users} format="currency" metricKey="ltv" />
+          <StatCard title="Conversão Checkout" value={checkoutConversion} icon={Percent} format="percent" metricKey="checkout_conversion" />
           <StatCard title="Leads Capturados" value={currentLeads.length} previousValue={previousLeads.length} icon={Users} />
         </div>
       )}
+
+      {/* MRR Trend + Revenue Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* MRR Trend */}
+        <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold">Evolução MRR</CardTitle>
+              <MetricTooltip metricKey="mrr" />
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => exportCSV(mrrTrend, "mrr-trend")}>
+              <Download className="h-4 w-4 mr-1" /> CSV
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={mrrTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    formatter={(v: number) => [formatCurrencyRaw(v), "MRR"]}
+                  />
+                  <Area type="monotone" dataKey="mrr" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue Chart */}
+        <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Receita Diária</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => exportCSV(revenueChart, "receita-diaria")}>
+              <Download className="h-4 w-4 mr-1" /> CSV
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueChart}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    formatter={(v: number) => [formatCurrencyRaw(v), "Receita"]}
+                  />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Retention Cards */}
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
           <UserCheck className="h-5 w-5 text-primary" />
           Retenção de Creators
-          <Badge variant="secondary" className="text-[10px]">
-            Ativo = publicou produto OU recebeu venda
-          </Badge>
+          <Badge variant="secondary" className="text-[10px]">Ativo = publicou produto OU recebeu venda</Badge>
         </h2>
         <div className="grid grid-cols-3 gap-4">
           {[
@@ -395,42 +640,13 @@ export default function AnalyticsExecutive() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {data?.active ?? 0} ativos / {data?.eligible ?? 0} elegíveis
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{data?.active ?? 0} ativos / {data?.eligible ?? 0} elegíveis</p>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       </div>
-
-      {/* Revenue Chart */}
-      <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Receita Diária</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => exportCSV(revenueChart, "receita-diaria")}>
-            <Download className="h-4 w-4 mr-1" /> CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={v => `R$${v}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  formatter={(v: number) => [formatCurrencyRaw(v), "Receita"]}
-                />
-                <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
 
       <Tabs defaultValue="funnel" className="space-y-4">
         <TabsList className="bg-card border border-border/50">
@@ -450,16 +666,13 @@ export default function AnalyticsExecutive() {
                 <p className="text-sm text-muted-foreground text-center py-8">Sem dados no período</p>
               ) : (
                 <div className="space-y-4">
-                  {funnelData.map((step, i) => (
+                  {funnelData.map((step) => (
                     <div key={step.name} className="flex items-center gap-4">
                       <div className="w-28 text-sm font-medium text-foreground">{step.name}</div>
                       <div className="flex-1 h-10 bg-muted/30 rounded-lg overflow-hidden relative">
                         <div
                           className="h-full rounded-lg transition-all duration-500"
-                          style={{
-                            width: `${Math.max(parseFloat(step.rate), 2)}%`,
-                            backgroundColor: step.color,
-                          }}
+                          style={{ width: `${Math.max(parseFloat(step.rate), 2)}%`, backgroundColor: step.color }}
                         />
                         <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground">
                           {step.value.toLocaleString()} ({step.rate}%)
@@ -503,9 +716,7 @@ export default function AnalyticsExecutive() {
                       <TableCell className="text-right text-rose-600">{row.failed}</TableCell>
                       <TableCell className="text-right text-amber-600">{row.refunded}</TableCell>
                       <TableCell className="text-right">
-                        <Badge variant={Number(row.approvalRate) >= 90 ? "default" : "destructive"}>
-                          {row.approvalRate}%
-                        </Badge>
+                        <Badge variant={Number(row.approvalRate) >= 90 ? "default" : "destructive"}>{row.approvalRate}%</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -522,9 +733,7 @@ export default function AnalyticsExecutive() {
         <TabsContent value="crm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">CRM</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg font-semibold">CRM</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Leads capturados</span>
@@ -540,11 +749,8 @@ export default function AnalyticsExecutive() {
                 </div>
               </CardContent>
             </Card>
-
             <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Campanhas de Email</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg font-semibold">Campanhas de Email</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Campanhas enviadas</span>
@@ -566,9 +772,7 @@ export default function AnalyticsExecutive() {
 
       {/* Activation Metrics */}
       <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Métricas de Ativação</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-lg font-semibold">Métricas de Ativação</CardTitle></CardHeader>
         <CardContent>
           <ActivationMetrics workspaceId={workspaceId} periodDays={periodDays} />
         </CardContent>
@@ -578,10 +782,28 @@ export default function AnalyticsExecutive() {
       <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-semibold">Coorte Mensal — Retenção de Atividade</CardTitle>
-          <Badge variant="secondary">MVP</Badge>
+          <Button variant="ghost" size="sm" onClick={() => {
+            const { cohort } = { cohort: [] as any[] }; // placeholder
+          }}>
+            <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
         </CardHeader>
         <CardContent>
-          <CohortTable workspaceId={workspaceId} />
+          <CohortTable workspaceId={workspaceId} onExport={exportCSV} />
+        </CardContent>
+      </Card>
+
+      {/* Metric definitions */}
+      <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
+        <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground">📖 Definições de Métricas</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {Object.entries(METRIC_DEFS).map(([key, def]) => (
+              <div key={key} className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground uppercase">{key}</span>: {def}
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -619,23 +841,15 @@ function BetaCohortLog() {
   });
 
   const stepLabels: Record<string, string> = {
-    d0_welcome: "D0 Boas-vindas",
-    d1_activate: "D1 Ativação",
-    d3_publish: "D3 Publicação",
-    d7_first_sale: "D7 1ª Venda",
+    d0_welcome: "D0 Boas-vindas", d1_activate: "D1 Ativação",
+    d3_publish: "D3 Publicação", d7_first_sale: "D7 1ª Venda",
   };
-
   const statusColor: Record<string, string> = {
-    sent: "bg-blue-100 text-blue-700",
-    opened: "bg-amber-100 text-amber-700",
-    actioned: "bg-emerald-100 text-emerald-700",
+    sent: "bg-blue-100 text-blue-700", opened: "bg-amber-100 text-amber-700", actioned: "bg-emerald-100 text-emerald-700",
   };
 
   if (isLoading) return <Skeleton className="h-32 w-full" />;
-
-  if (!logs.length) {
-    return <p className="text-sm text-muted-foreground text-center py-6">Nenhum nudge enviado ainda</p>;
-  }
+  if (!logs.length) return <p className="text-sm text-muted-foreground text-center py-6">Nenhum nudge enviado ainda</p>;
 
   return (
     <Table>
@@ -651,17 +865,11 @@ function BetaCohortLog() {
         {logs.map(log => (
           <TableRow key={log.id}>
             <TableCell className="font-medium text-foreground text-sm">{log.user_email}</TableCell>
+            <TableCell><Badge variant="outline" className="text-xs">{stepLabels[log.step] || log.step}</Badge></TableCell>
             <TableCell>
-              <Badge variant="outline" className="text-xs">{stepLabels[log.step] || log.step}</Badge>
+              <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", statusColor[log.status] || "")}>{log.status}</span>
             </TableCell>
-            <TableCell>
-              <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", statusColor[log.status] || "")}>
-                {log.status}
-              </span>
-            </TableCell>
-            <TableCell className="text-right text-sm text-muted-foreground">
-              {format(new Date(log.sent_at), "dd/MM HH:mm")}
-            </TableCell>
+            <TableCell className="text-right text-sm text-muted-foreground">{format(new Date(log.sent_at), "dd/MM HH:mm")}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -669,7 +877,7 @@ function BetaCohortLog() {
   );
 }
 
-function CohortTable({ workspaceId }: { workspaceId?: string }) {
+function CohortTable({ workspaceId, onExport }: { workspaceId?: string; onExport?: (data: any[], filename: string) => void }) {
   const { data: allOrders = [] } = useQuery({
     queryKey: ["cohort-orders", workspaceId],
     enabled: !!workspaceId,
@@ -687,16 +895,13 @@ function CohortTable({ workspaceId }: { workspaceId?: string }) {
 
   const cohort = useMemo(() => {
     if (!allOrders.length) return [];
-
     const customerFirstMonth: Record<string, string> = {};
     const customerMonths: Record<string, Set<string>> = {};
 
     allOrders.forEach(o => {
       const email = o.customer_email;
       const month = format(new Date(o.created_at), "yyyy-MM");
-      if (!customerFirstMonth[email] || month < customerFirstMonth[email]) {
-        customerFirstMonth[email] = month;
-      }
+      if (!customerFirstMonth[email] || month < customerFirstMonth[email]) customerFirstMonth[email] = month;
       if (!customerMonths[email]) customerMonths[email] = new Set();
       customerMonths[email].add(month);
     });
@@ -705,10 +910,7 @@ function CohortTable({ workspaceId }: { workspaceId?: string }) {
     const now = new Date();
 
     return months.slice(-4).map(cohortMonth => {
-      const cohortCustomers = Object.entries(customerFirstMonth)
-        .filter(([_, m]) => m === cohortMonth)
-        .map(([email]) => email);
-
+      const cohortCustomers = Object.entries(customerFirstMonth).filter(([_, m]) => m === cohortMonth).map(([email]) => email);
       const total = cohortCustomers.length;
       const periods = [1, 2, 3].map(offset => {
         const targetMonth = format(subMonths(new Date(cohortMonth + "-15"), -offset), "yyyy-MM");
@@ -716,44 +918,47 @@ function CohortTable({ workspaceId }: { workspaceId?: string }) {
         const active = cohortCustomers.filter(email => customerMonths[email]?.has(targetMonth)).length;
         return total > 0 ? ((active / total) * 100).toFixed(0) : "0";
       });
-
       return {
         month: format(new Date(cohortMonth + "-01"), "MMM yyyy", { locale: ptBR }),
-        total,
-        m1: periods[0],
-        m2: periods[1],
-        m3: periods[2],
+        total, m1: periods[0], m2: periods[1], m3: periods[2],
       };
     });
   }, [allOrders]);
 
-  if (!cohort.length) {
-    return <p className="text-sm text-muted-foreground text-center py-6">Sem dados de coorte disponíveis</p>;
-  }
+  if (!cohort.length) return <p className="text-sm text-muted-foreground text-center py-6">Sem dados de coorte disponíveis</p>;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Mês de Entrada</TableHead>
-          <TableHead className="text-right">Clientes</TableHead>
-          <TableHead className="text-right">+1 mês</TableHead>
-          <TableHead className="text-right">+2 meses</TableHead>
-          <TableHead className="text-right">+3 meses</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {cohort.map(row => (
-          <TableRow key={row.month}>
-            <TableCell className="font-medium capitalize">{row.month}</TableCell>
-            <TableCell className="text-right">{row.total}</TableCell>
-            <TableCell className="text-right">{row.m1 !== null ? `${row.m1}%` : "—"}</TableCell>
-            <TableCell className="text-right">{row.m2 !== null ? `${row.m2}%` : "—"}</TableCell>
-            <TableCell className="text-right">{row.m3 !== null ? `${row.m3}%` : "—"}</TableCell>
+    <div>
+      {onExport && (
+        <div className="flex justify-end mb-2">
+          <Button variant="ghost" size="sm" onClick={() => onExport(cohort, "coorte-mensal")}>
+            <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
+        </div>
+      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Mês de Entrada</TableHead>
+            <TableHead className="text-right">Clientes</TableHead>
+            <TableHead className="text-right">+1 mês</TableHead>
+            <TableHead className="text-right">+2 meses</TableHead>
+            <TableHead className="text-right">+3 meses</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {cohort.map(row => (
+            <TableRow key={row.month}>
+              <TableCell className="font-medium capitalize">{row.month}</TableCell>
+              <TableCell className="text-right">{row.total}</TableCell>
+              <TableCell className="text-right">{row.m1 !== null ? `${row.m1}%` : "—"}</TableCell>
+              <TableCell className="text-right">{row.m2 !== null ? `${row.m2}%` : "—"}</TableCell>
+              <TableCell className="text-right">{row.m3 !== null ? `${row.m3}%` : "—"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -785,22 +990,13 @@ function ActivationMetrics({ workspaceId, periodDays }: { workspaceId?: string; 
 
   const metrics = useMemo(() => {
     if (!workspace) return null;
-
     const wsCreated = new Date(workspace.created_at);
     const productStep = progress.find(p => p.step_key === "product_created" && p.completed_at);
     const saleStep = progress.find(p => p.step_key === "first_sale" && p.completed_at);
-
-    const timeToProduct = productStep
-      ? Math.round((new Date(productStep.completed_at!).getTime() - wsCreated.getTime()) / (1000 * 60 * 60))
-      : null;
-
-    const timeToSale = saleStep
-      ? Math.round((new Date(saleStep.completed_at!).getTime() - wsCreated.getTime()) / (1000 * 60 * 60 * 24))
-      : null;
-
+    const timeToProduct = productStep ? Math.round((new Date(productStep.completed_at!).getTime() - wsCreated.getTime()) / (1000 * 60 * 60)) : null;
+    const timeToSale = saleStep ? Math.round((new Date(saleStep.completed_at!).getTime() - wsCreated.getTime()) / (1000 * 60 * 60 * 24)) : null;
     const completedSteps = progress.filter(p => p.completed_at).length;
     const activationRate = (completedSteps / 5) * 100;
-
     return { timeToProduct, timeToSale, activationRate, isActivated: !!workspace.activated_at };
   }, [progress, workspace]);
 
@@ -809,15 +1005,11 @@ function ActivationMetrics({ workspaceId, periodDays }: { workspaceId?: string; 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div className="text-center p-4 rounded-lg bg-muted/30">
-        <p className="text-2xl font-bold text-foreground">
-          {metrics.timeToProduct !== null ? `${metrics.timeToProduct}h` : "—"}
-        </p>
+        <p className="text-2xl font-bold text-foreground">{metrics.timeToProduct !== null ? `${metrics.timeToProduct}h` : "—"}</p>
         <p className="text-xs text-muted-foreground mt-1">Signup → 1º Produto</p>
       </div>
       <div className="text-center p-4 rounded-lg bg-muted/30">
-        <p className="text-2xl font-bold text-foreground">
-          {metrics.timeToSale !== null ? `${metrics.timeToSale}d` : "—"}
-        </p>
+        <p className="text-2xl font-bold text-foreground">{metrics.timeToSale !== null ? `${metrics.timeToSale}d` : "—"}</p>
         <p className="text-xs text-muted-foreground mt-1">Signup → 1ª Venda</p>
       </div>
       <div className="text-center p-4 rounded-lg bg-muted/30">
