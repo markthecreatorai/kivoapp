@@ -18,6 +18,7 @@ const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const Income = lazy(() => import("./pages/Income"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
