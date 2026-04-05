@@ -294,9 +294,23 @@ export default function CircleLayout() {
   // Check if current route is the /about page (allow without auth/member)
   const isAboutPage = location.pathname.endsWith("/about");
 
+  // No community found — show 404 (before auth check to avoid redirect loops)
+  if (!community) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-md p-8 text-center space-y-4">
+          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto" />
+          <h1 className="text-xl font-bold text-foreground">Comunidade não encontrada</h1>
+          <p className="text-sm text-muted-foreground">Esta comunidade não existe ou foi desativada.</p>
+          <Button variant="outline" onClick={() => navigate("/circles")}>Ver Comunidades</Button>
+        </Card>
+      </div>
+    );
+  }
+
   // Not logged in — allow about page, redirect others
   if (!user) {
-    if (isAboutPage && community) {
+    if (isAboutPage) {
       // Render layout with Outlet for about page (no member needed)
       return (
         <div className="min-h-screen bg-muted/40 flex flex-col">
@@ -332,13 +346,6 @@ export default function CircleLayout() {
     }
     return <Navigate to={`/circles/${slug}/about`} replace />;
   }
-
-  // No community found — show 404
-  if (!community) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="max-w-md p-8 text-center space-y-4">
-          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto" />
           <h1 className="text-xl font-bold text-foreground">Comunidade não encontrada</h1>
           <p className="text-sm text-muted-foreground">Esta comunidade não existe ou foi desativada.</p>
           <Button variant="outline" onClick={() => navigate("/circles")}>Ver Comunidades</Button>
