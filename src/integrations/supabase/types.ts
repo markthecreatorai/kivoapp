@@ -8392,8 +8392,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin_user: { Args: { _user_id: string }; Returns: boolean }
-      is_community_member: {
-        Args: { _community_id: string; _user_id: string }
+      is_community_member:
+        | { Args: { _community_id: string }; Returns: boolean }
+        | {
+            Args: { _community_id: string; _user_id: string }
+            Returns: boolean
+          }
+      is_community_workspace_admin: {
+        Args: { _community_id: string }
         Returns: boolean
       }
       is_conversation_member: {
@@ -8404,6 +8410,7 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
+      is_workspace_member: { Args: { _workspace_id: string }; Returns: boolean }
       join_community: {
         Args: {
           p_community_id: string
