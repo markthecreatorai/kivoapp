@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import kivoLogo from "@/assets/kivo-logo.svg";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -93,8 +94,8 @@ export default function ForgotPassword() {
     <div className="min-h-screen flex items-center justify-center p-8 bg-muted/30">
       <div className="w-full max-w-md space-y-6">
         {/* Logo/Brand */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary">Kivo</h1>
+        <div className="text-center flex justify-center">
+          <img src={kivoLogo} alt="Kivo" className="h-10" />
         </div>
 
         <Card className="card-radius shadow-sm border">
