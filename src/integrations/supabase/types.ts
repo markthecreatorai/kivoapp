@@ -6004,6 +6004,11 @@ export type Database = {
           net_amount: number
           processed_at: string | null
           requested_by: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          risk_flags: Json | null
+          risk_score: number | null
           status: string
           updated_at: string
           workspace_id: string
@@ -6019,6 +6024,11 @@ export type Database = {
           net_amount: number
           processed_at?: string | null
           requested_by: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: Json | null
+          risk_score?: number | null
           status?: string
           updated_at?: string
           workspace_id: string
@@ -6034,6 +6044,11 @@ export type Database = {
           net_amount?: number
           processed_at?: string | null
           requested_by?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: Json | null
+          risk_score?: number | null
           status?: string
           updated_at?: string
           workspace_id?: string
