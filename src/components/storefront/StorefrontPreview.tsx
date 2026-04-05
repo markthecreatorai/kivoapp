@@ -86,6 +86,10 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
     }
   };
 
+  const getCardClass = () => {
+    return currentTheme.button_style === 'square' ? 'rounded-none' : 'rounded-lg';
+  };
+
   const visibleBlocks = blocks.filter(b => b.is_visible).sort((a, b) => a.position - b.position);
 
   const renderBlock = (block: StorefrontBlock) => {
@@ -116,14 +120,14 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
         if (!product) return null;
         return (
           <div 
-            className="w-full overflow-visible border pb-3"
+            className={cn("w-full overflow-hidden border pb-3", getCardClass())}
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             {product.thumbnail_url && (
               <img 
                 src={product.thumbnail_url} 
                 alt={product.name}
-                className="w-full h-32 object-cover rounded-t-lg"
+                className="w-full h-32 object-cover"
               />
             )}
             <div className="p-3">
@@ -148,7 +152,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       case 'lead_form':
         return (
           <div 
-            className="w-full p-4 border rounded-[16px]"
+            className={cn("w-full p-4 border", getCardClass())}
             style={{ borderColor: currentTheme.primary_color + '40' }}
           >
             <p className="font-medium mb-3" style={{ color: currentTheme.text_color }}>
@@ -495,7 +499,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
                     return (
                       <div
                         key={product.id}
-                        className="w-full overflow-hidden border rounded-xl"
+                        className={cn("w-full overflow-hidden border", getCardClass())}
                         style={{ borderColor: currentTheme.primary_color + '30' }}
                       >
                         {product.thumbnail_url && (
