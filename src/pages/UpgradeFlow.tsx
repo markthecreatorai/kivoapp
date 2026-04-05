@@ -413,17 +413,31 @@ export default function UpgradeFlow() {
   };
 
   const handleRegeneratePix = async () => {
+    if (!pixPaymentId) return;
     setRegeneratingPix(true);
-    const cleanCpf = cpf.replace(/\D/g, "");
-    const result = await startPlanCheckout({
-      planCode: selectedPlan,
-      sourceUI,
-      cpf: cleanCpf || undefined,
-      paymentMethod: "pix",
-    });
-    if (result) {
-      setPixData(result.pix || null);
-      setPixPaymentId(result.payment_id || null);
+    try {
+      // Re-fetch the QR code for the existing payment instead of creating a new subscription
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (token) {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const res = await fetch(`https://${projectId}.supabase.co/functions/v1/check-payment-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ payment_id: pixPaymentId }),
+        });
+        const data = await res.json();
+        if (data?.pix) {
+          setPixData(data.pix);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to regenerate PIX:", err);
+      toast({ title: "Erro ao gerar novo PIX", description: "Tente novamente.", variant: "destructive" });
     }
     setRegeneratingPix(false);
   };
