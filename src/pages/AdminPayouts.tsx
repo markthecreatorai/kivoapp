@@ -12,31 +12,30 @@ const fmt = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
 export default function AdminPayouts() {
-  // Global split entries summary
   const { data: globalStats, isLoading } = useQuery({
     queryKey: ["admin-payout-stats"],
     queryFn: async () => {
       const [entriesRes, payoutsRes, refundsRes] = await Promise.all([
-        (supabase as any).from("split_entries").select("gross_amount, platform_fee, creator_net, status", { count: "exact" }),
-        (supabase as any).from("payout_requests").select("amount, net_amount, status"),
-        (supabase as any).from("split_entries").select("creator_net").eq("status", "refunded"),
+        supabase.from("split_entries").select("gross_amount, platform_fee, creator_net, status"),
+        supabase.from("payout_requests").select("amount, net_amount, status"),
+        supabase.from("split_entries").select("creator_net").eq("status", "refunded"),
       ]);
 
       const entries = entriesRes.data || [];
       const payouts = payoutsRes.data || [];
       const refunds = refundsRes.data || [];
 
-      const totalPlatformRevenue = entries.reduce((s: number, e: any) => s + (e.platform_fee || 0), 0);
+      const totalPlatformRevenue = entries.reduce((s, e) => s + (e.platform_fee || 0), 0);
       const totalCreatorLiability = entries
-        .filter((e: any) => e.status !== "refunded")
-        .reduce((s: number, e: any) => s + (e.creator_net || 0), 0);
+        .filter(e => e.status !== "refunded")
+        .reduce((s, e) => s + (e.creator_net || 0), 0);
       const totalPaid = payouts
-        .filter((p: any) => p.status === "paid")
-        .reduce((s: number, p: any) => s + (p.net_amount || 0), 0);
+        .filter(p => p.status === "paid")
+        .reduce((s, p) => s + (p.net_amount || 0), 0);
       const totalPending = payouts
-        .filter((p: any) => p.status === "requested" || p.status === "processing")
-        .reduce((s: number, p: any) => s + (p.amount || 0), 0);
-      const totalRefunded = refunds.reduce((s: number, r: any) => s + (r.creator_net || 0), 0);
+        .filter(p => p.status === "requested" || p.status === "processing")
+        .reduce((s, p) => s + (p.amount || 0), 0);
+      const totalRefunded = refunds.reduce((s, r) => s + (r.creator_net || 0), 0);
 
       return {
         totalPlatformRevenue,
@@ -49,11 +48,10 @@ export default function AdminPayouts() {
     },
   });
 
-  // Recent payout requests
   const { data: recentPayouts = [] } = useQuery({
     queryKey: ["admin-recent-payouts"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("payout_requests")
         .select("*")
         .order("created_at", { ascending: false })
@@ -62,11 +60,10 @@ export default function AdminPayouts() {
     },
   });
 
-  // Recent split entries with refunds
   const { data: recentRefunds = [] } = useQuery({
     queryKey: ["admin-recent-refunds"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("split_entries")
         .select("*")
         .eq("status", "refunded")
@@ -90,7 +87,6 @@ export default function AdminPayouts() {
         <p className="text-sm text-muted-foreground">Visão global de passivo, repasses e risco</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-border/50">
           <CardContent className="p-5 space-y-1">
@@ -137,7 +133,6 @@ export default function AdminPayouts() {
         </Card>
       </div>
 
-      {/* Recent Payout Requests */}
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="text-lg">Solicitações de Repasse</CardTitle>
@@ -159,7 +154,7 @@ export default function AdminPayouts() {
                     Nenhuma solicitação
                   </TableCell>
                 </TableRow>
-              ) : recentPayouts.map((p: any) => (
+              ) : recentPayouts.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="text-sm">{format(new Date(p.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>
                   <TableCell className="text-sm font-mono text-muted-foreground">{p.workspace_id?.slice(0, 8)}</TableCell>
@@ -176,7 +171,6 @@ export default function AdminPayouts() {
         </CardContent>
       </Card>
 
-      {/* Recent Refunds */}
       {recentRefunds.length > 0 && (
         <Card className="border-border/50">
           <CardHeader>
@@ -192,7 +186,7 @@ export default function AdminPayouts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentRefunds.map((r: any) => (
+                {recentRefunds.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="text-sm">{format(new Date(r.refunded_at || r.created_at), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                     <TableCell className="text-right text-sm">{fmt(r.gross_amount)}</TableCell>

@@ -34,11 +34,12 @@ export default function AdminChargebacks() {
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ["admin-chargeback-cases"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await supabase
         .from("chargeback_cases")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
+      if (error) throw error;
       return data || [];
     },
   });
@@ -47,7 +48,7 @@ export default function AdminChargebacks() {
     queryKey: ["chargeback-timeline", selectedCase?.id],
     enabled: !!selectedCase,
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("chargeback_timeline")
         .select("*")
         .eq("case_id", selectedCase.id)
@@ -60,7 +61,7 @@ export default function AdminChargebacks() {
     queryKey: ["chargeback-evidences", selectedCase?.id],
     enabled: !!selectedCase,
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("chargeback_evidences")
         .select("*")
         .eq("case_id", selectedCase.id)
@@ -74,23 +75,25 @@ export default function AdminChargebacks() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const updateData: any = { status };
+      const updateData: Record<string, any> = { status };
       if (status === "won" || status === "lost") {
         updateData.resolved_at = new Date().toISOString();
       }
 
-      await (supabase as any).from("chargeback_cases").update(updateData).eq("id", caseId);
+      const { error: updateErr } = await supabase.from("chargeback_cases").update(updateData).eq("id", caseId);
+      if (updateErr) throw updateErr;
 
-      await (supabase as any).from("chargeback_timeline").insert({
+      const { error: tlErr } = await supabase.from("chargeback_timeline").insert({
         case_id: caseId,
         action: `status_changed_to_${status}`,
         actor_id: user.id,
         note: noteText || `Status alterado para ${statusConfig[status]?.label || status}`,
       });
+      if (tlErr) throw tlErr;
 
-      // If case won → reverse the chargeback impact (restore split)
+      // If case won → reverse the chargeback impact
       if (status === "won" && selectedCase) {
-        await (supabase as any).from("split_entries").update({
+        await supabase.from("split_entries").update({
           status: "available",
           refunded_at: null,
         }).eq("order_id", selectedCase.order_id).eq("status", "refunded");
@@ -98,7 +101,7 @@ export default function AdminChargebacks() {
         await supabase.from("wallet_ledger").update({ status: "canceled" })
           .eq("order_id", selectedCase.order_id).eq("type", "chargeback");
 
-        await (supabase as any).from("chargeback_timeline").insert({
+        await supabase.from("chargeback_timeline").insert({
           case_id: caseId,
           action: "financial_reversed",
           actor_id: user.id,
@@ -123,16 +126,16 @@ export default function AdminChargebacks() {
       setNewStatus("");
       setNote("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message || "Erro ao atualizar status"),
   });
 
-  const openCases = cases.filter((c: any) => !["won", "lost"].includes(c.status));
-  const slaExpiring = openCases.filter((c: any) =>
+  const openCases = cases.filter(c => !["won", "lost"].includes(c.status));
+  const slaExpiring = openCases.filter(c =>
     c.sla_deadline_at && differenceInHours(new Date(c.sla_deadline_at), new Date()) < 48
   );
   const totalImpact = cases
-    .filter((c: any) => c.status === "lost")
-    .reduce((s: number, c: any) => s + (c.financial_impact || 0), 0);
+    .filter(c => c.status === "lost")
+    .reduce((s, c) => s + (c.financial_impact || 0), 0);
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
@@ -141,7 +144,6 @@ export default function AdminChargebacks() {
         <p className="text-sm text-muted-foreground">Gestão operacional de disputas financeiras</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-border/50">
           <CardContent className="p-5 space-y-1">
@@ -185,7 +187,6 @@ export default function AdminChargebacks() {
         </Card>
       </div>
 
-      {/* Cases Table */}
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="text-lg">Casos de Chargeback</CardTitle>
@@ -211,7 +212,7 @@ export default function AdminChargebacks() {
                     Nenhum caso de chargeback
                   </TableCell>
                 </TableRow>
-              ) : cases.map((c: any) => {
+              ) : cases.map((c) => {
                 const s = statusConfig[c.status] || { label: c.status, variant: "outline" as const };
                 const hoursLeft = c.sla_deadline_at
                   ? differenceInHours(new Date(c.sla_deadline_at), new Date())
@@ -244,7 +245,6 @@ export default function AdminChargebacks() {
         </CardContent>
       </Card>
 
-      {/* Case Detail Dialog */}
       <Dialog open={!!selectedCase} onOpenChange={() => { setSelectedCase(null); setNewStatus(""); setNote(""); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -255,7 +255,6 @@ export default function AdminChargebacks() {
           </DialogHeader>
           {selectedCase && (
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-              {/* Info */}
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div><span className="text-muted-foreground">Status:</span> <Badge variant={statusConfig[selectedCase.status]?.variant || "outline"}>{statusConfig[selectedCase.status]?.label || selectedCase.status}</Badge></div>
                 <div><span className="text-muted-foreground">Motivo:</span> {selectedCase.reason || "-"}</div>
@@ -263,14 +262,13 @@ export default function AdminChargebacks() {
                 <div><span className="text-muted-foreground">Gateway ID:</span> <span className="font-mono text-xs">{selectedCase.gateway_dispute_id || "-"}</span></div>
               </div>
 
-              {/* Timeline */}
               <div>
                 <p className="text-sm font-medium mb-2">Timeline</p>
                 {timeline.length === 0 ? (
                   <p className="text-xs text-muted-foreground">Sem eventos</p>
                 ) : (
                   <div className="space-y-2">
-                    {timeline.map((t: any) => (
+                    {timeline.map((t) => (
                       <div key={t.id} className="flex gap-2 text-xs border-l-2 border-border pl-3 py-1">
                         <span className="text-muted-foreground whitespace-nowrap">{format(new Date(t.created_at), "dd/MM HH:mm")}</span>
                         <div>
@@ -283,12 +281,11 @@ export default function AdminChargebacks() {
                 )}
               </div>
 
-              {/* Evidences */}
               {evidences.length > 0 && (
                 <div>
                   <p className="text-sm font-medium mb-2">Evidências ({evidences.length})</p>
                   <div className="space-y-1">
-                    {evidences.map((e: any) => (
+                    {evidences.map((e) => (
                       <div key={e.id} className="flex items-center gap-2 text-xs p-2 bg-muted/30 rounded">
                         <Upload className="h-3 w-3 text-muted-foreground" />
                         <a href={e.file_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{e.file_name || "Arquivo"}</a>
@@ -299,7 +296,6 @@ export default function AdminChargebacks() {
                 </div>
               )}
 
-              {/* Update Status */}
               {!["won", "lost"].includes(selectedCase.status) && (
                 <div className="space-y-3 border-t border-border pt-3">
                   <p className="text-sm font-medium">Atualizar Status</p>

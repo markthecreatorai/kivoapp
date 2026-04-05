@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { DollarSign, AlertTriangle, ShieldCheck, ShieldAlert, CheckCircle, XCircle } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ShieldAlert, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -30,26 +30,24 @@ export default function AdminRiskReview() {
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [reviewNote, setReviewNote] = useState("");
 
-  // Payouts needing review
   const { data: reviewPayouts = [], isLoading } = useQuery({
     queryKey: ["admin-review-payouts"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await supabase
         .from("payout_requests")
         .select("*")
         .in("status", ["manual_review", "requested"])
-        .order("risk_score", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(100);
+      if (error) throw error;
       return data || [];
     },
   });
 
-  // High risk workspaces
   const { data: recentFailed = [] } = useQuery({
     queryKey: ["admin-failed-payouts"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("payout_requests")
         .select("*")
         .eq("status", "failed")
@@ -59,7 +57,6 @@ export default function AdminRiskReview() {
     },
   });
 
-  // Fraud checks for selected payout (use raw fetch since table not in generated types)
   const { data: fraudChecks = [] } = useQuery({
     queryKey: ["fraud-checks", selectedPayout?.id],
     enabled: !!selectedPayout,
@@ -80,21 +77,23 @@ export default function AdminRiskReview() {
       if (!user) throw new Error("Not authenticated");
 
       if (action === "approve") {
-        await (supabase as any).from("payout_requests").update({
+        const { error } = await supabase.from("payout_requests").update({
           status: "requested",
           review_reason: reviewNote || null,
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
           risk_score: 0,
         }).eq("id", payoutId);
+        if (error) throw error;
       } else {
-        await (supabase as any).from("payout_requests").update({
+        const { error } = await supabase.from("payout_requests").update({
           status: "failed",
           failed_reason: `Rejeitado por admin: ${reviewNote || "Risco elevado"}`,
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
           processed_at: new Date().toISOString(),
         }).eq("id", payoutId);
+        if (error) throw error;
       }
 
       await supabase.from("audit_logs").insert({
@@ -114,10 +113,10 @@ export default function AdminRiskReview() {
       setReviewAction(null);
       setReviewNote("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message || "Erro ao processar revisão"),
   });
 
-  const reviewCount = reviewPayouts.filter((p: any) => p.status === "manual_review").length;
+  const reviewCount = reviewPayouts.filter(p => p.status === "manual_review").length;
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
@@ -126,7 +125,6 @@ export default function AdminRiskReview() {
         <p className="text-sm text-muted-foreground">Aprovar, rejeitar ou monitorar repasses flagados</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-border/50">
           <CardContent className="p-5 space-y-1">
@@ -160,7 +158,6 @@ export default function AdminRiskReview() {
         </Card>
       </div>
 
-      {/* Review Queue */}
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="text-lg">Fila de Revisão</CardTitle>
@@ -184,22 +181,23 @@ export default function AdminRiskReview() {
                     Nenhum payout pendente
                   </TableCell>
                 </TableRow>
-              ) : reviewPayouts.map((p: any) => {
+              ) : reviewPayouts.map((p) => {
                 const s = statusConfig[p.status] || { label: p.status, variant: "outline" as const };
-                const flags = Array.isArray(p.risk_flags) ? p.risk_flags : [];
+                const riskScore = (p as any).risk_score ?? 0;
+                const flags = Array.isArray((p as any).risk_flags) ? (p as any).risk_flags : [];
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{p.workspace_id?.slice(0, 8)}</TableCell>
                     <TableCell className="text-right font-medium">{fmt(p.net_amount)}</TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={p.risk_score >= 50 ? "destructive" : p.risk_score >= 20 ? "secondary" : "outline"}>
-                        {p.risk_score}
+                      <Badge variant={riskScore >= 50 ? "destructive" : riskScore >= 20 ? "secondary" : "outline"}>
+                        {riskScore}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">
                       {flags.map((f: any, i: number) => (
                         <span key={i} className="inline-block bg-destructive/10 text-destructive rounded px-1.5 py-0.5 mr-1 text-xs">
-                          {f.flag}
+                          {f.flag || f}
                         </span>
                       ))}
                     </TableCell>
@@ -222,7 +220,6 @@ export default function AdminRiskReview() {
         </CardContent>
       </Card>
 
-      {/* Failed payouts */}
       {recentFailed.length > 0 && (
         <Card className="border-border/50">
           <CardHeader>
@@ -239,12 +236,12 @@ export default function AdminRiskReview() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentFailed.map((p: any) => (
+                {recentFailed.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-sm">{p.processed_at ? format(new Date(p.processed_at), "dd/MM HH:mm", { locale: ptBR }) : "-"}</TableCell>
                     <TableCell className="font-mono text-xs">{p.workspace_id?.slice(0, 8)}</TableCell>
                     <TableCell className="text-right">{fmt(p.net_amount)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{p.failed_reason}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{p.failed_reason || "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -253,7 +250,6 @@ export default function AdminRiskReview() {
         </Card>
       )}
 
-      {/* Review Dialog */}
       <Dialog open={!!reviewAction} onOpenChange={() => { setReviewAction(null); setSelectedPayout(null); setReviewNote(""); }}>
         <DialogContent>
           <DialogHeader>
@@ -263,26 +259,28 @@ export default function AdminRiskReview() {
             <div className="space-y-4">
               <div className="p-3 bg-muted/50 rounded-lg space-y-1">
                 <p className="text-sm"><span className="text-muted-foreground">Valor:</span> <strong>{fmt(selectedPayout.net_amount)}</strong></p>
-                <p className="text-sm"><span className="text-muted-foreground">Risk Score:</span> <strong>{selectedPayout.risk_score}</strong></p>
-                {selectedPayout.review_reason && (
-                  <p className="text-xs text-muted-foreground">{selectedPayout.review_reason}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Risk Score:</span> <strong>{(selectedPayout as any).risk_score ?? 0}</strong></p>
+                {(selectedPayout as any).review_reason && (
+                  <p className="text-xs text-muted-foreground">{(selectedPayout as any).review_reason}</p>
                 )}
               </div>
 
-              {/* Fraud checks */}
               {fraudChecks.length > 0 && (
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Verificações</p>
-                  {fraudChecks.map((c: any) => (
-                    <div key={c.id} className="flex items-center gap-2 text-xs">
-                      {c.passed ? (
-                        <CheckCircle className="h-3 w-3 text-primary" />
-                      ) : (
-                        <XCircle className="h-3 w-3 text-destructive" />
-                      )}
-                      <span>{c.check_type}</span>
-                    </div>
-                  ))}
+                  {fraudChecks.map((c) => {
+                    const meta = (c.metadata || {}) as Record<string, any>;
+                    return (
+                      <div key={c.id} className="flex items-center gap-2 text-xs">
+                        {meta.passed ? (
+                          <CheckCircle className="h-3 w-3 text-primary" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-destructive" />
+                        )}
+                        <span>{meta.check_type || c.action}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
