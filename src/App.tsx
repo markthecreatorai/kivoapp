@@ -63,6 +63,8 @@ const FiscalClosing = lazy(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazy(() => import("./pages/EmailCampaigns"));
 const AnalyticsExecutive = lazy(() => import("./pages/AnalyticsExecutive"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
 const GtmDashboard = lazy(() => import("./pages/GtmDashboard"));
 const GtmPlaybook = lazy(() => import("./pages/GtmPlaybook"));
 const AcquisitionPipeline = lazy(() => import("./pages/AcquisitionPipeline"));
@@ -336,6 +338,8 @@ const App = () => (
 
                 {/* Landing page */}
                 <Route path="/" element={<GlobalTrackingWrapper><LandingPage /></GlobalTrackingWrapper>} />
+                <Route path="/privacy" element={<GlobalTrackingWrapper><Privacy /></GlobalTrackingWrapper>} />
+                <Route path="/terms" element={<GlobalTrackingWrapper><Terms /></GlobalTrackingWrapper>} />
 
                 {/* Public routes */}
                 <Route path="/checkout/:productSlug" element={<GlobalTrackingWrapper><Checkout /></GlobalTrackingWrapper>} />
