@@ -33,6 +33,9 @@ export function GatewayWizard({ open, onOpenChange, gateway }: GatewayWizardProp
     if (open) {
       setStep(1);
       setTestResult(null);
+      setApiKey("");
+      setEnvironment("sandbox");
+      setShowApiKey(false);
       if (currentWorkspace) {
         const meta = (currentWorkspace as any).metadata || {};
         if (isAsaas) {
