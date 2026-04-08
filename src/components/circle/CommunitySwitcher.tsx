@@ -69,7 +69,9 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
   const handleCreate = () => {
     setOpen(false);
     setSearch("");
-    if (currentWorkspace) {
+    if (onCreateCommunity) {
+      onCreateCommunity();
+    } else if (currentWorkspace) {
       navigate("/circles");
     } else {
       navigate("/onboarding");
