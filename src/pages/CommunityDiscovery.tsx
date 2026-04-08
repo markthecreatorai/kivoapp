@@ -37,15 +37,15 @@ function CommunityCard({ community }: { community: any }) {
   return (
     <div
       onClick={() => navigate(`/circles/${community.slug}`)}
-      className="group bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-200"
+      className="group bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-200 flex flex-col h-full"
     >
-      <div className="relative h-36 overflow-hidden bg-gradient-to-br from-primary/20 via-primary/10 to-muted">
+      <div className="relative h-36 overflow-hidden bg-gradient-to-br from-primary/20 via-primary/10 to-muted shrink-0">
         {community.cover_image_url && (
           <img src={community.cover_image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
-      <div className="p-4">
+      <div className="p-4 flex flex-col flex-1">
         <div className="flex items-start gap-3">
           {community.icon_url ? (
             <img src={community.icon_url} alt="" className="h-12 w-12 rounded-xl object-cover border-2 border-background shadow -mt-8 relative z-10 shrink-0" />
@@ -59,15 +59,19 @@ function CommunityCard({ community }: { community: any }) {
             {community.category && <span className="text-xs text-muted-foreground">{community.category}</span>}
           </div>
         </div>
-        {community.description && <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">{community.description}</p>}
-        <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{community.member_count || 0}</span>
-          <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{community.post_count || 0}</span>
-          <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> ativa</span>
+        <div className="flex-1">
+          {community.description && <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">{community.description}</p>}
         </div>
-        <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/circles/${community.slug}`); }}>
-          {accessInfo.cta}
-        </Button>
+        <div className="mt-auto pt-3">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{community.member_count || 0}</span>
+            <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{community.post_count || 0}</span>
+            <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> ativa</span>
+          </div>
+          <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/circles/${community.slug}`); }}>
+            {accessInfo.cta}
+          </Button>
+        </div>
       </div>
     </div>
   );
