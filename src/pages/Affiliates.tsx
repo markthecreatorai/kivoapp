@@ -124,19 +124,6 @@ export default function Affiliates() {
     setLoading(false);
   };
 
-  // Block if no affiliates plan
-  if (!planInfo.loading && !planInfo.limits.hasAffiliates) {
-    return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
-        <div className="p-4 rounded-full bg-muted"><Crown className="w-8 h-8 text-muted-foreground" /></div>
-        <h2 className="text-xl font-bold text-foreground">Programa de Afiliados</h2>
-        <p className="text-muted-foreground max-w-md">O programa de afiliados está disponível a partir do plano Creator. Faça upgrade para gerenciar seus afiliados e comissões.</p>
-        <Button onClick={() => setUpgradeOpen(true)} className="gap-2"><Crown className="w-4 h-4" /> Fazer Upgrade</Button>
-        <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} currentPlan={planInfo.plan} feature="usar o programa de afiliados" />
-      </div>
-    );
-  }
-
   const fmt = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
   const statusBadge = (status: string) => {
@@ -181,6 +168,19 @@ export default function Affiliates() {
     affiliates.forEach(a => m.set(a.id, a.name));
     return m;
   }, [affiliates]);
+
+  // Block if no affiliates plan
+  if (!planInfo.loading && !planInfo.limits.hasAffiliates) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+        <div className="p-4 rounded-full bg-muted"><Crown className="w-8 h-8 text-muted-foreground" /></div>
+        <h2 className="text-xl font-bold text-foreground">Programa de Afiliados</h2>
+        <p className="text-muted-foreground max-w-md">O programa de afiliados está disponível a partir do plano Creator. Faça upgrade para gerenciar seus afiliados e comissões.</p>
+        <Button onClick={() => setUpgradeOpen(true)} className="gap-2"><Crown className="w-4 h-4" /> Fazer Upgrade</Button>
+        <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} currentPlan={planInfo.plan} feature="usar o programa de afiliados" />
+      </div>
+    );
+  }
 
   // Handlers
   const saveProgram = async (updates: Partial<AffiliateProgram>) => {
