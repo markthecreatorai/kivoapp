@@ -68,11 +68,6 @@ function CommunityCard({ community }: { community: any }) {
           <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{community.post_count || 0}</span>
           <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> ativa</span>
         </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {trustBadges.slice(0, 2).map((b) => (
-            <Badge key={`${community.id}-${b}`} variant="outline" className="text-[10px]">{b}</Badge>
-          ))}
-        </div>
         <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/circles/${community.slug}`); }}>
           {accessInfo.cta}
         </Button>
