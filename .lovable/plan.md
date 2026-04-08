@@ -1,20 +1,22 @@
 
 
-# Plano: Corrigir enum inválido "ACTIVE" no produto afiliado
+# Plano: Atualizar texto do perfil para refletir perfil global único
 
-## Causa raiz
+## Contexto
 
-O código em `NewProduct.tsx` (linha 195) insere `status: "ACTIVE"` para o produto afiliado, mas o enum `product_status` no banco só aceita: `DRAFT`, `PUBLISHED`, `ARCHIVED`.
+O texto atual diz que "Perfis de comunidade são gerenciados dentro de cada comunidade", mas na verdade o perfil é único e global — alterações aqui refletem em todas as comunidades.
 
-## Correção
+## Mudança
 
-**Arquivo:** `src/pages/NewProduct.tsx` — linha 195
+**Arquivo:** `src/components/settings/SettingsProfile.tsx` — linha 288-290
 
-Trocar `"ACTIVE"` por `"PUBLISHED"` para que o produto afiliado já fique visível na vitrine:
+Substituir o texto por algo como:
 
 ```tsx
-status: isAffiliate ? "PUBLISHED" : "DRAFT",
+<p className="text-xs text-muted-foreground">
+  Seu perfil é <span className="font-medium">único e global</span>. Alterações aqui são refletidas automaticamente em todas as comunidades que você participa.
+</p>
 ```
 
-Uma única linha alterada resolve o erro.
+Uma única linha de texto alterada, sem mudança estrutural.
 
