@@ -11,9 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import {
   Plus, Users, MessageSquare, Lock, Globe, Crown,
   Loader2, ArrowRight, Settings, ChevronRight,
+  LogOut, LogIn,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -42,7 +46,7 @@ interface CommunityCard {
 
 export default function MyCommunities() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const queryClient = useQueryClient();
 
@@ -170,18 +174,50 @@ export default function MyCommunities() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border/50 bg-card/50 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Minhas Comunidades</h1>
-            <p className="text-xs text-muted-foreground">{communities.length} comunidade{communities.length !== 1 ? "s" : ""}</p>
+      {/* Header — same as CircleLayout / Discovery */}
+      <header className="sticky top-0 z-30 bg-card border-b border-border">
+        <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
+          <div className="flex items-center gap-1 min-w-0">
+            <CommunitySwitcher currentCommunity={null} />
           </div>
-          <Button size="sm" onClick={() => setShowCreateModal(true)} className="gap-2" id="create-community-btn">
-            <Plus className="h-4 w-4" /> Nova Comunidade
-          </Button>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => setShowCreateModal(true)} className="gap-2" id="create-community-btn">
+              <Plus className="h-4 w-4" /> Nova Comunidade
+            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {(user.email || "U").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-sm font-medium text-foreground truncate">{user.email?.split("@")[0]}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                  <DropdownMenuItem onClick={() => navigate("/settings")} className="gap-2 text-sm cursor-pointer">
+                    <Settings className="h-4 w-4" /> Configurações
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="gap-2 text-sm text-destructive focus:text-destructive cursor-pointer">
+                    <LogOut className="h-4 w-4" /> Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="gap-2">
+                <LogIn className="h-4 w-4" /> Entrar
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {isLoading ? (
