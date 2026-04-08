@@ -1,89 +1,53 @@
 
 
-# Plano: Corrigir bug de "ida e volta" na aba Design
+# Plano: Alinhar thumbnails dos temas com o layout real do preview
 
-## Causa raiz
+## Diagnóstico
 
-O ciclo de save automático causa o UI "pular de volta" ao estado anterior:
+Comparei os 4 layouts dos cards de thumbnail (ThemeSection.tsx) com os 4 layouts reais do preview (StorefrontPreview.tsx). Encontrei inconsistências claras:
 
-1. Usuário clica em template/cor → `onUpdate()` → atualiza `localTheme` + dispara `debouncedSaveTheme`
-2. Após 1.5s, salva no banco → `onSuccess` → `queryClient.invalidateQueries(['storefront-theme'])`
-3. Refetch traz dados do banco → `useEffect([theme])` em Store.tsx (linha 803) reseta `localTheme` para dados do servidor
-4. `localTheme` resetado propaga como prop para `ThemeSection` → `useEffect([theme])` (linha 560) reseta `currentTheme`
-5. UI volta ao estado anterior — **"ida e volta"**
+| Layout | Thumbnail (card pequeno) | Preview real | Problema |
+|---|---|---|---|
+| **minimal** | Avatar centralizado vertical, blocos empilhados | Avatar horizontal (lado a lado com nome) | Layout completamente diferente |
+| **hero** | Gradient + avatar + pills "INSTAGRAM/YOUTUBE" + card com banner | Gradient + avatar centralizado + bio + ícones sociais | Pills e card de produto não existem no preview |
+| **banner** | Cover full com texto overlay, sem avatar visível no banner | Cover com avatar + nome sobrepostos no canto inferior | Avatar ausente no thumbnail |
+| **classic** | Avatar + dots genéricos + card de produto | Avatar + ícones sociais circulares + blocos | Dots não representam os ícones reais |
 
-Mesmo problema existe para `storefront` (linha 799).
+## Solução
 
-Além disso, os debounce timers **nunca são cancelados** — a cleanup function retornada é ignorada, então múltiplos cliques disparam múltiplos saves.
+Reescrever os 4 componentes de thumbnail (`ClassicCard`, `HeroCard`, `BannerCard`, `MinimalCard`) para que reflitam fielmente a estrutura do preview real, em miniatura.
 
-## Correção (Store.tsx)
+### Mudanças por layout
 
-### 1. Não resetar local state quando refetch acontecer após save
+**MinimalCard** — Trocar de vertical centralizado para horizontal:
+- Avatar pequeno à esquerda + nome à direita (igual preview `minimal`)
+- Bio truncada abaixo do nome
+- Blocos genéricos abaixo
 
-Substituir os `useEffect` ingênuos por lógica que só sincroniza quando o dado vem pela primeira vez (não após um save local):
+**HeroCard** — Remover pills e card com banner:
+- Manter gradient no topo + avatar centralizado
+- Adicionar bio curta centralizada
+- Substituir pills por ícones sociais pequenos (círculos)
+- Bloco genérico simples abaixo
 
-```typescript
-// Usar ref para saber se o save local está pendente
-const localThemeDirty = useRef(false);
-const localStorefrontDirty = useRef(false);
+**BannerCard** — Adicionar avatar sobre o banner:
+- Manter cover image com overlay gradient
+- Adicionar avatar circular + nome no canto inferior do banner (igual preview)
+- Bio abaixo do banner
+- Blocos genéricos
 
-useEffect(() => {
-  if (storefront && !localStorefrontDirty.current) {
-    setLocalStorefront(storefront);
-  }
-}, [storefront]);
+**ClassicCard** — Trocar dots por ícones sociais:
+- Manter avatar centralizado
+- Substituir 3 dots genéricos por ícones sociais circulares estilizados
+- Bloco de produto simplificado
 
-useEffect(() => {
-  if (!localThemeDirty.current) {
-    setLocalTheme(theme);
-  }
-}, [theme]);
-```
-
-Marcar `dirty = true` quando o usuário edita, e `dirty = false` quando o save completa com sucesso.
-
-### 2. Corrigir debounce — cancelar timeout anterior
-
-Usar `useRef` para armazenar o timer e limpar o anterior antes de criar um novo:
-
-```typescript
-const themeTimerRef = useRef<ReturnType<typeof setTimeout>>();
-const storefrontTimerRef = useRef<ReturnType<typeof setTimeout>>();
-
-const debouncedSaveTheme = useCallback((data: Partial<StorefrontTheme>) => {
-  setSaveStatus("unsaved");
-  localThemeDirty.current = true;
-  clearTimeout(themeTimerRef.current);
-  themeTimerRef.current = setTimeout(() => {
-    saveThemeMutation.mutate(data);
-  }, 1500);
-}, [saveThemeMutation]);
-```
-
-### 3. Limpar dirty flag no onSuccess das mutations
-
-```typescript
-// saveThemeMutation onSuccess:
-onSuccess: () => {
-  setSaveStatus("saved");
-  localThemeDirty.current = false;
-  queryClient.invalidateQueries({ queryKey: ["storefront-theme"] });
-},
-```
-
-### 4. Remover invalidateQueries do onSuccess (opcional mas recomendado)
-
-Como o `localTheme` já tem o estado correto, o `invalidateQueries` é desnecessário e causa o refetch que gera o "pulo". Alternativa: manter o invalidate mas com a proteção do dirty flag (opção escolhida acima — mais segura).
-
-## Arquivos alterados
+## Arquivo alterado
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/Store.tsx` | Adicionar refs para dirty flags e timer refs; corrigir debounce; proteger useEffects de sync |
+| `src/components/storefront/ThemeSection.tsx` | Reescrever `ClassicCard`, `HeroCard`, `BannerCard`, `MinimalCard` para espelhar os layouts do `StorefrontPreview.tsx` |
 
-## Resultado esperado
+## Resultado
 
-- Clicar em template/cor aplica imediatamente sem "pular de volta"
-- Auto-save continua funcionando após 1.5s de inatividade
-- Múltiplos cliques rápidos cancelam saves anteriores (só o último executa)
+As imagens dos temas no carrossel ficam visualmente consistentes com o que o usuário vê no preview à direita ao selecionar cada tema.
 
