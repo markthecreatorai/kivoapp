@@ -21,9 +21,10 @@ interface CommunitySwitcherProps {
     slug: string;
     icon_url?: string | null;
   } | null;
+  onCreateCommunity?: () => void;
 }
 
-export default function CommunitySwitcher({ currentCommunity }: CommunitySwitcherProps) {
+export default function CommunitySwitcher({ currentCommunity, onCreateCommunity }: CommunitySwitcherProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
@@ -68,7 +69,9 @@ export default function CommunitySwitcher({ currentCommunity }: CommunitySwitche
   const handleCreate = () => {
     setOpen(false);
     setSearch("");
-    if (currentWorkspace) {
+    if (onCreateCommunity) {
+      onCreateCommunity();
+    } else if (currentWorkspace) {
       navigate("/circles");
     } else {
       navigate("/onboarding");

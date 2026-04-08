@@ -180,7 +180,7 @@ export default function MyCommunities() {
       <header className="sticky top-0 z-30 bg-card border-b border-border">
         <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
           <div className="flex items-center gap-1 min-w-0">
-            <CommunitySwitcher currentCommunity={null} />
+            <CommunitySwitcher currentCommunity={null} onCreateCommunity={() => setShowCreateModal(true)} />
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
