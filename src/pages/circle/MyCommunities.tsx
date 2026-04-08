@@ -11,9 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import {
   Plus, Users, MessageSquare, Lock, Globe, Crown,
   Loader2, ArrowRight, Settings, ChevronRight,
+  LogOut, LogIn,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
