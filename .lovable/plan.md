@@ -1,63 +1,73 @@
 
 
-# Plano: Corrigir Bug de Order Status + Cenário de Reembolso
+# Plano: Sincronizar Perfil (avatar, nome) entre Comunidades
 
-## Causa Raiz Identificada
+## Problema
 
-O bug de "order fica PENDING após pagamento aprovado" tem causa raiz clara nos logs:
+Cada `community_members` row tem seu próprio `avatar_url` e `display_name` independentes. Quando o usuário troca de comunidade, o avatar/nome pode estar vazio em uma e preenchido em outra. Dados confirmados:
 
-```text
-"new row for relation 'orders' violates check constraint 'orders_status_check'"
+- `creatoracademyfree`: avatar preenchido, display_name "Lucas Carrijo"
+- `creatoracademyceo`: avatar NULL, display_name "Lucas Carrijo"
+
+Não existe mecanismo para sincronizar dados de perfil entre comunidades do mesmo usuário.
+
+## Solução
+
+Criar um trigger no banco que, ao atualizar `avatar_url` ou `display_name` em qualquer `community_members`, propaga automaticamente para todas as outras memberships do mesmo `user_id` (onde `sync_with_kivo = true`). Também atualizar a RPC `join_community` para copiar avatar/display_name de memberships existentes.
+
+## Passos
+
+### 1. Migration SQL
+
+**a) Função `sync_member_profile_across_communities`** — trigger AFTER UPDATE em `community_members`:
+- Quando `avatar_url` ou `display_name` mudar, atualizar todas as outras rows do mesmo `user_id` onde `sync_with_kivo IS NOT FALSE`
+- Usar flag para evitar loop infinito (pg_trigger_depth)
+
+**b) Atualizar RPC `join_community`** para:
+- Ao criar novo membro, buscar `avatar_url` e `display_name` da membership mais recente do mesmo `user_id` (fallback)
+- Preencher automaticamente se os valores não foram fornecidos
+
+**c) Data fix** — sincronizar memberships existentes:
+- Para cada `user_id` com múltiplas memberships, copiar o `avatar_url` mais recente (não-null) para as demais
+
+### 2. Frontend — Nenhuma mudança necessária
+
+O frontend já lê `avatar_url` de `community_members`. A sincronização acontece no banco, transparente para o app.
+
+### 3. Validação
+
+- Após migration, conferir que `creatoracademyceo` terá o mesmo avatar de `creatoracademyfree`
+- Testar: atualizar avatar em uma comunidade → confirmar propagação para outras
+
+## Detalhes Técnicos
+
+```sql
+-- Trigger function (usa pg_trigger_depth para evitar recursão)
+CREATE OR REPLACE FUNCTION sync_member_profile_across_communities()
+RETURNS trigger AS $$
+BEGIN
+  IF pg_trigger_depth() > 1 THEN RETURN NEW; END IF;
+  
+  UPDATE community_members
+  SET avatar_url = COALESCE(NEW.avatar_url, avatar_url),
+      display_name = COALESCE(NULLIF(NEW.display_name,''), display_name)
+  WHERE user_id = NEW.user_id
+    AND id != NEW.id
+    AND (sync_with_kivo IS NOT FALSE);
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
-
-A constraint CHECK na tabela `orders` aceita apenas:
-- `PENDING`, `PAID`, `CANCELLED`, `REFUNDED`
-
-Mas o código usa:
-- `COMPLETED` (em create-payment e webhook-asaas)
-- `FAILED` (em create-payment e webhook-asaas)
-- `CANCELED` (em webhook-asaas — note a diferença: CANCELED vs CANCELLED)
-- `DISPUTED` (em webhook-asaas para chargebacks)
-
-## Bugs Secundários no Fluxo de Reembolso
-
-1. **Inserção no `refunds`**: O webhook `handleRefunded` não envia `requested_at` nem `updated_at` (ambos NOT NULL), causando falha silenciosa no INSERT.
-2. **Status inconsistente**: O webhook tenta gravar `REFUNDED` no orders — esse valor já existe na constraint, então funciona. Mas se o INSERT em `refunds` falhar, o reembolso fica sem registro.
-
-## Correções Necessárias
-
-### 1. Migration SQL — Corrigir CHECK constraint
-Alterar `orders_status_check` para incluir todos os status usados pelo sistema:
-- `PENDING`, `PAID`, `COMPLETED`, `FAILED`, `CANCELED`, `CANCELLED`, `REFUNDED`, `DISPUTED`
-
-### 2. Edge Function `webhook-asaas` — Corrigir `handleRefunded`
-Adicionar `requested_at` e `updated_at` no INSERT de `refunds`:
-```
-requested_at: new Date().toISOString(),
-updated_at: new Date().toISOString(),
-```
-
-### 3. Edge Function `create-payment` — Nenhuma mudança necessária
-O código já tenta gravar `COMPLETED` e faz log do erro. Com a constraint corrigida, o fluxo vai funcionar.
-
-### 4. Corrigir orders existentes (data fix)
-Atualizar as ~10 orders com payment SUCCEEDED que ficaram PENDING para COMPLETED via migration.
-
-## Validação Pós-Fix
-
-1. Redeployar `webhook-asaas`
-2. Testar pagamento cartão via `create-payment` → confirmar order = COMPLETED
-3. Simular webhook de reembolso → confirmar refund registrado, entitlement revogado, ledger atualizado
 
 ## Arquivos Alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `supabase/migrations/` (nova) | DROP + ADD constraint, data fix |
-| `supabase/functions/webhook-asaas/index.ts` | Adicionar campos obrigatórios no INSERT de refunds |
+| `supabase/migrations/` (nova) | Trigger de sync + update join_community RPC + data fix |
 
 ## Riscos
 
-- Nenhum risco de regressão — a constraint está sendo expandida, não restrita
-- Orders já com entitlements corretos — só o status está desatualizado
+- Nenhum risco de regressão — trigger só atua em UPDATE de avatar/display_name
+- Usuários com `sync_with_kivo = false` são respeitados (não recebem propagação)
 
