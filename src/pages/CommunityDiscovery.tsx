@@ -166,7 +166,7 @@ export default function CommunityDiscovery() {
       </header>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 py-8 w-full">
+      <div className="max-w-5xl mx-auto px-4 py-8 w-full pt-[72px]">
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">Descubra comunidades</h1>
           <p className="text-muted-foreground mt-2">
