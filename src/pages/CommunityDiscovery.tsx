@@ -202,22 +202,6 @@ export default function CommunityDiscovery() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2 mb-6 flex-wrap">
-          {([{ key: "trending", label: "Em alta" }, { key: "newest", label: "Recentes" }, { key: "members", label: "Mais membros" }] as const).map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setSort(s.key)}
-              className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium transition-colors border",
-                sort === s.key
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
 
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
