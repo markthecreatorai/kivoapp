@@ -22,6 +22,7 @@ import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { trackEvent } from "@/lib/tracking";
 import type { Database } from "@/integrations/supabase/types";
+import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
 
 type ProductType = Database["public"]["Enums"]["product_type"];
 
@@ -120,11 +121,11 @@ const PRODUCT_FORMATS: ProductFormatConfig[] = [
   {
     id: "affiliate",
     dbType: "DIGITAL",
-    title: "Link de Afiliado",
-    description: "Promova um link de afiliado ou oferta externa com rastreamento",
-    icon: Share2,
-    iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
-    iconColor: "text-emerald-600 dark:text-emerald-400",
+    title: "Link de Afiliado Kivo",
+    description: "Indique a Kivo e receba 20% de comissão recorrente sobre cada assinatura",
+    icon: Share2, // will be overridden with custom logo in render
+    iconBg: "bg-transparent",
+    iconColor: "",
   },
 ];
 
