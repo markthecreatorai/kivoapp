@@ -447,7 +447,14 @@ function CoverflowSlider({ selectedKey, onSelect }: { selectedKey: string; onSel
       {/* Stage — flat, no perspective, overflow hidden to clip far cards */}
       <div
         className="relative w-full"
-        style={{ height: 370, overflow: "hidden" }}
+        style={{
+          height: 370,
+          overflow: "hidden",
+          maskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent), linear-gradient(to bottom, transparent, black 8%, black 92%, transparent)",
+          maskComposite: "intersect",
+          WebkitMaskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent), linear-gradient(to bottom, transparent, black 8%, black 92%, transparent)",
+          WebkitMaskComposite: "source-in" as any,
+        }}
       >
         {TEMPLATES.map((template, index) => {
           let offset = index - currentIndex;
