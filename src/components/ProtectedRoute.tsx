@@ -18,11 +18,24 @@ export default function ProtectedRoute({
   const { currentWorkspace, loading: workspaceLoading, fetchError } = useWorkspace();
   const location = useLocation();
 
-  // While auth/workspace loads, render nothing — the persistent layout
-  // (sidebar + topbar) stays mounted. Only the inner content is blank
-  // for a brief moment, avoiding a full white-screen flash.
+  // Show a minimal loading skeleton while auth/workspace resolves
   if (authLoading || (user && workspaceLoading)) {
-    return null;
+    return (
+      <div className="p-6 space-y-6 animate-in fade-in-0 duration-200">
+        <div className="space-y-2">
+          <div className="h-7 w-48 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-72 rounded bg-muted animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="h-3 w-20 rounded bg-muted animate-pulse" />
+              <div className="h-6 w-16 rounded bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   // Redirect to login if not authenticated

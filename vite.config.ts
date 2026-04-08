@@ -21,22 +21,16 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id, { getModuleInfo }) {
+        manualChunks(id) {
           if (id.includes("node_modules")) {
+            // Heavy, truly independent libs — safe to split
             if (id.includes("zxcvbn")) return "vendor-zxcvbn";
-            if (id.includes("react-dom")) return "vendor-react";
-            if (id.includes("react-router-dom")) return "vendor-react";
-            if (id.includes("/react/")) return "vendor-react";
-            if (id.includes("@radix-ui")) return "vendor-ui";
-            if (id.includes("class-variance-authority") || id.includes("clsx") || id.includes("tailwind-merge")) return "vendor-ui";
             if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-            if (id.includes("@tiptap") || id.includes("prosemirror") || id.includes("@tiptap/pm")) return "vendor-editor";
-            if (id.includes("@tanstack/react-query")) return "vendor-query";
-            if (id.includes("@supabase")) return "vendor-supabase";
-            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("@tiptap") || id.includes("prosemirror")) return "vendor-editor";
             if (id.includes("date-fns")) return "vendor-date";
-            if (id.includes("zod") || id.includes("react-hook-form") || id.includes("@hookform")) return "vendor-forms";
-            if (id.includes("sonner") || id.includes("vaul") || id.includes("cmdk") || id.includes("embla-carousel")) return "vendor-misc";
+            // Everything else (react, radix, supabase, lucide, etc.)
+            // stays in the default chunk graph — no forced split that
+            // can break module evaluation order.
           }
         },
       },
