@@ -536,24 +536,6 @@ export function SettingsProfile() {
           </CardContent>
         </Card>
 
-        {/* Badge toggle */}
-        <Card className="bg-card border border-border/50 shadow-sm rounded-xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Outros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Badge "Feito com Kivo"</p>
-                <p className="text-xs text-muted-foreground">Mostrar selo na sua loja pública</p>
-              </div>
-              <Switch
-                checked={showKoraBadge}
-                onCheckedChange={(v) => { setShowKoraBadge(v); setIsDirty(true); }}
-              />
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Save CTA — sticky on mobile */}
         <div className={cn(
