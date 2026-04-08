@@ -169,82 +169,72 @@ const COLOR_PRESETS = [
 const MOCK_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&h=128&q=80";
 const MOCK_BANNER = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80";
 
-// ─── LAYOUT A: Classic (circular avatar, centered) ────────────────────────────
+// ─── LAYOUT A: Classic (centered avatar + social icons + product cards) ───────
 function ClassicCard({ t }: { t: Template }) {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      {/* Notch */}
-      <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 relative z-10">
-        <div className="w-10 h-1 rounded-full opacity-20" style={{ backgroundColor: t.text }} />
-      </div>
-      <div className="flex flex-col items-center px-3 flex-1 overflow-hidden relative z-10">
+      <div className="flex flex-col items-center px-3 pt-6 flex-1 overflow-hidden">
         {/* Avatar */}
-        <div className="w-14 h-14 rounded-full mt-2 mb-2 shrink-0 shadow-md border-2" style={{ borderColor: t.bg }}>
+        <div className="w-14 h-14 rounded-full mb-2 shrink-0 shadow-lg ring-2 ring-white">
           <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
         </div>
         <div className="text-[11px] font-bold mb-0.5 text-center" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
-        <div className="text-[7.5px] mb-3 opacity-60 text-center" style={{ color: t.text }}>Creator & Entrepreneur</div>
-        {/* Social dots */}
-        <div className="flex gap-2 mb-4">
-          {[0, 1, 2].map(i => <div key={i} className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: t.text, opacity: 0.15 }} />)}
+        <div className="text-[7px] mb-2 opacity-70 text-center" style={{ color: t.text }}>Creator & Entrepreneur</div>
+        {/* Social icons */}
+        <div className="flex gap-1.5 mb-3">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: t.text + '15' }}>
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.text, opacity: 0.5 }} />
+            </div>
+          ))}
         </div>
-        {/* Card 1 - full */}
-        <div className="w-full rounded-xl overflow-hidden mb-2 shadow-sm border" style={{ backgroundColor: t.cardBg, borderColor: t.primary + '20' }}>
-          <div className="w-full h-9 bg-black/5" />
-          <div className="px-2.5 py-2">
-            <div className="w-16 h-1.5 rounded-full mb-2" style={{ backgroundColor: t.text, opacity: 0.4 }} />
-            <div className="w-full h-6 rounded-[6px] flex items-center justify-center transition-all hover:opacity-90" style={{ backgroundColor: t.primary }}>
-              <span className="text-white text-[7px] font-bold tracking-wide">COMPRAR AGORA</span>
+        {/* Product card */}
+        <div className="w-full rounded-lg overflow-hidden mb-2 border" style={{ borderColor: t.primary + '40' }}>
+          <div className="w-full h-10 bg-black/5" />
+          <div className="p-2">
+            <div className="w-14 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.4 }} />
+            <div className="w-full h-5 rounded-lg flex items-center justify-center" style={{ backgroundColor: t.primary }}>
+              <span className="text-white text-[6px] font-bold">Ver produto</span>
             </div>
           </div>
         </div>
-        {/* Card 2 - list style */}
-        <div className="w-full rounded-xl px-2.5 py-2 flex items-center gap-2 shadow-sm border" style={{ backgroundColor: t.cardBg, borderColor: t.primary + '20' }}>
-          <div className="w-6 h-7 rounded-[4px] bg-black/5 shrink-0" />
-          <div className="flex-1">
-            <div className="w-12 h-1.5 rounded-full mb-1" style={{ backgroundColor: t.text, opacity: 0.4 }} />
-            <div className="w-8 h-1 rounded-full" style={{ backgroundColor: t.text, opacity: 0.2 }} />
-          </div>
+        {/* Link block */}
+        <div className="w-full rounded-lg py-2 border text-center" style={{ borderColor: t.primary, }}>
+          <span className="text-[6.5px] font-medium" style={{ color: t.text }}>Link externo</span>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── LAYOUT B: Hero (Top gradient fading into BG, avatar over gradient) ────────
+// ─── LAYOUT B: Hero (gradient top + centered avatar + bio) ───────────────────
 function HeroCard({ t }: { t: Template }) {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      {/* Gradient Hero */}
-      <div className="absolute top-0 left-0 right-0 h-28" style={{ background: `linear-gradient(to bottom, ${t.primary}ee, ${t.bg})` }} />
-      {/* Notch */}
-      <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 relative z-10">
-        <div className="w-10 h-1 rounded-full bg-black/10" />
-      </div>
-      
-      <div className="flex flex-col items-center px-3 pt-3 flex-1 overflow-hidden relative z-10">
+      {/* Gradient */}
+      <div className="absolute top-0 left-0 right-0 h-24" style={{ background: `linear-gradient(to bottom, ${t.primary}dd, ${t.bg})` }} />
+      <div className="flex flex-col items-center px-3 pt-6 flex-1 overflow-hidden relative z-10">
         {/* Avatar */}
-        <div className="w-16 h-16 rounded-full mb-2 shrink-0 shadow-lg border-2" style={{ borderColor: t.bg }}>
+        <div className="w-14 h-14 rounded-full mb-2 shrink-0 shadow-lg ring-2 ring-white">
           <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
         </div>
-        <div className="text-[12px] font-bold mb-0.5 text-center" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
-        <div className="text-[8px] mb-3 opacity-60 text-center" style={{ color: t.text }}>I help you build your dream store 🚀</div>
-        
-        {/* Links */}
-        <div className="w-full flex gap-1.5 mb-3">
-          <div className="flex-1 rounded-full py-1.5 flex justify-center items-center shadow-sm border text-[6px] font-bold" style={{ borderColor: t.primary + '30', backgroundColor: t.cardBg, color: t.text }}>INSTAGRAM</div>
-          <div className="flex-1 rounded-full py-1.5 flex justify-center items-center shadow-sm border text-[6px] font-bold" style={{ borderColor: t.primary + '30', backgroundColor: t.cardBg, color: t.text }}>YOUTUBE</div>
+        <div className="text-[11px] font-bold mb-0.5 text-center" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
+        <div className="text-[7px] mb-3 opacity-70 text-center leading-relaxed max-w-[85%]" style={{ color: t.text }}>I help you build your dream store 🚀</div>
+        {/* Social icons */}
+        <div className="flex gap-1.5 mb-3">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: t.text + '15' }}>
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.text, opacity: 0.5 }} />
+            </div>
+          ))}
         </div>
-
-        {/* Big visual block */}
-        <div className="w-full rounded-[14px] overflow-hidden shadow-sm border" style={{ backgroundColor: t.cardBg, borderColor: t.primary + '20' }}>
-          <div className="w-full h-[60px] relative">
-            <img src={MOCK_BANNER} className="w-full h-full object-cover" />
-            <div className="absolute bottom-2 left-2 text-white font-bold text-[8px] drop-shadow-md">Mentoria Elite</div>
-          </div>
-          <div className="px-2.5 py-2">
-            <div className="w-full h-6 rounded-[8px] flex items-center justify-center transition-all bg-gradient-to-r" style={{ backgroundImage: `linear-gradient(to right, ${t.primary}, ${t.secondary})` }}>
-              <span className="text-white text-[7px] font-bold">INSCREVER-SE</span>
+        {/* Product card */}
+        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.primary + '40' }}>
+          <div className="w-full h-10 bg-black/5" />
+          <div className="p-2">
+            <div className="w-14 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.4 }} />
+            <div className="w-full h-5 rounded-lg flex items-center justify-center" style={{ backgroundColor: t.primary }}>
+              <span className="text-white text-[6px] font-bold">Ver produto</span>
             </div>
           </div>
         </div>
@@ -253,85 +243,72 @@ function HeroCard({ t }: { t: Template }) {
   );
 }
 
-// ─── LAYOUT C: Banner (Full Cover image overlay with white text) ──────────────
+// ─── LAYOUT C: Banner (cover image + avatar overlay at bottom) ───────────────
 function BannerCard({ t }: { t: Template }) {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      {/* Banner / Cover */}
-      <div className="absolute top-0 left-0 right-0 h-[140px] z-0">
-        <img src={MOCK_BANNER} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0820] to-transparent opacity-90" style={{ '--tw-gradient-from': `${t.bg} var(--tw-gradient-from-position)` } as any} />
-      </div>
-
-      {/* Notch */}
-      <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 relative z-10">
-        <div className="w-10 h-1 rounded-full bg-white/30" />
-      </div>
-
-      <div className="flex flex-col px-3 pt-[60px] flex-1 overflow-hidden relative z-10">
-        {/* Text over banner */}
-        <div className="pb-4">
-          <div className="text-[16px] font-bold leading-none mb-1 shadow-sm" style={{ color: '#fff', fontFamily: t.font }}>Lucas Carrijo</div>
-          <div className="text-[8px] opacity-80" style={{ color: '#fff' }}>@lucascarrijo</div>
+      {/* Banner with gradient overlay */}
+      <div className="relative w-full h-[80px] shrink-0">
+        <img src={MOCK_BANNER} className="w-full h-full object-cover" alt="banner" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        {/* Avatar + name over banner */}
+        <div className="absolute bottom-2 left-2.5 flex items-end gap-2">
+          <div className="w-9 h-9 rounded-full shrink-0 ring-1 ring-white shadow-lg">
+            <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
+          </div>
+          <div className="pb-0.5">
+            <div className="text-[9px] font-bold text-white leading-tight" style={{ fontFamily: t.font }}>Lucas Carrijo</div>
+          </div>
         </div>
-
-        {/* Content list */}
-        <div className="flex flex-col gap-2 relative z-20">
-          {[1,2].map(i => (
-             <div key={i} className="w-full rounded-xl px-2.5 py-2.5 flex items-center gap-2.5 shadow-md border backdrop-blur-md" style={{ backgroundColor: t.cardBg, borderColor: 'rgba(255,255,255,0.05)' }}>
-               <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0 bg-black/20">
-                 <img src={MOCK_AVATAR} className="w-full h-full object-cover opacity-80" />
-               </div>
-               <div className="flex-1">
-                 <div className="w-16 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.8 }} />
-                 <div className="w-8 h-1 rounded-full" style={{ backgroundColor: t.text, opacity: 0.4 }} />
-               </div>
-               <div className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center opacity-80" style={{ backgroundColor: t.primary }}>
-                 <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-               </div>
-             </div>
-          ))}
+      </div>
+      {/* Bio */}
+      <div className="px-3 pt-2 pb-1">
+        <div className="text-[7px] opacity-70" style={{ color: t.text }}>Creator & Entrepreneur</div>
+      </div>
+      {/* Content blocks */}
+      <div className="flex flex-col gap-1.5 px-3 flex-1 overflow-hidden">
+        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.primary + '40' }}>
+          <div className="w-full h-9 bg-black/5" />
+          <div className="p-2">
+            <div className="w-14 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.4 }} />
+            <div className="w-full h-5 rounded-lg flex items-center justify-center" style={{ backgroundColor: t.primary }}>
+              <span className="text-white text-[6px] font-bold">Ver produto</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── LAYOUT D: Minimal (Clean, small inline avatar, refined UI) ───────────────
+// ─── LAYOUT D: Minimal (horizontal avatar + name, clean) ─────────────────────
 function MinimalCard({ t }: { t: Template }) {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      {/* Notch */}
-      <div className="flex justify-center pt-2.5 pb-2 flex-shrink-0 relative z-10">
-        <div className="w-10 h-1 rounded-full opacity-10" style={{ backgroundColor: t.text }} />
-      </div>
-      
-      <div className="flex flex-col px-4 pt-1 flex-1 overflow-hidden relative z-10">
-        {/* Compact Header */}
-        <div className="flex flex-col items-center mb-5">
-          <div className="w-10 h-10 rounded-full mb-2 shrink-0 border" style={{ borderColor: t.text + '20' }}>
-            <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" />
-          </div>
-          <div className="text-[12px] font-bold text-center" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
+      {/* Horizontal header */}
+      <div className="flex items-center gap-2.5 px-3 pt-6">
+        <div className="w-10 h-10 rounded-full shrink-0 ring-1 shadow-sm" style={{ ringColor: t.text + '15' }}>
+          <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
         </div>
-
-        {/* Subtle Links Blocks */}
-        <div className="space-y-2">
-          <div className="w-full rounded-[10px] px-3 py-2.5 flex items-center justify-between border" style={{ backgroundColor: t.cardBg, borderColor: t.text + '10' }}>
-             <div className="text-[7.5px] font-bold" style={{ color: t.text }}>Meus Serviços</div>
-             <div className="w-3 h-3 rounded-sm flex items-center justify-center" style={{ backgroundColor: t.text + '10' }}>
-               <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke={t.text} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-             </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-bold truncate" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
+          <div className="text-[7px] opacity-60 truncate" style={{ color: t.text }}>Creator & Entrepreneur</div>
+        </div>
+      </div>
+      {/* Content blocks */}
+      <div className="flex flex-col gap-1.5 px-3 pt-4 flex-1 overflow-hidden">
+        {/* Link block */}
+        <div className="w-full rounded-lg py-2 border text-center" style={{ borderColor: t.primary }}>
+          <span className="text-[6.5px] font-medium" style={{ color: t.text }}>Meus Serviços</span>
+        </div>
+        {/* Product card */}
+        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.primary + '40' }}>
+          <div className="w-full h-[36px] bg-black/5 flex items-center justify-center">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={t.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity={0.3}><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4Z"/></svg>
           </div>
-          
-          <div className="w-full rounded-[10px] overflow-hidden border" style={{ backgroundColor: t.cardBg, borderColor: t.text + '10' }}>
-             <div className="w-full h-[50px] bg-black/5 flex items-center justify-center">
-               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={t.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity={0.3}><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4Z"/></svg>
-             </div>
-             <div className="px-3 py-2 flex items-center justify-between">
-               <div className="font-bold text-[7.5px]" style={{ color: t.text }}>YouTube Masterclass</div>
-               <div className="px-2 py-0.5 rounded-sm text-[5px] font-bold uppercase tracking-wider text-white" style={{ backgroundColor: t.primary }}>Assistir</div>
-             </div>
+          <div className="px-2 py-1.5 flex items-center justify-between">
+            <div className="w-14 h-1.5 rounded-full" style={{ backgroundColor: t.text, opacity: 0.4 }} />
+            <div className="px-1.5 py-0.5 rounded-sm text-[5px] font-bold text-white" style={{ backgroundColor: t.primary }}>Assistir</div>
           </div>
         </div>
       </div>
