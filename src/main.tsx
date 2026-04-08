@@ -1,18 +1,11 @@
 import { createRoot } from "react-dom/client";
 import { installGlobalErrorHandlers } from "./lib/globalErrorHandlers";
-import App from "./App.tsx";
 import "./index.css";
 
 // Install global error handlers BEFORE anything else
 installGlobalErrorHandlers();
 
-try {
-  const rootEl = document.getElementById("root");
-  if (!rootEl) throw new Error("Root element not found");
-
-  createRoot(rootEl).render(<App />);
-} catch (err) {
-  console.error("App boot error:", err);
+function showBootError() {
   const rootEl = document.getElementById("root");
   if (rootEl) {
     rootEl.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,sans-serif;background:#fafafa;color:#111">
@@ -25,3 +18,15 @@ try {
     </div>`;
   }
 }
+
+// Dynamic import so chunk evaluation errors are caught
+import("./App")
+  .then(({ default: App }) => {
+    const rootEl = document.getElementById("root");
+    if (!rootEl) throw new Error("Root element not found");
+    createRoot(rootEl).render(<App />);
+  })
+  .catch((err) => {
+    console.error("App boot error:", err);
+    showBootError();
+  });

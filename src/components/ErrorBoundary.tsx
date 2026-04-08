@@ -99,7 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 Voltar para início
               </button>
             </div>
-            {process.env.NODE_ENV === "development" && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <pre
                 style={{
                   marginTop: 24,
