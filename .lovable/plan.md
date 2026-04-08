@@ -1,73 +1,79 @@
 
+Diagnóstico fechado
 
-# Plano: Sincronizar Perfil (avatar, nome) entre Comunidades
+Do I know what the issue is? Sim.
 
-## Problema
+O problema real não é autenticação nem rota. O site publicado quebra antes de o React montar. A evidência é objetiva:
 
-Cada `community_members` row tem seu próprio `avatar_url` e `display_name` independentes. Quando o usuário troca de comunidade, o avatar/nome pode estar vazio em uma e preenchido em outra. Dados confirmados:
-
-- `creatoracademyfree`: avatar preenchido, display_name "Lucas Carrijo"
-- `creatoracademyceo`: avatar NULL, display_name "Lucas Carrijo"
-
-Não existe mecanismo para sincronizar dados de perfil entre comunidades do mesmo usuário.
-
-## Solução
-
-Criar um trigger no banco que, ao atualizar `avatar_url` ou `display_name` em qualquer `community_members`, propaga automaticamente para todas as outras memberships do mesmo `user_id` (onde `sync_with_kivo = true`). Também atualizar a RPC `join_community` para copiar avatar/display_name de memberships existentes.
-
-## Passos
-
-### 1. Migration SQL
-
-**a) Função `sync_member_profile_across_communities`** — trigger AFTER UPDATE em `community_members`:
-- Quando `avatar_url` ou `display_name` mudar, atualizar todas as outras rows do mesmo `user_id` onde `sync_with_kivo IS NOT FALSE`
-- Usar flag para evitar loop infinito (pg_trigger_depth)
-
-**b) Atualizar RPC `join_community`** para:
-- Ao criar novo membro, buscar `avatar_url` e `display_name` da membership mais recente do mesmo `user_id` (fallback)
-- Preencher automaticamente se os valores não foram fornecidos
-
-**c) Data fix** — sincronizar memberships existentes:
-- Para cada `user_id` com múltiplas memberships, copiar o `avatar_url` mais recente (não-null) para as demais
-
-### 2. Frontend — Nenhuma mudança necessária
-
-O frontend já lê `avatar_url` de `community_members`. A sincronização acontece no banco, transparente para o app.
-
-### 3. Validação
-
-- Após migration, conferir que `creatoracademyceo` terá o mesmo avatar de `creatoracademyfree`
-- Testar: atualizar avatar em uma comunidade → confirmar propagação para outras
-
-## Detalhes Técnicos
-
-```sql
--- Trigger function (usa pg_trigger_depth para evitar recursão)
-CREATE OR REPLACE FUNCTION sync_member_profile_across_communities()
-RETURNS trigger AS $$
-BEGIN
-  IF pg_trigger_depth() > 1 THEN RETURN NEW; END IF;
-  
-  UPDATE community_members
-  SET avatar_url = COALESCE(NEW.avatar_url, avatar_url),
-      display_name = COALESCE(NULLIF(NEW.display_name,''), display_name)
-  WHERE user_id = NEW.user_id
-    AND id != NEW.id
-    AND (sync_with_kivo IS NOT FALSE);
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+```text
+TypeError: Cannot read properties of undefined (reading 'forwardRef')
+at .../assets/vendor-ui-*.js
 ```
 
-## Arquivos Alterados
+No preview funciona porque ele usa o dev server. No publicado, o bundle estático de produção está falhando no chunk `vendor-ui`. Hoje a app também não consegue mostrar fallback nesses casos porque:
 
-| Arquivo | Mudança |
-|---|---|
-| `supabase/migrations/` (nova) | Trigger de sync + update join_community RPC + data fix |
+- `src/main.tsx` importa `App` estaticamente, então um erro de avaliação de módulo acontece antes de instalar os handlers globais
+- alguns guards ainda retornam `null`, então em travamentos de auth/workspace o DOM pode ficar visualmente vazio
+- `ErrorBoundary` usa `process.env.NODE_ENV` em Vite, o que é frágil para fallback de erro
 
-## Riscos
+Plano de correção
 
-- Nenhum risco de regressão — trigger só atua em UPDATE de avatar/display_name
-- Usuários com `sync_with_kivo = false` são respeitados (não recebem propagação)
+1. Corrigir a causa do crash de produção
+- Revisar `vite.config.ts`
+- Remover/simplificar o `manualChunks` agressivo que separa `react`, `@radix-ui` e utilitários de UI em chunks forçados
+- Deixar o Vite/Rollup montar o grafo normal, ou manter split só para libs realmente independentes (ex.: `zxcvbn`, editor, charts), sem quebrar a cadeia React/UI
 
+Motivo:
+o erro nasce no bundle publicado, e o ponto mais suspeito do projeto é exatamente a estratégia manual de chunking entre `vendor-react` e `vendor-ui`.
+
+2. Blindar o bootstrap para nunca virar tela branca
+- Alterar `src/main.tsx` para:
+  - instalar handlers globais primeiro
+  - fazer `import("./App")` dinamicamente
+  - em qualquer falha de import/render inicial, montar fallback crítico imediatamente
+
+Resultado esperado:
+mesmo que um chunk falhe ou um módulo quebre na importação, o usuário verá UI de erro com ação de recarregar, e não root vazio.
+
+3. Fortalecer os fallbacks de erro
+- Ajustar `src/components/ErrorBoundary.tsx`
+- Trocar `process.env.NODE_ENV` por `import.meta.env.DEV`
+- Garantir que o fallback não dependa de nada que possa falhar junto com o app principal
+
+4. Eliminar “blank states” silenciosos
+- Ajustar `src/components/ProtectedRoute.tsx` para não retornar `null` durante loading
+- Mostrar `PageSkeleton` ou fallback mínimo visível
+- Revisar redirects/guards que hoje retornam `null` enquanto dados carregam, especialmente:
+  - `ProtectedRoute`
+  - `CircleSettingsRedirect`
+  - `Onboarding` e outros fluxos onde a tela pode ficar vazia em estados intermediários
+
+5. Validar antes de publicar
+- Build de produção sem erro
+- Preview renderizando conteúdo na `/`
+- Publicado renderizando conteúdo na `/`
+- Console do publicado sem `forwardRef` error
+- Confirmar que o `#root` tem conteúdo visível
+- Validar também uma rota protegida para garantir que a troca não regrediu auth/roteamento
+
+Arquivos a alterar
+- `vite.config.ts`
+- `src/main.tsx`
+- `src/components/ErrorBoundary.tsx`
+- `src/components/ProtectedRoute.tsx`
+- possivelmente `src/App.tsx` e/ou componentes de redirect que ainda retornam `null`
+
+Critério de aceite
+- `https://kivostore.lovable.app/` abre com conteúdo visível
+- erro `forwardRef` no chunk publicado desaparece
+- em falha crítica, aparece UI de recuperação em vez de tela branca
+- preview e publicado ficam consistentes
+- autenticação e rotas continuam funcionando
+
+Resumo técnico curto do que será corrigido
+```text
+1. Remover a causa do crash no bundle de produção (chunk split de UI/React)
+2. Mover o bootstrap para import dinâmico protegido
+3. Substituir retornos nulos por fallback visível
+4. Garantir que erro crítico nunca resulte em root vazio
+```
