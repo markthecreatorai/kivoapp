@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 
 function CommunityCard({ community }: { community: any }) {
   const navigate = useNavigate();
@@ -75,6 +76,7 @@ function CommunityCard({ community }: { community: any }) {
 export default function CommunityDiscovery() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { avatarUrl, initials } = useUserAvatar();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "free" | "paid">("all");
   const [sort, setSort] = useState<"trending" | "newest" | "members">("trending");
@@ -123,8 +125,9 @@ export default function CommunityDiscovery() {
                 <DropdownMenuTrigger asChild>
                   <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={avatarUrl || ""} />
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {(user.email || "U").charAt(0).toUpperCase()}
+                        {initials}
                       </AvatarFallback>
                     </Avatar>
                   </button>

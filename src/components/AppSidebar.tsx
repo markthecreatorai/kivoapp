@@ -53,14 +53,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import kivoSymbol from "@/assets/kivo-symbol.svg";
 import { getMenuToolsState, optionalItems } from "@/lib/menuTools";
 import type React from "react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
-import { getInitials } from "@/lib/avatarUtils";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 
 /* ── Icon map for optional items ── */
 const iconMap: Record<string, React.ElementType> = {
@@ -115,29 +113,7 @@ export function AppSidebar() {
   const isAdmin = isAdminUser(user);
   const [menuToolsState, setLocalToolsState] = useState<Record<string, boolean>>(() => getMenuToolsState());
 
-  const { data: avatarUrl } = useQuery({
-    queryKey: ["sidebar-avatar", currentWorkspace?.id],
-    queryFn: async () => {
-      if (!currentWorkspace?.id) return null;
-      const { data } = await supabase
-        .from("storefronts")
-        .select("avatar_url")
-        .eq("workspace_id", currentWorkspace.id)
-        .maybeSingle();
-      return data?.avatar_url || null;
-    },
-    enabled: !!currentWorkspace?.id,
-    staleTime: 1000 * 60 * 10,
-  });
-
-  const resolvedAvatar =
-    avatarUrl || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
-
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split("@")[0] ||
-    "Usuário";
+  const { avatarUrl: resolvedAvatar, displayName, initials: avatarInitials } = useUserAvatar();
 
   useEffect(() => {
     const sync = () => setLocalToolsState(getMenuToolsState());
@@ -287,7 +263,7 @@ export function AppSidebar() {
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={resolvedAvatar || ""} />
                     <AvatarFallback className="text-xs font-semibold text-muted-foreground bg-muted">
-                      {getInitials(displayName, user?.email)}
+                      {avatarInitials}
                     </AvatarFallback>
                   </Avatar>
                 </button>
@@ -316,7 +292,7 @@ export function AppSidebar() {
               <Avatar className="h-9 w-9 flex-shrink-0">
                 <AvatarImage src={resolvedAvatar || ""} />
                 <AvatarFallback className="text-xs font-semibold text-muted-foreground bg-muted">
-                  {getInitials(displayName, user?.email)}
+                  {avatarInitials}
                 </AvatarFallback>
               </Avatar>
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{displayName}</span>
