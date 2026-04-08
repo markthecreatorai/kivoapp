@@ -237,9 +237,15 @@ export default function NewProduct() {
                 creatingId === format.id ? "opacity-60 scale-[0.98] border-primary" : "hover:border-primary/40 hover:shadow-sm"
               )}
             >
-              <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", format.iconBg, format.iconColor)}>
-                <format.icon className={cn("h-6 w-6", creatingId === format.id ? "animate-pulse" : "")} />
-              </div>
+              {format.id === "affiliate" ? (
+                <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 overflow-hidden">
+                  <img src={kivoReferralLogo} alt="Kivo" className="h-12 w-12 object-contain" />
+                </div>
+              ) : (
+                <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", format.iconBg, format.iconColor)}>
+                  <format.icon className={cn("h-6 w-6", creatingId === format.id ? "animate-pulse" : "")} />
+                </div>
+              )}
               <div className="flex-1">
                 <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
                   {format.title}
