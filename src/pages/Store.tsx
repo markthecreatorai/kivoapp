@@ -795,13 +795,19 @@ export default function Store() {
     enabled: !!currentWorkspace?.id,
   });
 
-  // Sync local state with fetched data
+  // Dirty flags — prevent refetch from overwriting pending local edits
+  const localStorefrontDirty = useRef(false);
+  const localThemeDirty = useRef(false);
+  const storefrontTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const themeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Sync local state with fetched data (only when not dirty)
   useEffect(() => {
-    if (storefront) setLocalStorefront(storefront);
+    if (storefront && !localStorefrontDirty.current) setLocalStorefront(storefront);
   }, [storefront]);
 
   useEffect(() => {
-    setLocalTheme(theme);
+    if (!localThemeDirty.current) setLocalTheme(theme);
   }, [theme]);
 
   const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
@@ -920,6 +926,7 @@ export default function Store() {
     },
     onSuccess: () => {
       setSaveStatus("saved");
+      localStorefrontDirty.current = false;
       queryClient.invalidateQueries({ queryKey: ["storefront"] });
     },
     onError: () => {
@@ -957,6 +964,7 @@ export default function Store() {
     },
     onSuccess: () => {
       setSaveStatus("saved");
+      localThemeDirty.current = false;
       queryClient.invalidateQueries({ queryKey: ["storefront-theme"] });
     },
     onError: () => {
@@ -965,12 +973,13 @@ export default function Store() {
     },
   });
 
-  // Debounced saves
+  // Debounced saves — cancel previous timer before starting new one
   const debouncedSaveStorefront = useCallback(
     (data: Partial<StorefrontData>) => {
       setSaveStatus("unsaved");
-      const t = setTimeout(() => saveStorefrontMutation.mutate(data), 1500);
-      return () => clearTimeout(t);
+      localStorefrontDirty.current = true;
+      clearTimeout(storefrontTimerRef.current);
+      storefrontTimerRef.current = setTimeout(() => saveStorefrontMutation.mutate(data), 1500);
     },
     [saveStorefrontMutation]
   );
@@ -978,8 +987,9 @@ export default function Store() {
   const debouncedSaveTheme = useCallback(
     (data: Partial<StorefrontTheme>) => {
       setSaveStatus("unsaved");
-      const t = setTimeout(() => saveThemeMutation.mutate(data), 1500);
-      return () => clearTimeout(t);
+      localThemeDirty.current = true;
+      clearTimeout(themeTimerRef.current);
+      themeTimerRef.current = setTimeout(() => saveThemeMutation.mutate(data), 1500);
     },
     [saveThemeMutation]
   );
