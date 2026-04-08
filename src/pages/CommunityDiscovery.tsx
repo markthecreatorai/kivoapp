@@ -63,14 +63,9 @@ function CommunityCard({ community }: { community: any }) {
           {community.description && <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">{community.description}</p>}
         </div>
         <div className="mt-auto pt-3">
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{community.member_count || 0}</span>
-            <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{community.post_count || 0}</span>
-            <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> ativa</span>
-          </div>
-          <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/circles/${community.slug}`); }}>
-            {accessInfo.cta}
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            {community.member_count || 0} Membros · {community.access_type === "OPEN" ? "Gratuito" : community.price_cents ? `R$${(community.price_cents / 100).toFixed(0)}/${community.billing_period === "yearly" ? "ano" : "mês"}` : "Gratuito"}
+          </p>
         </div>
       </div>
     </div>
