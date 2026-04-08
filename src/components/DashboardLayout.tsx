@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -18,9 +18,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Thin topbar — always mounted */}
-          <header className="h-11 flex items-center justify-between border-b border-border/30 bg-background/95 px-3 shrink-0">
-            <SidebarTrigger className="lg:inline-flex" />
+          {/* Thin topbar */}
+          <header className="h-11 flex items-center justify-end border-b border-border/30 bg-background/95 px-3 shrink-0">
             {!isMobile && (
               <div className="text-[11px] font-medium text-muted-foreground tracking-wide uppercase">
                 Kivo Dashboard
