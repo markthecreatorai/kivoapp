@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -132,6 +133,7 @@ const PRODUCT_FORMATS: ProductFormatConfig[] = [
 export default function NewProduct() {
   const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
+  const { user } = useAuth();
   const [creatingId, setCreatingId] = useState<string | null>(null);
   
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -139,11 +141,6 @@ export default function NewProduct() {
   const planInfo = usePlanLimits();
 
   const handleSelectFormat = async (format: ProductFormatConfig) => {
-    // Kivo affiliate → redirect to /referrals
-    if (format.id === "affiliate") {
-      navigate("/referrals");
-      return;
-    }
 
     if (!currentWorkspace?.id) {
       toast.error("Nenhum workspace ativo encontrado.");
@@ -163,19 +160,46 @@ export default function NewProduct() {
     }
 
     setCreatingId(format.id);
+
+    // For affiliate, auto-ensure referral profile exists and pre-fill product
+    let referralLink = "";
+    if (format.id === "affiliate" && user) {
+      const { data: refProfile } = await supabase
+        .from("referral_profiles")
+        .select("referral_link")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (refProfile?.referral_link) {
+        referralLink = refProfile.referral_link;
+      } else {
+        const baseName =
+          user.user_metadata?.full_name?.split(" ")[0]?.toLowerCase() ||
+          user.email?.split("@")[0]?.toLowerCase() ||
+          "creator";
+        const code = `${baseName}${Math.floor(Math.random() * 1000)}`.replace(/[^a-z0-9-]/g, "");
+        referralLink = `${window.location.origin}/?ref=${code}`;
+        await supabase.from("referral_profiles").insert({
+          user_id: user.id,
+          referral_code: code,
+          referral_link: referralLink,
+        });
+      }
+    }
     
     try {
+      const isAffiliate = format.id === "affiliate";
       // Cria o draft (rascunho) na tabela 'products' seguindo a especificação
-      const { data: product, error } = await supabase
-        .from("products")
-        .insert({
+      const insertData: any = {
           workspace_id: currentWorkspace.id,
           type: format.dbType,
-          status: "DRAFT",
-          name: "Novo Produto", 
-          slug: `novo-produto-${Date.now().toString(36)}`,
-          metadata: { format_id: format.id }
-        })
+          status: isAffiliate ? "ACTIVE" : "DRAFT",
+          name: isAffiliate ? "Link de Afiliado Kivo" : "Novo Produto", 
+          slug: isAffiliate ? `kivo-afiliado-${Date.now().toString(36)}` : `novo-produto-${Date.now().toString(36)}`,
+          metadata: { format_id: format.id, ...(isAffiliate && referralLink ? { referral_link: referralLink } : {}) },
+        };
+      const { data: product, error } = await supabase
+        .from("products")
+        .insert(insertData)
         .select("id")
         .single();
 
