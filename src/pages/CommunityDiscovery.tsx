@@ -44,9 +44,6 @@ function CommunityCard({ community }: { community: any }) {
           <img src={community.cover_image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-        <div className="absolute bottom-3 left-3">
-          <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", accessInfo.className)}>{accessInfo.label}</span>
-        </div>
       </div>
       <div className="p-4">
         <div className="flex items-start gap-3">
