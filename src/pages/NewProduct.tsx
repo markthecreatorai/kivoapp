@@ -189,18 +189,17 @@ export default function NewProduct() {
     try {
       const isAffiliate = format.id === "affiliate";
       // Cria o draft (rascunho) na tabela 'products' seguindo a especificação
-      const { data: product, error } = await supabase
-        .from("products")
-        .insert({
+      const insertData: any = {
           workspace_id: currentWorkspace.id,
           type: format.dbType,
           status: isAffiliate ? "ACTIVE" : "DRAFT",
           name: isAffiliate ? "Link de Afiliado Kivo" : "Novo Produto", 
           slug: isAffiliate ? `kivo-afiliado-${Date.now().toString(36)}` : `novo-produto-${Date.now().toString(36)}`,
-          metadata: { format_id: format.id },
-          ...(isAffiliate && referralLink ? { redirect_url: referralLink } : {}),
-          ...(isAffiliate ? { cover_url: "" } : {}),
-        })
+          metadata: { format_id: format.id, ...(isAffiliate && referralLink ? { referral_link: referralLink } : {}) },
+        };
+      const { data: product, error } = await supabase
+        .from("products")
+        .insert(insertData)
         .select("id")
         .single();
 
