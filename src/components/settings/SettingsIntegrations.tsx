@@ -32,10 +32,11 @@ const DEFAULT_TEMPLATES: Record<string, { label: string; template: string }> = {
 };
 
 const OTHER_INTEGRATIONS = [
-  { id: "google-calendar", name: "Google Calendar", description: "Sincronize sessões de coaching com seu calendário", icon: Calendar, connected: false },
-  { id: "zoom", name: "Zoom", description: "Crie links de reunião automaticamente para calls", icon: Video, connected: false },
-  { id: "zapier", name: "Zapier", description: "Conecte com milhares de apps e automações", icon: Zap, connected: false },
-  { id: "instagram", name: "Instagram", description: "AutoDM e integração com stories (em breve)", icon: Instagram, connected: false },
+  { id: "whatsapp", name: "WhatsApp", description: "Envie mensagens automáticas para compradores e leads", icon: MessageCircle },
+  { id: "google-calendar", name: "Google Calendar", description: "Sincronize sessões de coaching com seu calendário", icon: Calendar },
+  { id: "zoom", name: "Zoom", description: "Crie links de reunião automaticamente para calls", icon: Video },
+  { id: "zapier", name: "Zapier", description: "Conecte com milhares de apps e automações", icon: Zap },
+  { id: "instagram", name: "Instagram", description: "AutoDM e integração com stories", icon: Instagram },
 ];
 
 export function SettingsIntegrations() {
@@ -191,52 +192,7 @@ export function SettingsIntegrations() {
 
   return (
     <div className="space-y-6">
-      {/* WhatsApp Card — Featured */}
-      <Card className="border-2 border-accent/30 bg-accent/5 rounded-xl overflow-hidden">
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-lg bg-accent/20">
-                <MessageCircle className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-medium text-sm text-foreground">WhatsApp (Evolution API)</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Envie mensagens automáticas para compradores e leads
-                </p>
-                {isConnected && waConfig?.phone_number && (
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <Phone className="h-3 w-3 text-accent" />
-                    <span className="text-xs font-medium text-accent">{waConfig.phone_number}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <Badge variant={isConnected ? "default" : "secondary"} className="text-xs shrink-0">
-              {isConnected ? "Conectado" : waConfig?.status === "connecting" ? "Conectando..." : "Não conectado"}
-            </Badge>
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            {isConnected ? (
-              <>
-                <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
-                  <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Templates
-                </Button>
-                <Button variant="outline" size="sm" className="text-destructive" onClick={() => disconnectMutation.mutate()}>
-                  Desconectar
-                </Button>
-              </>
-            ) : (
-              <Button size="sm" className="w-full" onClick={() => setShowConnect(true)}>
-                <QrCode className="h-3.5 w-3.5 mr-1.5" /> Conectar WhatsApp
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Other integrations */}
+      {/* All integrations — coming soon */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {OTHER_INTEGRATIONS.map((integration) => {
           const Icon = integration.icon;
@@ -253,10 +209,11 @@ export function SettingsIntegrations() {
                       <p className="text-xs text-muted-foreground mt-0.5">{integration.description}</p>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="text-xs shrink-0">Não conectado</Badge>
                 </div>
                 <div className="mt-4">
-                  <Button variant="outline" size="sm" className="w-full">+ Conectar</Button>
+                  <Button variant="outline" size="sm" className="w-full" disabled>
+                    Em breve
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -275,119 +232,6 @@ export function SettingsIntegrations() {
           </Button>
         </CardContent>
       </Card>
-
-      {/* Connect Dialog */}
-      <Dialog open={showConnect} onOpenChange={setShowConnect}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-accent" />
-              Conectar WhatsApp
-            </DialogTitle>
-          </DialogHeader>
-
-          {qrCode ? (
-            <div className="space-y-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Escaneie o QR code com seu WhatsApp para vincular o número
-              </p>
-              <div className="p-4 bg-card border rounded-xl inline-block mx-auto">
-                <img src={qrCode} alt="QR Code WhatsApp" className="w-48 h-48" />
-              </div>
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Aguardando conexão...</span>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Informe a URL e API Key da sua instância Evolution API para conectar o WhatsApp.
-              </p>
-
-              <div className="space-y-2">
-                <Label>URL da Evolution API</Label>
-                <Input
-                  placeholder="https://sua-instancia.evolution-api.com"
-                  value={apiUrl}
-                  onChange={(e) => setApiUrl(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>API Key</Label>
-                <Input
-                  type="password"
-                  placeholder="Sua API Key da Evolution API"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  A API Key será armazenada de forma segura e usada apenas para enviar mensagens.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {!qrCode && (
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowConnect(false)}>Cancelar</Button>
-              <Button onClick={handleConnect} disabled={connecting || !apiUrl.trim()}>
-                {connecting ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Conectando...</>
-                ) : (
-                  "Gerar QR Code"
-                )}
-              </Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Templates Dialog */}
-      <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Templates de Mensagem</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5">
-            {Object.entries(DEFAULT_TEMPLATES).map(([key, def]) => {
-              const saved = templates.find((t: any) => t.trigger_type === key);
-              return (
-                <div key={key} className="space-y-2 p-4 rounded-lg border bg-card">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">{def.label}</Label>
-                    {saved && (
-                      <Switch
-                        checked={saved.is_active}
-                        onCheckedChange={(v) => updateTemplateMutation.mutate({ id: saved.id, is_active: v })}
-                      />
-                    )}
-                  </div>
-                  <Textarea
-                    rows={3}
-                    defaultValue={saved?.message_template || def.template}
-                    onBlur={(e) => {
-                      if (saved && e.target.value !== saved.message_template) {
-                        updateTemplateMutation.mutate({ id: saved.id, message_template: e.target.value });
-                      }
-                    }}
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Variáveis: {"{{nome}}"}, {"{{produto}}"}, {"{{link}}"}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          <DialogFooter>
-            <Button onClick={() => setShowTemplates(false)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
