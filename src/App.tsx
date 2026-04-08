@@ -54,7 +54,7 @@ const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
 const MenuTools = lazyWithRetry(() => import("./pages/MenuTools"));
 const Coupons = lazyWithRetry(() => import("./pages/Coupons"));
-const EmailFlows = lazyWithRetry(() => import("./pages/EmailFlows"));
+
 const Appointments = lazyWithRetry(() => import("./pages/Appointments"));
 const BookAppointment = lazyWithRetry(() => import("./pages/BookAppointment"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -262,7 +262,7 @@ const App = () => (
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/menu-tools" element={<MenuTools />} />
                   <Route path="/affiliates" element={<Affiliates />} />
-                  <Route path="/email-flows" element={<EmailFlows />} />
+                  <Route path="/email-flows" element={<Navigate to="/email-campaigns" replace />} />
                   <Route path="/leads" element={<Leads />} />
                   <Route path="/leads/segments" element={<LeadSegments />} />
                   <Route path="/leads/email" element={<LeadEmail />} />

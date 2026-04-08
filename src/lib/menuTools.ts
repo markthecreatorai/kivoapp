@@ -24,8 +24,7 @@ export const optionalItems: MenuToolItem[] = [
   
   { id: "coupons", title: "Cupons", url: "/coupons", description: "Crie cupons de desconto!", icon: "Tag" },
   { id: "leads", title: "Leads", url: "/leads", description: "Capture e gerencie leads!", icon: "UserCheck" },
-  { id: "email-flows", title: "Email Flows", url: "/email-flows", description: "Envie emails automáticos!", icon: "Mail" },
-  { id: "email-campaigns", title: "Campanhas", url: "/email-campaigns", description: "Envie campanhas de email!", icon: "Send" },
+  { id: "email-campaigns", title: "Emails", url: "/email-campaigns", description: "Campanhas e automações de email!", icon: "Mail" },
   { id: "affiliates", title: "Afiliados", url: "/affiliates", description: "Gerencie seus afiliados!", icon: "Users" },
   { id: "fiscal", title: "Fiscal", url: "/fiscal", description: "Emita notas fiscais!", icon: "Receipt" },
   { id: "payment-logs", title: "Logs Pagamento", url: "/payment-logs", description: "Acompanhe logs de pagamento!", icon: "FileText" },
