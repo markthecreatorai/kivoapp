@@ -24,7 +24,7 @@ interface CommunitySwitcherProps {
   onCreateCommunity?: () => void;
 }
 
-export default function CommunitySwitcher({ currentCommunity }: CommunitySwitcherProps) {
+export default function CommunitySwitcher({ currentCommunity, onCreateCommunity }: CommunitySwitcherProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
