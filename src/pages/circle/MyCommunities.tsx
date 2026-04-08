@@ -49,6 +49,7 @@ export default function MyCommunities() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { currentWorkspace } = useWorkspace();
+  const { avatarUrl, initials } = useUserAvatar();
   const queryClient = useQueryClient();
 
   const [showCreateModal, setShowCreateModal] = useState(false);

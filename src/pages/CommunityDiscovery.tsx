@@ -76,6 +76,7 @@ function CommunityCard({ community }: { community: any }) {
 export default function CommunityDiscovery() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { avatarUrl, initials } = useUserAvatar();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "free" | "paid">("all");
   const [sort, setSort] = useState<"trending" | "newest" | "members">("trending");
