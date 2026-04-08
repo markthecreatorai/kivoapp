@@ -60,6 +60,7 @@ import kivoSymbol from "@/assets/kivo-symbol.svg";
 import { getMenuToolsState, optionalItems } from "@/lib/menuTools";
 import type React from "react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
+import { getInitials } from "@/lib/avatarUtils";
 
 /* ── Icon map for optional items ── */
 const iconMap: Record<string, React.ElementType> = {
@@ -102,14 +103,7 @@ const adminItems: NavItem[] = [
   { title: "Semana 1", url: "/ops/week-plan", icon: CalendarDays },
 ];
 
-function getInitials(name?: string | null, email?: string | null): string {
-  if (name) {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.charAt(0).toUpperCase();
-  }
-  return email?.charAt(0).toUpperCase() || "U";
-}
+// getInitials moved to @/lib/avatarUtils
 
 export function AppSidebar() {
   const { state } = useSidebar();
