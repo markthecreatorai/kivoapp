@@ -282,13 +282,6 @@ export function SettingsProfile() {
     <div className="flex flex-col lg:flex-row gap-6">
       {/* ─── Main form column ─── */}
       <div className="flex-1 min-w-0 space-y-6">
-        {/* Scope indicator */}
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
-          <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
-          <p className="text-xs text-muted-foreground">
-            Seu perfil é <span className="font-medium">único e global</span>. Alterações aqui são refletidas automaticamente em todas as comunidades que você participa.
-          </p>
-        </div>
 
         {/* Completeness score */}
         {completenessScore < 100 && (
