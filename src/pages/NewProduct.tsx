@@ -139,6 +139,12 @@ export default function NewProduct() {
   const planInfo = usePlanLimits();
 
   const handleSelectFormat = async (format: ProductFormatConfig) => {
+    // Kivo affiliate → redirect to /referrals
+    if (format.id === "affiliate") {
+      navigate("/referrals");
+      return;
+    }
+
     if (!currentWorkspace?.id) {
       toast.error("Nenhum workspace ativo encontrado.");
       return;
