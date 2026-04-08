@@ -1,27 +1,21 @@
 
 
-# Plano: Usar header do Discovery no MyCommunities (/circles)
+# Plano: Alinhar cards da Discovery com altura uniforme
 
-## O que muda
+## Problema
 
-A página `/circles` (MyCommunities) tem um header simples com título "Minhas Comunidades" e botão "Nova Comunidade". A página `/circles/explore` (CommunityDiscovery) usa o header padrão do CircleLayout com `CommunitySwitcher` à esquerda e avatar/dropdown do usuário à direita.
+Os cards têm alturas diferentes dependendo do conteúdo (descrição mais longa, categoria presente ou não), fazendo os botões ficarem em posições desalinhadas entre cards adjacentes.
 
-O objetivo é substituir o header de `/circles` pelo mesmo header de `/circles/explore`.
+## Solução
 
-## Implementação
+Tornar cada card um flex column com `h-full` e empurrar o botão para o fundo com `mt-auto`:
 
-**Arquivo:** `src/pages/circle/MyCommunities.tsx`
+**Arquivo:** `src/pages/CommunityDiscovery.tsx`
 
-1. Importar `CommunitySwitcher`, `Avatar`, `DropdownMenu` e ícones necessários (mesmas imports do CommunityDiscovery)
-2. Substituir o header atual (linhas 174-184) pelo header idêntico ao do CommunityDiscovery:
-   - `CommunitySwitcher currentCommunity={null}` à esquerda
-   - Avatar dropdown com opções (Configurações, Sair) ou botão Login à direita
-   - Mover o botão "Nova Comunidade" para dentro do conteúdo da página (acima da grid) ou como ação no header
-3. Manter o botão "Nova Comunidade" visível — posicioná-lo ao lado do avatar no header ou no início do conteúdo
+1. No container externo do card (`<div onClick={...}>`): adicionar `flex flex-col h-full`
+2. No `<div className="p-4">`: adicionar `flex flex-col flex-1`
+3. Na descrição: manter `line-clamp-2` mas adicionar `flex-1` para ocupar espaço restante
+4. No bloco de stats + botão: agrupar com `mt-auto` para ficarem sempre no fundo do card
 
-## Arquivos alterados
-
-| Arquivo | Mudança |
-|---|---|
-| `src/pages/circle/MyCommunities.tsx` | Trocar header por header estilo Discovery com CommunitySwitcher + avatar dropdown |
+Resultado: todos os cards na mesma row terão a mesma altura visual e botões perfeitamente alinhados.
 
