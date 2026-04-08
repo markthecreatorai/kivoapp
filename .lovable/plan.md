@@ -1,53 +1,34 @@
 
 
-# Plano: Alinhar thumbnails dos temas com o layout real do preview
+# Plano: Bordas suaves com fade transparente no carrossel de temas
 
-## Diagnóstico
+## Problema
 
-Comparei os 4 layouts dos cards de thumbnail (ThemeSection.tsx) com os 4 layouts reais do preview (StorefrontPreview.tsx). Encontrei inconsistências claras:
-
-| Layout | Thumbnail (card pequeno) | Preview real | Problema |
-|---|---|---|---|
-| **minimal** | Avatar centralizado vertical, blocos empilhados | Avatar horizontal (lado a lado com nome) | Layout completamente diferente |
-| **hero** | Gradient + avatar + pills "INSTAGRAM/YOUTUBE" + card com banner | Gradient + avatar centralizado + bio + ícones sociais | Pills e card de produto não existem no preview |
-| **banner** | Cover full com texto overlay, sem avatar visível no banner | Cover com avatar + nome sobrepostos no canto inferior | Avatar ausente no thumbnail |
-| **classic** | Avatar + dots genéricos + card de produto | Avatar + ícones sociais circulares + blocos | Dots não representam os ícones reais |
+O container do carrossel usa `overflow: hidden` com corte seco nas bordas. Os cards nas extremidades são cortados abruptamente em vez de desaparecerem suavemente.
 
 ## Solução
 
-Reescrever os 4 componentes de thumbnail (`ClassicCard`, `HeroCard`, `BannerCard`, `MinimalCard`) para que reflitam fielmente a estrutura do preview real, em miniatura.
+Aplicar um `mask-image` CSS com gradiente linear no container do carrossel (linha 448-451). O gradiente faz as bordas esquerda/direita e superior/inferior ficarem transparentes com transição suave.
 
-### Mudanças por layout
+## Mudança
 
-**MinimalCard** — Trocar de vertical centralizado para horizontal:
-- Avatar pequeno à esquerda + nome à direita (igual preview `minimal`)
-- Bio truncada abaixo do nome
-- Blocos genéricos abaixo
+**Arquivo:** `src/components/storefront/ThemeSection.tsx`
 
-**HeroCard** — Remover pills e card com banner:
-- Manter gradient no topo + avatar centralizado
-- Adicionar bio curta centralizada
-- Substituir pills por ícones sociais pequenos (círculos)
-- Bloco genérico simples abaixo
+No `div` do stage (linha 448-451), adicionar `maskImage` com gradiente nas 4 bordas:
 
-**BannerCard** — Adicionar avatar sobre o banner:
-- Manter cover image com overlay gradient
-- Adicionar avatar circular + nome no canto inferior do banner (igual preview)
-- Bio abaixo do banner
-- Blocos genéricos
+```tsx
+<div
+  className="relative w-full"
+  style={{
+    height: 370,
+    overflow: "hidden",
+    maskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent), linear-gradient(to bottom, transparent, black 8%, black 92%, transparent)",
+    maskComposite: "intersect",
+    WebkitMaskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent), linear-gradient(to bottom, transparent, black 8%, black 92%, transparent)",
+    WebkitMaskComposite: "source-in",
+  }}
+>
+```
 
-**ClassicCard** — Trocar dots por ícones sociais:
-- Manter avatar centralizado
-- Substituir 3 dots genéricos por ícones sociais circulares estilizados
-- Bloco de produto simplificado
-
-## Arquivo alterado
-
-| Arquivo | Mudança |
-|---|---|
-| `src/components/storefront/ThemeSection.tsx` | Reescrever `ClassicCard`, `HeroCard`, `BannerCard`, `MinimalCard` para espelhar os layouts do `StorefrontPreview.tsx` |
-
-## Resultado
-
-As imagens dos temas no carrossel ficam visualmente consistentes com o que o usuário vê no preview à direita ao selecionar cada tema.
+Isso cria um fade suave de ~12% em cada lateral e ~8% no topo/base, eliminando o corte seco.
 
