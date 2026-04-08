@@ -73,10 +73,6 @@ function CommunityCard({ community }: { community: any }) {
             <Badge key={`${community.id}-${b}`} variant="outline" className="text-[10px]">{b}</Badge>
           ))}
         </div>
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{community.require_approval ? "Entrada com aprovação" : "Entrada imediata"}</span>
-          <span className="text-xs text-muted-foreground">{cadenceLabel}</span>
-        </div>
         <Button size="sm" className="w-full mt-3" onClick={(e) => { e.stopPropagation(); navigate(`/circles/${community.slug}`); }}>
           {accessInfo.cta}
         </Button>
