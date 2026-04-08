@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getUserAvatarUrl, getInitials, getUserDisplayName } from "@/lib/avatarUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import {
@@ -190,8 +191,9 @@ export default function MyCommunities() {
                 <DropdownMenuTrigger asChild>
                   <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={getUserAvatarUrl(user) || ""} />
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {(user.email || "U").charAt(0).toUpperCase()}
+                        {getInitials(getUserDisplayName(user), user?.email)}
                       </AvatarFallback>
                     </Avatar>
                   </button>
