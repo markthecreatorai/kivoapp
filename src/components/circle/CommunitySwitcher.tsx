@@ -21,6 +21,7 @@ interface CommunitySwitcherProps {
     slug: string;
     icon_url?: string | null;
   } | null;
+  onCreateCommunity?: () => void;
 }
 
 export default function CommunitySwitcher({ currentCommunity }: CommunitySwitcherProps) {
