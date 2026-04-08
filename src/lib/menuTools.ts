@@ -21,7 +21,7 @@ export const coreItems: MenuToolItem[] = [
 
 /** Toggleable items shown in the "Mais" page */
 export const optionalItems: MenuToolItem[] = [
-  { id: "referrals", title: "Indicações", url: "/referrals", description: "Ganhe renda passiva com indicações!", icon: "Users" },
+  
   { id: "coupons", title: "Cupons", url: "/coupons", description: "Crie cupons de desconto!", icon: "Tag" },
   { id: "leads", title: "Leads", url: "/leads", description: "Capture e gerencie leads!", icon: "UserCheck" },
   { id: "email-flows", title: "Email Flows", url: "/email-flows", description: "Envie emails automáticos!", icon: "Mail" },
