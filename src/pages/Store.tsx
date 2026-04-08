@@ -339,7 +339,7 @@ function PremiumPhonePreview({
 
 
           {/* Screen Content */}
-          <div className="flex-1 w-full h-full relative pt-9">
+          <div className="flex-1 w-full h-full relative">
             <StorefrontPreview
               storefront={storefront}
               theme={theme ?? undefined}
