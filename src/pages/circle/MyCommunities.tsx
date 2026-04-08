@@ -46,7 +46,7 @@ interface CommunityCard {
 
 export default function MyCommunities() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const queryClient = useQueryClient();
 
