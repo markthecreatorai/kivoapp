@@ -1,0 +1,1 @@
+ALTER TABLE public.storefronts ADD COLUMN banner_url TEXT;
