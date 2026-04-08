@@ -287,7 +287,7 @@ function MinimalCard({ t }: { t: Template }) {
     <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
       {/* Horizontal header */}
       <div className="flex items-center gap-2.5 px-3 pt-6">
-        <div className="w-10 h-10 rounded-full shrink-0 ring-1 shadow-sm" style={{ ringColor: t.text + '15' }}>
+        <div className="w-10 h-10 rounded-full shrink-0 shadow-sm border" style={{ borderColor: t.text + '20' }}>
           <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
         </div>
         <div className="flex-1 min-w-0">
