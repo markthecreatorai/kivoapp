@@ -22,6 +22,7 @@ import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { trackEvent } from "@/lib/tracking";
 import type { Database } from "@/integrations/supabase/types";
+import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
 
 type ProductType = Database["public"]["Enums"]["product_type"];
 
@@ -120,11 +121,11 @@ const PRODUCT_FORMATS: ProductFormatConfig[] = [
   {
     id: "affiliate",
     dbType: "DIGITAL",
-    title: "Link de Afiliado",
-    description: "Promova um link de afiliado ou oferta externa com rastreamento",
-    icon: Share2,
-    iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
-    iconColor: "text-emerald-600 dark:text-emerald-400",
+    title: "Link de Afiliado Kivo",
+    description: "Indique a Kivo e receba 20% de comissão recorrente sobre cada assinatura",
+    icon: Share2, // will be overridden with custom logo in render
+    iconBg: "bg-transparent",
+    iconColor: "",
   },
 ];
 
@@ -138,6 +139,12 @@ export default function NewProduct() {
   const planInfo = usePlanLimits();
 
   const handleSelectFormat = async (format: ProductFormatConfig) => {
+    // Kivo affiliate → redirect to /referrals
+    if (format.id === "affiliate") {
+      navigate("/referrals");
+      return;
+    }
+
     if (!currentWorkspace?.id) {
       toast.error("Nenhum workspace ativo encontrado.");
       return;
@@ -230,9 +237,15 @@ export default function NewProduct() {
                 creatingId === format.id ? "opacity-60 scale-[0.98] border-primary" : "hover:border-primary/40 hover:shadow-sm"
               )}
             >
-              <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", format.iconBg, format.iconColor)}>
-                <format.icon className={cn("h-6 w-6", creatingId === format.id ? "animate-pulse" : "")} />
-              </div>
+              {format.id === "affiliate" ? (
+                <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 overflow-hidden">
+                  <img src={kivoReferralLogo} alt="Kivo" className="h-12 w-12 object-contain" />
+                </div>
+              ) : (
+                <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", format.iconBg, format.iconColor)}>
+                  <format.icon className={cn("h-6 w-6", creatingId === format.id ? "animate-pulse" : "")} />
+                </div>
+              )}
               <div className="flex-1">
                 <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
                   {format.title}

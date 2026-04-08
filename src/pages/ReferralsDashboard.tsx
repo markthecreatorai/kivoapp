@@ -61,11 +61,26 @@ export default function ReferralsDashboard() {
         setProfile(data as ReferralProfile);
         setCustomCode(data.referral_code);
       } else {
+        // Auto-create referral profile
         const baseName =
           user.user_metadata?.full_name?.split(" ")[0]?.toLowerCase() ||
           user.email?.split("@")[0]?.toLowerCase() ||
           "creator";
-        setCustomCode(`${baseName}${Math.floor(Math.random() * 1000)}`);
+        const code = `${baseName}${Math.floor(Math.random() * 1000)}`.replace(/[^a-z0-9-]/g, "");
+        const link = `${window.location.origin}/?ref=${code}`;
+        
+        const { data: newProfile, error: insertError } = await supabase
+          .from("referral_profiles")
+          .insert({ user_id: user.id, referral_code: code, referral_link: link })
+          .select()
+          .single();
+
+        if (!insertError && newProfile) {
+          setProfile(newProfile as ReferralProfile);
+          setCustomCode(newProfile.referral_code);
+        } else {
+          setCustomCode(code);
+        }
       }
     } catch (e) {
       console.error(e);
