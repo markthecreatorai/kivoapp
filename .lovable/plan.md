@@ -1,22 +1,57 @@
 
 
-# Plano: Atualizar texto do perfil para refletir perfil global único
+# Plano: Auditoria e correção de avatares em todo o app
 
-## Contexto
+## Causa raiz
 
-O texto atual diz que "Perfis de comunidade são gerenciados dentro de cada comunidade", mas na verdade o perfil é único e global — alterações aqui refletem em todas as comunidades.
+O avatar do usuário é salvo na tabela `storefronts.avatar_url`, mas a função `getUserAvatarUrl()` só verifica `user.user_metadata` (que só tem valor via OAuth/Google). Resultado: páginas que não consultam storefronts mostram iniciais em vez da foto.
 
-## Mudança
+## Locais com problema
 
-**Arquivo:** `src/components/settings/SettingsProfile.tsx` — linha 288-290
+| Arquivo | Problema |
+|---|---|
+| `src/pages/CommunityDiscovery.tsx` (linha 125-128) | **Sem AvatarImage** — só mostra `AvatarFallback` com inicial do email |
+| `src/pages/circle/MyCommunities.tsx` (linha 194) | Usa `getUserAvatarUrl(user)` que não consulta storefront |
+| `src/lib/avatarUtils.ts` | Não consulta storefront, só `user_metadata` |
 
-Substituir o texto por algo como:
+## Locais já corretos (referência)
 
-```tsx
-<p className="text-xs text-muted-foreground">
-  Seu perfil é <span className="font-medium">único e global</span>. Alterações aqui são refletidas automaticamente em todas as comunidades que você participa.
-</p>
-```
+- `AppSidebar.tsx` — faz query em `storefronts.avatar_url` e faz fallback para `user_metadata`
+- `CircleLayout.tsx` — usa `member.avatar_url` da membership (correto para contexto de comunidade)
 
-Uma única linha de texto alterada, sem mudança estrutural.
+## Solução
+
+### 1. Criar hook `useUserAvatar` centralizado
+
+Novo arquivo `src/hooks/useUserAvatar.ts` que:
+- Faz query `storefronts.avatar_url` via workspace_id (mesmo padrão do AppSidebar)
+- Fallback para `user.user_metadata.avatar_url` / `picture`
+- Retorna `{ avatarUrl, displayName, initials }`
+- Usa `staleTime` alto para evitar re-fetches desnecessários
+
+### 2. Atualizar `CommunityDiscovery.tsx`
+
+- Importar `useUserAvatar`
+- Adicionar `AvatarImage` no avatar do header (linhas 125-128)
+
+### 3. Atualizar `MyCommunities.tsx`
+
+- Substituir `getUserAvatarUrl(user)` pelo hook `useUserAvatar`
+
+### 4. Atualizar `AppSidebar.tsx`
+
+- Substituir a query inline de avatar pelo hook `useUserAvatar` (elimina duplicação)
+
+## Arquivos alterados
+
+| Arquivo | Mudança |
+|---|---|
+| `src/hooks/useUserAvatar.ts` | **Novo** — hook centralizado para avatar do usuário logado |
+| `src/pages/CommunityDiscovery.tsx` | Usar hook, adicionar `AvatarImage` |
+| `src/pages/circle/MyCommunities.tsx` | Usar hook em vez de `getUserAvatarUrl` |
+| `src/components/AppSidebar.tsx` | Usar hook, remover query inline duplicada |
+
+## Resultado
+
+Foto de perfil aparece corretamente em todos os locais do app onde o usuário logado é exibido, usando uma única fonte de dados centralizada.
 
