@@ -337,10 +337,6 @@ function PremiumPhonePreview({
           {/* Glass reflection */}
           <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 rounded-t-[38px]" />
 
-          {/* Dynamic Island */}
-          <div className="absolute top-0 inset-x-0 h-9 flex justify-center items-start z-20 pt-2">
-            <div className="w-[90px] h-[22px] bg-[#0d0d0d] rounded-b-[14px] shadow-xl border-t border-white/5" />
-          </div>
 
           {/* Screen Content */}
           <div className="flex-1 w-full h-full relative pt-9">
