@@ -90,9 +90,6 @@ export function SettingsPayments() {
         </Card>
       )}
 
-      {isAdmin && (
-        <GatewayWizard open={showGatewayWizard} onOpenChange={setShowGatewayWizard} gateway={selectedGateway} />
-      )}
     </div>
   );
 }
