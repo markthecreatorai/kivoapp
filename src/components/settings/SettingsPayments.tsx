@@ -5,8 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreditCard, DollarSign, Zap, Info } from "lucide-react";
-import { GatewayWizard, GatewayStatusBadge } from "./GatewayWizard";
+import { Info } from "lucide-react";
 import { BankAccountForm } from "./BankAccountForm";
 import { useAuth } from "@/contexts/AuthProvider";
 import { isAdminUser } from "@/lib/admin";
@@ -18,13 +17,6 @@ export function SettingsPayments() {
   const [termsEnabled, setTermsEnabled] = useState(false);
   const [termsText, setTermsText] = useState("");
   const [checkoutLang, setCheckoutLang] = useState("pt-BR");
-  const [showGatewayWizard, setShowGatewayWizard] = useState(false);
-  const [selectedGateway, setSelectedGateway] = useState<"asaas" | "pagarme">("asaas");
-
-  const openWizard = (gw: "asaas" | "pagarme") => {
-    setSelectedGateway(gw);
-    setShowGatewayWizard(true);
-  };
 
   return (
     <div className="space-y-6">
