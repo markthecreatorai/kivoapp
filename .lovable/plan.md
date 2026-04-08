@@ -1,36 +1,20 @@
 
 
-# Plano: Link de Afiliado Kivo — auto-ativo e pré-configurado
+# Plano: Corrigir enum inválido "ACTIVE" no produto afiliado
 
-## O que muda
+## Causa raiz
 
-O botão "Link de Afiliado" na página de novo produto deixa de criar um produto e passa a ser o link de indicação da Kivo (como o "Stan Affiliate Link" da Stan Store). Ao clicar, redireciona para `/referrals`. O referral profile deve ser criado automaticamente quando o usuário cria a conta.
+O código em `NewProduct.tsx` (linha 195) insere `status: "ACTIVE"` para o produto afiliado, mas o enum `product_status` no banco só aceita: `DRAFT`, `PUBLISHED`, `ARCHIVED`.
 
-## Mudanças
+## Correção
 
-### 1. `src/pages/NewProduct.tsx`
-- Trocar o item `affiliate` no array `PRODUCT_FORMATS`:
-  - Título: "Link de Afiliado Kivo"
-  - Descrição: "Indique a Kivo e receba 20% de comissão recorrente sobre cada assinatura"
-  - Ícone: usar a imagem do logo Kivo (importar de `src/assets/`) em vez do ícone `Share2`
-- No `handleSelectFormat`, interceptar o formato `affiliate` e redirecionar para `/referrals` em vez de criar um produto draft
+**Arquivo:** `src/pages/NewProduct.tsx` — linha 195
 
-### 2. Copiar logo Kivo
-- Copiar `user-uploads://kivo-logo-DclmfgjC_1.png` para `src/assets/kivo-referral-logo.png`
-- Usar no card como `<img>` em vez do ícone Lucide
+Trocar `"ACTIVE"` por `"PUBLISHED"` para que o produto afiliado já fique visível na vitrine:
 
-### 3. Auto-criar referral profile no signup
-- Na `AuthProvider.tsx` ou no fluxo de onboarding, ao detectar novo usuário sem `referral_profiles`, criar automaticamente o perfil com código baseado no nome/email
-- Assim o usuário já chega em `/referrals` com tudo pronto para copiar
+```tsx
+status: isAffiliate ? "PUBLISHED" : "DRAFT",
+```
 
-### 4. `src/pages/ReferralsDashboard.tsx`
-- Remover o fluxo de "criar código" manual — se não existe profile, criar automaticamente ao carregar a página (fallback)
-
-## Arquivos alterados
-
-| Arquivo | Mudança |
-|---|---|
-| `src/pages/NewProduct.tsx` | Trocar affiliate para redirecionar a `/referrals`, usar logo Kivo |
-| `src/assets/kivo-referral-logo.png` | Novo arquivo — logo Kivo para o card |
-| `src/pages/ReferralsDashboard.tsx` | Auto-criar referral profile se não existe |
+Uma única linha alterada resolve o erro.
 
