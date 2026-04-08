@@ -1,61 +1,89 @@
 
 
-# Auditoria: Vincular foto de perfil em todos os avatares do app
+# Plano: Corrigir bug de "ida e volta" na aba Design
 
-## Diagnóstico
+## Causa raiz
 
-Encontrei **35 arquivos** que usam `AvatarFallback` (inicial do nome). O comportamento atual está correto — o `AvatarFallback` do Radix só aparece quando o `AvatarImage` falha ou está vazio. O problema real é que em vários lugares o `src` do `AvatarImage` não está sendo alimentado com a foto de perfil correta.
+O ciclo de save automático causa o UI "pular de volta" ao estado anterior:
 
-### Categorias de avatares encontrados
+1. Usuário clica em template/cor → `onUpdate()` → atualiza `localTheme` + dispara `debouncedSaveTheme`
+2. Após 1.5s, salva no banco → `onSuccess` → `queryClient.invalidateQueries(['storefront-theme'])`
+3. Refetch traz dados do banco → `useEffect([theme])` em Store.tsx (linha 803) reseta `localTheme` para dados do servidor
+4. `localTheme` resetado propaga como prop para `ThemeSection` → `useEffect([theme])` (linha 560) reseta `currentTheme`
+5. UI volta ao estado anterior — **"ida e volta"**
 
-**1. Avatar do usuário logado (owner/creator)** — 2 arquivos
-- `AppSidebar.tsx` — usa `resolvedAvatar` (storefront + user_metadata) ✅ OK
-- `MyCommunities.tsx` — **NÃO usa foto nenhuma**, só fallback com inicial do email ❌
+Mesmo problema existe para `storefront` (linha 799).
 
-**2. Avatar de membros de comunidade** — 20+ arquivos
-Estes usam `member.avatar_url` vindo da tabela `community_members`. O trigger `trg_sync_member_profile` já propaga avatar entre comunidades, mas depende do campo estar preenchido. Estes estão OK desde que o avatar esteja no banco.
+Além disso, os debounce timers **nunca são cancelados** — a cleanup function retornada é ignorada, então múltiplos cliques disparam múltiplos saves.
 
-Arquivos: `PostCard`, `PostDetailModal`, `CommentSection`, `ChatSection`, `CircleRightSidebar`, `CircleRightSidebarSkool`, `CircleMembers`, `CircleLeaderboard`, `CircleMessages`, `CircleFeed`, `CircleProfile`, `CirclePostDetail`, `CircleTasks`, `MemberProfileModal`, `LiveStreamViewer`, `EventDetailModal`, `PostComposer`, `AdminMembersTab`, `AdminModerationTab`, `NotificationPanel`
+## Correção (Store.tsx)
 
-**3. Avatar do header da comunidade (CircleLayout)** — usa avatar do membro logado ✅ se `avatar_url` preenchido
+### 1. Não resetar local state quando refetch acontecer após save
 
-**4. Avatar em storefront/loja** — `StorefrontPreview`, `StoreProductPreviewRenderer`, `ProfileSection` — usam `storefront.avatar_url` ou `profile.avatarUrl` ✅ OK (são da loja, não do user)
+Substituir os `useEffect` ingênuos por lógica que só sincroniza quando o dado vem pela primeira vez (não após um save local):
 
-**5. Avatar em settings** — `SettingsProfile.tsx` — usa `profile.avatar_url` ✅ OK
+```typescript
+// Usar ref para saber se o save local está pendente
+const localThemeDirty = useRef(false);
+const localStorefrontDirty = useRef(false);
 
-**6. Avatar em vendas** — `RecentSales.tsx` — usa `customer_avatar_url` ✅ OK (dados de clientes)
+useEffect(() => {
+  if (storefront && !localStorefrontDirty.current) {
+    setLocalStorefront(storefront);
+  }
+}, [storefront]);
 
-**7. Avatar em onboarding** — `StepProfile.tsx` — usa avatar do perfil em criação ✅ OK
+useEffect(() => {
+  if (!localThemeDirty.current) {
+    setLocalTheme(theme);
+  }
+}, [theme]);
+```
 
-### Problema principal
+Marcar `dirty = true` quando o usuário edita, e `dirty = false` quando o save completa com sucesso.
 
-O arquivo `MyCommunities.tsx` (header da página `/circles`) mostra apenas a inicial do email do usuário, sem sequer tentar usar a foto de perfil. Este é o mais visível.
+### 2. Corrigir debounce — cancelar timeout anterior
 
-Além disso, o `CommunitySwitcher.tsx` mostra a inicial da comunidade quando não tem `icon_url` — isso é correto (é o ícone da comunidade, não do user).
+Usar `useRef` para armazenar o timer e limpar o anterior antes de criar um novo:
 
-## Plano de correção
+```typescript
+const themeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+const storefrontTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-### Arquivo 1: `src/pages/circle/MyCommunities.tsx`
-- No header, o avatar do usuário logado usa apenas `(user.email || "U").charAt(0)` sem `AvatarImage`
-- **Corrigir**: buscar `resolvedAvatar` (do user_metadata ou storefront) e usar `AvatarImage` com fallback
+const debouncedSaveTheme = useCallback((data: Partial<StorefrontTheme>) => {
+  setSaveStatus("unsaved");
+  localThemeDirty.current = true;
+  clearTimeout(themeTimerRef.current);
+  themeTimerRef.current = setTimeout(() => {
+    saveThemeMutation.mutate(data);
+  }, 1500);
+}, [saveThemeMutation]);
+```
 
-### Arquivo 2: Criar utilitário `src/lib/avatarUtils.ts`
-- Extrair função `getUserAvatarUrl(user)` que resolve o avatar a partir de `user_metadata.avatar_url`, `user_metadata.picture`, etc.
-- Extrair função `getInitials(name, email)` reutilizável (hoje duplicada em `AppSidebar` e `RecentSales`)
-- Todos os locais que mostram avatar do **usuário logado** passam a usar esta função
+### 3. Limpar dirty flag no onSuccess das mutations
 
-### Arquivo 3: `src/components/AppSidebar.tsx`
-- Importar `getInitials` e `getUserAvatarUrl` do utilitário em vez de ter a função local
+```typescript
+// saveThemeMutation onSuccess:
+onSuccess: () => {
+  setSaveStatus("saved");
+  localThemeDirty.current = false;
+  queryClient.invalidateQueries({ queryKey: ["storefront-theme"] });
+},
+```
+
+### 4. Remover invalidateQueries do onSuccess (opcional mas recomendado)
+
+Como o `localTheme` já tem o estado correto, o `invalidateQueries` é desnecessário e causa o refetch que gera o "pulo". Alternativa: manter o invalidate mas com a proteção do dirty flag (opção escolhida acima — mais segura).
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/lib/avatarUtils.ts` | Novo — funções `getUserAvatarUrl` e `getInitials` |
-| `src/pages/circle/MyCommunities.tsx` | Adicionar `AvatarImage` com foto do perfil no header |
-| `src/components/AppSidebar.tsx` | Importar utils do novo arquivo (refactor menor) |
+| `src/pages/Store.tsx` | Adicionar refs para dirty flags e timer refs; corrigir debounce; proteger useEffects de sync |
 
-## Nota
+## Resultado esperado
 
-Os 20+ arquivos de membros de comunidade já estão corretos — eles usam `member.avatar_url` e o fallback só aparece quando o membro realmente não tem foto. O trigger de sync no banco garante que quando o user define foto em uma comunidade, propaga para as outras.
+- Clicar em template/cor aplica imediatamente sem "pular de volta"
+- Auto-save continua funcionando após 1.5s de inatividade
+- Múltiplos cliques rápidos cancelam saves anteriores (só o último executa)
 
