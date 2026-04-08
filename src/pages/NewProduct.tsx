@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
@@ -132,6 +133,7 @@ const PRODUCT_FORMATS: ProductFormatConfig[] = [
 export default function NewProduct() {
   const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
+  const { user } = useAuth();
   const [creatingId, setCreatingId] = useState<string | null>(null);
   
   const [upgradeOpen, setUpgradeOpen] = useState(false);
