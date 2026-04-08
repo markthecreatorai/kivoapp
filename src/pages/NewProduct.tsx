@@ -192,7 +192,7 @@ export default function NewProduct() {
       const insertData: any = {
           workspace_id: currentWorkspace.id,
           type: format.dbType,
-          status: isAffiliate ? "ACTIVE" : "DRAFT",
+          status: isAffiliate ? "PUBLISHED" : "DRAFT",
           name: isAffiliate ? "Link de Afiliado Kivo" : "Novo Produto", 
           slug: isAffiliate ? `kivo-afiliado-${Date.now().toString(36)}` : `novo-produto-${Date.now().toString(36)}`,
           metadata: { format_id: format.id, ...(isAffiliate && referralLink ? { referral_link: referralLink } : {}) },
