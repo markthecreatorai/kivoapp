@@ -286,7 +286,7 @@ export function SettingsProfile() {
         <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
           <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
           <p className="text-xs text-muted-foreground">
-            Este é seu <span className="font-medium">perfil global Kivo</span> (workspace). Perfis de comunidade são gerenciados dentro de cada comunidade.
+            Seu perfil é <span className="font-medium">único e global</span>. Alterações aqui são refletidas automaticamente em todas as comunidades que você participa.
           </p>
         </div>
 
