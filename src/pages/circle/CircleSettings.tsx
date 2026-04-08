@@ -148,6 +148,7 @@ export default function CircleSettings() {
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState("light");
+  const [pageError, setPageError] = useState<string | null>(null);
 
   // Account modals state
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -227,7 +228,7 @@ export default function CircleSettings() {
   const isOwnerOrAdmin = member?.role === "OWNER" || member?.role === "ADMIN";
 
   useEffect(() => {
-    if (member && !form) {
+    if (member) {
       setForm({
         display_name: member.display_name || "",
         bio: (member as any).bio || "",
@@ -250,8 +251,15 @@ export default function CircleSettings() {
           ...((member as any).notification_preferences || {}),
         },
       });
+      setPageError(null);
     }
-  }, [member]);
+  }, [member?.id]);
+
+  useEffect(() => {
+    setForm(null);
+    setIsDirty(false);
+    setPageError(null);
+  }, [community?.id, user?.id]);
 
   const updateForm = useCallback((updates: Partial<ProfileForm>) => {
     setForm((p) => p && ({ ...p, ...updates }));
@@ -294,6 +302,7 @@ export default function CircleSettings() {
         toast.success("Foto atualizada!");
       }
     } catch {
+      setPageError("Não foi possível atualizar a foto do perfil.");
       toast.error("Erro ao enviar foto");
     } finally {
       setUploadingAvatar(false);
@@ -325,6 +334,7 @@ export default function CircleSettings() {
       });
       setIsDirty(false);
     } catch {
+      setPageError("Não foi possível salvar as configurações do perfil.");
       toast.error("Erro ao salvar. Tente novamente.");
     } finally {
       setSaving(false);
@@ -437,7 +447,35 @@ export default function CircleSettings() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  if (!member || !form) {
+  if (!community) {
+    return (
+      <div className="py-6 w-full">
+        <Card className="p-6 space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Comunidade indisponível</h2>
+          <p className="text-sm text-muted-foreground">Não conseguimos carregar a comunidade agora.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Tentar novamente
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!member) {
+    return (
+      <div className="py-6 w-full">
+        <Card className="p-6 space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Acesso ao perfil indisponível</h2>
+          <p className="text-sm text-muted-foreground">Seu perfil desta comunidade ainda não foi carregado.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Recarregar página
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!form) {
     return (
       <div className="py-6 w-full">
         <div className="flex gap-8">
@@ -539,6 +577,20 @@ export default function CircleSettings() {
           {/* ═══ Profile ═══ */}
           {activeSection === "profile" && (
             <div className="space-y-4">
+                {pageError && (
+                  <Card className="p-4 border-destructive/30 bg-destructive/5">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">Algo falhou nesta tela</p>
+                        <p className="text-xs text-muted-foreground">{pageError}</p>
+                        <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                          Recarregar
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )}
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                   <p className="text-xs text-muted-foreground">
