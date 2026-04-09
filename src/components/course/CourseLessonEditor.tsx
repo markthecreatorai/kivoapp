@@ -248,7 +248,8 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
   const canPublish = publishErrors.length === 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex gap-6 items-start">
+    <div className="flex flex-col flex-1 min-w-0 h-full">
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background">
         <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8" aria-label="Voltar">
