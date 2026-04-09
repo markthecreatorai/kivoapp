@@ -217,38 +217,7 @@ export default function LandingPage() {
       {/* Value Proposition — Section 4 */}
       <ValueProposition />
 
-      {/* Pricing */}
-      <section id="pricing" className="py-20">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground">Preços simples, sem surpresa</h2>
-            <p className="text-muted-foreground mt-2">Comece grátis. Faça upgrade quando precisar.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {PLANS_MINI.map((plan, i) => (
-              <Card key={i} className={`card-radius transition-all hover:shadow-lg ${plan.popular ? "ring-2 ring-primary" : ""}`}>
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4">Popular</Badge>
-                )}
-                <CardContent className="p-6 text-center space-y-4 pt-8">
-                  <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
-                  <p className="text-3xl font-bold text-primary">{plan.price}</p>
-                  <p className="text-sm text-muted-foreground">{plan.desc}</p>
-                  <ul className="space-y-2 text-sm text-left">
-                    {plan.features.map((f, j) => (
-                      <li key={j} className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />{f}</li>
-                    ))}
-                  </ul>
-                  <Button className="w-full pill-radius" variant={plan.popular ? "default" : "outline"}
-                    onClick={() => { ctaClick("pricing_" + plan.name); navigate("/signup?utm_source=landing&utm_medium=pricing&utm_campaign=" + plan.name.toLowerCase()); }}>
-                    {plan.name === "Free" ? "Começar grátis" : "Escolher plano"}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* Creator Showcase */}
       <CreatorShowcase />
