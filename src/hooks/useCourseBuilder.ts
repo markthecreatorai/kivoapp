@@ -330,6 +330,24 @@ export function useLessonMaterials(lessonId: string | undefined) {
   });
 }
 
+export function useCreateMaterial() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { lesson_id: string; file_name: string; file_url: string; file_type?: string; file_size?: number }) => {
+      const { data, error } = await supabase
+        .from("lesson_materials" as any)
+        .insert(params as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as unknown as LessonMaterial;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["lesson-materials", data.lesson_id] });
+    },
+  });
+}
+
 export function useDeleteMaterial() {
   const qc = useQueryClient();
   return useMutation({
