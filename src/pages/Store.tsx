@@ -118,10 +118,6 @@ function StoreProfileCard({
   const socialLinks = (storefront.social_links as Record<string, string>) || {};
   const socialEntries = Object.entries(socialLinks).filter(([, v]) => !!v);
 
-  const previewBlocks = tab === "loja"
-    ? blocks.filter((block) => block.type !== "product")
-    : blocks;
-
   return (
     <div className="flex items-center gap-6 p-7 rounded-[20px] bg-white border border-[#ececec] shadow-sm">
       {/* Avatar - Increased size */}
@@ -1031,6 +1027,10 @@ export default function Store() {
   const storeUrl = storefront?.slug 
     ? `${window.location.origin}/${storefront.slug}` 
     : null;
+
+  const previewBlocks = tab === "loja"
+    ? blocks.filter((block) => block.type !== "product")
+    : blocks;
 
   const copyLink = () => {
     if (storeUrl) {
