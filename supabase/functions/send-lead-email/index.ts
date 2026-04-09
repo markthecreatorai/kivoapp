@@ -8,7 +8,7 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: _corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -18,13 +18,13 @@ Deno.serve(async (req) => {
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return new Response(
         JSON.stringify({ error: "Email inválido" }),
-        { status: 400, headers: { ..._corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     if (!workspaceId) {
       return new Response(
         JSON.stringify({ error: "workspaceId é obrigatório" }),
-        { status: 400, headers: { ..._corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       console.error("RESEND_API_KEY not configured");
       return new Response(
         JSON.stringify({ error: "Serviço de email não configurado" }),
-        { status: 500, headers: { ..._corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       console.error("Resend API error:", JSON.stringify(resendData));
       return new Response(
         JSON.stringify({ error: "Falha ao enviar email", details: resendData }),
-        { status: 502, headers: { ..._corsHeaders, "Content-Type": "application/json" } }
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -95,13 +95,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, messageId: resendData.id }),
-      { status: 200, headers: { ..._corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("send-lead-email error:", error);
     return new Response(
       JSON.stringify({ error: "Erro interno ao processar envio de email" }),
-      { status: 500, headers: { ..._corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
