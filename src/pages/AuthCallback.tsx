@@ -5,8 +5,58 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
+import { clearReferralCode } from "@/hooks/useReferralTracking";
 
 type Status = "loading" | "success" | "error";
+
+/** Process pending referral from OAuth signup */
+async function processPendingReferral(userId: string) {
+  const referralCode = sessionStorage.getItem("kivo_pending_referral");
+  if (!referralCode) return;
+
+  try {
+    const { data: profile } = await supabase
+      .from("referral_profiles")
+      .select("user_id")
+      .eq("referral_code", referralCode)
+      .maybeSingle();
+
+    if (!profile?.user_id || profile.user_id === userId) {
+      sessionStorage.removeItem("kivo_pending_referral");
+      return;
+    }
+
+    const { data: existing } = await supabase
+      .from("referral_attributions")
+      .select("id")
+      .eq("referred_user_id", userId)
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from("referral_attributions").insert({
+        referrer_user_id: profile.user_id,
+        referred_user_id: userId,
+        referral_code: referralCode,
+        source: "signup_oauth",
+        signed_up_at: new Date().toISOString(),
+        referral_status: "pending_subscription",
+        referral_source: "affiliate_link",
+      } as any);
+
+      await supabase.from("referral_audit_log" as any).insert({
+        referrer_user_id: profile.user_id,
+        referred_user_id: userId,
+        event_type: "account_created_from_referral",
+        metadata: { referral_code: referralCode, source: "oauth" },
+      } as any);
+    }
+
+    sessionStorage.removeItem("kivo_pending_referral");
+    clearReferralCode();
+  } catch (err) {
+    console.error("[Referral] OAuth attribution error (non-fatal):", err);
+  }
+}
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -14,7 +64,6 @@ export default function AuthCallback() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    // Parse hash fragment for errors (Supabase redirects errors as hash params)
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
 
@@ -29,19 +78,19 @@ export default function AuthCallback() {
       return;
     }
 
-    // If no error in hash, try to exchange the session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        processPendingReferral(session.user.id);
+      }
       if (session?.user?.email_confirmed_at) {
         setStatus("success");
       } else {
-        // Might still be processing — wait a moment then check again
         setTimeout(async () => {
           const { data } = await supabase.auth.getUser();
-          if (data.user?.email_confirmed_at) {
-            setStatus("success");
-          } else {
-            setStatus("success"); // User landed here, session exists — treat as success
+          if (data.user) {
+            processPendingReferral(data.user.id);
           }
+          setStatus("success");
         }, 1500);
       }
     }).catch(() => {
@@ -59,15 +108,13 @@ export default function AuthCallback() {
 
         <Card className="shadow-sm border">
           {status === "loading" && (
-            <>
-              <CardHeader className="text-center space-y-4">
-                <div className="mx-auto p-4 rounded-full bg-primary/10 w-fit">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                </div>
-                <CardTitle className="text-2xl">Verificando...</CardTitle>
-                <CardDescription>Estamos confirmando seu email, aguarde um momento.</CardDescription>
-              </CardHeader>
-            </>
+            <CardHeader className="text-center space-y-4">
+              <div className="mx-auto p-4 rounded-full bg-primary/10 w-fit">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+              <CardTitle className="text-2xl">Verificando...</CardTitle>
+              <CardDescription>Estamos confirmando seu email, aguarde um momento.</CardDescription>
+            </CardHeader>
           )}
 
           {status === "success" && (
