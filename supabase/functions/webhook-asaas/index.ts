@@ -658,11 +658,21 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     refunded_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
-  // 5. Forfeit any held reserve for this order
+  // 5. Forfeit any held reserve for this order (legacy + new model)
   await supabase.from("reserve_entries").update({
     status: "forfeited",
     released_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
+  await supabase.from("security_reserves").update({
+    status: "forfeited",
+    released_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
+  // 5b. Update transaction to disputed
+  await supabase.from("transactions").update({
+    status: "disputed",
+  }).eq("order_id", paymentRecord.order_id);
 
   // 6. Ledger reversal
   await supabase.from("wallet_ledger").update({ status: "canceled" })
