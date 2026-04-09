@@ -33,19 +33,15 @@ export function CourseMobilePreview({
       </p>
 
       {/* Phone shell */}
-      <div className="w-[340px] h-[680px] bg-black rounded-[44px] p-3 shadow-2xl mx-auto">
-        {/* Notch */}
-        <div className="w-28 h-5 bg-black mx-auto rounded-b-xl relative z-10" />
-
+      <div className="w-[340px] h-[680px] bg-black rounded-[44px] p-3 shadow-2xl mx-auto overflow-hidden">
         {/* Screen */}
         <div
-          className="w-full rounded-[32px] overflow-hidden relative -mt-3"
-          style={{
-            backgroundColor: bgColor,
-            height: "calc(100% + 12px)",
-          }}
+          className="w-full h-full rounded-[32px] overflow-hidden relative"
+          style={{ backgroundColor: bgColor }}
         >
-          <div className="overflow-y-auto h-full scrollbar-none">
+          {/* Notch */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-black rounded-b-xl z-10" />
+          <div className="overflow-y-auto h-full scrollbar-none pt-5">
             {/* Hero */}
             {heroImageUrl ? (
               <div className="relative">
