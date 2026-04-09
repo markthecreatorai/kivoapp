@@ -1,4 +1,14 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -851,13 +861,18 @@ export default function Store() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto excluído.");
+      setDeleteTargetId(null);
+    },
+    onError: () => {
+      toast.error("Erro ao excluir produto.");
+      setDeleteTargetId(null);
     },
   });
 
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
   const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este produto? Esta ação pode ser desfeita pelo suporte.")) {
-      deleteMutation.mutate(id);
-    }
+    setDeleteTargetId(id);
   };
 
   const duplicateProductMutation = useMutation({
