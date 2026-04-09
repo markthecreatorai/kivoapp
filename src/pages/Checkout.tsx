@@ -32,6 +32,11 @@ interface Price {
   type: string | null;
 }
 
+interface BrandingColors {
+  primary: string;
+  accent: string;
+}
+
 interface SubscriptionPlan {
   billing_interval: string;
   trial_days: number;
