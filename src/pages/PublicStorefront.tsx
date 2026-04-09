@@ -694,6 +694,110 @@ export default function PublicStorefront() {
             ))}
           </div>
 
+          {/* Extra products not in blocks — mirrors preview behavior */}
+          {(() => {
+            const blockProductIds = blocks
+              .filter((b) => b.type === "product")
+              .map((b) => (b.config as any).product_id)
+              .filter(Boolean) as string[];
+            const extraProducts = products.filter(
+              (p) => !blockProductIds.includes(p.id)
+            );
+            if (extraProducts.length === 0) return null;
+            return (
+              <div className="space-y-3 mt-3">
+                {extraProducts.map((product) => {
+                  const price = prices.find((p) => p.product_id === product.id);
+                  const ctaLabel = product.listing_button_text || "Comprar";
+                  const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
+                  const isExternal = product.delivery_url?.startsWith("http");
+                  const isCalloutStyle = product.thumbnail_style === "callout";
+                  const isButtonStyle = product.thumbnail_style === "button";
+
+                  if (isCalloutStyle || isButtonStyle) {
+                    return (
+                      <a
+                        key={product.id}
+                        href={linkTarget}
+                        target={isExternal ? "_blank" : undefined}
+                        rel={isExternal ? "noopener noreferrer" : undefined}
+                        onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
+                        className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
+                        style={{ borderColor: t.primary + "40" }}
+                      >
+                        <div className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={product.thumbnail_url || kivoReferralLogo}
+                              alt={product.name}
+                              className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                              loading="lazy"
+                            />
+                            <p className="font-semibold" style={{ color: t.text }}>
+                              {product.name}
+                            </p>
+                          </div>
+                          {!isButtonStyle && (
+                            <div
+                              className={`mt-4 py-3 text-sm font-medium text-center text-white ${buttonClass}`}
+                              style={{ backgroundColor: t.primary }}
+                            >
+                              {ctaLabel}
+                            </div>
+                          )}
+                        </div>
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <a
+                      key={product.id}
+                      href={linkTarget}
+                      target={isExternal ? "_blank" : undefined}
+                      rel={isExternal ? "noopener noreferrer" : undefined}
+                      onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
+                      className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
+                      style={{ borderColor: t.primary + "40" }}
+                    >
+                      {product.thumbnail_url && (
+                        <img
+                          src={product.thumbnail_url}
+                          alt={product.name}
+                          className="w-full h-40 object-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="p-4">
+                        <p className="font-semibold" style={{ color: t.text }}>
+                          {product.name}
+                        </p>
+                        {product.short_description && (
+                          <p className="text-sm mt-1 opacity-70" style={{ color: t.text }}>
+                            {product.short_description}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between mt-3">
+                          {price && (product.metadata as any)?.format_id !== "affiliate" && (
+                            <span className="font-bold text-lg" style={{ color: t.primary }}>
+                              {formatCurrency(price.amount, price.currency || "BRL")}
+                            </span>
+                          )}
+                          <span
+                            className={`px-4 py-2 text-sm font-medium text-white ${buttonClass}`}
+                            style={{ backgroundColor: t.primary }}
+                          >
+                            {ctaLabel}
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
           {/* Footer — Free plan */}
           <div className="mt-12 text-center">
             <a
