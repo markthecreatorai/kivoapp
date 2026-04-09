@@ -218,7 +218,7 @@ export default function LandingPage() {
 
       {/* Features */}
       <section id="features" className="py-20 bg-muted/30 pt-0">
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-6xl mx-auto px-4 pt-[48px]">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">Tudo em uma plataforma</h2>
             <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Pare de pagar por 5 ferramentas separadas. Tenha tudo integrado.</p>
