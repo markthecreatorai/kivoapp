@@ -45,7 +45,7 @@ const PLANS = [
     id: "creator",
     code: "creator",
     name: "Creator",
-    monthly: 67,
+    monthly: 49.9,
     icon: Crown,
     popular: true,
     features: [
@@ -63,7 +63,7 @@ const PLANS = [
     id: "creator-pro",
     code: "creator-pro",
     name: "Creator Pro",
-    monthly: 149,
+    monthly: 129.9,
     icon: Sparkles,
     features: [
       "Produtos ilimitados",
@@ -552,7 +552,7 @@ export default function UpgradeFlow() {
                       </div>
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl font-bold text-foreground">
-                          {plan.monthly === 0 ? "Grátis" : `R$${plan.monthly}`}
+                          {plan.monthly === 0 ? "Grátis" : `R$${plan.monthly.toFixed(2).replace('.', ',')}`}
                         </span>
                         {plan.monthly > 0 && <span className="text-sm text-muted-foreground">/mês</span>}
                       </div>
@@ -596,7 +596,7 @@ export default function UpgradeFlow() {
             <div className="text-center">
               <h1 className="text-2xl font-bold text-foreground">Pagamento</h1>
               <p className="text-muted-foreground mt-2">
-                Plano <strong>{selectedPlanObj?.name}</strong> — R${selectedPlanObj?.monthly}/mês
+                Plano <strong>{selectedPlanObj?.name}</strong> — R${selectedPlanObj?.monthly.toFixed(2).replace('.', ',')}/mês
               </p>
             </div>
 
