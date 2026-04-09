@@ -394,13 +394,17 @@ export default function UrlMediaFlow({
                     </div>
                     <span className="absolute top-2 right-2 text-[10px] font-medium bg-background/80 backdrop-blur-sm border rounded-md px-1.5 py-0.5">Padrão</span>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">URL da imagem</Label>
-                    <Input
-                      placeholder="Cole a URL da imagem aqui"
-                      value={form.thumbnailUrl}
-                      onChange={(e) => updateForm({ thumbnailUrl: e.target.value })}
-                    />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const url = prompt("Cole a URL da nova imagem:");
+                        if (url) updateForm({ thumbnailUrl: url });
+                      }}
+                    >
+                      Trocar
+                    </Button>
                   </div>
                 </div>
               )}
