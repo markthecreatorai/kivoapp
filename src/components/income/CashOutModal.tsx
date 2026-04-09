@@ -41,7 +41,8 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
 
   const withdrawMutation = useMutation({
     mutationFn: async () => {
-      if (availableBalance <= 0) throw new Error("Saldo insuficiente");
+      const MIN_WITHDRAWAL = 2000; // R$20.00 in cents
+      if (availableBalance < MIN_WITHDRAWAL) throw new Error(`Saldo mínimo para saque é de ${fmt(MIN_WITHDRAWAL)}`);
       if (!effectiveAccount) throw new Error("Selecione uma conta bancária");
 
       const { data: { user } } = await supabase.auth.getUser();
