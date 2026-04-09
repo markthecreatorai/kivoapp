@@ -221,8 +221,12 @@ export default function CreatorSlider() {
 
   const total = CREATORS.length;
 
-  const next = useCallback(() => setActive((p) => (p + 1) % total), [total]);
-  const prev = useCallback(() => setActive((p) => (p - 1 + total) % total), [total]);
+  // We render 3 copies for seamless infinite loop
+  const extendedItems = [...CREATORS, ...CREATORS, ...CREATORS];
+  const centerOffset = total; // index offset for the "center" copy
+
+  const next = useCallback(() => setActive((p) => p + 1), []);
+  const prev = useCallback(() => setActive((p) => p - 1), []);
 
   // Autoplay
   useEffect(() => {
@@ -252,11 +256,15 @@ export default function CreatorSlider() {
     }
   };
 
-  // Calculate offset so the active slide is centered
+  // Calculate offset — position the center copy's active slide in the middle
   const slideWidth = typeof window !== "undefined" && window.innerWidth < 768 ? 320 : window.innerWidth < 1024 ? 420 : 480;
   const gap = 24;
   const containerWidth = typeof window !== "undefined" ? Math.min(window.innerWidth, 1280) : 1280;
-  const offset = containerWidth / 2 - slideWidth / 2 - active * (slideWidth + gap);
+  const virtualIndex = centerOffset + active;
+  const offset = containerWidth / 2 - slideWidth / 2 - virtualIndex * (slideWidth + gap);
+
+  // Normalize active index for visual highlight
+  const normalizedActive = ((active % total) + total) % total;
 
   return (
     <section
