@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Check, ArrowRight, Store, Users, CalendarCheck, Mail,
-  BarChart3, Shield, Zap, Crown, Sparkles, ChevronDown, ChevronUp,
+  BarChart3, Shield, Zap, Crown, Sparkles, ChevronDown,
   Calculator, Star,
 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
