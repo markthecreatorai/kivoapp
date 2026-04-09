@@ -555,6 +555,14 @@ async function handleFailed(supabase: any, paymentRecord: any, paymentData: any)
   }).eq("id", paymentRecord.id);
 
   await supabase.from("orders").update({ status: "FAILED" }).eq("id", paymentRecord.order_id);
+
+  // Update transaction
+  await supabase.from("transactions").update({
+    status: "failed",
+    failed_at: new Date().toISOString(),
+    failure_reason: paymentData?.failReason || "Payment failed",
+  }).eq("order_id", paymentRecord.order_id);
+
   return "FAILED";
 }
 
