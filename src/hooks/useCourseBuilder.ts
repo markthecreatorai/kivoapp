@@ -203,13 +203,10 @@ export function useReorderModules() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ courseId, order }: { courseId: string; order: { id: string; position: number }[] }) => {
-      for (const item of order) {
-        const { error } = await supabase
-          .from("course_modules" as any)
-          .update({ position: item.position } as any)
-          .eq("id", item.id);
-        if (error) throw error;
-      }
+      const { error } = await supabase.rpc("batch_reorder_modules" as any, {
+        items: JSON.stringify(order),
+      });
+      if (error) throw error;
       return courseId;
     },
     onSuccess: (courseId) => {
@@ -312,13 +309,10 @@ export function useReorderLessons() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ moduleId, order }: { moduleId: string; order: { id: string; position: number }[] }) => {
-      for (const item of order) {
-        const { error } = await supabase
-          .from("course_lessons" as any)
-          .update({ position: item.position } as any)
-          .eq("id", item.id);
-        if (error) throw error;
-      }
+      const { error } = await supabase.rpc("batch_reorder_lessons" as any, {
+        items: JSON.stringify(order),
+      });
+      if (error) throw error;
       return moduleId;
     },
     onSuccess: (moduleId) => {
