@@ -419,6 +419,7 @@ function AbaLoja({
     const oldIndex = products.findIndex((p: any) => p.id === active.id);
     const newIndex = products.findIndex((p: any) => p.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
+    localProductsDirty.current = true;
     setProducts(arrayMove(products, oldIndex, newIndex));
   };
 
@@ -804,6 +805,7 @@ export default function Store() {
   // Dirty flags — prevent refetch from overwriting pending local edits
   const localStorefrontDirty = useRef(false);
   const localThemeDirty = useRef(false);
+  const localProductsDirty = useRef(false);
   const storefrontTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const themeTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -817,7 +819,9 @@ export default function Store() {
   }, [theme]);
 
   useEffect(() => {
-    setLocalProducts(null);
+    if (!localProductsDirty.current) {
+      setLocalProducts(null);
+    }
   }, [fetchedProducts]);
 
   const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
@@ -833,6 +837,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto arquivado.");
@@ -850,6 +855,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Status do produto atualizado.");
