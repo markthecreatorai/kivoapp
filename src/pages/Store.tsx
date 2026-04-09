@@ -994,7 +994,8 @@ export default function Store() {
     onSuccess: () => {
       setSaveStatus("saved");
       localThemeDirty.current = false;
-      queryClient.invalidateQueries({ queryKey: ["storefront-theme"] });
+      // Don't invalidateQueries here — local state is the source of truth
+      // and a refetch would overwrite the user's current selection, causing the slider to jump.
     },
     onError: () => {
       setSaveStatus("unsaved");
