@@ -194,6 +194,7 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
     }
     setVideoUploading(true);
     setVideoProgress(10);
+    trackEvent("course_upload_started", { type: "video", lesson_id: lesson.id });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Sessão expirada"); setVideoUploading(false); return; }
@@ -208,9 +209,11 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
       setDirty(true);
       setVideoProgress(100);
       toast.success("Vídeo enviado!");
+      trackEvent("course_upload_success", { type: "video", lesson_id: lesson.id });
     } catch (err) {
       console.error(err);
       toast.error("Erro ao enviar vídeo");
+      trackEvent("course_upload_fail", { type: "video", lesson_id: lesson.id });
     } finally {
       setTimeout(() => { setVideoUploading(false); setVideoProgress(0); }, 500);
     }
