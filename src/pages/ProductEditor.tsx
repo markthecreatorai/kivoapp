@@ -15,6 +15,7 @@ import RecurringProductFlow from "./editor/RecurringProductFlow";
 import WebinarProductFlow from "./editor/WebinarProductFlow";
 import CoachingCallFlow from "./editor/CoachingCallFlow";
 import CommunityFlow from "./editor/CommunityFlow";
+import CourseFlow from "./editor/CourseFlow";
 
 export default function ProductEditor() {
   const { id } = useParams<{ id: string }>();
@@ -79,6 +80,9 @@ export default function ProductEditor() {
         return <CoachingCallFlow initialProduct={product} setSaving={setSaving} />;
       case "community":
         return <CommunityFlow initialProduct={product} setSaving={setSaving} />;
+      case "course":
+      case "online_course":
+        return <CourseFlow initialProduct={product} setSaving={setSaving} />;
       case "custom_product":
       case "service":
         return <CustomProductFlow initialProduct={product} setSaving={setSaving} />;
