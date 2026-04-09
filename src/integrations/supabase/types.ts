@@ -4979,6 +4979,42 @@ export type Database = {
           },
         ]
       }
+      fee_config: {
+        Row: {
+          boleto_fixed_cents: number
+          created_at: string
+          credit_card_percent: number
+          description: string | null
+          id: string
+          pix_percent: number
+          plan_type: string
+          platform_percent: number
+          updated_at: string
+        }
+        Insert: {
+          boleto_fixed_cents?: number
+          created_at?: string
+          credit_card_percent?: number
+          description?: string | null
+          id?: string
+          pix_percent?: number
+          plan_type: string
+          platform_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          boleto_fixed_cents?: number
+          created_at?: string
+          credit_card_percent?: number
+          description?: string | null
+          id?: string
+          pix_percent?: number
+          plan_type?: string
+          platform_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fiscal_invoice_events: {
         Row: {
           created_at: string
@@ -7191,6 +7227,60 @@ export type Database = {
           },
         ]
       }
+      security_reserves: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          release_at: string
+          released_at: string | null
+          reserve_percent: number
+          status: string
+          transaction_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          release_at: string
+          released_at?: string | null
+          reserve_percent?: number
+          status?: string
+          transaction_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          release_at?: string
+          released_at?: string | null
+          reserve_percent?: number
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_reserves_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_reserves_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           created_at: string
@@ -7676,6 +7766,114 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tags_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          affiliate_fee: number
+          asaas_payment_id: string | null
+          available_at: string | null
+          boleto_barcode: string | null
+          boleto_due_date: string | null
+          boleto_url: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string | null
+          description: string | null
+          gateway_fee: number
+          gross_amount: number
+          id: string
+          installment_value: number | null
+          installments: number | null
+          metadata: Json | null
+          net_amount: number
+          order_id: string | null
+          paid_at: string | null
+          payment_method: string | null
+          pix_expiration_date: string | null
+          pix_qr_code: string | null
+          pix_qr_code_url: string | null
+          platform_fee: number
+          refunded_at: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          affiliate_fee?: number
+          asaas_payment_id?: string | null
+          available_at?: string | null
+          boleto_barcode?: string | null
+          boleto_due_date?: string | null
+          boleto_url?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          description?: string | null
+          gateway_fee?: number
+          gross_amount?: number
+          id?: string
+          installment_value?: number | null
+          installments?: number | null
+          metadata?: Json | null
+          net_amount?: number
+          order_id?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pix_expiration_date?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          platform_fee?: number
+          refunded_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          affiliate_fee?: number
+          asaas_payment_id?: string | null
+          available_at?: string | null
+          boleto_barcode?: string | null
+          boleto_due_date?: string | null
+          boleto_url?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          description?: string | null
+          gateway_fee?: number
+          gross_amount?: number
+          id?: string
+          installment_value?: number | null
+          installments?: number | null
+          metadata?: Json | null
+          net_amount?: number
+          order_id?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pix_expiration_date?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          platform_fee?: number
+          refunded_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -8407,41 +8605,65 @@ export type Database = {
       workspaces: {
         Row: {
           activated_at: string | null
+          asaas_account_id: string | null
+          asaas_customer_id: string | null
+          asaas_wallet_id: string | null
           created_at: string
           currency: string
           id: string
           logo_url: string | null
           metadata: Json | null
           name: string
+          payment_setup_complete: boolean
           plan: string
+          plan_expires_at: string | null
+          plan_started_at: string | null
+          plan_type: string
           slug: string
           timezone: string
+          trial_ends_at: string | null
           updated_at: string
         }
         Insert: {
           activated_at?: string | null
+          asaas_account_id?: string | null
+          asaas_customer_id?: string | null
+          asaas_wallet_id?: string | null
           created_at?: string
           currency?: string
           id?: string
           logo_url?: string | null
           metadata?: Json | null
           name: string
+          payment_setup_complete?: boolean
           plan?: string
+          plan_expires_at?: string | null
+          plan_started_at?: string | null
+          plan_type?: string
           slug: string
           timezone?: string
+          trial_ends_at?: string | null
           updated_at?: string
         }
         Update: {
           activated_at?: string | null
+          asaas_account_id?: string | null
+          asaas_customer_id?: string | null
+          asaas_wallet_id?: string | null
           created_at?: string
           currency?: string
           id?: string
           logo_url?: string | null
           metadata?: Json | null
           name?: string
+          payment_setup_complete?: boolean
           plan?: string
+          plan_expires_at?: string | null
+          plan_started_at?: string | null
+          plan_type?: string
           slug?: string
           timezone?: string
+          trial_ends_at?: string | null
           updated_at?: string
         }
         Relationships: []
