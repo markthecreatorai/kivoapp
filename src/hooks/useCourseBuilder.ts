@@ -21,6 +21,13 @@ export interface Course {
   checkout_image: string | null;
   checkout_title: string | null;
   checkout_description: string | null;
+  checkout_cta: string | null;
+  checkout_bottom_title: string | null;
+  checkout_price_cents: number | null;
+  checkout_discount_price_cents: number | null;
+  checkout_price_type: string | null;
+  checkout_billing_interval: string | null;
+  checkout_custom_fields: any[] | null;
   status: string;
   created_at: string;
   updated_at: string;
