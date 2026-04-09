@@ -64,7 +64,7 @@ function getPublishErrors(title: string, videoUrl: string, descHtml: string): st
   return errors;
 }
 
-export function CourseLessonEditor({ lesson, onBack, onDeleted }: CourseLessonEditorProps) {
+export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav, branding }: CourseLessonEditorProps) {
   // ── Local state (versioning: always edit local, save explicitly) ──
   const [title, setTitle] = useState(lesson.title);
   const [videoUrl, setVideoUrl] = useState(lesson.video_url || "");
