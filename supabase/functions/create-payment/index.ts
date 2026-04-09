@@ -145,10 +145,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Verify workspace exists
+    // Verify workspace exists + fetch Asaas config
     const { data: workspace } = await supabase
       .from("workspaces")
-      .select("id")
+      .select("id, asaas_account_id, plan_type")
       .eq("id", workspace_id)
       .single();
 
