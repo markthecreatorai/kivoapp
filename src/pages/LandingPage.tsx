@@ -17,6 +17,7 @@ import kivoSymbol from "@/assets/kivo-symbol.svg";
 import { AccordionGallery } from "@/components/landing/AccordionGallery";
 import CreatorShowcase from "@/components/landing/CreatorShowcase";
 import CreatorSlider from "@/components/landing/CreatorSlider";
+import ValueProposition from "@/components/landing/ValueProposition";
 import type { GalleryItem } from "@/components/landing/types";
 import creator1 from "@/assets/gallery/creator-1.jpg";
 import creator2 from "@/assets/gallery/creator-2.jpg";
@@ -287,6 +288,9 @@ export default function LandingPage() {
 
       {/* Calculator */}
       <SavingsCalculator />
+
+      {/* Value Proposition — Section 4 */}
+      <ValueProposition />
 
       {/* Pricing */}
       <section id="pricing" className="py-20">
