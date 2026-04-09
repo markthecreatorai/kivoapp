@@ -289,6 +289,9 @@ export default function LandingPage() {
       {/* Calculator */}
       <SavingsCalculator />
 
+      {/* Value Proposition — Section 4 */}
+      <ValueProposition />
+
       {/* Pricing */}
       <section id="pricing" className="py-20">
         <div className="max-w-5xl mx-auto px-4">
