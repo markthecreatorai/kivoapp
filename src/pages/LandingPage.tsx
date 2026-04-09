@@ -129,7 +129,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-[hsl(15,33%,95%)]/80 backdrop-blur border-b border-border/40">
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b border-border/40">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <img src={kivoSymbol} alt="" className="h-8 w-8" />
