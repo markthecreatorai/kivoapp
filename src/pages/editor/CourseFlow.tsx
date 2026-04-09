@@ -63,6 +63,7 @@ import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploadField } from "@/components/course/ImageUploadField";
 import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
+import { CourseLessonEditor } from "@/components/course/CourseLessonEditor";
 import { cn } from "@/lib/utils";
 
 interface CourseFlowProps {
@@ -330,6 +331,9 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const moduleIds = serverModules.map((m) => m.id);
   const { data: serverLessons = [] } = useAllLessons(course.id, moduleIds);
 
+  // Selected lesson for editing
+  const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);
+
   // Optimistic local state
   const [localModules, setLocalModules] = useState<CourseModule[]>(serverModules);
   const [localLessons, setLocalLessons] = useState<CourseLesson[]>(serverLessons);
@@ -350,6 +354,19 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ type: "module" | "lesson"; id: string; title: string; courseId?: string; moduleId?: string } | null>(null);
   const [dripConfigId, setDripConfigId] = useState<string | null>(null);
+
+  // If a lesson is selected, show the lesson editor
+  if (selectedLesson) {
+    return (
+      <div className="max-w-3xl border border-border rounded-lg overflow-hidden" style={{ minHeight: 500 }}>
+        <CourseLessonEditor
+          lesson={selectedLesson}
+          onBack={() => setSelectedLesson(null)}
+          onDeleted={() => setSelectedLesson(null)}
+        />
+      </div>
+    );
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -651,7 +668,7 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                                   ) : (
                                     <span
                                       className="text-xs cursor-pointer hover:text-primary transition-colors flex-1 truncate"
-                                      onClick={() => startRename(lesson.id, lesson.title)}
+                                      onClick={() => setSelectedLesson(lesson)}
                                     >
                                       {lesson.title}
                                     </span>
