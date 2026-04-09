@@ -78,19 +78,29 @@ function FAQSection() {
         <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2">Tire suas dúvidas</h2>
         <p className="text-center text-muted-foreground mb-10">Respostas rápidas para você decidir com confiança.</p>
         <div className="space-y-3">
-          {FAQ_ITEMS.map((item, i) => (
-            <button
-              key={i}
-              onClick={() => setOpen(open === i ? null : i)}
-              className="w-full text-left px-6 py-4 rounded-xl bg-card border border-border/50 hover:border-border transition-all duration-200 group"
-            >
-              <div className="flex justify-between items-center gap-4">
-                <span className="font-medium text-foreground text-sm md:text-base">{item.q}</span>
-                <ChevronDown className={`w-5 h-5 text-destructive shrink-0 transition-transform duration-200 ${open === i ? "rotate-180" : ""}`} />
-              </div>
-              {open === i && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{item.a}</p>}
-            </button>
-          ))}
+          {FAQ_ITEMS.map((item, i) => {
+            const isOpen = open === i;
+            return (
+              <button
+                key={i}
+                onClick={() => setOpen(isOpen ? null : i)}
+                className="w-full text-left px-6 py-4 rounded-xl bg-card border border-border/50 hover:border-border transition-all duration-200 group"
+              >
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-medium text-foreground text-sm md:text-base">{item.q}</span>
+                  <ChevronDown className={`w-5 h-5 text-destructive shrink-0 transition-transform duration-300 ease-out ${isOpen ? "rotate-180" : ""}`} />
+                </div>
+                <div
+                  className="grid transition-all duration-300 ease-out"
+                  style={{ gridTemplateRows: isOpen ? "1fr" : "0fr", opacity: isOpen ? 1 : 0 }}
+                >
+                  <div className="overflow-hidden">
+                    <p className="pt-3 text-sm text-muted-foreground leading-relaxed">{item.a}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>
