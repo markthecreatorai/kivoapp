@@ -143,7 +143,7 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          {availableBalance > 0 && accounts.length > 0 && (
+          {availableBalance >= 2000 && accounts.length > 0 && (
             <Button onClick={() => withdrawMutation.mutate()} disabled={withdrawMutation.isPending || !effectiveAccount}>
               {withdrawMutation.isPending ? "Processando..." : "Confirmar Saque"}
             </Button>
