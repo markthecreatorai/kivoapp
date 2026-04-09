@@ -26,7 +26,7 @@ export default function Terms() {
 
         <h2>1. Definições</h2>
         <ul>
-          <li><strong>Plataforma:</strong> o software e serviços disponíveis em kivostore.lovable.app.</li>
+          <li><strong>Plataforma:</strong> o software e serviços disponíveis em {window.location.host}.</li>
           <li><strong>Criador:</strong> pessoa física ou jurídica que utiliza o Serviço para vender produtos digitais, cursos ou comunidades.</li>
           <li><strong>Comprador/Aluno:</strong> pessoa que adquire produtos ou participa de comunidades na plataforma.</li>
           <li><strong>Conteúdo:</strong> qualquer material publicado na plataforma (textos, imagens, vídeos, arquivos).</li>

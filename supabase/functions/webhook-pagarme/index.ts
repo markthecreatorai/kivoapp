@@ -437,8 +437,9 @@ async function handlePaid(supabase: any, paymentRecord: any, chargeData: any, ga
       const valor = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
         .format(Number(order.total_amount || 0) / 100);
 
+      const siteUrl = Deno.env.get("SITE_URL") || "https://kivostore.lovable.app";
       const memberUrl = ws?.slug
-        ? `https://kivostore.lovable.app/member/dashboard`
+        ? `${siteUrl}/member/dashboard`
         : "#";
 
       const emailData = {

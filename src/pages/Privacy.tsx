@@ -21,8 +21,8 @@ export default function Privacy() {
 
         <p>
           A <strong>Kivo</strong> ("nós", "nosso") opera a plataforma disponível em{" "}
-          <a href="https://kivostore.lovable.app" className="text-primary hover:underline">
-            kivostore.lovable.app
+          <a href={window.location.origin} className="text-primary hover:underline">
+            {window.location.host}
           </a>{" "}
           (o "Serviço"). Esta política descreve como coletamos, usamos e protegemos seus dados pessoais.
         </p>
