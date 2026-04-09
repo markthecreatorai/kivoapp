@@ -390,6 +390,7 @@ function AbaLoja({
   onTogglePublish,
   onDelete,
   onDuplicate,
+  onReorder,
 }: {
   storefront: any;
   storeUrl: string | null;
@@ -405,6 +406,7 @@ function AbaLoja({
   onTogglePublish: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onReorder: (reordered: any[]) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
