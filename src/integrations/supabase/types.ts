@@ -4141,6 +4141,7 @@ export type Database = {
           id: string
           product_id: string | null
           status: string
+          thumbnail_cta: string | null
           thumbnail_image: string | null
           thumbnail_style: string | null
           thumbnail_subtitle: string | null
@@ -4162,6 +4163,7 @@ export type Database = {
           id?: string
           product_id?: string | null
           status?: string
+          thumbnail_cta?: string | null
           thumbnail_image?: string | null
           thumbnail_style?: string | null
           thumbnail_subtitle?: string | null
@@ -4183,6 +4185,7 @@ export type Database = {
           id?: string
           product_id?: string | null
           status?: string
+          thumbnail_cta?: string | null
           thumbnail_image?: string | null
           thumbnail_style?: string | null
           thumbnail_subtitle?: string | null

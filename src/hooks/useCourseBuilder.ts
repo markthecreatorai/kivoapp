@@ -17,6 +17,7 @@ export interface Course {
   thumbnail_image: string | null;
   thumbnail_title: string | null;
   thumbnail_subtitle: string | null;
+  thumbnail_cta: string | null;
   checkout_image: string | null;
   checkout_title: string | null;
   checkout_description: string | null;

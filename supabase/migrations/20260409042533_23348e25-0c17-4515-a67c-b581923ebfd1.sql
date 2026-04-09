@@ -1,0 +1,1 @@
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_cta text DEFAULT 'Acessar curso';
