@@ -779,21 +779,31 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
         </SortableContext>
       </DndContext>
 
-      <Button
-        variant="outline"
-        className="w-full gap-2"
-        onClick={handleAddModule}
-        disabled={createModule.isPending}
-      >
-        <Plus className="h-4 w-4" />
-        Adicionar módulo
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          className="flex-1 gap-2"
+          onClick={handleAddModule}
+          disabled={createModule.isPending}
+        >
+          <Plus className="h-4 w-4" />
+          Adicionar módulo
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => setShowTemplates(true)}
+        >
+          <LayoutTemplate className="h-4 w-4" />
+          Template
+        </Button>
+      </div>
 
       {localModules.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p className="text-sm mb-1">Nenhum módulo criado ainda</p>
-          <p className="text-xs">Clique em "Adicionar módulo" para começar</p>
+          <p className="text-xs">Use um template ou crie um módulo em branco</p>
         </div>
       )}
 
