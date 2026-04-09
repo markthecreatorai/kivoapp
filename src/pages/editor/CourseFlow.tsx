@@ -668,7 +668,7 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                                   ) : (
                                     <span
                                       className="text-xs cursor-pointer hover:text-primary transition-colors flex-1 truncate"
-                                      onClick={() => startRename(lesson.id, lesson.title)}
+                                      onClick={() => setSelectedLesson(lesson)}
                                     >
                                       {lesson.title}
                                     </span>
