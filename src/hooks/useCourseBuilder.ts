@@ -28,6 +28,7 @@ export interface Course {
   checkout_price_type: string | null;
   checkout_billing_interval: string | null;
   checkout_custom_fields: any[] | null;
+  growth_blocks: Record<string, boolean> | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -490,6 +491,20 @@ export function getCoursePublishChecklist(
     key: "lesson-content",
     label: "Todas as aulas têm conteúdo (vídeo ou descrição)",
     passed: lessons.length > 0 && lessonsWithContent.length === lessons.length,
+    severity: "warning",
+  });
+
+  items.push({
+    key: "thumbnail",
+    label: "Título da thumbnail preenchido",
+    passed: !!(course.thumbnail_title && course.thumbnail_title.trim().length >= 3),
+    severity: "warning",
+  });
+
+  items.push({
+    key: "price",
+    label: "Preço do checkout definido",
+    passed: (course.checkout_price_cents ?? 0) > 0,
     severity: "warning",
   });
 
