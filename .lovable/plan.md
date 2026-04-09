@@ -1,108 +1,92 @@
+# Plano: Testes e Gate de Release do Course Builder
 
+## 1. Testes unitários — `src/test/course-builder.test.ts`
 
-# Plano: Polimento completo da experiência de edição de curso
+Funções puras testáveis sem mocks de Supabase:
 
-## Visao geral
+**`getCoursePublishChecklist`** — 6 cenários:
+- Curso vazio → falha em title, modules, lessons, published-lessons (severity error)
+- Curso completo → todos passam
+- Título < 3 chars → falha apenas title
+- Sem módulos → falha modules
+- Sem aulas publicadas → falha published-lessons
+- Sem preço → falha price (warning, não bloqueia)
 
-6 melhorias transversais no editor de curso: sticky bar com "Anterior", guard de saida, toasts padronizados, skeletons/loading, acessibilidade, e telemetria de eventos. Todas as mudancas se concentram em 3 arquivos.
+**`useProductDraft`** (via `renderHook`):
+- `updateField` marca dirty
+- `updateFields` marca múltiplos dirty
+- `markSaved` limpa dirty e seta lastSavedAt
+- `reset` limpa tudo
 
-## 1. Barra de acoes sticky — adicionar botao "Anterior"
+**`MODULE_TEMPLATES`** — validação de estrutura:
+- Todos têm key, label, moduleName, lessons[]
+- Sem duplicatas de key
 
-**Arquivo:** `src/components/editor/WizardTabLayout.tsx`
+## 2. Testes de integração — `src/test/course-builder-integration.test.tsx`
 
-- Adicionar prop `onPrev?: () => void` e `isFirstTab?: boolean`
-- Renderizar botao "Anterior" (ChevronLeft) antes do "Proximo", desabilitado na primeira aba
-- Loading spinner no botao "Publicar" quando `isSaving`
+Com mock de Supabase (padrão do projeto):
 
-**Arquivo:** `src/pages/editor/CourseFlow.tsx` (CourseFlowInner)
+**Navegação entre abas:**
+- Renderizar CourseFlow com MemoryRouter
+- Verificar que 4 abas existem e clique alterna conteúdo
 
-- Criar `handlePrev` que navega para `tabOrder[idx - 1]`
-- Passar `onPrev`, `isFirstTab={tab === "thumbnail"}` para WizardTabLayout
+**Checklist bloqueia publicação:**
+- Montar OptionsTab com curso incompleto
+- Verificar botão "Publicar" desabilitado
+- Verificar itens vermelhos visíveis
 
-## 2. Guard de saida com alteracoes nao salvas
+**Criação de módulo (mock optimistic):**
+- Verificar que "Adicionar módulo" chama mutation
+- Verificar que toast de sucesso aparece
 
-**Arquivo:** `src/pages/editor/CourseFlow.tsx`
+## 3. E2E — Documentação (não implementação Playwright)
 
-- Adicionar `useEffect` com `window.addEventListener("beforeunload", ...)` que checa se `useAutosave` tem pendingRef ativo (expor `isDirty` do hook)
-- Adicionar `useBlocker` do react-router para navegacao interna (ou `window.onbeforeunload` simples)
-- Expor `isDirty` do `useAutosave` como propriedade retornada: `pendingRef.current !== null`
-- Elevar `isDirty` ao `CourseFlowInner` agregando de cada tab via ref/callback (simplificacao: usar apenas o `beforeunload` global com flag no ref)
+O projeto não tem Playwright configurado. Em vez de configurar infra E2E completa, criar **documentação de cenários E2E** como checklist manual + script futuro:
 
-Abordagem simples: um `useEffect` no `CourseFlowInner` que registra `beforeunload` baseado em `updateCourse.isPending` ou um `isDirtyRef` compartilhado.
+```
+docs/course-builder-e2e-scenarios.md
+```
 
-## 3. Toasts padronizados
+## 4. Release checklist + Rollout — `docs/course-builder-release.md`
 
-**Arquivo:** `src/pages/editor/CourseFlow.tsx`
+**Release Checklist (10 itens):**
+1. Migrações SQL aplicadas sem erro
+2. RLS policies ativas nas tabelas courses/modules/lessons/materials
+3. Testes unitários passam (vitest)
+4. Testes de integração passam
+5. Build sem erros TypeScript
+6. Fluxo manual: criar curso → módulo → aula → publicar
+7. Fluxo manual: reorder módulos (DnD) persiste
+8. Upload de vídeo + material funciona
+9. Preview mobile sem overflow
+10. Telemetria: eventos course_builder_opened e course_publish_success chegam
 
-- Substituir todos os `toast.success/error` por helper padronizado com duracao e icones consistentes
-- Criar funcao local `showToast(type, message, description?)` que mapeia para sonner com duracoes fixas: success=3s, error=5s, warning=4s
-- Aplicar em: handleSaveDraft, handlePublish, CRUD de modulos/aulas, uploads, reorder
+**Rollout gradual via feature flag (useExperiment):**
+- Fase 1 (10%): `useExperiment("course_builder_v2")` → variant B = novo builder
+- Fase 2 (50%): alterar peso no banco
+- Fase 3 (100%): remover flag, novo builder como padrão
 
-## 4. Estados de carregamento
+**Critérios de rollback:**
+- Taxa de erro > 5% nos eventos de publish
+- Aumento > 20% em tickets de suporte
+- Crash rate do ErrorBoundary > 1%
 
-**Arquivo:** `src/pages/editor/CourseFlow.tsx`
+**Métricas de sucesso:**
+- 90%+ dos cursos criados passam no checklist na 1ª tentativa
+- Tempo médio de criação < 15 min
+- Taxa de publicação > 70% dos drafts
 
-- No loading inicial (linha 104-110), substituir spinner simples por Skeleton layout (3 cards skeleton + tab skeleton)
-- Nos botoes de acao da sticky bar, mostrar `Loader2` + texto "Salvando..." quando `isSaving`
-- Nos botoes de CRUD de modulos/aulas, desabilitar e mostrar spinner durante mutacao
+## Arquivos criados
 
-**Arquivo:** `src/components/editor/WizardTabLayout.tsx`
-
-- O botao "Publicar curso" ja tem `disabled` mas nao mostra spinner — adicionar `Loader2` quando `isSaving && isLastTab`
-
-## 5. Acessibilidade
-
-**Arquivo:** `src/components/editor/WizardTabLayout.tsx`
-
-- Adicionar `role="toolbar"` e `aria-label="Acoes do editor"` na barra sticky
-- Adicionar `aria-label` nos botoes de acao
-
-**Arquivo:** `src/pages/editor/CourseFlow.tsx`
-
-- Nos botoes de estilo do card (ThumbnailTab), adicionar `role="radio"`, `aria-checked`, e wrapper com `role="radiogroup"`
-- Adicionar `aria-label` nos botoes de grip (drag handle) dos modulos/aulas
-- Adicionar `htmlFor` nos Labels que nao estao associados a inputs
-- Focus ring ja e fornecido pelo Tailwind (focus-visible) — verificar que nenhum botao custom remove `focus-visible:ring`
-
-**Arquivo:** `src/components/editor/StepCard.tsx`
-
-- Adicionar `aria-label` com step number no circulo numerado
-
-## 6. Telemetria de eventos
-
-**Arquivo:** `src/pages/editor/CourseFlow.tsx`
-
-Adicionar chamadas `trackEvent()` (importar de `@/lib/tracking`) nos seguintes pontos:
-
-| Evento | Local |
+| Arquivo | Conteúdo |
 |---|---|
-| `course_builder_opened` | `useEffect` mount no `CourseFlowInner` |
-| `course_builder_tab_switched` | `handleTabChange` |
-| `course_draft_saved` | `handleSaveDraft` onSuccess |
-| `course_publish_attempt` | `handlePublish` inicio |
-| `course_publish_success` | `handlePublish` onSuccess |
-| `course_publish_fail` | `handlePublish` onError |
-| `course_module_reordered` | handler de DnD de modulos |
-| `course_lesson_reordered` | handler de DnD de aulas |
-| `course_upload_started` | inicio de upload de video/material |
-| `course_upload_success` | sucesso de upload |
-| `course_upload_fail` | erro de upload |
+| `src/test/course-builder.test.ts` | Testes unitários: checklist, draft, templates |
+| `src/test/course-builder-integration.test.tsx` | Testes de integração: tabs, publicação, CRUD |
+| `docs/course-builder-release.md` | Release checklist, rollout, métricas, rollback |
+| `docs/course-builder-e2e-scenarios.md` | Cenários E2E documentados para automação futura |
 
-Para uploads no `CourseLessonEditor.tsx`, tambem adicionar tracking.
+## O que NÃO muda
 
-## Arquivos alterados
-
-| Arquivo | Mudanca |
-|---|---|
-| `src/components/editor/WizardTabLayout.tsx` | Botao "Anterior", spinner no Publicar, aria-labels |
-| `src/components/editor/StepCard.tsx` | aria-label no step circle |
-| `src/pages/editor/CourseFlow.tsx` | Guard beforeunload, toasts padronizados, skeletons, acessibilidade em radio/grip, telemetria em todos os pontos |
-| `src/components/course/CourseLessonEditor.tsx` | Telemetria de upload (started/success/fail) |
-
-## O que NAO muda
-
-- Logica de negocio (CRUD, autosave, reorder, checklist)
-- Estrutura de abas e sub-views
-- Preview mobile
-- Outros flows de produto (Digital, Webinar, etc.)
-
+- Código de produção (CourseFlow, useCourseBuilder, etc.)
+- Configuração de CI (já roda vitest via existente)
+- Infra Playwright (fora do escopo — documentado para futuro)
