@@ -1,34 +1,52 @@
 
 
-# Plano: Corrigir slider de templates "rodando sozinho"
+# Plano: Editor de "Link de Afiliado Kivo" com URL bloqueada e layout Stan Store
 
-## Causa raiz
+## Problema
 
-Na `ThemeSection`, o `useEffect([theme])` (linha 544) recria o objeto `currentTheme` toda vez que a prop `theme` muda. O fluxo problemático:
+Ao clicar "Link de Afiliado Kivo" no `/products/new`, o produto é criado com `format_id: "affiliate"` e redireciona para `UrlMediaFlow`. Esse flow mostra um editor genérico de URL/mídia, com campo de URL editável e 4 estilos de card. O usuário quer que o editor de afiliado seja idêntico ao da Stan Store (screenshot): 3 steps numerados, URL de referral bloqueada, apenas 2 estilos (Button/Callout).
 
-1. Usuário seleciona template → `handleTemplateSelect` → `setCurrentTheme(novo)` + `onUpdate(novo)`
-2. `onUpdate` → pai faz `setLocalTheme(novo)` → prop `theme` muda (nova referência)
-3. `useEffect([theme])` dispara → `setCurrentTheme({...})` com novo objeto → re-render
-4. Quando o `saveThemeMutation` completa, faz `localThemeDirty.current = false` + `invalidateQueries` → refetch do DB → `theme` query retorna dados (possivelmente com `template_key` anterior) → `useEffect` no Store (linha 819-821) seta `localTheme` para dados do DB (dirty já é false) → ThemeSection recebe prop atualizada → `useEffect` reseta `currentTheme` → slider pula
+## Mudanças
 
-Além disso, `handleTemplateSelect` não é memoizado com `useCallback`, gerando nova referência a cada render.
+### 1. `src/pages/NewProduct.tsx` — corrigir format_id
 
-## Correção
+Atualmente o affiliate cria com `format_id: "affiliate"`, mas o `UrlMediaFlow` trata `isAffiliate` e `isReferralLink` separadamente. Unificar: quando `format_id === "affiliate"`, o flow deve buscar o referral link do usuário (como já faz para `referral_link`).
 
-**Arquivo:** `src/components/storefront/ThemeSection.tsx`
+Nenhuma mudança necessária aqui — o `NewProduct` já salva o `referral_link` no metadata. Só preciso garantir que o `UrlMediaFlow` use esse dado.
 
-1. No `useEffect([theme])`, guardar comparação: só chamar `setCurrentTheme` se os valores realmente mudaram (comparar `template_key`, cores, fontes) — evita re-renders espúrios
-2. Envolver `handleTemplateSelect` em `useCallback`
-3. Adicionar `key` estável no `CoverflowSlider` para evitar remontagem
+### 2. `src/pages/editor/UrlMediaFlow.tsx` — modo afiliado com layout StepCard
 
-**Arquivo:** `src/pages/Store.tsx`
+Quando `isAffiliate === true`:
 
-4. No `onSuccess` do `saveThemeMutation` (linha 994-998), NÃO fazer `invalidateQueries` imediatamente — só marcar dirty como false. O `invalidateQueries` pode causar refetch que sobrescreve o estado local. Alternativa: atrasar o reset do dirty para depois do refetch completar, ou não invalidar se `localTheme` já está definido.
+**Query do referral profile:** Ativar a query `referralProfile` também para `isAffiliate` (hoje só roda para `isReferralLink`).
+
+**Auto-fill URL:** Preencher `targetUrl` com o referral link do profile OU do `initialProduct.metadata.referral_link`, e tornar o campo **read-only**.
+
+**Layout em 3 Steps** (usando `StepCard` existente):
+
+- **Step 1 — "Escolha o estilo"**: Apenas 2 opções: Button e Callout (sem Preview/Embed)
+- **Step 2 — "Imagem de capa"**: Upload/URL da thumbnail (400×400 recomendado), com preview e botão trocar/remover
+- **Step 3 — "Textos"**: Título (com contador, max 50), e campo "Button URL" com o referral link bloqueado (read-only, estilizado como disabled)
+
+**Preview mobile:** Mantém o preview existente mas simplificado (só Button e Callout).
+
+**Ações footer:** "Delete", "Save As Draft", "Publish" — idêntico ao screenshot.
+
+### 3. Preview mobile
+
+Manter o componente `MobilePreview` interno mas filtrar para mostrar apenas os estilos Button/Callout quando `isAffiliate`.
+
+## Resultado esperado
+
+- Clicar "Link de Afiliado Kivo" → editor abre com 3 steps numerados
+- URL de referral aparece bloqueada no Step 3 (campo "Button URL")
+- Apenas 2 estilos: Button e Callout
+- Preview atualiza em tempo real
+- Salvar/Publicar funciona normalmente
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/storefront/ThemeSection.tsx` | Guard no useEffect para comparar valores antes de setar; useCallback no handleTemplateSelect |
-| `src/pages/Store.tsx` | Remover invalidateQueries do onSuccess do saveThemeMutation (dados locais já são a fonte de verdade) |
+| `src/pages/editor/UrlMediaFlow.tsx` | Renderizar layout StepCard para `isAffiliate`; query referral profile; URL bloqueada; 2 estilos apenas |
 
