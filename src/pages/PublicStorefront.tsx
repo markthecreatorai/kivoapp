@@ -55,6 +55,9 @@ interface ProductInfo {
   slug: string;
   thumbnail_url: string | null;
   short_description: string | null;
+  thumbnail_style: string | null;
+  listing_button_text: string | null;
+  delivery_url: string | null;
 }
 
 interface PriceInfo {
@@ -291,7 +294,7 @@ export default function PublicStorefront() {
         const [prodRes, priceRes] = await Promise.all([
           supabase
             .from("products")
-            .select("id, name, slug, thumbnail_url, short_description")
+            .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url")
             .in("id", productIds),
           supabase
             .from("prices")
@@ -411,9 +414,56 @@ export default function PublicStorefront() {
         const product = products.find((p) => p.id === config.product_id);
         if (!product) return null;
         const price = prices.find((p) => p.product_id === product.id);
+        const isCalloutStyle = product.thumbnail_style === "callout";
+        const isButtonStyle = product.thumbnail_style === "button";
+        const ctaLabel = product.listing_button_text || "Comprar";
+        const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
+        const isExternal = product.delivery_url?.startsWith("http");
+
+        // Callout with icon layout (Stan Store style)
+        if (isCalloutStyle || isButtonStyle) {
+          return (
+            <a
+              href={linkTarget}
+              target={isExternal ? "_blank" : undefined}
+              rel={isExternal ? "noopener noreferrer" : undefined}
+              onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
+              className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
+              style={{ borderColor: t.primary + "40" }}
+            >
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  {product.thumbnail_url && (
+                    <img
+                      src={product.thumbnail_url}
+                      alt={product.name}
+                      className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                      loading="lazy"
+                    />
+                  )}
+                  <p className="font-semibold" style={{ color: t.text }}>
+                    {product.name}
+                  </p>
+                </div>
+                {!isButtonStyle && (
+                  <div
+                    className={`mt-4 py-3 text-sm font-medium text-center text-white ${buttonClass}`}
+                    style={{ backgroundColor: t.primary }}
+                  >
+                    {ctaLabel}
+                  </div>
+                )}
+              </div>
+            </a>
+          );
+        }
+
+        // Default product card (large image)
         return (
           <a
-            href={`/checkout/${product.slug}`}
+            href={linkTarget}
+            target={isExternal ? "_blank" : undefined}
+            rel={isExternal ? "noopener noreferrer" : undefined}
             onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
             className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
             style={{ borderColor: t.primary + "40" }}
@@ -445,7 +495,7 @@ export default function PublicStorefront() {
                   className={`px-4 py-2 text-sm font-medium text-white ${buttonClass}`}
                   style={{ backgroundColor: t.primary }}
                 >
-                  Comprar
+                  {ctaLabel}
                 </span>
               </div>
             </div>

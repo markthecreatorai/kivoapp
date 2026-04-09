@@ -140,22 +140,20 @@ export function StoreProductPreviewRenderer({
                   gap: theme.spacing,
                 }}
               >
-                {product.thumbnailUrl && (
-                  <div 
-                    className="w-full h-40 mb-4 overflow-hidden flex items-center justify-center"
-                    style={{ 
-                      backgroundColor: theme.textColor + '10',
-                      borderRadius: theme.imageRadius,
-                    }}
-                  >
-                    <img src={product.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                  </div>
-                )}
-                <p className="font-bold text-lg leading-snug" style={{ color: theme.textColor }}>
-                  {product.name || "Título do produto"}
-                </p>
+                <div className="flex items-center gap-3">
+                  {product.thumbnailUrl && (
+                    <img
+                      src={product.thumbnailUrl}
+                      alt=""
+                      className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                    />
+                  )}
+                  <p className="font-bold text-lg leading-snug" style={{ color: theme.textColor }}>
+                    {product.name || "Título do produto"}
+                  </p>
+                </div>
                 {product.shortDescription && (
-                  <p className="text-sm mt-2 line-clamp-2" style={{ color: theme.textColor, opacity: 0.7 }}>
+                  <p className="text-sm mt-3 line-clamp-2" style={{ color: theme.textColor, opacity: 0.7 }}>
                     {product.shortDescription}
                   </p>
                 )}
