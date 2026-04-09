@@ -106,8 +106,11 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
           <DialogDescription>Valor disponível: <strong>{fmt(availableBalance)}</strong></DialogDescription>
         </DialogHeader>
 
-        {availableBalance <= 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nenhum saldo disponível para saque no momento.</p>
+        {availableBalance < 2000 ? (
+          <div className="text-center py-4 space-y-2">
+            <p className="text-sm text-muted-foreground">Saldo mínimo para saque: <strong>{fmt(2000)}</strong></p>
+            <p className="text-xs text-muted-foreground">Seu saldo disponível: {fmt(availableBalance)}</p>
+          </div>
         ) : accounts.length === 0 ? (
           <div className="text-center py-4 space-y-2">
             <p className="text-sm text-muted-foreground">Cadastre uma conta bancária antes de solicitar saque.</p>
