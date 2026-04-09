@@ -807,6 +807,39 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
         </div>
       )}
 
+      {/* Template picker dialog */}
+      <AlertDialog open={showTemplates} onOpenChange={setShowTemplates}>
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <LayoutTemplate className="h-5 w-5" />
+              Criar módulo a partir de template
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Escolha um template para iniciar com aulas pré-configuradas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            {MODULE_TEMPLATES.map((tmpl) => (
+              <button
+                key={tmpl.key}
+                onClick={() => handleAddFromTemplate(tmpl.key)}
+                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
+              >
+                <p className="text-sm font-medium">{tmpl.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{tmpl.description}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {tmpl.lessons.length} aulas: {tmpl.lessons.join(" · ")}
+                </p>
+              </button>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -836,18 +869,34 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 }
 
 // ═══════════════════════════════════════════
-// Settings Tab
+// Settings Tab — with publish checklist
 // ═══════════════════════════════════════════
 function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
   const updateCourse = useUpdateCourse();
+  const { data: modules = [] } = useModules(course.id);
+  const moduleIds = modules.map((m) => m.id);
+  const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
   const [status, setStatus] = useState(course.status);
 
-  const save = () => {
+  const checklist = getCoursePublishChecklist(course, modules, allLessons);
+  const hasErrors = checklist.some((c) => c.severity === "error" && !c.passed);
+  const allPassed = checklist.every((c) => c.passed);
+
+  const save = (targetStatus?: string) => {
+    const newStatus = targetStatus || status;
+    if (newStatus === "published" && hasErrors) {
+      toast.error("Corrija os itens obrigatórios antes de publicar");
+      return;
+    }
     setSaving(true);
     updateCourse.mutate(
-      { id: course.id, status },
+      { id: course.id, status: newStatus },
       {
-        onSuccess: () => { toast.success("Configurações salvas"); setSaving(false); },
+        onSuccess: () => {
+          setStatus(newStatus);
+          toast.success(newStatus === "published" ? "Curso publicado!" : "Configurações salvas");
+          setSaving(false);
+        },
         onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
       }
     );
@@ -855,24 +904,77 @@ function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boo
 
   return (
     <div className="max-w-lg space-y-6">
+      {/* Publish checklist */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5" />
+            Checklist de publicação
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {checklist.map((item) => (
+            <div key={item.key} className="flex items-start gap-2 py-1">
+              {item.passed ? (
+                <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+              ) : item.severity === "error" ? (
+                <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              )}
+              <span className={cn(
+                "text-sm",
+                item.passed ? "text-muted-foreground" : item.severity === "error" ? "text-foreground font-medium" : "text-foreground"
+              )}>
+                {item.label}
+              </span>
+            </div>
+          ))}
+          {allPassed && (
+            <p className="text-xs text-green-600 font-medium pt-2">
+              ✓ Tudo pronto para publicar!
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Status */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Configurações do curso</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label className="text-sm">Status</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Rascunho</SelectItem>
-                <SelectItem value="published">Publicado</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="text-sm">Status atual</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant={status === "published" ? "default" : "outline"}>
+                {status === "published" ? "Publicado" : "Rascunho"}
+              </Badge>
+            </div>
           </div>
-          <Button onClick={save} disabled={updateCourse.isPending} className="w-full">
-            Salvar configurações
-          </Button>
+          <div className="flex gap-2">
+            {status === "published" ? (
+              <Button variant="outline" onClick={() => save("draft")} disabled={updateCourse.isPending} className="flex-1">
+                <EyeOff className="h-4 w-4 mr-2" />
+                Voltar para rascunho
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => save("draft")} disabled={updateCourse.isPending} className="flex-1">
+                  Salvar rascunho
+                </Button>
+                <Button
+                  onClick={() => save("published")}
+                  disabled={updateCourse.isPending || hasErrors}
+                  className="flex-1"
+                  title={hasErrors ? "Corrija os itens obrigatórios do checklist" : undefined}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Publicar curso
+                </Button>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
