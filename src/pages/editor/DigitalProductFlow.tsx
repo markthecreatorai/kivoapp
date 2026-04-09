@@ -485,7 +485,7 @@ export default function DigitalProductFlow({
                      </div>
                      <div className="flex-1">
                         <p className="text-sm font-semibold flex gap-2 items-center text-zinc-900">Rede de Afiliados (Receita Mútua) <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-zinc-800 text-zinc-100 h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
-                        <p className="text-xs text-zinc-500 mt-1">Gere links virais pra seus alunos ou afiliados lhe promoverem ganhando X% das vendas em split direto na Stripe/Pagar.me.</p>
+                        <p className="text-xs text-zinc-500 mt-1">Gere links virais pra seus alunos ou afiliados lhe promoverem ganhando X% das vendas em split direto no Asaas.</p>
                      </div>
                  </div>
 

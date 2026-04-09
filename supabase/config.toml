@@ -6,8 +6,6 @@ verify_jwt = false
 [functions.post-purchase]
 verify_jwt = false
 
-[functions.webhook-pagarme]
-verify_jwt = false
 
 [functions.check-payment-status]
 verify_jwt = false
@@ -42,8 +40,6 @@ verify_jwt = false
 [functions.event-reminders]
 verify_jwt = false
 
-[functions.test-pagarme]
-verify_jwt = false
 
 [functions.retry-webhooks]
 verify_jwt = false
