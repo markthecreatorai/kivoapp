@@ -208,11 +208,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Creator Slider */}
-      <CreatorSlider />
-
       {/* Value Proposition */}
       <ValueProposition />
+
+      {/* Creator Slider */}
+      <CreatorSlider />
 
       {/* Features */}
       <section id="features" className="py-20 bg-muted/30">
