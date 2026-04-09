@@ -295,9 +295,9 @@ export default function CreatorSlider() {
           transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
           style={{ cursor: "grab" }}
         >
-          {CREATORS.map((creator, i) => (
-            <div key={creator.id} onClick={() => setActive(i)}>
-              <SlideCard creator={creator} isActive={i === active} />
+          {extendedItems.map((creator, i) => (
+            <div key={`${creator.id}-${i}`} onClick={() => setActive(i - centerOffset)}>
+              <SlideCard creator={creator} isActive={i % total === normalizedActive} />
             </div>
           ))}
         </motion.div>
