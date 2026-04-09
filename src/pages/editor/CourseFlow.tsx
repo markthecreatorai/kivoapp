@@ -512,41 +512,40 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
   const update = (fields: Partial<Course>) => enqueue(fields);
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={status} />
 
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">Página de Checkout</h2>
-        <p className="text-sm text-muted-foreground">Configure a página de conversão do curso.</p>
-      </div>
+      <StepCard stepNumber={1} title="Checkout Page" description="Configure a página de conversão do curso." completed={!!checkoutTitle && !!checkoutImage}>
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Imagem do Checkout (Hero)</Label>
+            <ImageUploadField
+              value={checkoutImage || null}
+              onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Imagem do Checkout (Hero)</Label>
-        <ImageUploadField
-          value={checkoutImage || null}
-          onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Título da página de checkout</Label>
+            <Input
+              value={checkoutTitle}
+              onChange={(e) => { setCheckoutTitle(e.target.value); update({ checkout_title: e.target.value }); }}
+              maxLength={100}
+              placeholder="Título que aparece na página de compra"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Título da página de checkout</Label>
-        <Input
-          value={checkoutTitle}
-          onChange={(e) => { setCheckoutTitle(e.target.value); update({ checkout_title: e.target.value }); }}
-          maxLength={100}
-          placeholder="Título que aparece na página de compra"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Descrição da oferta</Label>
-        <RichTextEditor
-          placeholder="Descreva o que o aluno vai receber..."
-          value={checkoutDesc}
-          onChange={(v) => { setCheckoutDesc(v); update({ checkout_description: v }); }}
-          minHeight="140px"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Descrição da oferta</Label>
+            <RichTextEditor
+              placeholder="Descreva o que o aluno vai receber..."
+              value={checkoutDesc}
+              onChange={(v) => { setCheckoutDesc(v); update({ checkout_description: v }); }}
+              minHeight="140px"
+            />
+          </div>
+        </div>
+      </StepCard>
     </div>
   );
 }
