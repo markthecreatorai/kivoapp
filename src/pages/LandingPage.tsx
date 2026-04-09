@@ -4,13 +4,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
   Check, ArrowRight, Store, Users, CalendarCheck, Mail,
-  BarChart3, Shield, Zap, Crown, Sparkles, ChevronDown,
-  Calculator, Star,
+  BarChart3, Shield, ChevronDown, Star,
 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import kivoSymbol from "@/assets/kivo-symbol.svg";
