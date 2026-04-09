@@ -575,6 +575,7 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
           <ImageUploadField
             value={thumbImage || null}
             onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
+            defaultImage={DEFAULT_COURSE_COVER}
           />
         </StepCard>
       )}
@@ -715,6 +716,7 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
         <ImageUploadField
           value={checkoutImage || null}
           onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
+          defaultImage={DEFAULT_COURSE_COVER}
         />
       </StepCard>
 
@@ -1549,6 +1551,7 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
             onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
             label="Course Image"
             recommendation="Recommended: 1920×1080"
+            defaultImage={DEFAULT_COURSE_COVER}
           />
 
           <div className="space-y-2">
@@ -1712,6 +1715,7 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
             <ImageUploadField
               value={heroUrl || null}
               onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
+              defaultImage={DEFAULT_COURSE_COVER}
             />
           </div>
           <div className="space-y-2">
