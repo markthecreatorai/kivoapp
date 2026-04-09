@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
+import useEmblaCarousel from "embla-carousel-react";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Star, Music } from "lucide-react";
 
@@ -79,7 +79,6 @@ const CREATORS: CreatorSlide[] = [
   },
 ];
 
-/* Phone mockup showing a mini storefront */
 function PhoneMockup({ creator }: { creator: CreatorSlide }) {
   return (
     <div className="w-[160px] h-[320px] md:w-[180px] md:h-[360px] bg-background rounded-[28px] border-[3px] border-foreground/80 shadow-2xl shadow-black/30 overflow-hidden flex flex-col relative">
@@ -139,28 +138,24 @@ function PhoneMockup({ creator }: { creator: CreatorSlide }) {
   );
 }
 
-/* Slide card */
 function SlideCard({ creator, isActive }: { creator: CreatorSlide; isActive: boolean }) {
   return (
-    <motion.div
-      className="relative flex-shrink-0 w-[320px] md:w-[420px] lg:w-[480px] select-none"
-      animate={{
-        scale: isActive ? 1 : 0.92,
+    <div
+      className="relative select-none transition-all duration-[450ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+      style={{
+        transform: isActive ? "scale(1)" : "scale(0.92)",
         opacity: isActive ? 1 : 0.6,
       }}
-      transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
     >
       <div className="relative rounded-[24px] overflow-hidden bg-card group cursor-pointer">
         <div className="relative h-[360px] md:h-[440px] overflow-hidden">
-          <motion.img
+          <img
             src={creator.imageUrl}
             alt={creator.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             loading="lazy"
             width={480}
             height={440}
-            whileHover={{ scale: 1.03 }}
-            transition={{ duration: 0.5 }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <div className="absolute bottom-5 left-5 z-10">
@@ -171,97 +166,68 @@ function SlideCard({ creator, isActive }: { creator: CreatorSlide; isActive: boo
               <span className="text-white/80 text-sm font-medium">{creator.followers} Followers</span>
             </div>
           </div>
-          <motion.div
-            className="absolute bottom-5 left-5 mt-16 z-10"
-            style={{ bottom: "auto", top: "auto", marginTop: "0" }}
-            whileHover={{ scale: 1.05 }}
-          >
-            <Badge className="absolute -bottom-12 left-0 bg-background/95 backdrop-blur text-foreground border-0 px-3 py-1.5 text-xs font-semibold gap-1.5 shadow-lg">
-              <span>{creator.nicheEmoji}</span>
-              {creator.niche}
-            </Badge>
-          </motion.div>
-          <motion.div
-            className="absolute -right-3 md:right-2 top-4 z-20"
-            animate={isActive ? { y: 0 } : { y: 8 }}
-            whileHover={{ y: -6 }}
-            transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+          <Badge className="absolute bottom-[-22px] left-5 bg-background/95 backdrop-blur text-foreground border-0 px-3 py-1.5 text-xs font-semibold gap-1.5 shadow-lg z-10">
+            <span>{creator.nicheEmoji}</span>
+            {creator.niche}
+          </Badge>
+          <div
+            className="absolute -right-3 md:right-2 top-4 z-20 transition-transform duration-[450ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+            style={{ transform: isActive ? "translateY(0)" : "translateY(8px)" }}
           >
             <PhoneMockup creator={creator} />
-          </motion.div>
+          </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-const TOTAL = CREATORS.length;
-// Triple the array for infinite illusion: [clone-set] [original-set] [clone-set]
-const INFINITE_ITEMS = [...CREATORS, ...CREATORS, ...CREATORS];
-
 export default function CreatorSlider() {
-  // virtualIndex tracks position in the middle (original) set: TOTAL..2*TOTAL-1
-  const [virtualIndex, setVirtualIndex] = useState(TOTAL);
-  const [isAnimating, setIsAnimating] = useState(true);
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: true,
+    align: "center",
+    slidesToScroll: 1,
+    containScroll: false,
+  });
+
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const dragStartX = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const realIndex = virtualIndex % TOTAL;
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
 
-  const next = useCallback(() => {
-    setIsAnimating(true);
-    setVirtualIndex((p) => p + 1);
-  }, []);
-
-  const prev = useCallback(() => {
-    setIsAnimating(true);
-    setVirtualIndex((p) => p - 1);
-  }, []);
-
-  // When animation ends, silently reset to the middle set if we drifted out
-  const handleAnimationComplete = useCallback(() => {
-    if (virtualIndex >= TOTAL * 2) {
-      setIsAnimating(false);
-      setVirtualIndex(TOTAL + (virtualIndex % TOTAL));
-    } else if (virtualIndex < TOTAL) {
-      setIsAnimating(false);
-      setVirtualIndex(TOTAL + (virtualIndex % TOTAL));
-    }
-  }, [virtualIndex]);
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+    };
+  }, [emblaApi, onSelect]);
 
   // Autoplay
   useEffect(() => {
-    if (isPaused) return;
-    intervalRef.current = setInterval(next, 4000);
+    if (isPaused || !emblaApi) return;
+    intervalRef.current = setInterval(() => {
+      emblaApi.scrollNext();
+    }, 4000);
     return () => clearInterval(intervalRef.current);
-  }, [isPaused, next]);
+  }, [isPaused, emblaApi]);
 
   // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") next();
-      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") emblaApi?.scrollNext();
+      if (e.key === "ArrowLeft") emblaApi?.scrollPrev();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [next, prev]);
-
-  // Touch / drag
-  const handlePointerDown = (e: React.PointerEvent) => {
-    dragStartX.current = e.clientX;
-  };
-  const handlePointerUp = (e: React.PointerEvent) => {
-    const diff = e.clientX - dragStartX.current;
-    if (Math.abs(diff) > 50) {
-      diff < 0 ? next() : prev();
-    }
-  };
-
-  const slideWidth = typeof window !== "undefined" && window.innerWidth < 768 ? 320 : window.innerWidth < 1024 ? 420 : 480;
-  const gap = 24;
-  const containerWidth = typeof window !== "undefined" ? Math.min(window.innerWidth, 1280) : 1280;
-  const offset = containerWidth / 2 - slideWidth / 2 - virtualIndex * (slideWidth + gap);
+  }, [emblaApi]);
 
   return (
     <section
@@ -278,34 +244,30 @@ export default function CreatorSlider() {
         </p>
       </div>
 
-      <div
-        className="relative"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-      >
-        <motion.div
-          className="flex gap-6"
-          animate={{ x: offset }}
-          transition={isAnimating ? { duration: 0.55, ease: [0.4, 0, 0.2, 1] } : { duration: 0 }}
-          onAnimationComplete={handleAnimationComplete}
-          style={{ cursor: "grab" }}
-        >
-          {INFINITE_ITEMS.map((creator, i) => (
-            <div key={`${creator.id}-${i}`} onClick={() => { setIsAnimating(true); setVirtualIndex(i); }}>
-              <SlideCard creator={creator} isActive={i === virtualIndex} />
-            </div>
-          ))}
-        </motion.div>
+      <div className="relative">
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex gap-6">
+            {CREATORS.map((creator, i) => (
+              <div
+                key={creator.id}
+                className="flex-shrink-0 flex-grow-0 basis-[320px] md:basis-[420px] lg:basis-[480px]"
+                onClick={() => emblaApi?.scrollTo(i)}
+              >
+                <SlideCard creator={creator} isActive={i === selectedIndex} />
+              </div>
+            ))}
+          </div>
+        </div>
 
         <button
-          onClick={prev}
+          onClick={() => emblaApi?.scrollPrev()}
           className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-background/90 backdrop-blur border border-border shadow-lg flex items-center justify-center text-foreground hover:bg-background transition-colors"
           aria-label="Anterior"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
         <button
-          onClick={next}
+          onClick={() => emblaApi?.scrollNext()}
           className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-background/90 backdrop-blur border border-border shadow-lg flex items-center justify-center text-foreground hover:bg-background transition-colors"
           aria-label="Próximo"
         >
@@ -313,14 +275,13 @@ export default function CreatorSlider() {
         </button>
       </div>
 
-      {/* Dots — mapped to real index */}
       <div className="flex justify-center gap-2 mt-8">
         {CREATORS.map((_, i) => (
           <button
             key={i}
-            onClick={() => { setIsAnimating(true); setVirtualIndex(TOTAL + i); }}
+            onClick={() => emblaApi?.scrollTo(i)}
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              i === realIndex ? "bg-destructive w-6" : "bg-foreground/20 hover:bg-foreground/40"
+              i === selectedIndex ? "bg-destructive w-6" : "bg-foreground/20 hover:bg-foreground/40"
             }`}
             aria-label={`Slide ${i + 1}`}
           />
