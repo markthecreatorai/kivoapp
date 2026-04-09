@@ -32,6 +32,9 @@ import {
   useUpdateCourse,
   useReorderModules,
   useReorderLessons,
+  useDuplicateLesson,
+  MODULE_TEMPLATES,
+  getCoursePublishChecklist,
   type Course,
   type CourseModule,
   type CourseLesson,
@@ -40,6 +43,7 @@ import {
   Loader2, Plus, GripVertical, BookOpen, Play, Trash2,
   ChevronDown, ChevronRight, Settings, Check, AlertCircle,
   MoreVertical, Pencil, Calendar, Clock, Eye, EyeOff, Droplets,
+  Copy, LayoutTemplate, CheckCircle2, XCircle, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
