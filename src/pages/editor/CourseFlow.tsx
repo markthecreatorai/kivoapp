@@ -1145,9 +1145,13 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
     if (oldIdx === -1 || newIdx === -1) return;
     const reordered = arrayMove(localModules, oldIdx, newIdx).map((m, i) => ({ ...m, position: i }));
     setLocalModules(reordered);
+    isReorderingRef.current = true;
     reorderModules.mutate(
       { courseId: course.id, order: reordered.map((m) => ({ id: m.id, position: m.position })) },
-      { onError: () => { setLocalModules(serverModules); toast.error("Erro ao reordenar"); } }
+      {
+        onSettled: () => { isReorderingRef.current = false; },
+        onError: () => { setLocalModules(serverModules); toast.error("Erro ao reordenar"); },
+      }
     );
   };
 
@@ -1163,9 +1167,13 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
       const others = prev.filter((l) => l.module_id !== moduleId);
       return [...others, ...reordered];
     });
+    isReorderingRef.current = true;
     reorderLessons.mutate(
       { moduleId, order: reordered.map((l) => ({ id: l.id, position: l.position })) },
-      { onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao reordenar"); } }
+      {
+        onSettled: () => { isReorderingRef.current = false; },
+        onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao reordenar"); },
+      }
     );
   };
 
