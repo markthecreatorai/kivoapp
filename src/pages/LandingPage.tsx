@@ -320,7 +320,7 @@ export default function LandingPage() {
           {/* Bottom bar */}
           <div className="border-t border-border pt-6">
             <p className="text-center text-sm text-muted-foreground">
-              © Kivo Store. Todos os direitos reservados.
+              © Kivo Hub. Todos os direitos reservados.
             </p>
           </div>
         </div>
