@@ -232,6 +232,7 @@ export function PaymentTabs({
                 onClick={onPayPix}
                 disabled={paymentLoading}
                 className="w-full h-14 text-base font-bold"
+                style={{ backgroundColor: 'var(--checkout-primary, hsl(var(--primary)))' }}
               >
                 {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Gerar PIX ${formatCurrency(pixTotal ?? total)}`}
               </Button>
@@ -329,6 +330,7 @@ export function PaymentTabs({
             onClick={() => onPayCard(card)}
             disabled={paymentLoading || loadingInstallments}
             className="w-full h-14 text-base font-bold"
+            style={{ backgroundColor: 'var(--checkout-primary, hsl(var(--primary)))' }}
           >
             {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(cardTotal)}`}
           </Button>
@@ -363,6 +365,7 @@ export function PaymentTabs({
                 onClick={onPayBoleto}
                 disabled={paymentLoading}
                 className="w-full h-14 text-base font-bold"
+                style={{ backgroundColor: 'var(--checkout-primary, hsl(var(--primary)))' }}
               >
                 {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Gerar Boleto ${formatCurrency(total)}`}
               </Button>

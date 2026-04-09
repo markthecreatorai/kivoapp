@@ -32,6 +32,11 @@ interface Price {
   type: string | null;
 }
 
+interface BrandingColors {
+  primary: string;
+  accent: string;
+}
+
 interface SubscriptionPlan {
   billing_interval: string;
   trial_days: number;
@@ -63,6 +68,7 @@ export default function Checkout() {
   const [isRecovery, setIsRecovery] = useState(false);
   const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
   const [selectedBumps, setSelectedBumps] = useState<Set<string>>(new Set());
+  const [branding, setBranding] = useState<BrandingColors | null>(null);
 
   // Load product + price (supports ?session= recovery param)
   useEffect(() => {
@@ -202,6 +208,28 @@ export default function Checkout() {
           };
         }).filter((b) => b.bump_price > 0);
         setOrderBumps(enriched);
+      }
+
+      // Fetch creator branding colors
+      const { data: storefront } = await supabase
+        .from("storefronts")
+        .select("id")
+        .eq("workspace_id", prod.workspace_id)
+        .maybeSingle();
+
+      if (storefront?.id) {
+        const { data: themeData } = await supabase
+          .from("storefront_themes")
+          .select("primary_color, secondary_color")
+          .eq("storefront_id", storefront.id)
+          .maybeSingle();
+
+        if (themeData?.primary_color || themeData?.secondary_color) {
+          setBranding({
+            primary: themeData.primary_color || "#7c3aed",
+            accent: themeData.secondary_color || "#10b981",
+          });
+        }
       }
     }
     load();
@@ -491,7 +519,13 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div
+      className="min-h-screen bg-muted/30"
+      style={branding ? {
+        '--checkout-primary': branding.primary,
+        '--checkout-accent': branding.accent,
+      } as React.CSSProperties : undefined}
+    >
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4 pb-28">
         {/* Header */}
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
@@ -611,6 +645,13 @@ export default function Checkout() {
             <RefreshCw className="w-5 h-5 mx-auto text-accent" />
             <p className="text-[10px] text-muted-foreground leading-tight">Suporte disponível</p>
           </div>
+        </div>
+
+        {/* Asaas trust seal */}
+        <div className="text-center pt-1">
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Processado por <span className="font-semibold">Asaas</span> — Instituição de pagamento autorizada pelo Banco Central do Brasil
+          </p>
         </div>
 
         {/* Footer */}
