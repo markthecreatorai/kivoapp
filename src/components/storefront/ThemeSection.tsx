@@ -542,8 +542,9 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
   });
 
   useEffect(() => {
-    if (theme) {
-      setCurrentTheme({
+    if (!theme) return;
+    setCurrentTheme(prev => {
+      const next = {
         template_key: theme.template_key || "noir",
         primary_color: theme.primary_color || "#1a1a1a",
         secondary_color: theme.secondary_color || "#ffffff",
@@ -552,8 +553,12 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
         font_heading: theme.font_heading || "Plus Jakarta Sans",
         font_body: theme.font_body || "Plus Jakarta Sans",
         button_style: theme.button_style || "rounded",
-      });
-    }
+      };
+      // Only update if values actually changed — prevents render loops
+      const keys = Object.keys(next) as (keyof typeof next)[];
+      const changed = keys.some(k => prev[k] !== next[k]);
+      return changed ? next : prev;
+    });
   }, [theme]);
 
   const handleChange = (field: keyof StorefrontTheme, value: string) => {
@@ -563,7 +568,7 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
   };
 
   // Selecting a template instantly applies its defaults (sync — no timeout)
-  const handleTemplateSelect = (templateKey: string) => {
+  const handleTemplateSelect = useCallback((templateKey: string) => {
     const tpl = TEMPLATES.find(t => t.key === templateKey);
     if (tpl) {
       const updated = {
@@ -576,10 +581,10 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
         font_body: tpl.font,
         font_heading: tpl.font,
       };
-      setCurrentTheme(updated);  // synchronous state update
-      onUpdate(updated);         // propagates to preview immediately
+      setCurrentTheme(updated);
+      onUpdate(updated);
     }
-  };
+  }, [currentTheme, onUpdate]);
 
   const handleFontChange = (font: string) => {
     handleChange("font_body", font);
