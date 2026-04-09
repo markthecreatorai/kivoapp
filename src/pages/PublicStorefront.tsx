@@ -59,6 +59,7 @@ interface ProductInfo {
   thumbnail_style: string | null;
   listing_button_text: string | null;
   delivery_url: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface PriceInfo {
@@ -295,7 +296,7 @@ export default function PublicStorefront() {
         const [prodRes, priceRes] = await Promise.all([
           supabase
             .from("products")
-            .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url")
+            .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url, metadata")
             .in("id", productIds),
           supabase
             .from("prices")
@@ -485,7 +486,7 @@ export default function PublicStorefront() {
                 </p>
               )}
               <div className="flex items-center justify-between mt-3">
-                {price && (
+                {price && (product.metadata as any)?.format_id !== "affiliate" && (
                   <span className="font-bold text-lg" style={{ color: t.primary }}>
                     {formatCurrency(price.amount, price.currency || "BRL")}
                   </span>
