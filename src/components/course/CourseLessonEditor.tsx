@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import {
   useUpdateLesson, useDeleteLesson,
@@ -193,6 +194,7 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
     }
     setVideoUploading(true);
     setVideoProgress(10);
+    trackEvent("course_upload_started", { type: "video", lesson_id: lesson.id });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Sessão expirada"); setVideoUploading(false); return; }
@@ -207,9 +209,11 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
       setDirty(true);
       setVideoProgress(100);
       toast.success("Vídeo enviado!");
+      trackEvent("course_upload_success", { type: "video", lesson_id: lesson.id });
     } catch (err) {
       console.error(err);
       toast.error("Erro ao enviar vídeo");
+      trackEvent("course_upload_fail", { type: "video", lesson_id: lesson.id });
     } finally {
       setTimeout(() => { setVideoUploading(false); setVideoProgress(0); }, 500);
     }
@@ -218,6 +222,7 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
   // ── Material upload ──
   const handleMaterialUpload = async (files: FileList) => {
     setMaterialUploading(true);
+    trackEvent("course_upload_started", { type: "material", lesson_id: lesson.id, count: files.length });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Sessão expirada"); setMaterialUploading(false); return; }
@@ -240,9 +245,11 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
         } as any);
       }
       toast.success("Material(is) adicionado(s)!");
+      trackEvent("course_upload_success", { type: "material", lesson_id: lesson.id });
     } catch (err) {
       console.error(err);
       toast.error("Erro ao enviar material");
+      trackEvent("course_upload_fail", { type: "material", lesson_id: lesson.id });
     } finally {
       setMaterialUploading(false);
     }

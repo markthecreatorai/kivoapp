@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/tracking";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DndContext,
   closestCenter,
@@ -79,6 +81,14 @@ import { WizardTabLayout } from "@/components/editor/WizardTabLayout";
 import { StepCard } from "@/components/editor/StepCard";
 import { cn } from "@/lib/utils";
 
+// ── Standardized toast helper ──
+function showToast(type: "success" | "error" | "warning", message: string, description?: string) {
+  const durations = { success: 3000, error: 5000, warning: 4000 };
+  if (type === "success") toast.success(message, { description, duration: durations.success });
+  else if (type === "error") toast.error(message, { description, duration: durations.error });
+  else toast.warning(message, { description, duration: durations.warning });
+}
+
 interface CourseFlowProps {
   initialProduct: any;
   setSaving: (v: boolean) => void;
@@ -103,8 +113,18 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
 
   if (isLoading || (!course && createCourse.isPending)) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex flex-col lg:flex-row gap-10">
+          <div className="flex-1 min-w-0 space-y-6">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-32 w-full rounded-lg" />
+          </div>
+          <div className="hidden lg:block w-[320px] shrink-0">
+            <Skeleton className="h-[600px] w-[320px] rounded-[40px]" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -121,6 +141,23 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
   const [tab, setTab] = useState("thumbnail");
   const [courseSubView, setCourseSubView] = useState<"main" | "editPage" | "lesson">("main");
   const themeTokens = useStorefrontTheme();
+  const isDirtyRef = useRef(false);
+
+  // Telemetry: opened
+  useEffect(() => {
+    trackEvent("course_builder_opened", { course_id: course.id });
+  }, [course.id]);
+
+  // Guard: beforeunload
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current || updateCourse.isPending) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   // For publish logic from OptionsTab
   const updateCourse = useUpdateCourse();
@@ -137,7 +174,13 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
     if (idx < tabOrder.length - 1) setTab(tabOrder[idx + 1]);
   };
 
+  const handlePrev = () => {
+    const idx = tabOrder.indexOf(tab);
+    if (idx > 0) setTab(tabOrder[idx - 1]);
+  };
+
   const handleTabChange = (v: string) => {
+    trackEvent("course_builder_tab_switched", { from: tab, to: v, course_id: course.id });
     setTab(v);
     if (v !== "course") setCourseSubView("main");
   };
@@ -147,23 +190,39 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
     updateCourse.mutate(
       { id: course.id, status: "draft" },
       {
-        onSuccess: () => { toast.success("Rascunho salvo!"); setSaving(false); },
-        onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
+        onSuccess: () => {
+          showToast("success", "Rascunho salvo!");
+          setSaving(false);
+          isDirtyRef.current = false;
+          trackEvent("course_draft_saved", { course_id: course.id });
+        },
+        onError: () => { showToast("error", "Erro ao salvar"); setSaving(false); },
       }
     );
   };
 
   const handlePublish = () => {
+    trackEvent("course_publish_attempt", { course_id: course.id });
     if (hasErrors) {
-      toast.error("Corrija os itens obrigatórios antes de publicar");
+      showToast("error", "Corrija os itens obrigatórios antes de publicar");
+      trackEvent("course_publish_fail", { course_id: course.id, reason: "checklist_errors" });
       return;
     }
     setSaving(true);
     updateCourse.mutate(
       { id: course.id, status: "published" },
       {
-        onSuccess: () => { toast.success("Curso publicado!"); setSaving(false); },
-        onError: () => { toast.error("Erro ao publicar"); setSaving(false); },
+        onSuccess: () => {
+          showToast("success", "Curso publicado!");
+          setSaving(false);
+          isDirtyRef.current = false;
+          trackEvent("course_publish_success", { course_id: course.id });
+        },
+        onError: () => {
+          showToast("error", "Erro ao publicar");
+          setSaving(false);
+          trackEvent("course_publish_fail", { course_id: course.id, reason: "mutation_error" });
+        },
       }
     );
   };
@@ -181,8 +240,10 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
       preview={<MobilePreviewPanel tab={tab} course={course} themeTokens={themeTokens} courseSubView={courseSubView} />}
       onSaveDraft={handleSaveDraft}
       onNext={handleNext}
+      onPrev={handlePrev}
       onPublish={handlePublish}
       isLastTab={tab === "options"}
+      isFirstTab={tab === "thumbnail"}
       canPublish={!hasErrors}
       isSaving={updateCourse.isPending}
     >
@@ -481,10 +542,12 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
 
       {/* Step 1 — Escolha o estilo do card */}
       <StepCard stepNumber={1} title="Escolha o estilo do card" description="Como o curso vai aparecer na sua vitrine." completed={!!cardStyle}>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Estilo do card">
           {CARD_STYLES.map(({ key, label, desc }) => (
             <button
               key={key}
+              role="radio"
+              aria-checked={cardStyle === key}
               onClick={() => { setCardStyle(key); update({ thumbnail_style: key }); }}
               className={cn(
                 "flex flex-col items-center gap-2 p-4 rounded-xl border-2 text-center transition-all",
@@ -1148,11 +1211,12 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
     const reordered = arrayMove(localModules, oldIdx, newIdx).map((m, i) => ({ ...m, position: i }));
     setLocalModules(reordered);
     isReorderingRef.current = true;
+    trackEvent("course_module_reordered", { course_id: course.id });
     reorderModules.mutate(
       { courseId: course.id, order: reordered.map((m) => ({ id: m.id, position: m.position })) },
       {
         onSettled: () => { isReorderingRef.current = false; },
-        onError: () => { setLocalModules(serverModules); toast.error("Erro ao reordenar"); },
+        onError: () => { setLocalModules(serverModules); showToast("error", "Erro ao reordenar"); },
       }
     );
   };
@@ -1170,11 +1234,12 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
       return [...others, ...reordered];
     });
     isReorderingRef.current = true;
+    trackEvent("course_lesson_reordered", { course_id: course.id, module_id: moduleId });
     reorderLessons.mutate(
       { moduleId, order: reordered.map((l) => ({ id: l.id, position: l.position })) },
       {
         onSettled: () => { isReorderingRef.current = false; },
-        onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao reordenar"); },
+        onError: () => { setLocalLessons(serverLessons); showToast("error", "Erro ao reordenar"); },
       }
     );
   };

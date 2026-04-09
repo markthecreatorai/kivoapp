@@ -22,6 +22,7 @@ export function StepCard({ stepNumber, title, description, completed, children, 
               ? "bg-green-600 text-white"
               : "bg-primary text-primary-foreground"
           )}
+          aria-label={`Etapa ${stepNumber}${completed ? ", concluída" : ""}`}
         >
           {completed ? <Check className="h-3.5 w-3.5" /> : stepNumber}
         </span>
