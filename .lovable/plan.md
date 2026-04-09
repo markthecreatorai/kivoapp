@@ -1,52 +1,42 @@
 
 
-# Plano: Editor de "Link de Afiliado Kivo" com URL bloqueada e layout Stan Store
+# Plano: Imagem padrão para capas de curso
 
-## Problema
+## O que muda
 
-Ao clicar "Link de Afiliado Kivo" no `/products/new`, o produto é criado com `format_id: "affiliate"` e redireciona para `UrlMediaFlow`. Esse flow mostra um editor genérico de URL/mídia, com campo de URL editável e 4 estilos de card. O usuário quer que o editor de afiliado seja idêntico ao da Stan Store (screenshot): 3 steps numerados, URL de referral bloqueada, apenas 2 estilos (Button/Callout).
+Copiar a imagem enviada para `src/assets/default-course-cover.png` e usá-la como fallback em todos os locais onde a capa do curso aparece vazia (ícone cinza de imagem).
 
-## Mudanças
+## Pontos de alteração
 
-### 1. `src/pages/NewProduct.tsx` — corrigir format_id
+### 1. Copiar imagem
+`user-uploads://image-21.png` → `src/assets/default-course-cover.png`
 
-Atualmente o affiliate cria com `format_id: "affiliate"`, mas o `UrlMediaFlow` trata `isAffiliate` e `isReferralLink` separadamente. Unificar: quando `format_id === "affiliate"`, o flow deve buscar o referral link do usuário (como já faz para `referral_link`).
+### 2. `src/pages/editor/CourseFlow.tsx`
 
-Nenhuma mudança necessária aqui — o `NewProduct` já salva o `referral_link` no metadata. Só preciso garantir que o `UrlMediaFlow` use esse dado.
+Importar a imagem default e usá-la como fallback nos seguintes pontos:
 
-### 2. `src/pages/editor/UrlMediaFlow.tsx` — modo afiliado com layout StepCard
+- **ThumbnailTab init** (linha ~529): `useState(course.thumbnail_image || course.hero_image_url || DEFAULT_COVER)`
+- **Preview do card thumbnail** (linha ~332-335): substituir o `<ImageIcon>` pelo `<img src={DEFAULT_COVER}>`
+- **Course Homepage card** (linha ~1262-1265): substituir o `<ImageIcon>` pelo `<img src={DEFAULT_COVER}>`
+- **EditPageSubView init** (linha ~1521): `useState(course.hero_image_url || DEFAULT_COVER)` — mas aqui o default NÃO deve ser salvo no banco automaticamente; só aparece visualmente
+- **CheckoutTab init** (linha ~662): `useState(course.checkout_image || DEFAULT_COVER)`
 
-Quando `isAffiliate === true`:
+**Regra importante**: O default é apenas visual. Ao salvar, se o valor for igual ao default, salvar como `null`/vazio para que o campo fique limpo no banco. O usuário pode trocar ou remover normalmente via `ImageUploadField`.
 
-**Query do referral profile:** Ativar a query `referralProfile` também para `isAffiliate` (hoje só roda para `isReferralLink`).
+### 3. `src/components/course/ImageUploadField.tsx`
 
-**Auto-fill URL:** Preencher `targetUrl` com o referral link do profile OU do `initialProduct.metadata.referral_link`, e tornar o campo **read-only**.
+Adicionar prop opcional `defaultImage?: string`. Quando `value` é null/vazio e `defaultImage` está definido, mostrar a imagem default com um badge "Padrão" e os botões normais de trocar/remover.
 
-**Layout em 3 Steps** (usando `StepCard` existente):
+### 4. `src/components/course/CourseMobilePreview.tsx`
 
-- **Step 1 — "Escolha o estilo"**: Apenas 2 opções: Button e Callout (sem Preview/Embed)
-- **Step 2 — "Imagem de capa"**: Upload/URL da thumbnail (400×400 recomendado), com preview e botão trocar/remover
-- **Step 3 — "Textos"**: Título (com contador, max 50), e campo "Button URL" com o referral link bloqueado (read-only, estilizado como disabled)
-
-**Preview mobile:** Mantém o preview existente mas simplificado (só Button e Callout).
-
-**Ações footer:** "Delete", "Save As Draft", "Publish" — idêntico ao screenshot.
-
-### 3. Preview mobile
-
-Manter o componente `MobilePreview` interno mas filtrar para mostrar apenas os estilos Button/Callout quando `isAffiliate`.
-
-## Resultado esperado
-
-- Clicar "Link de Afiliado Kivo" → editor abre com 3 steps numerados
-- URL de referral aparece bloqueada no Step 3 (campo "Button URL")
-- Apenas 2 estilos: Button e Callout
-- Preview atualiza em tempo real
-- Salvar/Publicar funciona normalmente
+Substituir fallback de ícone vazio pelo default cover quando `heroImageUrl` é null.
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/editor/UrlMediaFlow.tsx` | Renderizar layout StepCard para `isAffiliate`; query referral profile; URL bloqueada; 2 estilos apenas |
+| `src/assets/default-course-cover.png` | Criar — imagem padrão |
+| `src/components/course/ImageUploadField.tsx` | Prop `defaultImage` para fallback visual |
+| `src/pages/editor/CourseFlow.tsx` | Usar default cover em todos os placeholders vazios |
+| `src/components/course/CourseMobilePreview.tsx` | Fallback de hero com imagem padrão |
 
