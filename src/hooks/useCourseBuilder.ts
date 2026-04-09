@@ -64,7 +64,7 @@ export function useCourseByProduct(productId: string | undefined) {
         .eq("product_id", productId!)
         .maybeSingle();
       if (error) throw error;
-      return data as Course | null;
+      return data as unknown as Course | null;
     },
     enabled: !!productId,
   });
@@ -85,7 +85,7 @@ export function useCreateCourse() {
         .select()
         .single();
       if (error) throw error;
-      return data as Course;
+      return data as unknown as Course;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["course-by-product", vars.product_id] });
@@ -105,7 +105,7 @@ export function useUpdateCourse() {
         .select()
         .single();
       if (error) throw error;
-      return data as Course;
+      return data as unknown as Course;
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["course-by-product", data.product_id] });
@@ -124,7 +124,7 @@ export function useModules(courseId: string | undefined) {
         .eq("course_id", courseId!)
         .order("position", { ascending: true });
       if (error) throw error;
-      return (data || []) as CourseModule[];
+      return (data || []) as unknown as CourseModule[];
     },
     enabled: !!courseId,
   });
@@ -144,7 +144,7 @@ export function useCreateModule() {
         .select()
         .single();
       if (error) throw error;
-      return data as CourseModule;
+      return data as unknown as CourseModule;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["course-modules", vars.course_id] });
@@ -214,7 +214,7 @@ export function useLessons(moduleId: string | undefined) {
         .eq("module_id", moduleId!)
         .order("position", { ascending: true });
       if (error) throw error;
-      return (data || []) as CourseLesson[];
+      return (data || []) as unknown as CourseLesson[];
     },
     enabled: !!moduleId,
   });
@@ -231,7 +231,7 @@ export function useAllLessons(courseId: string | undefined, moduleIds: string[])
         .in("module_id", moduleIds)
         .order("position", { ascending: true });
       if (error) throw error;
-      return (data || []) as CourseLesson[];
+      return (data || []) as unknown as CourseLesson[];
     },
     enabled: !!courseId && moduleIds.length > 0,
   });
@@ -251,7 +251,7 @@ export function useCreateLesson() {
         .select()
         .single();
       if (error) throw error;
-      return data as CourseLesson;
+      return data as unknown as CourseLesson;
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["course-lessons", data.module_id] });
@@ -324,7 +324,7 @@ export function useLessonMaterials(lessonId: string | undefined) {
         .eq("lesson_id", lessonId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data || []) as LessonMaterial[];
+      return (data || []) as unknown as LessonMaterial[];
     },
     enabled: !!lessonId,
   });
