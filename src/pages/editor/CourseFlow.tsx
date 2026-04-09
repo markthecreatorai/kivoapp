@@ -1053,7 +1053,7 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
             <p className="text-xs">Use um template ou crie um módulo em branco</p>
           </div>
         )}
-      </div>
+      </StepCard>
 
       {/* Template picker */}
       <AlertDialog open={showTemplates} onOpenChange={setShowTemplates}>
