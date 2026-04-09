@@ -134,23 +134,32 @@ const FAQ_ITEMS = [
   { q: "Como funciona o checkout?", a: "Integrado com Pagar.me — aceita PIX, cartão e boleto. Você recebe na sua conta em poucos dias." },
   { q: "Posso migrar de outra plataforma?", a: "Sim. Você pode importar seus produtos e configurar tudo em menos de 30 minutos." },
   { q: "Tem suporte em português?", a: "Claro! Suporte por chat e email, 100% em português." },
+  { q: "Quais formas de pagamento são aceitas?", a: "PIX, cartão de crédito (até 12x) e boleto bancário. Tudo integrado no checkout." },
+  { q: "A Kivo é realmente segura?", a: "Sim. Usamos criptografia de ponta a ponta, infraestrutura na AWS e conformidade com LGPD." },
 ];
 
 function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <section className="py-20 max-w-3xl mx-auto px-4">
-      <h2 className="text-3xl font-bold text-foreground text-center mb-10">Perguntas frequentes</h2>
-      <div className="space-y-3">
-        {FAQ_ITEMS.map((item, i) => (
-          <button key={i} onClick={() => setOpen(open === i ? null : i)} className="w-full text-left p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-            <div className="flex justify-between items-center">
-              <span className="font-medium text-foreground">{item.q}</span>
-              {open === i ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-            </div>
-            {open === i && <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>}
-          </button>
-        ))}
+    <section className="py-20 bg-muted/30">
+      <div className="max-w-3xl mx-auto px-4">
+        <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2 italic">Perguntas frequentes</h2>
+        <p className="text-center text-muted-foreground mb-10">Veja como eles usam pra melhorar seus negócios!</p>
+        <div className="space-y-3">
+          {FAQ_ITEMS.map((item, i) => (
+            <button
+              key={i}
+              onClick={() => setOpen(open === i ? null : i)}
+              className="w-full text-left px-6 py-4 rounded-xl bg-card border border-border/50 hover:border-border transition-all duration-200 group"
+            >
+              <div className="flex justify-between items-center gap-4">
+                <span className="font-medium text-foreground text-sm md:text-base">{item.q}</span>
+                <ChevronDown className={`w-5 h-5 text-destructive shrink-0 transition-transform duration-200 ${open === i ? "rotate-180" : ""}`} />
+              </div>
+              {open === i && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{item.a}</p>}
+            </button>
+          ))}
+        </div>
       </div>
     </section>
   );
