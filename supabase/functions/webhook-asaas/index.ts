@@ -600,8 +600,19 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
     refunded_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
-  // Forfeit reserve
+  // Forfeit any held reserve for this order
   await supabase.from("reserve_entries").update({
+    status: "forfeited",
+    released_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
+  // Update transaction + security_reserves (new model)
+  await supabase.from("transactions").update({
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id);
+
+  await supabase.from("security_reserves").update({
     status: "forfeited",
     released_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id).eq("status", "held");
