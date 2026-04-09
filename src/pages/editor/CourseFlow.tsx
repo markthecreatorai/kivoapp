@@ -1244,15 +1244,11 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={saveStatus} />
 
-      {/* Branding */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Branding do curso</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <StepCard stepNumber={1} title="Branding do curso" completed={!!bgColor && !!hlColor}>
+        <div className="space-y-5">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Descrição do curso</Label>
             <RichTextEditor
@@ -1261,7 +1257,6 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
               minHeight="120px"
             />
           </div>
-
           <div className="space-y-2">
             <Label className="text-sm font-medium">Imagem Hero</Label>
             <ImageUploadField
@@ -1269,7 +1264,6 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
               onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
             />
           </div>
-
           <div className="space-y-2">
             <Label className="text-sm font-medium">Fonte do título</Label>
             <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
@@ -1285,17 +1279,11 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
             <BrandingColorPicker label="Cor de fundo" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
             <BrandingColorPicker label="Cor de destaque" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
-      {/* Publish checklist */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5" />Checklist de publicação
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <StepCard stepNumber={2} title="Checklist de publicação" completed={allPassed}>
+        <div className="space-y-2">
           {checklist.map((item) => (
             <div key={item.key} className="flex items-start gap-2 py-1">
               {item.passed ? (
@@ -1316,13 +1304,11 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           {allPassed && (
             <p className="text-xs text-green-600 font-medium pt-2">✓ Tudo pronto para publicar!</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
-      {/* Status */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Status do curso</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+      <StepCard stepNumber={3} title="Status do curso">
+        <div className="space-y-4">
           <div>
             <Label className="text-sm">Status atual</Label>
             <div className="flex items-center gap-2 mt-1">
@@ -1348,8 +1334,8 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
               </>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
     </div>
   );
 }
