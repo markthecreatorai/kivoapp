@@ -72,6 +72,8 @@ import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
 import { CourseLessonEditor } from "@/components/course/CourseLessonEditor";
 import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
+import { WizardTabLayout } from "@/components/editor/WizardTabLayout";
+import { StepCard } from "@/components/editor/StepCard";
 import { cn } from "@/lib/utils";
 
 interface CourseFlowProps {
@@ -117,37 +119,83 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
   const [courseSubView, setCourseSubView] = useState<"main" | "editPage" | "lesson">("main");
   const themeTokens = useStorefrontTheme();
 
+  // For publish logic from OptionsTab
+  const updateCourse = useUpdateCourse();
+  const { data: modules = [] } = useModules(course.id);
+  const moduleIds = modules.map((m) => m.id);
+  const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
+  const checklist = getCoursePublishChecklist(course, modules, allLessons);
+  const hasErrors = checklist.some((c) => c.severity === "error" && !c.passed);
+
+  const tabOrder = ["thumbnail", "checkout", "course", "options"];
+
+  const handleNext = () => {
+    const idx = tabOrder.indexOf(tab);
+    if (idx < tabOrder.length - 1) setTab(tabOrder[idx + 1]);
+  };
+
+  const handleTabChange = (v: string) => {
+    setTab(v);
+    if (v !== "course") setCourseSubView("main");
+  };
+
+  const handleSaveDraft = () => {
+    setSaving(true);
+    updateCourse.mutate(
+      { id: course.id, status: "draft" },
+      {
+        onSuccess: () => { toast.success("Rascunho salvo!"); setSaving(false); },
+        onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
+      }
+    );
+  };
+
+  const handlePublish = () => {
+    if (hasErrors) {
+      toast.error("Corrija os itens obrigatórios antes de publicar");
+      return;
+    }
+    setSaving(true);
+    updateCourse.mutate(
+      { id: course.id, status: "published" },
+      {
+        onSuccess: () => { toast.success("Curso publicado!"); setSaving(false); },
+        onError: () => { toast.error("Erro ao publicar"); setSaving(false); },
+      }
+    );
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-      <div className="flex flex-col lg:flex-row gap-10">
-        <div className="flex-1 min-w-0">
-          <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v !== "course") setCourseSubView("main"); }} className="w-full">
-            <TabsList className="bg-muted/50 p-1 w-full flex mb-6">
-              <TabsTrigger value="thumbnail" className="flex-1 text-xs sm:text-sm">1. Thumbnail</TabsTrigger>
-              <TabsTrigger value="checkout" className="flex-1 text-xs sm:text-sm">2. Checkout</TabsTrigger>
-              <TabsTrigger value="course" className="flex-1 text-xs sm:text-sm">3. Curso</TabsTrigger>
-              <TabsTrigger value="options" className="flex-1 text-xs sm:text-sm">4. Opções</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="thumbnail">
-              <ThumbnailTab course={course} setSaving={setSaving} />
-            </TabsContent>
-            <TabsContent value="checkout">
-              <CheckoutTab course={course} setSaving={setSaving} />
-            </TabsContent>
-            <TabsContent value="course">
-              <ContentTab course={course} setSaving={setSaving} subView={courseSubView} setSubView={setCourseSubView} />
-            </TabsContent>
-            <TabsContent value="options">
-              <OptionsTab course={course} setSaving={setSaving} />
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Mobile preview — context-aware */}
-        <MobilePreviewPanel tab={tab} course={course} themeTokens={themeTokens} courseSubView={courseSubView} />
-      </div>
-    </div>
+    <WizardTabLayout
+      tabs={[
+        { key: "thumbnail", label: "1. Thumbnail" },
+        { key: "checkout", label: "2. Checkout" },
+        { key: "course", label: "3. Curso" },
+        { key: "options", label: "4. Opções" },
+      ]}
+      activeTab={tab}
+      onTabChange={handleTabChange}
+      preview={<MobilePreviewPanel tab={tab} course={course} themeTokens={themeTokens} courseSubView={courseSubView} />}
+      onSaveDraft={handleSaveDraft}
+      onNext={handleNext}
+      onPublish={handlePublish}
+      isLastTab={tab === "options"}
+      canPublish={!hasErrors}
+      isSaving={updateCourse.isPending}
+    >
+      <TabsContent value="thumbnail">
+        <ThumbnailTab course={course} setSaving={setSaving} />
+      </TabsContent>
+      <TabsContent value="checkout">
+        <CheckoutTab course={course} setSaving={setSaving} />
+      </TabsContent>
+      <TabsContent value="course">
+        <ContentTab course={course} setSaving={setSaving} subView={courseSubView} setSubView={setCourseSubView} />
+      </TabsContent>
+      <TabsContent value="options">
+        <OptionsTab course={course} setSaving={setSaving} />
+      </TabsContent>
+    </WizardTabLayout>
   );
 }
 
@@ -387,17 +435,10 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
   const update = (fields: Partial<Course>) => enqueue(fields);
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={status} />
 
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">Vitrine da Loja (Thumbnail)</h2>
-        <p className="text-sm text-muted-foreground">Escolha como o curso vai aparecer na sua loja.</p>
-      </div>
-
-      {/* Card style selector */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold">Estilo do card</Label>
+      <StepCard stepNumber={1} title="Card Style" description="Escolha como o curso vai aparecer na sua loja." completed={!!cardStyle}>
         <div className="flex gap-3">
           {CARD_STYLES.map(({ key, label, desc }) => (
             <button
@@ -415,46 +456,45 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
             </button>
           ))}
         </div>
-      </div>
+      </StepCard>
 
-      {/* Thumbnail image */}
-      {cardStyle !== "button" && (
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Imagem de Capa</Label>
-          <ImageUploadField
-            value={thumbImage || null}
-            onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
+      <StepCard stepNumber={2} title="Card Details" description="Imagem, título e subtítulo do card." completed={!!thumbTitle}>
+        {cardStyle !== "button" && (
+          <div className="space-y-2 mb-5">
+            <Label className="text-sm font-semibold">Imagem de Capa</Label>
+            <ImageUploadField
+              value={thumbImage || null}
+              onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
+            />
+          </div>
+        )}
+
+        <div className="space-y-2 mb-5">
+          <Label className="text-sm font-semibold">Título na vitrine</Label>
+          <Input
+            value={thumbTitle}
+            onChange={(e) => { const v = e.target.value; setThumbTitle(v); if (v.length <= 100) update({ thumbnail_title: v, title: v }); }}
+            maxLength={100}
+            placeholder="Ex: Curso de Marketing Digital"
           />
+          <p className="text-right text-[10px] text-muted-foreground">{thumbTitle.length}/100</p>
         </div>
-      )}
 
-      {/* Title */}
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Título na vitrine</Label>
-        <Input
-          value={thumbTitle}
-          onChange={(e) => { const v = e.target.value; setThumbTitle(v); if (v.length <= 100) update({ thumbnail_title: v, title: v }); }}
-          maxLength={100}
-          placeholder="Ex: Curso de Marketing Digital"
-        />
-        <p className="text-right text-[10px] text-muted-foreground">{thumbTitle.length}/100</p>
-      </div>
-
-      {/* Subtitle */}
-      {cardStyle !== "button" && (
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
-          <Textarea
-            placeholder="Aquela frase que captura a atenção do cliente na vitrine."
-            maxLength={120}
-            value={thumbSubtitle}
-            onChange={(e) => { setThumbSubtitle(e.target.value); update({ thumbnail_subtitle: e.target.value }); }}
-            rows={2}
-            className="resize-none"
-          />
-          <p className="text-right text-[10px] text-muted-foreground">{thumbSubtitle.length}/120</p>
-        </div>
-      )}
+        {cardStyle !== "button" && (
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
+            <Textarea
+              placeholder="Aquela frase que captura a atenção do cliente na vitrine."
+              maxLength={120}
+              value={thumbSubtitle}
+              onChange={(e) => { setThumbSubtitle(e.target.value); update({ thumbnail_subtitle: e.target.value }); }}
+              rows={2}
+              className="resize-none"
+            />
+            <p className="text-right text-[10px] text-muted-foreground">{thumbSubtitle.length}/120</p>
+          </div>
+        )}
+      </StepCard>
     </div>
   );
 }
@@ -472,41 +512,40 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
   const update = (fields: Partial<Course>) => enqueue(fields);
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={status} />
 
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">Página de Checkout</h2>
-        <p className="text-sm text-muted-foreground">Configure a página de conversão do curso.</p>
-      </div>
+      <StepCard stepNumber={1} title="Checkout Page" description="Configure a página de conversão do curso." completed={!!checkoutTitle && !!checkoutImage}>
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Imagem do Checkout (Hero)</Label>
+            <ImageUploadField
+              value={checkoutImage || null}
+              onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Imagem do Checkout (Hero)</Label>
-        <ImageUploadField
-          value={checkoutImage || null}
-          onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Título da página de checkout</Label>
+            <Input
+              value={checkoutTitle}
+              onChange={(e) => { setCheckoutTitle(e.target.value); update({ checkout_title: e.target.value }); }}
+              maxLength={100}
+              placeholder="Título que aparece na página de compra"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Título da página de checkout</Label>
-        <Input
-          value={checkoutTitle}
-          onChange={(e) => { setCheckoutTitle(e.target.value); update({ checkout_title: e.target.value }); }}
-          maxLength={100}
-          placeholder="Título que aparece na página de compra"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Descrição da oferta</Label>
-        <RichTextEditor
-          placeholder="Descreva o que o aluno vai receber..."
-          value={checkoutDesc}
-          onChange={(v) => { setCheckoutDesc(v); update({ checkout_description: v }); }}
-          minHeight="140px"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Descrição da oferta</Label>
+            <RichTextEditor
+              placeholder="Descreva o que o aluno vai receber..."
+              value={checkoutDesc}
+              onChange={(v) => { setCheckoutDesc(v); update({ checkout_description: v }); }}
+              minHeight="140px"
+            />
+          </div>
+        </div>
+      </StepCard>
     </div>
   );
 }
@@ -804,14 +843,7 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
   return (
     <div className="max-w-3xl space-y-6 animate-in fade-in">
       {/* ── Section 1: Course Homepage ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">1</span>
-          <div>
-            <h3 className="text-base font-bold">Course Homepage</h3>
-            <p className="text-xs text-muted-foreground">Start by giving your course a title, description, and image.</p>
-          </div>
-        </div>
+      <StepCard stepNumber={1} title="Course Homepage" description="Start by giving your course a title, description, and image." completed={!!course.title && !!course.hero_image_url}>
         <div
           className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card cursor-pointer hover:border-primary/40 transition-colors"
           onClick={() => setSubView("editPage")}
@@ -831,17 +863,10 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
             Edit Page <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </div>
+      </StepCard>
 
       {/* ── Section 2: Add Modules ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">2</span>
-          <div>
-            <h3 className="text-base font-bold">Add modules</h3>
-            <p className="text-xs text-muted-foreground">Organize your course content into modules and lessons.</p>
-          </div>
-        </div>
+      <StepCard stepNumber={2} title="Add modules" description="Organize your course content into modules and lessons." completed={localModules.length > 0}>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
           <SortableContext items={localModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
@@ -1028,7 +1053,7 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
             <p className="text-xs">Use um template ou crie um módulo em branco</p>
           </div>
         )}
-      </div>
+      </StepCard>
 
       {/* Template picker */}
       <AlertDialog open={showTemplates} onOpenChange={setShowTemplates}>
@@ -1110,14 +1135,8 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
       <SaveStatusIndicator status={status} />
 
       {/* Section 1: Page Description */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">1</span>
-            <CardTitle className="text-base">Page Description</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <StepCard stepNumber={1} title="Page Description" completed={!!title && !!heroUrl}>
+        <div className="space-y-5">
           <ImageUploadField
             value={heroUrl || null}
             onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
@@ -1149,18 +1168,12 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
               placeholder="Describe what students will learn..."
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
       {/* Section 2: Customize Branding */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">2</span>
-            <CardTitle className="text-base">Customize Branding</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <StepCard stepNumber={2} title="Customize Branding" completed={!!bgColor && !!hlColor}>
+        <div className="space-y-5">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Title Font</Label>
             <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
@@ -1176,8 +1189,8 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
             <BrandingColorPicker label="Background Color" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
             <BrandingColorPicker label="Highlight Color" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
       {/* Footer actions */}
       <div className="flex justify-end gap-3 pt-2">
@@ -1231,15 +1244,11 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={saveStatus} />
 
-      {/* Branding */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Branding do curso</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <StepCard stepNumber={1} title="Branding do curso" completed={!!bgColor && !!hlColor}>
+        <div className="space-y-5">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Descrição do curso</Label>
             <RichTextEditor
@@ -1248,7 +1257,6 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
               minHeight="120px"
             />
           </div>
-
           <div className="space-y-2">
             <Label className="text-sm font-medium">Imagem Hero</Label>
             <ImageUploadField
@@ -1256,7 +1264,6 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
               onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
             />
           </div>
-
           <div className="space-y-2">
             <Label className="text-sm font-medium">Fonte do título</Label>
             <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
@@ -1272,17 +1279,11 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
             <BrandingColorPicker label="Cor de fundo" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
             <BrandingColorPicker label="Cor de destaque" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
-      {/* Publish checklist */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5" />Checklist de publicação
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <StepCard stepNumber={2} title="Checklist de publicação" completed={allPassed}>
+        <div className="space-y-2">
           {checklist.map((item) => (
             <div key={item.key} className="flex items-start gap-2 py-1">
               {item.passed ? (
@@ -1303,13 +1304,11 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           {allPassed && (
             <p className="text-xs text-green-600 font-medium pt-2">✓ Tudo pronto para publicar!</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
-      {/* Status */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Status do curso</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+      <StepCard stepNumber={3} title="Status do curso">
+        <div className="space-y-4">
           <div>
             <Label className="text-sm">Status atual</Label>
             <div className="flex items-center gap-2 mt-1">
@@ -1335,8 +1334,8 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
               </>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
     </div>
   );
 }
