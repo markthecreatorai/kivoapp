@@ -1,83 +1,29 @@
 
 
-# Plano: Reestruturar aba "Curso" para espelhar layout do Stan Store
+# Plano: Corrigir conteúdo saindo da moldura do celular no preview
 
-## O que muda
+## Problema
 
-A aba **3. Curso** atualmente mostra apenas a árvore de módulos/aulas. O Stan Store mostra duas seções numeradas:
+Nos dois componentes de preview mobile (`CourseMobilePreview` e `LessonMobilePreview`), a tela interna usa `height: calc(100% + 12px)` com `-mt-3` para compensar o notch. Isso faz o conteúdo ultrapassar a borda inferior arredondada da moldura do celular. O `overflow-hidden` no container da tela deveria clipar, mas a combinação de altura extra com scroll interno causa o vazamento visual.
 
-```text
-┌─────────────────────────────────────────────┐
-│ 1  Course Homepage                          │
-│    "Start by giving your course a title..." │
-│  ┌──────┐  Homepage                         │
-│  │ img  │  My 12-week Program    [Edit >]   │
-│  └──────┘                                   │
-├─────────────────────────────────────────────┤
-│ 2  Add modules                              │
-│    Module 1: Topic 1        ✓ Published  ⋮  │
-│       Lesson 1: Overview                 >  │
-│       Lesson 2: The Problem              >  │
-│       [+ Add Lesson]                        │
-│    Module 2: Introduction   ✓ Published  ⋮  │
-│    [+ Add Module]                           │
-└─────────────────────────────────────────────┘
-```
+## Correção
 
-Ao clicar **"Edit Page >"**, entra na sub-view com:
-- Image upload (1920x1080)
-- Title (max 100, counter)
-- Description rich text
-- Customize Branding (font, bg color, highlight color)
-- Botões Cancel / Save
+**Ambos os arquivos:**
+- `src/components/course/CourseMobilePreview.tsx`
+- `src/components/course/LessonMobilePreview.tsx`
 
-Ao clicar numa **aula**, entra no Lesson Editor existente (que já está correto — vídeo, título, descrição, materiais, Delete/Save as Draft/Publish).
+Mudanças:
+1. Remover o `height: calc(100% + 12px)` e o `-mt-3` da div da tela
+2. Usar `h-full` simples para a tela, com `pt-0` no conteúdo para não ter gap do notch
+3. Garantir que o container externo (phone shell `p-3`) tenha `overflow-hidden` e o screen inner também tenha `overflow-hidden` com `rounded-[32px]`
+4. Alternativa mais limpa: manter a estrutura mas trocar de `height: calc(100% + 12px)` para `h-full` e mover o notch para dentro da tela (posição absoluta), evitando o offset negativo
 
-O **preview mobile** (direita) deve aparecer na aba Course mostrando a homepage do curso (imagem + título + descrição + bullets), igual ao Stan.
-
-## Mudanças
-
-### Arquivo: `src/pages/editor/CourseFlow.tsx`
-
-1. **ContentTab** ganha 3 sub-views controladas por estado `subView`:
-   - `"main"` (padrão) — mostra as 2 seções (Homepage card + módulos tree)
-   - `"editPage"` — editor completo da homepage (campos de imagem, título, descrição, branding com Cancel/Save)
-   - `"lesson"` — CourseLessonEditor existente (sem mudança)
-
-2. **Seção "Course Homepage"** (subView === "main"):
-   - Card compacto com thumbnail do curso (miniatura), label "Homepage", título do curso, botão "Edit Page >"
-   - Numeração visual `1` ao lado do título da seção
-
-3. **Seção "Add Modules"** (subView === "main"):
-   - Numeração visual `2`
-   - Árvore de módulos/aulas existente permanece idêntica
-   - Módulos mostram status badge (Published/Draft/Drip) + menu ⋮
-   - Aulas mostram `>` chevron ao clicar (navega para lesson editor)
-   - Botão `+ Add Lesson` dentro de cada módulo
-   - Botão `+ Add Module` no final
-
-4. **Sub-view "Edit Page"** (subView === "editPage"):
-   - Header com `← Course Homepage`
-   - Seção 1: "Page Description" — Image upload, Title (100 chars), Description rich text
-   - Seção 2: "Customize Branding" — Title Font dropdown, Background color picker, Highlight color picker
-   - Footer com Cancel (volta para main) e Save (salva e volta)
-   - Usa `useAutosave` ou save explícito no botão
-
-5. **MobilePreviewPanel**: Remover o `return null` para `tab === "course"` — em vez disso, mostrar o preview da homepage do curso (imagem, título com cor de destaque, descrição renderizada) igual ao Stan. Reutilizar o `CourseMobilePreview` existente.
-
-### Detalhes visuais (alinhados com referência Stan)
-
-- Seções numeradas com badge circular (`1`, `2`)
-- Card da homepage com borda leve, thumbnail 80x60px à esquerda, texto à direita, botão "Edit Page >" à direita
-- Módulos com drag handle (⋮⋮), título em negrito, badge de status verde/cinza
-- Aulas indentadas com `>` chevron para navegação
-- `+ Add Lesson` como botão outline full-width dentro do módulo
-- `+ Add Module` como botão outline full-width no final
-- Botões "Save As Draft" e "Publish" no footer do lesson editor (já existem)
+A abordagem será: remover o notch separado, usar o espaço do padding do phone shell normalmente, e garantir que a tela ocupe exatamente `h-full` sem ultrapassar.
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/editor/CourseFlow.tsx` | Reestruturar ContentTab com 3 sub-views; adicionar CourseHomepageCard e EditPageSubView; habilitar preview na aba Course |
+| `src/components/course/CourseMobilePreview.tsx` | Corrigir height/overflow da tela interna |
+| `src/components/course/LessonMobilePreview.tsx` | Mesma correção |
 
