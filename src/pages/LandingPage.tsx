@@ -24,7 +24,7 @@ import creatorWorking from "@/assets/gallery/creator-working.jpg";
 const GALLERY_ITEMS: GalleryItem[] = [
   {
     id: "1",
-    title: "Hanah Franklin",
+    title: "Rafaela Linhares",
     role: "Creator",
     imageUrl: creator1,
     quote: "Fazia muito tempo que eu procurava uma plataforma pra ter minha própria comunidade e gerenciar produtos, com a Kivo ficou muito mais fácil",
