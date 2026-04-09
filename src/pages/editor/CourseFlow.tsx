@@ -435,17 +435,10 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
   const update = (fields: Partial<Course>) => enqueue(fields);
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={status} />
 
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">Vitrine da Loja (Thumbnail)</h2>
-        <p className="text-sm text-muted-foreground">Escolha como o curso vai aparecer na sua loja.</p>
-      </div>
-
-      {/* Card style selector */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold">Estilo do card</Label>
+      <StepCard stepNumber={1} title="Card Style" description="Escolha como o curso vai aparecer na sua loja." completed={!!cardStyle}>
         <div className="flex gap-3">
           {CARD_STYLES.map(({ key, label, desc }) => (
             <button
@@ -463,46 +456,45 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
             </button>
           ))}
         </div>
-      </div>
+      </StepCard>
 
-      {/* Thumbnail image */}
-      {cardStyle !== "button" && (
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Imagem de Capa</Label>
-          <ImageUploadField
-            value={thumbImage || null}
-            onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
+      <StepCard stepNumber={2} title="Card Details" description="Imagem, título e subtítulo do card." completed={!!thumbTitle}>
+        {cardStyle !== "button" && (
+          <div className="space-y-2 mb-5">
+            <Label className="text-sm font-semibold">Imagem de Capa</Label>
+            <ImageUploadField
+              value={thumbImage || null}
+              onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
+            />
+          </div>
+        )}
+
+        <div className="space-y-2 mb-5">
+          <Label className="text-sm font-semibold">Título na vitrine</Label>
+          <Input
+            value={thumbTitle}
+            onChange={(e) => { const v = e.target.value; setThumbTitle(v); if (v.length <= 100) update({ thumbnail_title: v, title: v }); }}
+            maxLength={100}
+            placeholder="Ex: Curso de Marketing Digital"
           />
+          <p className="text-right text-[10px] text-muted-foreground">{thumbTitle.length}/100</p>
         </div>
-      )}
 
-      {/* Title */}
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Título na vitrine</Label>
-        <Input
-          value={thumbTitle}
-          onChange={(e) => { const v = e.target.value; setThumbTitle(v); if (v.length <= 100) update({ thumbnail_title: v, title: v }); }}
-          maxLength={100}
-          placeholder="Ex: Curso de Marketing Digital"
-        />
-        <p className="text-right text-[10px] text-muted-foreground">{thumbTitle.length}/100</p>
-      </div>
-
-      {/* Subtitle */}
-      {cardStyle !== "button" && (
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
-          <Textarea
-            placeholder="Aquela frase que captura a atenção do cliente na vitrine."
-            maxLength={120}
-            value={thumbSubtitle}
-            onChange={(e) => { setThumbSubtitle(e.target.value); update({ thumbnail_subtitle: e.target.value }); }}
-            rows={2}
-            className="resize-none"
-          />
-          <p className="text-right text-[10px] text-muted-foreground">{thumbSubtitle.length}/120</p>
-        </div>
-      )}
+        {cardStyle !== "button" && (
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
+            <Textarea
+              placeholder="Aquela frase que captura a atenção do cliente na vitrine."
+              maxLength={120}
+              value={thumbSubtitle}
+              onChange={(e) => { setThumbSubtitle(e.target.value); update({ thumbnail_subtitle: e.target.value }); }}
+              rows={2}
+              className="resize-none"
+            />
+            <p className="text-right text-[10px] text-muted-foreground">{thumbSubtitle.length}/120</p>
+          </div>
+        )}
+      </StepCard>
     </div>
   );
 }
