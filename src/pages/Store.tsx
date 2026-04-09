@@ -816,6 +816,10 @@ export default function Store() {
     if (!localThemeDirty.current) setLocalTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    setLocalProducts(null);
+  }, [fetchedProducts]);
+
   const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
   const setProducts = setLocalProducts;
 
@@ -829,6 +833,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto arquivado.");
     },
@@ -845,6 +850,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Status do produto atualizado.");
     },
@@ -859,6 +865,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto excluído.");
       setDeleteTargetId(null);
@@ -911,6 +918,7 @@ export default function Store() {
       return data;
     },
     onSuccess: () => {
+      setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto duplicado.");
     },
