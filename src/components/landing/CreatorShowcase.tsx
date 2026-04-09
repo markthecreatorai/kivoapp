@@ -123,9 +123,9 @@ export default function CreatorShowcase() {
               className="absolute top-8 -right-2 md:top-12 md:right-0 z-20"
             >
               <div className="bg-destructive text-destructive-foreground px-5 py-3 rounded-2xl shadow-lg shadow-destructive/25 text-sm font-semibold leading-tight text-center max-w-[140px]">
-                Good vibes.
+                Sua comunidade.
                 <br />
-                Shared moves.
+                Suas regras.
               </div>
             </motion.div>
 
@@ -143,8 +143,8 @@ export default function CreatorShowcase() {
                   <img src={kivoSymbol} alt="" className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Activity</p>
-                  <p className="text-xs font-bold text-foreground">Morning Walk</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Circles</p>
+                  <p className="text-xs font-bold text-foreground">Feed ativo</p>
                 </div>
                 <img src={creator2} alt="" className="w-6 h-6 rounded-full object-cover border-2 border-background" />
               </div>
@@ -161,8 +161,8 @@ export default function CreatorShowcase() {
             >
               <div className="flex items-center gap-3 bg-foreground text-background rounded-full pl-4 pr-5 py-2 shadow-xl">
                 <div>
-                  <p className="text-[10px] font-semibold text-background/60 uppercase tracking-wider">Klubs</p>
-                  <p className="text-xs font-bold text-background">Hiking Crew</p>
+                  <p className="text-[10px] font-semibold text-background/60 uppercase tracking-wider">Membros</p>
+                  <p className="text-xs font-bold text-background">Comunidade Pro</p>
                 </div>
                 <div className="flex -space-x-2">
                   {[creator1, creator2, creator3].map((src, i) => (
