@@ -62,14 +62,16 @@ export function useReferralTracking() {
       console.log(`[Referral Tracking] Referral code captured (last-click): ${refCode}`);
 
       // Log the click event (fire-and-forget, non-blocking)
-      supabase
-        .from("referral_profiles")
-        .select("user_id")
-        .eq("referral_code", refCode)
-        .maybeSingle()
-        .then(({ data: profile }) => {
+      (async () => {
+        try {
+          const { data: profile } = await supabase
+            .from("referral_profiles")
+            .select("user_id")
+            .eq("referral_code", refCode)
+            .maybeSingle();
+
           if (profile?.user_id) {
-            supabase.from("referral_audit_log" as any).insert({
+            await supabase.from("referral_audit_log" as any).insert({
               referrer_user_id: profile.user_id,
               event_type: "affiliate_link_clicked",
               metadata: {
@@ -79,9 +81,10 @@ export function useReferralTracking() {
               },
             } as any);
           }
-        })
-        .then(() => {})
-        .catch(() => {});
+        } catch {
+          // non-fatal
+        }
+      })();
     }
   }, [searchParams]);
 }
