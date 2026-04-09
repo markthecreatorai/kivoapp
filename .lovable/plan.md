@@ -1,45 +1,85 @@
 
 
-# Plano: Corrigir preview da loja — ordem de drag e "Meu Link" fantasma
+# Plano: Course Builder — Estrutura base (arquitetura + dados)
 
-## Problemas
+## Situação atual
 
-1. **Drag reorder não reflete no preview**: Quando você reordena produtos na aba "Loja", o `localProducts` é atualizado com a nova ordem. Porém o `StorefrontPreview` renderiza os `externalProducts` na ordem original sem respeitar a ordem passada via prop.
+O projeto já possui:
+- Tabela `member_content` (módulos/aulas vinculadas a `products`) usada pelo `CourseBuilder.tsx` existente
+- Componentes `CourseSidebar` e `LessonEditor` em `src/components/course/`
+- Rota `/products/:id/course-builder` funcional
+- O `ProductEditor` com `formatId === "course"` cai no fallback "Editor em construção"
 
-2. **"Meu Link" aparecendo no preview**: Existe um bloco do tipo `link` na tabela `storefront_blocks` com o título padrão "Meu Link" (criado automaticamente ao adicionar um bloco de link na aba Vitrine). Ele aparece no preview porque está marcado como visível, mesmo que não tenha URL configurada.
+O usuário quer **novas tabelas dedicadas** com branding, drip content e materials, inspiradas no Stan Store.
 
-## Correções
+## Decisão de design
 
-### 1. Respeitar ordem dos produtos no preview
+Criar tabelas **novas e independentes** (`courses`, `course_modules`, `course_lessons`, `lesson_materials`) em vez de alterar `member_content`. Isso separa o course builder do sistema legado e permite branding, drip, e materials sem poluir a tabela existente. A tabela `courses` terá `workspace_id` (seguindo o padrão RLS do projeto) em vez de `user_id` puro.
 
-**Arquivo:** `src/components/storefront/StorefrontPreview.tsx` (linhas 498-499)
+## Migração SQL
 
-O filtro de `externalProducts` já funciona, mas não respeita a ordem do array `products` passado pelo Store. O array `products` já vem na ordem correta após drag-and-drop. Basta manter a ordem original do array ao filtrar (o `.filter` já preserva ordem, então o problema é que `fetchedProducts` volta com `order by created_at desc`).
+```text
+Tabela: courses
+- id, workspace_id (FK workspace_members), product_id (FK products, nullable)
+- title (varchar 100), description_richtext (text)
+- hero_image_url, branding_title_font, branding_bg_color, branding_highlight_color
+- status (draft/published), created_at, updated_at
 
-A correção real é no `handleDragEnd` do `Store.tsx` — após reordenar localmente, o preview já recebe a nova ordem via prop. Preciso verificar se o `useEffect` que reseta `localProducts` ao receber novos `fetchedProducts` está desfazendo a reordenação. O `useEffect` na linha 819 reseta `localProducts` para `null` quando `fetchedProducts` muda, o que é correto após mutations mas pode conflitar com drag. Solução: adicionar um `dirty flag` para products similar ao usado para storefront/theme, para não resetar durante drag.
+Tabela: course_modules
+- id, course_id (FK courses ON DELETE CASCADE)
+- title (varchar 100), status (draft/published/drip)
+- drip_type (none/date/days_after_purchase), drip_at, drip_days
+- position (int default 0), created_at, updated_at
 
-**Arquivo:** `src/pages/Store.tsx`
-- Adicionar `localProductsDirty` ref
-- No `handleDragEnd`, setar `localProductsDirty.current = true`
-- No `useEffect` de sync, só resetar se `!localProductsDirty.current`
-- Nas mutations (`onSuccess`), resetar o dirty flag junto com `setLocalProducts(null)`
+Tabela: course_lessons
+- id, module_id (FK course_modules ON DELETE CASCADE)
+- title (varchar 100), description_richtext (text)
+- video_url, status (draft/published), position (int default 0)
+- created_at, updated_at
 
-### 2. Filtrar blocos de link sem URL no preview
+Tabela: lesson_materials
+- id, lesson_id (FK course_lessons ON DELETE CASCADE)
+- file_name (varchar 255), file_url, file_type, file_size (bigint)
+- created_at
 
-**Arquivo:** `src/components/storefront/StorefrontPreview.tsx` (linha 99-115)
-
-No `renderBlock`, caso `link`, retornar `null` se a URL estiver vazia:
-
-```tsx
-case 'link':
-  if (!config.url) return null;
-  return ( /* ... existente ... */ );
+RLS: Todas com isolamento por workspace_id via is_workspace_member()
+Triggers: Validação de limites de caracteres em title (100 chars)
 ```
 
-## Arquivos alterados
+## Arquivos a criar/alterar
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/Store.tsx` | Adicionar dirty flag para evitar reset de ordem durante drag |
-| `src/components/storefront/StorefrontPreview.tsx` | Não renderizar blocos de link sem URL |
+| **Migration SQL** | Criar 4 tabelas, RLS policies, validation trigger |
+| `src/hooks/useCourseBuilder.ts` | **Novo** — hook com queries/mutations CRUD para courses, modules, lessons, materials + reorder |
+| `src/pages/editor/CourseFlow.tsx` | **Novo** — flow do editor de curso (tabs: Conteúdo, Branding, Configurações) |
+| `src/pages/ProductEditor.tsx` | Adicionar case `"course"` no switch para renderizar `CourseFlow` |
+| `src/pages/CourseBuilder.tsx` | Atualizar para usar novas tabelas em vez de `member_content` (ou redirecionar para o novo flow) |
+
+## Hook `useCourseBuilder`
+
+```text
+- useCourse(courseId) — fetch curso com módulos e aulas
+- useCreateCourse(workspaceId) — create com product_id opcional
+- useUpdateCourse() — update campos do curso
+- useModules(courseId) — listar módulos ordenados
+- useCreateModule() / useUpdateModule() / useDeleteModule()
+- useLessons(moduleId) — listar aulas ordenadas
+- useCreateLesson() / useUpdateLesson() / useDeleteLesson()
+- useReorderModules() — batch update de positions
+- useReorderLessons() — batch update de positions
+- useLessonMaterials(lessonId) — listar materiais
+- useUploadMaterial() / useDeleteMaterial()
+```
+
+## RLS
+
+Usa `is_workspace_member(workspace_id)` existente para SELECT/INSERT/UPDATE/DELETE em todas as 4 tabelas. Modules, lessons e materials herdam o workspace via JOIN com a tabela pai.
+
+## Fluxo do usuário
+
+1. Usuário cria produto tipo "course" → abre ProductEditor → renderiza `CourseFlow`
+2. CourseFlow cria registro em `courses` vinculado ao `product_id`
+3. Interface com sidebar de módulos/aulas + editor principal (similar ao existente mas com novas tabelas)
+4. Branding e drip configuráveis por módulo
 
