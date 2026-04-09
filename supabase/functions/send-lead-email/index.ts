@@ -1,45 +1,157 @@
+// =============================================================
+// Edge Function: send-lead-email
+// Envia e-mail de boas-vindas para leads via Resend API
+// e atualiza o status do lead no banco de dados.
+// =============================================================
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+// ── CORS ─────────────────────────────────────────────────────
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
 
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+// ── Helpers ──────────────────────────────────────────────────
+function jsonResponse(
+  body: Record<string, unknown>,
+  status = 200,
+): Response {
+  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateInput(body: Record<string, unknown>): string | null {
+  const { email, workspaceId } = body;
+  if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email)) {
+    return "Campo 'email' é obrigatório e deve ser um e-mail válido.";
+  }
+  if (!workspaceId || typeof workspaceId !== "string") {
+    return "Campo 'workspaceId' é obrigatório.";
+  }
+  return null;
+}
+
+// ── Template HTML ────────────────────────────────────────────
+function buildEmailHtml(name?: string): string {
+  const greeting = name ? `Olá, ${name}!` : "Olá!";
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bem-vindo</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#7c3aed,#6d28d9);padding:32px 32px 24px;text-align:center;">
+              <h1 style="margin:0;font-size:26px;color:#ffffff;font-weight:700;">${greeting} 👋</h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">
+                Obrigado por se inscrever! Você agora faz parte da nossa comunidade.
+              </p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#374151;">
+                Em breve você receberá conteúdos exclusivos diretamente no seu e-mail.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="background-color:#7c3aed;border-radius:8px;">
+                    <a href="https://kivohub.com.br" target="_blank" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
+                      Conhecer a plataforma
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;line-height:1.5;">
+                Você recebeu este e-mail porque se inscreveu em nossa lista.<br/>
+                Se não reconhece esta inscrição, pode ignorar este e-mail com segurança.
+              </p>
+              <p style="margin:12px 0 0;font-size:12px;color:#d1d5db;text-align:center;">
+                © ${new Date().getFullYear()} Kivo · Todos os direitos reservados
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ── Main Handler ─────────────────────────────────────────────
 Deno.serve(async (req) => {
+  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Aceitar apenas POST
+  if (req.method !== "POST") {
+    return jsonResponse(
+      { success: false, message: "Método não permitido. Use POST." },
+      405,
+    );
+  }
+
   try {
-    const { name, email, workspaceId, leadId } = await req.json();
-
-    // Validate input
-    if (!email || typeof email !== "string" || !email.includes("@")) {
-      return new Response(
-        JSON.stringify({ error: "Email inválido" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    if (!workspaceId) {
-      return new Response(
-        JSON.stringify({ error: "workspaceId é obrigatório" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    // ── 1. Parse body ──────────────────────────────────────
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse(
+        { success: false, message: "Body inválido. Envie um JSON válido." },
+        400,
       );
     }
 
+    // ── 2. Validação ───────────────────────────────────────
+    const validationError = validateInput(body);
+    if (validationError) {
+      return jsonResponse({ success: false, message: validationError }, 400);
+    }
+
+    const email = (body.email as string).trim().toLowerCase();
+    const name = body.name ? String(body.name).trim() : undefined;
+    const workspaceId = body.workspaceId as string;
+    const leadId = body.leadId ? String(body.leadId) : undefined;
+
+    // ── 3. Verificar secrets ───────────────────────────────
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: "Serviço de email não configurado" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      console.error("[send-lead-email] RESEND_API_KEY não configurada");
+      return jsonResponse(
+        { success: false, message: "Serviço de e-mail não configurado no servidor." },
+        500,
       );
     }
 
-    const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || "Equipe <noreply@kivohub.com.br>";
+    const EMAIL_FROM =
+      Deno.env.get("EMAIL_FROM") || "Equipe <noreply@kivohub.com.br>";
 
-    // Send email via Resend
+    // ── 4. Enviar e-mail via Resend ────────────────────────
+    console.log(`[send-lead-email] Enviando para ${email}…`);
+
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -50,58 +162,74 @@ Deno.serve(async (req) => {
         from: EMAIL_FROM,
         to: [email],
         subject: "Bem-vindo! Obrigado por se inscrever 🎉",
-        html: `
-          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1a1a2e;">
-            <h1 style="font-size: 24px; margin-bottom: 16px;">Olá${name ? `, ${name}` : ""}! 👋</h1>
-            <p style="font-size: 16px; line-height: 1.6; color: #444;">
-              Obrigado por se inscrever! Você agora faz parte da nossa comunidade.
-            </p>
-            <p style="font-size: 16px; line-height: 1.6; color: #444;">
-              Em breve você receberá conteúdos exclusivos diretamente no seu email.
-            </p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="font-size: 13px; color: #999;">
-              Você recebeu este email porque se inscreveu em nossa lista. Se não reconhece esta inscrição, pode ignorar este email.
-            </p>
-          </div>
-        `,
+        html: buildEmailHtml(name),
       }),
     });
 
     const resendData = await resendRes.json();
 
     if (!resendRes.ok) {
-      console.error("Resend API error:", JSON.stringify(resendData));
-      return new Response(
-        JSON.stringify({ error: "Falha ao enviar email", details: resendData }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      console.error(
+        `[send-lead-email] Resend retornou ${resendRes.status}:`,
+        JSON.stringify(resendData),
+      );
+      return jsonResponse(
+        {
+          success: false,
+          message: "Falha ao enviar e-mail. Tente novamente mais tarde.",
+          details: resendData,
+        },
+        502,
       );
     }
 
-    // Update lead in database if leadId provided
-    if (leadId) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log(
+      `[send-lead-email] E-mail enviado com sucesso. ID: ${resendData.id}`,
+    );
 
-      await supabase
-        .from("leads")
-        .update({
-          status: "CONTACTED",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", leadId);
+    // ── 5. Atualizar lead no banco ─────────────────────────
+    if (leadId) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const { error: updateError } = await supabase
+          .from("leads")
+          .update({
+            status: "CONTACTED",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", leadId)
+          .eq("workspace_id", workspaceId);
+
+        if (updateError) {
+          console.warn(
+            `[send-lead-email] Falha ao atualizar lead ${leadId}:`,
+            updateError.message,
+          );
+        } else {
+          console.log(
+            `[send-lead-email] Lead ${leadId} atualizado para CONTACTED`,
+          );
+        }
+      } catch (dbErr) {
+        // Não falhar o request por erro de banco — o e-mail já foi enviado
+        console.error("[send-lead-email] Erro ao atualizar lead:", dbErr);
+      }
     }
 
-    return new Response(
-      JSON.stringify({ success: true, messageId: resendData.id }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // ── 6. Resposta de sucesso ─────────────────────────────
+    return jsonResponse({
+      success: true,
+      message: "E-mail enviado com sucesso",
+      messageId: resendData.id,
+    });
   } catch (error) {
-    console.error("send-lead-email error:", error);
-    return new Response(
-      JSON.stringify({ error: "Erro interno ao processar envio de email" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    console.error("[send-lead-email] Erro inesperado:", error);
+    return jsonResponse(
+      { success: false, message: "Erro interno ao processar envio de e-mail." },
+      500,
     );
   }
 });
