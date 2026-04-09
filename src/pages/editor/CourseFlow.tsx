@@ -547,50 +547,297 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
 }
 
 // ═══════════════════════════════════════════
-// Tab 2: Checkout
+// Tab 2: Checkout (4 steps)
 // ═══════════════════════════════════════════
+interface CustomField {
+  id: string;
+  label: string;
+  type: "text" | "select" | "checkbox";
+  required: boolean;
+  options?: string[];
+}
+
 function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
   const { enqueue, status } = useAutosave(course, setSaving);
 
   const [checkoutImage, setCheckoutImage] = useState(course.checkout_image || "");
   const [checkoutTitle, setCheckoutTitle] = useState(course.checkout_title || course.title || "");
   const [checkoutDesc, setCheckoutDesc] = useState(course.checkout_description || "");
+  const [bottomTitle, setBottomTitle] = useState(course.checkout_bottom_title || "");
+  const [ctaText, setCtaText] = useState(course.checkout_cta || "COMPRAR");
+  const [priceType, setPriceType] = useState(course.checkout_price_type || "one_time");
+  const [priceCents, setPriceCents] = useState(course.checkout_price_cents ?? 0);
+  const [discountCents, setDiscountCents] = useState(course.checkout_discount_price_cents ?? 0);
+  const [billingInterval, setBillingInterval] = useState(course.checkout_billing_interval || "monthly");
+  const [customFields, setCustomFields] = useState<CustomField[]>(
+    (course.checkout_custom_fields as CustomField[] | null) || []
+  );
+  const [showDiscount, setShowDiscount] = useState((course.checkout_discount_price_cents ?? 0) > 0);
 
   const update = (fields: Partial<Course>) => enqueue(fields);
+
+  const formatCurrency = (cents: number) => {
+    return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
+  };
+
+  const parseCurrency = (raw: string): number => {
+    const cleaned = raw.replace(/[^\d,]/g, "").replace(",", ".");
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : Math.round(num * 100);
+  };
+
+  const priceValid = priceCents > 0;
+  const discountValid = !showDiscount || (discountCents > 0 && discountCents < priceCents);
+
+  const addCustomField = () => {
+    const newField: CustomField = { id: crypto.randomUUID(), label: "", type: "text", required: false };
+    const next = [...customFields, newField];
+    setCustomFields(next);
+    update({ checkout_custom_fields: next as any });
+  };
+
+  const updateCustomField = (id: string, patch: Partial<CustomField>) => {
+    const next = customFields.map((f) => (f.id === id ? { ...f, ...patch } : f));
+    setCustomFields(next);
+    update({ checkout_custom_fields: next as any });
+  };
+
+  const removeCustomField = (id: string) => {
+    const next = customFields.filter((f) => f.id !== id);
+    setCustomFields(next);
+    update({ checkout_custom_fields: next as any });
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={status} />
 
-      <StepCard stepNumber={1} title="Checkout Page" description="Configure a página de conversão do curso." completed={!!checkoutTitle && !!checkoutImage}>
+      {/* Step 1 — Imagem do checkout */}
+      <StepCard stepNumber={1} title="Imagem do checkout" description="Hero visual da página de compra." completed={!!checkoutImage}>
+        <ImageUploadField
+          value={checkoutImage || null}
+          onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
+        />
+      </StepCard>
+
+      {/* Step 2 — Descrição da oferta */}
+      <StepCard stepNumber={2} title="Descrição da oferta" description="Convença o aluno a comprar." completed={!!checkoutTitle.trim()}>
         <div className="space-y-5">
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">Imagem do Checkout (Hero)</Label>
-            <ImageUploadField
-              value={checkoutImage || null}
-              onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Título da página de checkout</Label>
+            <Label className="text-sm font-semibold">Título *</Label>
             <Input
               value={checkoutTitle}
               onChange={(e) => { setCheckoutTitle(e.target.value); update({ checkout_title: e.target.value }); }}
               maxLength={100}
-              placeholder="Título que aparece na página de compra"
+              placeholder="Ex: Domine marketing digital em 30 dias"
             />
+            <p className="text-right text-[10px] text-muted-foreground">{checkoutTitle.length}/100</p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">Descrição da oferta</Label>
+            <Label className="text-sm font-semibold">Descrição da oferta *</Label>
             <RichTextEditor
-              placeholder="Descreva o que o aluno vai receber..."
+              placeholder="Descreva o que o aluno vai aprender, benefícios e diferenciais..."
               value={checkoutDesc}
               onChange={(v) => { setCheckoutDesc(v); update({ checkout_description: v }); }}
               minHeight="140px"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Título inferior</Label>
+            <Input
+              value={bottomTitle}
+              onChange={(e) => { setBottomTitle(e.target.value); update({ checkout_bottom_title: e.target.value }); }}
+              maxLength={80}
+              placeholder="Ex: Garanta sua vaga agora"
+            />
+            <p className="text-right text-[10px] text-muted-foreground">{bottomTitle.length}/80</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Texto do botão (CTA) *</Label>
+            <Input
+              value={ctaText}
+              onChange={(e) => { const v = e.target.value; setCtaText(v); if (v.length <= 30) update({ checkout_cta: v }); }}
+              maxLength={30}
+              placeholder="COMPRAR"
+            />
+            <p className="text-right text-[10px] text-muted-foreground">{ctaText.length}/30</p>
+          </div>
+        </div>
+      </StepCard>
+
+      {/* Step 3 — Preço */}
+      <StepCard stepNumber={3} title="Definir preço" description="Escolha o modelo de cobrança." completed={priceValid}>
+        <div className="space-y-5">
+          {/* Toggle one_time vs subscription */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setPriceType("one_time"); update({ checkout_price_type: "one_time" }); }}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium border transition-all",
+                priceType === "one_time"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary/30"
+              )}
+            >
+              Pagamento único
+            </button>
+            <button
+              onClick={() => { setPriceType("subscription"); update({ checkout_price_type: "subscription" }); }}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium border transition-all",
+                priceType === "subscription"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary/30"
+              )}
+            >
+              Assinatura
+            </button>
+          </div>
+
+          {/* Billing interval for subscription */}
+          {priceType === "subscription" && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Intervalo de cobrança</Label>
+              <Select value={billingInterval} onValueChange={(v) => { setBillingInterval(v); update({ checkout_billing_interval: v }); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="quarterly">Trimestral</SelectItem>
+                  <SelectItem value="yearly">Anual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Price + discount */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Preço (R$) *</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={(priceCents / 100).toFixed(2).replace(".", ",")}
+                onChange={(e) => {
+                  const cents = parseCurrency(e.target.value);
+                  setPriceCents(cents);
+                  update({ checkout_price_cents: cents });
+                }}
+                placeholder="0,00"
+                className={cn(!priceValid && priceCents === 0 && "border-destructive")}
+              />
+              {!priceValid && (
+                <p className="text-[11px] text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Preço obrigatório
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Preço promocional</Label>
+                <button
+                  onClick={() => {
+                    const next = !showDiscount;
+                    setShowDiscount(next);
+                    if (!next) { setDiscountCents(0); update({ checkout_discount_price_cents: null as any }); }
+                  }}
+                  className={cn(
+                    "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
+                    showDiscount ? "bg-primary" : "bg-muted"
+                  )}
+                >
+                  <span className={cn(
+                    "inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform",
+                    showDiscount ? "translate-x-4" : "translate-x-1"
+                  )} />
+                </button>
+              </div>
+              {showDiscount && (
+                <>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={(discountCents / 100).toFixed(2).replace(".", ",")}
+                    onChange={(e) => {
+                      const cents = parseCurrency(e.target.value);
+                      setDiscountCents(cents);
+                      update({ checkout_discount_price_cents: cents });
+                    }}
+                    placeholder="0,00"
+                    className={cn(!discountValid && "border-destructive")}
+                  />
+                  {!discountValid && discountCents > 0 && (
+                    <p className="text-[11px] text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> Deve ser menor que o preço principal
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Placeholders for future features */}
+          <div className="border border-dashed border-border rounded-lg p-4 space-y-2 opacity-60">
+            <p className="text-xs font-medium text-muted-foreground">🔒 Em breve</p>
+            <p className="text-xs text-muted-foreground">Parcelamento e cupons de desconto estarão disponíveis em versões futuras.</p>
+          </div>
+        </div>
+      </StepCard>
+
+      {/* Step 4 — Campos do checkout */}
+      <StepCard stepNumber={4} title="Campos do formulário" description="Informações coletadas na compra." completed={true}>
+        <div className="space-y-4">
+          {/* Fixed fields */}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground font-medium">Campos obrigatórios (fixos)</p>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <User className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-foreground">Nome</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-foreground">E-mail</span>
+            </div>
+          </div>
+
+          {/* Custom fields */}
+          {customFields.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">Campos personalizados</p>
+              {customFields.map((field) => (
+                <div key={field.id} className="flex items-center gap-2 p-3 rounded-lg border bg-card">
+                  <div className="shrink-0 text-muted-foreground">
+                    {field.type === "text" && <Type className="h-4 w-4" />}
+                    {field.type === "select" && <ListChecks className="h-4 w-4" />}
+                    {field.type === "checkbox" && <ToggleLeft className="h-4 w-4" />}
+                  </div>
+                  <Input
+                    value={field.label}
+                    onChange={(e) => updateCustomField(field.id, { label: e.target.value })}
+                    placeholder="Nome do campo"
+                    className="h-8 text-sm flex-1"
+                  />
+                  <Select value={field.type} onValueChange={(v) => updateCustomField(field.id, { type: v as CustomField["type"] })}>
+                    <SelectTrigger className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Texto</SelectItem>
+                      <SelectItem value="select">Seleção</SelectItem>
+                      <SelectItem value="checkbox">Checkbox</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <button onClick={() => removeCustomField(field.id)} className="text-muted-foreground hover:text-destructive p-1">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button variant="outline" size="sm" onClick={addCustomField} className="w-full">
+            <Plus className="h-4 w-4 mr-1" /> Adicionar campo
+          </Button>
         </div>
       </StepCard>
     </div>
