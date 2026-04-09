@@ -79,7 +79,7 @@ export default function UrlMediaFlow({
 
   const [form, setForm] = useState({
     cardStyle: initialProduct.thumbnail_style || (isAffiliateOrReferral ? "callout" : "button"),
-    name: initialProduct.name || (isReferralLink ? "Crie sua Loja Kivo" : ""),
+    name: initialProduct.name || (isAffiliateOrReferral ? "Crie com a Kivo" : ""),
     shortDescription: initialProduct.short_description || "",
     ctaText: initialProduct.listing_button_text || (isAffiliateOrReferral ? "Apoiar Canal" : "Acessar Link"),
     thumbnailUrl: initialProduct.thumbnail_url || "",
