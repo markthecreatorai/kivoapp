@@ -1,4 +1,5 @@
 import { BookOpen, Play, Lock } from "lucide-react";
+import DEFAULT_COURSE_COVER from "@/assets/default-course-cover.png";
 
 interface CourseMobilePreviewProps {
   title: string;
@@ -43,23 +44,14 @@ export function CourseMobilePreview({
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-black rounded-b-xl z-10" />
           <div className="overflow-y-auto h-full scrollbar-none pt-5">
             {/* Hero */}
-            {heroImageUrl ? (
-              <div className="relative">
-                <img
-                  src={heroImageUrl}
-                  alt="Hero"
-                  className="w-full aspect-[16/9] object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-              </div>
-            ) : (
-              <div
-                className="w-full aspect-[16/9] flex items-center justify-center"
-                style={{ backgroundColor: highlightColor + "22" }}
-              >
-                <BookOpen className="h-10 w-10" style={{ color: highlightColor }} />
-              </div>
-            )}
+            <div className="relative">
+              <img
+                src={heroImageUrl || DEFAULT_COURSE_COVER}
+                alt="Hero"
+                className="w-full aspect-[16/9] object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+            </div>
 
             {/* Content */}
             <div className="px-4 pt-4 pb-8 space-y-3">

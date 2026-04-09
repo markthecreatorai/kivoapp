@@ -42,6 +42,7 @@ import {
   type CourseModule,
   type CourseLesson,
 } from "@/hooks/useCourseBuilder";
+import DEFAULT_COURSE_COVER from "@/assets/default-course-cover.png";
 import {
   Loader2, Plus, GripVertical, BookOpen, Play, Trash2,
   ChevronDown, ChevronRight, Check, AlertCircle,
@@ -329,11 +330,7 @@ function MobilePreviewPanel({ tab, course, themeTokens, courseSubView }: { tab: 
               {style === "preview" && (
                 <div className="w-full rounded-3xl border overflow-hidden shadow-sm" style={{ borderColor: hlColor + "40" }}>
                   <div className="h-44 flex items-center justify-center overflow-hidden" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "10" }}>
-                    {course.thumbnail_image || course.hero_image_url ? (
-                      <img src={course.thumbnail_image || course.hero_image_url || ""} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <ImageIcon className="h-10 w-10" style={{ color: themeTokens?.textColor || "#000", opacity: 0.3 }} />
-                    )}
+                    <img src={course.thumbnail_image || course.hero_image_url || DEFAULT_COURSE_COVER} alt="" className="h-full w-full object-cover" />
                   </div>
                   <div className="p-5">
                     <p className="font-bold text-lg leading-snug" style={{ color: themeTokens?.textColor || "#000" }}>
@@ -527,6 +524,7 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
 
   const [cardStyle, setCardStyle] = useState(course.thumbnail_style || "preview");
   const [thumbImage, setThumbImage] = useState(course.thumbnail_image || course.hero_image_url || "");
+  
   const [thumbTitle, setThumbTitle] = useState(course.thumbnail_title || course.title || "");
   const [thumbSubtitle, setThumbSubtitle] = useState(course.thumbnail_subtitle || "");
   const [thumbCta, setThumbCta] = useState(course.thumbnail_cta || "Acessar curso");
@@ -577,6 +575,7 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
           <ImageUploadField
             value={thumbImage || null}
             onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
+            defaultImage={DEFAULT_COURSE_COVER}
           />
         </StepCard>
       )}
@@ -660,6 +659,7 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
   const { enqueue, status } = useAutosave(course, setSaving);
 
   const [checkoutImage, setCheckoutImage] = useState(course.checkout_image || "");
+  
   const [checkoutTitle, setCheckoutTitle] = useState(course.checkout_title || course.title || "");
   const [checkoutDesc, setCheckoutDesc] = useState(course.checkout_description || "");
   const [bottomTitle, setBottomTitle] = useState(course.checkout_bottom_title || "");
@@ -716,6 +716,7 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
         <ImageUploadField
           value={checkoutImage || null}
           onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
+          defaultImage={DEFAULT_COURSE_COVER}
         />
       </StepCard>
 
@@ -1259,11 +1260,7 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
           onClick={() => setSubView("editPage")}
         >
           <div className="h-[60px] w-[80px] rounded-lg border border-border bg-muted/50 overflow-hidden shrink-0 flex items-center justify-center">
-            {course.hero_image_url ? (
-              <img src={course.hero_image_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
-            )}
+            <img src={course.hero_image_url || DEFAULT_COURSE_COVER} alt="" className="h-full w-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Homepage</p>
@@ -1519,6 +1516,7 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
   const { enqueue, status, flush } = useAutosave(course, setSaving);
 
   const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
+  
   const [title, setTitle] = useState(course.title || "");
   const [description, setDescription] = useState(course.description_richtext || "");
   const [titleFont, setTitleFont] = useState(course.branding_title_font || "Inter");
@@ -1553,6 +1551,7 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
             onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
             label="Course Image"
             recommendation="Recommended: 1920×1080"
+            defaultImage={DEFAULT_COURSE_COVER}
           />
 
           <div className="space-y-2">
@@ -1716,6 +1715,7 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
             <ImageUploadField
               value={heroUrl || null}
               onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
+              defaultImage={DEFAULT_COURSE_COVER}
             />
           </div>
           <div className="space-y-2">
