@@ -1,42 +1,55 @@
 
 
-# Plano: Imagem padrão para capas de curso
+# Plano: Tornar todos os links dinâmicos conforme domínio acessado
 
-## O que muda
+## Problema
 
-Copiar a imagem enviada para `src/assets/default-course-cover.png` e usá-la como fallback em todos os locais onde a capa do curso aparece vazia (ícone cinza de imagem).
+Links de referral e outros são persistidos no banco com URL fixa (ex: `https://f37fc079-...lovableproject.com/?ref=lucas460`). Quando o site é acessado de outro domínio (produção, custom domain), os links ficam errados.
 
-## Pontos de alteração
+## Estratégia
 
-### 1. Copiar imagem
-`user-uploads://image-21.png` → `src/assets/default-course-cover.png`
+**Princípio**: nunca armazenar domínio completo no banco. Armazenar apenas o `referral_code` e construir a URL completa dinamicamente com `window.location.origin` no momento da exibição/cópia.
 
-### 2. `src/pages/editor/CourseFlow.tsx`
+## Mudanças
 
-Importar a imagem default e usá-la como fallback nos seguintes pontos:
+### 1. `src/pages/ReferralsDashboard.tsx`
 
-- **ThumbnailTab init** (linha ~529): `useState(course.thumbnail_image || course.hero_image_url || DEFAULT_COVER)`
-- **Preview do card thumbnail** (linha ~332-335): substituir o `<ImageIcon>` pelo `<img src={DEFAULT_COVER}>`
-- **Course Homepage card** (linha ~1262-1265): substituir o `<ImageIcon>` pelo `<img src={DEFAULT_COVER}>`
-- **EditPageSubView init** (linha ~1521): `useState(course.hero_image_url || DEFAULT_COVER)` — mas aqui o default NÃO deve ser salvo no banco automaticamente; só aparece visualmente
-- **CheckoutTab init** (linha ~662): `useState(course.checkout_image || DEFAULT_COVER)`
+- Na criação do perfil (linhas 70, 96): continuar salvando `referral_link` no banco (campo obrigatório), mas usar `window.location.origin` (já faz isso — OK)
+- Na **exibição** (linhas 122, 149, 250): substituir `profile.referral_link` por URL construída dinamicamente: `${window.location.origin}/?ref=${profile.referral_code}`
+- Isso garante que mesmo perfis criados em preview mostrem a URL correta no domínio atual
 
-**Regra importante**: O default é apenas visual. Ao salvar, se o valor for igual ao default, salvar como `null`/vazio para que o campo fique limpo no banco. O usuário pode trocar ou remover normalmente via `ImageUploadField`.
+### 2. `src/pages/NewProduct.tsx`
 
-### 3. `src/components/course/ImageUploadField.tsx`
+- Linha 180: já usa `window.location.origin` — OK
+- Linha 172-173: ao ler `refProfile.referral_link` do banco para preencher o produto, reconstruir dinamicamente: `${window.location.origin}/?ref=${refProfile.referral_code}`
+- Precisa buscar `referral_code` além de `referral_link` na query (linha 169)
 
-Adicionar prop opcional `defaultImage?: string`. Quando `value` é null/vazio e `defaultImage` está definido, mostrar a imagem default com um badge "Padrão" e os botões normais de trocar/remover.
+### 3. `src/pages/editor/UrlMediaFlow.tsx`
 
-### 4. `src/components/course/CourseMobilePreview.tsx`
+- Linha 90-91: ao auto-preencher `targetUrl` do affiliate, reconstruir: `${window.location.origin}/?ref=${referralProfile.referral_code}`
+- Atualizar query (linha 67) para incluir `referral_code`
 
-Substituir fallback de ícone vazio pelo default cover quando `heroImageUrl` é null.
+### 4. `supabase/functions/webhook-pagarme/index.ts`
+
+- Linha 441: substituir `https://kivostore.lovable.app/member/dashboard` por URL dinâmica baseada no `origin` do request ou uma env var `SITE_URL`
+
+### 5. `src/pages/Privacy.tsx` e `src/pages/Terms.tsx`
+
+- Substituir `kivostore.lovable.app` hardcoded por `window.location.host` dinâmico
+
+### 6. Demais arquivos (já corretos)
+
+Os seguintes já usam `window.location.origin` ou `window.location.host` corretamente:
+- `MyInvitesPanel.tsx`, `useMemberInvite.ts`, `useInviteLinks.ts`, `AdminInviteTab.tsx`, `CircleRightSidebarSkool.tsx`, `MyCommunities.tsx`, `Store.tsx`
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/assets/default-course-cover.png` | Criar — imagem padrão |
-| `src/components/course/ImageUploadField.tsx` | Prop `defaultImage` para fallback visual |
-| `src/pages/editor/CourseFlow.tsx` | Usar default cover em todos os placeholders vazios |
-| `src/components/course/CourseMobilePreview.tsx` | Fallback de hero com imagem padrão |
+| `src/pages/ReferralsDashboard.tsx` | Exibição/cópia usa `origin + code` em vez de campo do DB |
+| `src/pages/NewProduct.tsx` | Reconstruir referral URL dinamicamente ao criar produto affiliate |
+| `src/pages/editor/UrlMediaFlow.tsx` | Auto-fill com URL dinâmica em vez de valor do DB |
+| `src/pages/Privacy.tsx` | Domínio dinâmico |
+| `src/pages/Terms.tsx` | Domínio dinâmico |
+| `supabase/functions/webhook-pagarme/index.ts` | Usar env var `SITE_URL` ou header origin |
 
