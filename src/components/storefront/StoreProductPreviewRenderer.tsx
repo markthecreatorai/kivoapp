@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Instagram, Youtube, Twitter, Link2, ImageIcon } from "lucide-react";
 import type { StorefrontThemeTokens } from "@/hooks/useStorefrontTheme";
 import type { StorefrontProfile } from "@/hooks/useStorefrontProfile";
+import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
 
 // TikTok icon
 const TikTokIcon = ({ className }: { className?: string }) => (
@@ -141,13 +142,11 @@ export function StoreProductPreviewRenderer({
                 }}
               >
                 <div className="flex items-center gap-3">
-                  {product.thumbnailUrl && (
-                    <img
-                      src={product.thumbnailUrl}
-                      alt=""
-                      className="w-12 h-12 rounded-2xl object-cover shrink-0"
-                    />
-                  )}
+                  <img
+                    src={product.thumbnailUrl || kivoReferralLogo}
+                    alt=""
+                    className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                  />
                   <p className="font-bold text-lg leading-snug" style={{ color: theme.textColor }}>
                     {product.name || "Título do produto"}
                   </p>

@@ -82,7 +82,7 @@ export default function UrlMediaFlow({
     name: initialProduct.name || (isAffiliateOrReferral ? "Crie com a Kivo" : ""),
     shortDescription: initialProduct.short_description || "",
     ctaText: initialProduct.listing_button_text || (isAffiliateOrReferral ? "Apoiar Canal" : "Acessar Link"),
-    thumbnailUrl: initialProduct.thumbnail_url || "",
+    thumbnailUrl: initialProduct.thumbnail_url || (isAffiliateOrReferral ? kivoReferralLogo : ""),
     targetUrl: initialProduct.delivery_url || "",
   });
 

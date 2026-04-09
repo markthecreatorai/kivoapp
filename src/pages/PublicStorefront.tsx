@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
+import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
 
 // TikTok icon
 const TikTokIcon = ({ className }: { className?: string }) => (
@@ -433,14 +434,12 @@ export default function PublicStorefront() {
             >
               <div className="p-4">
                 <div className="flex items-center gap-3">
-                  {product.thumbnail_url && (
-                    <img
-                      src={product.thumbnail_url}
-                      alt={product.name}
-                      className="w-12 h-12 rounded-2xl object-cover shrink-0"
-                      loading="lazy"
-                    />
-                  )}
+                  <img
+                    src={product.thumbnail_url || kivoReferralLogo}
+                    alt={product.name}
+                    className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                    loading="lazy"
+                  />
                   <p className="font-semibold" style={{ color: t.text }}>
                     {product.name}
                   </p>
