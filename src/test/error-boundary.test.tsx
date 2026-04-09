@@ -30,6 +30,19 @@ describe("ErrorBoundary", () => {
     consoleSpy.mockRestore();
   });
 
+  it("renders route-level fallback when isRouteLevel", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <ErrorBoundary isRouteLevel>
+        <ThrowingComponent error={new Error("page boom")} />
+      </ErrorBoundary>
+    );
+    expect(screen.getByText("Erro ao carregar esta página")).toBeInTheDocument();
+    expect(screen.getByText("Tentar novamente")).toBeInTheDocument();
+    expect(screen.getByText("Voltar ao início")).toBeInTheDocument();
+    consoleSpy.mockRestore();
+  });
+
   it("reload button calls window.location.reload", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const reloadMock = vi.fn();
