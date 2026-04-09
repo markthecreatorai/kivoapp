@@ -61,8 +61,8 @@ export default function ValueProposition() {
           </div>
 
           {/* Right — Copy */}
-          <div className="space-y-6 lg:space-y-8 text-center">
-            <h2 className="text-3xl md:text-4xl lg:text-[2.8rem] font-bold text-foreground leading-[1.15] tracking-tight text-center">
+          <div className="space-y-6 lg:space-y-8 text-center lg:text-left">
+            <h2 className="text-3xl md:text-4xl lg:text-[2.8rem] font-bold text-foreground leading-[1.15] tracking-tight">
               Tudo que você precisa{" "}
               <br className="hidden md:block" />
               para vender no digital{" "}
@@ -70,7 +70,7 @@ export default function ValueProposition() {
               em um só lugar.
             </h2>
 
-            <p className="text-base md:text-lg text-muted-foreground max-w-md leading-relaxed text-center mx-auto">
+            <p className="text-base md:text-lg text-muted-foreground max-w-md leading-relaxed mx-auto lg:mx-0">
               Storefront, checkout, comunidade, cursos, email e afiliados, sem pagar por 5 ferramentas separadas.
             </p>
 
