@@ -194,7 +194,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="none" className="border-r border-border/40">
+    <Sidebar collapsible="none" className="hidden lg:flex border-r border-border/40">
       {/* ── Header ── */}
       <SidebarHeader className="border-b border-border/30 bg-sidebar px-4 py-4">
         <Link
