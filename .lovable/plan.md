@@ -1,92 +1,88 @@
+
 # Plano: Testes e Gate de Release do Course Builder
 
 ## 1. Testes unitários — `src/test/course-builder.test.ts`
 
 Funções puras testáveis sem mocks de Supabase:
 
-**`getCoursePublishChecklist`** — 6 cenários:
-- Curso vazio → falha em title, modules, lessons, published-lessons (severity error)
+**`getCoursePublishChecklist`** (7 cenários):
 - Curso completo → todos passam
-- Título < 3 chars → falha apenas title
+- Curso vazio → falha em title, modules, lessons, published-lessons
+- Título < 3 chars → falha title
 - Sem módulos → falha modules
 - Sem aulas publicadas → falha published-lessons
-- Sem preço → falha price (warning, não bloqueia)
+- Sem preço → falha price (severity warning)
+- Sem thumbnail title → falha thumbnail (warning)
 
-**`useProductDraft`** (via `renderHook`):
-- `updateField` marca dirty
-- `updateFields` marca múltiplos dirty
+**`useProductDraft`** (via `renderHook`, 4 cenários):
+- Inicia sem dirty
+- `updateField` marca dirty + atualiza draft
 - `markSaved` limpa dirty e seta lastSavedAt
 - `reset` limpa tudo
 
-**`MODULE_TEMPLATES`** — validação de estrutura:
-- Todos têm key, label, moduleName, lessons[]
-- Sem duplicatas de key
+**`MODULE_TEMPLATES`** (3 cenários):
+- Todos têm key, label, moduleName, lessons
+- Sem keys duplicadas
+- Contém welcome, core, bonus
 
 ## 2. Testes de integração — `src/test/course-builder-integration.test.tsx`
 
-Com mock de Supabase (padrão do projeto):
+Com mock de Supabase (padrão do projeto `vi.mock`):
 
-**Navegação entre abas:**
-- Renderizar CourseFlow com MemoryRouter
-- Verificar que 4 abas existem e clique alterna conteúdo
+- Curso incompleto bloqueia publicação (errors count ≥ 4)
+- Curso completo não tem erros bloqueantes
+- Tab order = thumbnail → checkout → course → options
+- Navegação next/prev funciona corretamente
+- Separação error vs warning: erros passam com conteúdo mínimo, warnings falham sem hero/price/thumbnail
 
-**Checklist bloqueia publicação:**
-- Montar OptionsTab com curso incompleto
-- Verificar botão "Publicar" desabilitado
-- Verificar itens vermelhos visíveis
+## 3. Documentação E2E — `docs/course-builder-e2e-scenarios.md`
 
-**Criação de módulo (mock optimistic):**
-- Verificar que "Adicionar módulo" chama mutation
-- Verificar que toast de sucesso aparece
+Cenários documentados para automação futura (Playwright não configurado no projeto):
+- Fluxo completo: criar curso → módulo → aula → publicar
+- Bloqueio por checklist incompleto
+- Reorder módulo via DnD + persistência
+- Upload de vídeo/material
+- Erro de rede: reorder falha → rollback visual
+- Preview mobile sem overflow
 
-## 3. E2E — Documentação (não implementação Playwright)
-
-O projeto não tem Playwright configurado. Em vez de configurar infra E2E completa, criar **documentação de cenários E2E** como checklist manual + script futuro:
-
-```
-docs/course-builder-e2e-scenarios.md
-```
-
-## 4. Release checklist + Rollout — `docs/course-builder-release.md`
+## 4. Release doc — `docs/course-builder-release.md`
 
 **Release Checklist (10 itens):**
 1. Migrações SQL aplicadas sem erro
-2. RLS policies ativas nas tabelas courses/modules/lessons/materials
-3. Testes unitários passam (vitest)
+2. RLS policies ativas em courses/modules/lessons/materials
+3. Testes unitários passam (`vitest`)
 4. Testes de integração passam
 5. Build sem erros TypeScript
 6. Fluxo manual: criar curso → módulo → aula → publicar
-7. Fluxo manual: reorder módulos (DnD) persiste
-8. Upload de vídeo + material funciona
+7. Reorder DnD persiste corretamente
+8. Upload vídeo + material funciona
 9. Preview mobile sem overflow
-10. Telemetria: eventos course_builder_opened e course_publish_success chegam
+10. Telemetria: eventos `course_builder_opened` e `course_publish_success` chegam
 
-**Rollout gradual via feature flag (useExperiment):**
-- Fase 1 (10%): `useExperiment("course_builder_v2")` → variant B = novo builder
-- Fase 2 (50%): alterar peso no banco
-- Fase 3 (100%): remover flag, novo builder como padrão
+**Rollout gradual (useExperiment):**
+- 10%: `useExperiment("course_builder_v2")` variant B
+- 50%: ajustar peso no banco
+- 100%: remover flag
 
-**Critérios de rollback:**
-- Taxa de erro > 5% nos eventos de publish
-- Aumento > 20% em tickets de suporte
-- Crash rate do ErrorBoundary > 1%
+**Rollback criteria:**
+- Erro rate publish > 5%
+- Tickets suporte +20%
+- ErrorBoundary crash > 1%
 
 **Métricas de sucesso:**
-- 90%+ dos cursos criados passam no checklist na 1ª tentativa
-- Tempo médio de criação < 15 min
-- Taxa de publicação > 70% dos drafts
+- 90%+ cursos passam checklist na 1ª tentativa
+- Tempo criação < 15 min
+- Taxa publicação > 70% dos drafts
 
 ## Arquivos criados
 
 | Arquivo | Conteúdo |
 |---|---|
-| `src/test/course-builder.test.ts` | Testes unitários: checklist, draft, templates |
-| `src/test/course-builder-integration.test.tsx` | Testes de integração: tabs, publicação, CRUD |
-| `docs/course-builder-release.md` | Release checklist, rollout, métricas, rollback |
-| `docs/course-builder-e2e-scenarios.md` | Cenários E2E documentados para automação futura |
+| `src/test/course-builder.test.ts` | 14 testes unitários |
+| `src/test/course-builder-integration.test.tsx` | 5 testes de integração |
+| `docs/course-builder-release.md` | Release checklist + rollout + rollback |
+| `docs/course-builder-e2e-scenarios.md` | Cenários E2E documentados |
 
 ## O que NÃO muda
-
-- Código de produção (CourseFlow, useCourseBuilder, etc.)
-- Configuração de CI (já roda vitest via existente)
-- Infra Playwright (fora do escopo — documentado para futuro)
+- Código de produção
+- Configuração de CI existente
