@@ -31,11 +31,26 @@ import {
   useLessonMaterials, useCreateMaterial, useDeleteMaterial,
   type CourseLesson, type LessonMaterial,
 } from "@/hooks/useCourseBuilder";
+import { LessonMobilePreview } from "@/components/course/LessonMobilePreview";
+
+export interface LessonNavInfo {
+  prevLesson: CourseLesson | null;
+  nextLesson: CourseLesson | null;
+}
+
+export interface CourseBranding {
+  highlightColor: string;
+  bgColor: string;
+  titleFont: string;
+}
 
 interface CourseLessonEditorProps {
   lesson: CourseLesson;
   onBack: () => void;
   onDeleted: () => void;
+  onNavigate?: (lesson: CourseLesson) => void;
+  nav?: LessonNavInfo;
+  branding?: CourseBranding;
 }
 
 // ── Publish validation ──
