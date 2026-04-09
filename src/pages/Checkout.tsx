@@ -68,6 +68,7 @@ export default function Checkout() {
   const [isRecovery, setIsRecovery] = useState(false);
   const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
   const [selectedBumps, setSelectedBumps] = useState<Set<string>>(new Set());
+  const [branding, setBranding] = useState<BrandingColors | null>(null);
 
   // Load product + price (supports ?session= recovery param)
   useEffect(() => {
