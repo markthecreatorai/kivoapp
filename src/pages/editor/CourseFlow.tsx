@@ -932,8 +932,9 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
 
   const [localModules, setLocalModules] = useState<CourseModule[]>(serverModules);
   const [localLessons, setLocalLessons] = useState<CourseLesson[]>(serverLessons);
-  useEffect(() => { setLocalModules(serverModules); }, [serverModules]);
-  useEffect(() => { setLocalLessons(serverLessons); }, [serverLessons]);
+  const isReorderingRef = useRef(false);
+  useEffect(() => { if (!isReorderingRef.current) setLocalModules(serverModules); }, [serverModules]);
+  useEffect(() => { if (!isReorderingRef.current) setLocalLessons(serverLessons); }, [serverLessons]);
 
   const createModule = useCreateModule();
   const updateModule = useUpdateModule();
