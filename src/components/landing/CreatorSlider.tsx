@@ -231,7 +231,7 @@ export default function CreatorSlider() {
 
   return (
     <section
-      className="py-20 md:py-28 overflow-hidden pb-[12px]"
+      className="py-20 md:py-28 overflow-hidden pb-0"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
