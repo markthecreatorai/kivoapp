@@ -84,7 +84,7 @@ export function LeadFormBlock({
           .eq("id", existingLead.id);
       } else {
         // Insert new lead
-        const { error: insertError } = await supabase.from("leads").insert({
+        const { data: newLead, error: insertError } = await supabase.from("leads").insert({
           workspace_id: workspaceId,
           email: email.toLowerCase(),
           name: name || null,
@@ -95,9 +95,21 @@ export function LeadFormBlock({
           tags: tags.length > 0 ? tags : null,
           product_id: productId || null,
           opt_in_at: new Date().toISOString(),
-        });
+        }).select("id").single();
 
         if (insertError) throw insertError;
+
+        // Send welcome email via Edge Function
+        if (newLead?.id) {
+          supabase.functions.invoke("send-lead-email", {
+            body: {
+              name: name || null,
+              email: email.toLowerCase(),
+              workspaceId,
+              leadId: newLead.id,
+            },
+          }).catch((err) => console.error("Error sending lead email:", err));
+        }
       }
 
       // Register analytics event
