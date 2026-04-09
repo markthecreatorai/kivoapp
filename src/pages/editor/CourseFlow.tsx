@@ -32,6 +32,9 @@ import {
   useUpdateCourse,
   useReorderModules,
   useReorderLessons,
+  useDuplicateLesson,
+  MODULE_TEMPLATES,
+  getCoursePublishChecklist,
   type Course,
   type CourseModule,
   type CourseLesson,
@@ -40,6 +43,7 @@ import {
   Loader2, Plus, GripVertical, BookOpen, Play, Trash2,
   ChevronDown, ChevronRight, Settings, Check, AlertCircle,
   MoreVertical, Pencil, Calendar, Clock, Eye, EyeOff, Droplets,
+  Copy, LayoutTemplate, CheckCircle2, XCircle, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -348,12 +352,14 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const deleteLessonMut = useDeleteLesson();
   const reorderModules = useReorderModules();
   const reorderLessons = useReorderLessons();
+  const duplicateLesson = useDuplicateLesson();
 
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ type: "module" | "lesson"; id: string; title: string; courseId?: string; moduleId?: string } | null>(null);
   const [dripConfigId, setDripConfigId] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Compute flat ordered list of all lessons for navigation
   const flatLessons = localModules
@@ -412,6 +418,26 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
+  // ── Add from template ──
+  const handleAddFromTemplate = async (templateKey: string) => {
+    const template = MODULE_TEMPLATES.find((t) => t.key === templateKey);
+    if (!template) return;
+    setShowTemplates(false);
+    createModule.mutate(
+      { course_id: course.id, title: template.moduleName, position: localModules.length },
+      {
+        onSuccess: async (mod) => {
+          setExpandedModules((prev) => new Set(prev).add(mod.id));
+          // Create template lessons sequentially
+          for (let i = 0; i < template.lessons.length; i++) {
+            await createLesson.mutateAsync({ module_id: mod.id, title: template.lessons[i], position: i });
+          }
+          toast.success(`Template "${template.label}" aplicado!`);
+        },
+      }
+    );
+  };
+
   // ── Add Lesson ──
   const handleAddLesson = (moduleId: string) => {
     const count = localLessons.filter((l) => l.module_id === moduleId).length;
@@ -423,6 +449,15 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
           toast.success("Aula criada");
         },
       }
+    );
+  };
+
+  // ── Duplicate Lesson ──
+  const handleDuplicateLesson = (lesson: CourseLesson) => {
+    const moduleLessons = localLessons.filter((l) => l.module_id === lesson.module_id);
+    duplicateLesson.mutate(
+      { lesson, newPosition: moduleLessons.length },
+      { onSuccess: () => toast.success("Aula duplicada!") }
     );
   };
 
@@ -691,15 +726,33 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                                       {lesson.title}
                                     </span>
                                   )}
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                                    onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}
-                                    aria-label="Excluir aula"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
+                                        aria-label="Menu da aula"
+                                      >
+                                        <MoreVertical className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => startRename(lesson.id, lesson.title)}>
+                                        <Pencil className="h-4 w-4 mr-2" />Renomear
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDuplicateLesson(lesson)}>
+                                        <Copy className="h-4 w-4 mr-2" />Duplicar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />Excluir
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </SortableItem>
                             ))}
@@ -726,23 +779,66 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
         </SortableContext>
       </DndContext>
 
-      <Button
-        variant="outline"
-        className="w-full gap-2"
-        onClick={handleAddModule}
-        disabled={createModule.isPending}
-      >
-        <Plus className="h-4 w-4" />
-        Adicionar módulo
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          className="flex-1 gap-2"
+          onClick={handleAddModule}
+          disabled={createModule.isPending}
+        >
+          <Plus className="h-4 w-4" />
+          Adicionar módulo
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => setShowTemplates(true)}
+        >
+          <LayoutTemplate className="h-4 w-4" />
+          Template
+        </Button>
+      </div>
 
       {localModules.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p className="text-sm mb-1">Nenhum módulo criado ainda</p>
-          <p className="text-xs">Clique em "Adicionar módulo" para começar</p>
+          <p className="text-xs">Use um template ou crie um módulo em branco</p>
         </div>
       )}
+
+      {/* Template picker dialog */}
+      <AlertDialog open={showTemplates} onOpenChange={setShowTemplates}>
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <LayoutTemplate className="h-5 w-5" />
+              Criar módulo a partir de template
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Escolha um template para iniciar com aulas pré-configuradas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            {MODULE_TEMPLATES.map((tmpl) => (
+              <button
+                key={tmpl.key}
+                onClick={() => handleAddFromTemplate(tmpl.key)}
+                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
+              >
+                <p className="text-sm font-medium">{tmpl.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{tmpl.description}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {tmpl.lessons.length} aulas: {tmpl.lessons.join(" · ")}
+                </p>
+              </button>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -773,18 +869,34 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 }
 
 // ═══════════════════════════════════════════
-// Settings Tab
+// Settings Tab — with publish checklist
 // ═══════════════════════════════════════════
 function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
   const updateCourse = useUpdateCourse();
+  const { data: modules = [] } = useModules(course.id);
+  const moduleIds = modules.map((m) => m.id);
+  const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
   const [status, setStatus] = useState(course.status);
 
-  const save = () => {
+  const checklist = getCoursePublishChecklist(course, modules, allLessons);
+  const hasErrors = checklist.some((c) => c.severity === "error" && !c.passed);
+  const allPassed = checklist.every((c) => c.passed);
+
+  const save = (targetStatus?: string) => {
+    const newStatus = targetStatus || status;
+    if (newStatus === "published" && hasErrors) {
+      toast.error("Corrija os itens obrigatórios antes de publicar");
+      return;
+    }
     setSaving(true);
     updateCourse.mutate(
-      { id: course.id, status },
+      { id: course.id, status: newStatus },
       {
-        onSuccess: () => { toast.success("Configurações salvas"); setSaving(false); },
+        onSuccess: () => {
+          setStatus(newStatus);
+          toast.success(newStatus === "published" ? "Curso publicado!" : "Configurações salvas");
+          setSaving(false);
+        },
         onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
       }
     );
@@ -792,24 +904,77 @@ function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boo
 
   return (
     <div className="max-w-lg space-y-6">
+      {/* Publish checklist */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5" />
+            Checklist de publicação
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {checklist.map((item) => (
+            <div key={item.key} className="flex items-start gap-2 py-1">
+              {item.passed ? (
+                <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+              ) : item.severity === "error" ? (
+                <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              )}
+              <span className={cn(
+                "text-sm",
+                item.passed ? "text-muted-foreground" : item.severity === "error" ? "text-foreground font-medium" : "text-foreground"
+              )}>
+                {item.label}
+              </span>
+            </div>
+          ))}
+          {allPassed && (
+            <p className="text-xs text-green-600 font-medium pt-2">
+              ✓ Tudo pronto para publicar!
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Status */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Configurações do curso</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label className="text-sm">Status</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Rascunho</SelectItem>
-                <SelectItem value="published">Publicado</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="text-sm">Status atual</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant={status === "published" ? "default" : "outline"}>
+                {status === "published" ? "Publicado" : "Rascunho"}
+              </Badge>
+            </div>
           </div>
-          <Button onClick={save} disabled={updateCourse.isPending} className="w-full">
-            Salvar configurações
-          </Button>
+          <div className="flex gap-2">
+            {status === "published" ? (
+              <Button variant="outline" onClick={() => save("draft")} disabled={updateCourse.isPending} className="flex-1">
+                <EyeOff className="h-4 w-4 mr-2" />
+                Voltar para rascunho
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => save("draft")} disabled={updateCourse.isPending} className="flex-1">
+                  Salvar rascunho
+                </Button>
+                <Button
+                  onClick={() => save("published")}
+                  disabled={updateCourse.isPending || hasErrors}
+                  className="flex-1"
+                  title={hasErrors ? "Corrija os itens obrigatórios do checklist" : undefined}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Publicar curso
+                </Button>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
