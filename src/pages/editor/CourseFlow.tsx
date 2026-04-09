@@ -258,7 +258,7 @@ function MobilePreviewPanel({ tab, course, themeTokens, courseSubView }: { tab: 
                     </p>
                   )}
                   <div className="mt-5 py-3 text-white text-sm font-medium text-center rounded-lg" style={{ backgroundColor: hlColor }}>
-                    Acessar curso
+                    {course.thumbnail_cta || "Acessar curso"}
                   </div>
                 </div>
               )}
@@ -282,7 +282,7 @@ function MobilePreviewPanel({ tab, course, themeTokens, courseSubView }: { tab: 
                     )}
                     <div className="mt-4 flex items-center justify-end">
                       <div className="py-2.5 px-5 text-white rounded-xl text-sm font-medium" style={{ backgroundColor: hlColor }}>
-                        Acessar
+                        {course.thumbnail_cta || "Acessar"}
                       </div>
                     </div>
                   </div>
@@ -431,69 +431,115 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
   const [thumbImage, setThumbImage] = useState(course.thumbnail_image || course.hero_image_url || "");
   const [thumbTitle, setThumbTitle] = useState(course.thumbnail_title || course.title || "");
   const [thumbSubtitle, setThumbSubtitle] = useState(course.thumbnail_subtitle || "");
+  const [thumbCta, setThumbCta] = useState(course.thumbnail_cta || "Acessar curso");
 
   const update = (fields: Partial<Course>) => enqueue(fields);
+
+  const titleValid = thumbTitle.trim().length >= 3;
+  const imageCompleted = cardStyle === "button" || !!thumbImage;
 
   return (
     <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={status} />
 
-      <StepCard stepNumber={1} title="Card Style" description="Escolha como o curso vai aparecer na sua loja." completed={!!cardStyle}>
-        <div className="flex gap-3">
+      {/* Step 1 — Escolha o estilo do card */}
+      <StepCard stepNumber={1} title="Escolha o estilo do card" description="Como o curso vai aparecer na sua vitrine." completed={!!cardStyle}>
+        <div className="grid grid-cols-3 gap-3">
           {CARD_STYLES.map(({ key, label, desc }) => (
             <button
               key={key}
               onClick={() => { setCardStyle(key); update({ thumbnail_style: key }); }}
               className={cn(
-                "flex-1 p-3 rounded-xl border-2 text-center transition-all",
+                "flex flex-col items-center gap-2 p-4 rounded-xl border-2 text-center transition-all",
                 cardStyle === key
-                  ? "border-primary bg-primary/5 text-primary"
-                  : "border-border bg-card hover:border-border/80 text-foreground"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                  : "border-border bg-card hover:border-primary/30"
               )}
             >
-              <p className="text-sm font-semibold">{label}</p>
-              <p className="text-[10px] text-muted-foreground mt-1 hidden sm:block">{desc}</p>
+              <div className={cn(
+                "w-12 h-12 rounded-lg flex items-center justify-center",
+                cardStyle === key ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+              )}>
+                {key === "preview" && <ImageIcon className="h-5 w-5" />}
+                {key === "callout" && <BookOpen className="h-5 w-5" />}
+                {key === "button" && <Play className="h-5 w-5" />}
+              </div>
+              <p className="text-sm font-semibold text-foreground">{label}</p>
+              <p className="text-[10px] text-muted-foreground leading-tight">{desc}</p>
             </button>
           ))}
         </div>
       </StepCard>
 
-      <StepCard stepNumber={2} title="Card Details" description="Imagem, título e subtítulo do card." completed={!!thumbTitle}>
-        {cardStyle !== "button" && (
-          <div className="space-y-2 mb-5">
-            <Label className="text-sm font-semibold">Imagem de Capa</Label>
-            <ImageUploadField
-              value={thumbImage || null}
-              onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
-            />
-          </div>
-        )}
-
-        <div className="space-y-2 mb-5">
-          <Label className="text-sm font-semibold">Título na vitrine</Label>
-          <Input
-            value={thumbTitle}
-            onChange={(e) => { const v = e.target.value; setThumbTitle(v); if (v.length <= 100) update({ thumbnail_title: v, title: v }); }}
-            maxLength={100}
-            placeholder="Ex: Curso de Marketing Digital"
+      {/* Step 2 — Imagem de capa */}
+      {cardStyle !== "button" && (
+        <StepCard stepNumber={2} title="Imagem de capa" description="Recomendação: 1920×1080px (16:9)." completed={imageCompleted}>
+          <ImageUploadField
+            value={thumbImage || null}
+            onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
           />
-          <p className="text-right text-[10px] text-muted-foreground">{thumbTitle.length}/100</p>
-        </div>
+        </StepCard>
+      )}
 
-        {cardStyle !== "button" && (
+      {/* Step 3 — Textos da vitrine */}
+      <StepCard stepNumber={cardStyle === "button" ? 2 : 3} title="Textos da vitrine" description="Título, subtítulo e chamada para ação." completed={titleValid}>
+        <div className="space-y-5">
+          {/* Título */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
-            <Textarea
-              placeholder="Aquela frase que captura a atenção do cliente na vitrine."
-              maxLength={120}
-              value={thumbSubtitle}
-              onChange={(e) => { setThumbSubtitle(e.target.value); update({ thumbnail_subtitle: e.target.value }); }}
-              rows={2}
-              className="resize-none"
+            <Label className="text-sm font-semibold">Título do curso</Label>
+            <Input
+              value={thumbTitle}
+              onChange={(e) => {
+                const v = e.target.value;
+                setThumbTitle(v);
+                if (v.length <= 100) update({ thumbnail_title: v, title: v });
+              }}
+              maxLength={100}
+              placeholder="Ex: Curso de Marketing Digital"
+              className={cn(!titleValid && thumbTitle.length > 0 && "border-destructive focus-visible:ring-destructive")}
             />
-            <p className="text-right text-[10px] text-muted-foreground">{thumbSubtitle.length}/120</p>
+            <div className="flex justify-between">
+              {!titleValid && thumbTitle.length > 0 && (
+                <p className="text-[11px] text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Mínimo 3 caracteres
+                </p>
+              )}
+              <p className="text-right text-[10px] text-muted-foreground ml-auto">{thumbTitle.length}/100</p>
+            </div>
           </div>
-        )}
+
+          {/* Subtítulo */}
+          {cardStyle !== "button" && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
+              <Textarea
+                placeholder="Frase que captura a atenção na vitrine."
+                maxLength={120}
+                value={thumbSubtitle}
+                onChange={(e) => { setThumbSubtitle(e.target.value); update({ thumbnail_subtitle: e.target.value }); }}
+                rows={2}
+                className="resize-none"
+              />
+              <p className="text-right text-[10px] text-muted-foreground">{thumbSubtitle.length}/120</p>
+            </div>
+          )}
+
+          {/* CTA */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Texto do botão (CTA)</Label>
+            <Input
+              value={thumbCta}
+              onChange={(e) => {
+                const v = e.target.value;
+                setThumbCta(v);
+                if (v.length <= 40) update({ thumbnail_cta: v });
+              }}
+              maxLength={40}
+              placeholder="Acessar curso"
+            />
+            <p className="text-right text-[10px] text-muted-foreground">{thumbCta.length}/40</p>
+          </div>
+        </div>
       </StepCard>
     </div>
   );
