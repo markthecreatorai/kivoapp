@@ -863,17 +863,10 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
             Edit Page <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </div>
+      </StepCard>
 
       {/* ── Section 2: Add Modules ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">2</span>
-          <div>
-            <h3 className="text-base font-bold">Add modules</h3>
-            <p className="text-xs text-muted-foreground">Organize your course content into modules and lessons.</p>
-          </div>
-        </div>
+      <StepCard stepNumber={2} title="Add modules" description="Organize your course content into modules and lessons." completed={localModules.length > 0}>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
           <SortableContext items={localModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
