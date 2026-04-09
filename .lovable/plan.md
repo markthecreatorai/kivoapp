@@ -1,48 +1,35 @@
 
 
-# Plano: Smooth scrolling premium na landing page
+## Problema
 
-## Abordagem
+A Badge com a tag do nicho (ex: "📈 Business Coach") está posicionada em `bottom-[-22px]` — ou seja, ela se projeta para fora do container. Porém o card pai (linha 150) tem `overflow-hidden`, o que corta tudo que sai dos limites.
 
-Usar **Lenis** (biblioteca leve e popular para smooth scroll estilo Framer) integrado apenas na landing page, sem afetar o resto do app.
+## Correção
 
-## Implementação
+Mover a Badge para fora do div com `overflow-hidden`, colocando-a como filha do container externo do card (o `div.relative` da linha 150), em vez de dentro do `div` de altura fixa (linha 151).
 
-### 1. Instalar Lenis
-- `npm install lenis`
+### Arquivo: `src/components/landing/CreatorSlider.tsx`
 
-### 2. Criar hook `useSmoothScroll`
-- Arquivo: `src/hooks/useSmoothScroll.ts`
-- Inicializa Lenis com config premium (duration ~1.2, easing suave, smooth wheel + touch)
-- Respeita `prefers-reduced-motion` — desativa smooth scroll quando ativo
-- Cleanup no unmount
-- Retorna instância para controle externo se necessário
+**Antes** (simplificado):
+```
+<div className="relative rounded-[24px] overflow-hidden ...">  ← linha 150
+  <div className="relative h-[360px] ...">                     ← linha 151
+    ...
+    <Badge bottom-[-22px] />                                    ← linha 169 (cortada)
+  </div>
+</div>
+```
 
-### 3. Integrar na LandingPage
-- Chamar `useSmoothScroll()` no componente `LandingPage`
-- Lenis só fica ativo enquanto a landing está montada
+**Depois:**
+```
+<div className="relative rounded-[24px] overflow-hidden ...">
+  <div className="relative h-[360px] ...">
+    ...
+    (Badge removida daqui)
+  </div>
+</div>
+<Badge className="absolute bottom-[-10px] left-5 z-10 ..." />  ← fora do overflow
+```
 
-### 4. Âncoras do menu
-- Converter os links `<a href="#section">` do nav para usar `scrollTo` do Lenis com easing suave
-- Ou simplesmente deixar Lenis interceptar o scroll nativo para âncoras (comportamento padrão)
-
-### 5. CSS
-- Adicionar `html.lenis, html.lenis body { height: auto; }` no `index.css` para compatibilidade
-
-### 6. Cuidados
-- Não aplicar Lenis globalmente (apenas na landing) para não conflitar com modais, drawers, carrosséis
-- Destruir instância no cleanup do useEffect
-- Lenis não interfere com touch scroll em mobile por padrão — mantém performance
-
-## Arquivos
-
-| Arquivo | Alteração |
-|---|---|
-| `package.json` | Adicionar `lenis` |
-| `src/hooks/useSmoothScroll.ts` | Novo hook |
-| `src/pages/LandingPage.tsx` | Chamar hook |
-| `src/index.css` | Classes auxiliares Lenis |
-
-## Resultado
-Scroll premium com inércia suave, desaceleração natural e âncoras elegantes — apenas na landing page.
+A Badge será filha do `div` externo (linha 143, `relative`), que não tem `overflow-hidden`, permitindo que ela fique visível mesmo projetando para fora do card arredondado.
 
