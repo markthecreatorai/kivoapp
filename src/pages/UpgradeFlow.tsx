@@ -45,7 +45,7 @@ const PLANS = [
     id: "creator",
     code: "creator",
     name: "Creator",
-    monthly: 67,
+    monthly: 49.9,
     icon: Crown,
     popular: true,
     features: [
@@ -63,7 +63,7 @@ const PLANS = [
     id: "creator-pro",
     code: "creator-pro",
     name: "Creator Pro",
-    monthly: 149,
+    monthly: 129.9,
     icon: Sparkles,
     features: [
       "Produtos ilimitados",
