@@ -42,9 +42,10 @@ import {
 } from "@/hooks/useCourseBuilder";
 import {
   Loader2, Plus, GripVertical, BookOpen, Play, Trash2,
-  ChevronDown, ChevronRight, Settings, Check, AlertCircle,
+  ChevronDown, ChevronRight, Check, AlertCircle,
   MoreVertical, Pencil, Calendar, Clock, Eye, EyeOff, Droplets,
   Copy, LayoutTemplate, CheckCircle2, XCircle, AlertTriangle,
+  Image as ImageIcon, ShoppingCart, Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -69,6 +71,7 @@ import { ImageUploadField } from "@/components/course/ImageUploadField";
 import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
 import { CourseLessonEditor } from "@/components/course/CourseLessonEditor";
+import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { cn } from "@/lib/utils";
 
 interface CourseFlowProps {
@@ -103,37 +106,185 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
 
   if (!course) return null;
 
+  return <CourseFlowInner course={course} initialProduct={initialProduct} setSaving={setSaving} />;
+}
+
+// ═══════════════════════════════════════════
+// Main inner component with tabs
+// ═══════════════════════════════════════════
+function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course; initialProduct: any; setSaving: (v: boolean) => void }) {
+  const [tab, setTab] = useState("thumbnail");
+  const themeTokens = useStorefrontTheme();
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-      <Tabs defaultValue="homepage" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="homepage" className="gap-2">
-            <BookOpen className="h-4 w-4" />
-            Homepage
-          </TabsTrigger>
-          <TabsTrigger value="content" className="gap-2">
-            <Play className="h-4 w-4" />
-            Conteúdo
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-2">
-            <Settings className="h-4 w-4" />
-            Configurações
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col lg:flex-row gap-10">
+        <div className="flex-1 min-w-0">
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <TabsList className="bg-muted/50 p-1 w-full flex mb-6">
+              <TabsTrigger value="thumbnail" className="flex-1 text-xs sm:text-sm">1. Thumbnail</TabsTrigger>
+              <TabsTrigger value="checkout" className="flex-1 text-xs sm:text-sm">2. Checkout</TabsTrigger>
+              <TabsTrigger value="course" className="flex-1 text-xs sm:text-sm">3. Curso</TabsTrigger>
+              <TabsTrigger value="options" className="flex-1 text-xs sm:text-sm">4. Opções</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="homepage">
-          <HomepageTab course={course} setSaving={setSaving} />
-        </TabsContent>
+            <TabsContent value="thumbnail">
+              <ThumbnailTab course={course} setSaving={setSaving} />
+            </TabsContent>
+            <TabsContent value="checkout">
+              <CheckoutTab course={course} setSaving={setSaving} />
+            </TabsContent>
+            <TabsContent value="course">
+              <ContentTab course={course} setSaving={setSaving} />
+            </TabsContent>
+            <TabsContent value="options">
+              <OptionsTab course={course} setSaving={setSaving} />
+            </TabsContent>
+          </Tabs>
+        </div>
 
-        <TabsContent value="content">
-          <ContentTab course={course} setSaving={setSaving} />
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <SettingsTab course={course} setSaving={setSaving} />
-        </TabsContent>
-      </Tabs>
+        {/* Mobile preview — context-aware */}
+        <MobilePreviewPanel tab={tab} course={course} themeTokens={themeTokens} />
+      </div>
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Mobile Preview Panel (context-aware by tab)
+// ═══════════════════════════════════════════
+function MobilePreviewPanel({ tab, course, themeTokens }: { tab: string; course: Course; themeTokens: any }) {
+  const { data: modules = [] } = useModules(course.id);
+  const moduleIds = modules.map((m) => m.id);
+  const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
+
+  const bgColor = course.branding_bg_color || "#ffffff";
+  const hlColor = course.branding_highlight_color || "#6366f1";
+  const titleFont = course.branding_title_font || "Inter";
+
+  if (tab === "course") {
+    // Content tab has its own preview within lesson editor
+    return null;
+  }
+
+  if (tab === "thumbnail") {
+    const style = course.thumbnail_style || "preview";
+    return (
+      <div className="hidden lg:block w-[320px] shrink-0 sticky top-24">
+        <p className="text-xs font-medium text-muted-foreground mb-3 text-center">Preview em tempo real</p>
+        <div className="w-[320px] h-[600px] bg-black rounded-[40px] p-2 shadow-xl flex flex-col justify-start">
+          <div className="w-full h-full rounded-[32px] overflow-hidden flex flex-col relative overflow-y-auto" style={{ backgroundColor: themeTokens?.backgroundColor || "#fff" }}>
+            <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20" />
+            <div className="p-4 pt-10 flex items-center h-full">
+              {style === "button" && (
+                <div className="w-full py-4 px-6 rounded-2xl border-2 text-center text-sm font-bold shadow-sm truncate"
+                  style={{ borderColor: hlColor, color: themeTokens?.textColor || "#000" }}>
+                  {course.thumbnail_title || course.title || "Título do Curso"}
+                </div>
+              )}
+              {style === "callout" && (
+                <div className="w-full rounded-2xl border p-5 shadow-sm" style={{ borderColor: hlColor + "40" }}>
+                  <p className="font-bold text-lg leading-snug" style={{ color: themeTokens?.textColor || "#000" }}>
+                    {course.thumbnail_title || course.title || "Título do Curso"}
+                  </p>
+                  {course.thumbnail_subtitle && (
+                    <p className="text-sm mt-2 line-clamp-2" style={{ color: themeTokens?.textColor || "#000", opacity: 0.7 }}>
+                      {course.thumbnail_subtitle}
+                    </p>
+                  )}
+                  <div className="mt-5 py-3 text-white text-sm font-medium text-center rounded-lg" style={{ backgroundColor: hlColor }}>
+                    Acessar curso
+                  </div>
+                </div>
+              )}
+              {style === "preview" && (
+                <div className="w-full rounded-3xl border overflow-hidden shadow-sm" style={{ borderColor: hlColor + "40" }}>
+                  <div className="h-44 flex items-center justify-center overflow-hidden" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "10" }}>
+                    {course.thumbnail_image || course.hero_image_url ? (
+                      <img src={course.thumbnail_image || course.hero_image_url || ""} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageIcon className="h-10 w-10" style={{ color: themeTokens?.textColor || "#000", opacity: 0.3 }} />
+                    )}
+                  </div>
+                  <div className="p-5">
+                    <p className="font-bold text-lg leading-snug" style={{ color: themeTokens?.textColor || "#000" }}>
+                      {course.thumbnail_title || course.title || "Título do Curso"}
+                    </p>
+                    {course.thumbnail_subtitle && (
+                      <p className="text-sm mt-2 line-clamp-2" style={{ color: themeTokens?.textColor || "#000", opacity: 0.7 }}>
+                        {course.thumbnail_subtitle}
+                      </p>
+                    )}
+                    <div className="mt-4 flex items-center justify-end">
+                      <div className="py-2.5 px-5 text-white rounded-xl text-sm font-medium" style={{ backgroundColor: hlColor }}>
+                        Acessar
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (tab === "checkout") {
+    return (
+      <div className="hidden lg:block w-[320px] shrink-0 sticky top-24">
+        <p className="text-xs font-medium text-muted-foreground mb-3 text-center">Preview em tempo real</p>
+        <div className="w-[320px] h-[600px] bg-black rounded-[40px] p-2 shadow-xl flex flex-col justify-start">
+          <div className="w-full h-full rounded-[32px] overflow-hidden flex flex-col relative overflow-y-auto" style={{ backgroundColor: themeTokens?.backgroundColor || "#fff" }}>
+            <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20" />
+            {course.checkout_image && (
+              <div className="h-48 bg-muted overflow-hidden">
+                <img src={course.checkout_image} className="w-full h-full object-cover" alt="" />
+              </div>
+            )}
+            <div className="p-5 space-y-4 pt-10">
+              <p className="font-bold text-xl leading-snug" style={{ color: themeTokens?.textColor || "#000" }}>
+                {course.checkout_title || course.title || "Título do Curso"}
+              </p>
+              {course.checkout_description && (
+                <p className="text-sm line-clamp-5 mt-2" style={{ color: themeTokens?.textColor || "#000", opacity: 0.8 }}>
+                  {course.checkout_description.replace(/<[^>]*>/g, "")}
+                </p>
+              )}
+              <div className="pt-6 space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium" style={{ color: themeTokens?.textColor || "#000" }}>Nome completo</p>
+                  <div className="h-10 border rounded-lg" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "10", borderColor: (themeTokens?.textColor || "#000") + "30" }} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium" style={{ color: themeTokens?.textColor || "#000" }}>E-mail</p>
+                  <div className="h-10 border rounded-lg" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "10", borderColor: (themeTokens?.textColor || "#000") + "30" }} />
+                </div>
+                <div className="pt-2">
+                  <div className="w-full py-4 text-white font-medium text-center rounded-lg" style={{ backgroundColor: hlColor }}>
+                    Finalizar Compra
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Options tab — shows CourseMobilePreview with branding
+  return (
+    <CourseMobilePreview
+      title={course.title}
+      description={course.description_richtext || ""}
+      heroImageUrl={course.hero_image_url || null}
+      bgColor={bgColor}
+      highlightColor={hlColor}
+      titleFont={titleFont}
+      modulesCount={modules.length}
+      lessonsCount={allLessons.length}
+    />
   );
 }
 
@@ -189,101 +340,156 @@ function useAutosave(course: Course, setSaving: (v: boolean) => void) {
   return { enqueue, status, flush };
 }
 
+function SaveStatusIndicator({ status }: { status: SaveStatus }) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      {status === "saving" && (<><Loader2 className="h-3 w-3 animate-spin" /><span>Salvando...</span></>)}
+      {status === "saved" && (<><Check className="h-3 w-3 text-green-500" /><span className="text-green-600">Salvo</span></>)}
+      {status === "error" && (<><AlertCircle className="h-3 w-3 text-destructive" /><span className="text-destructive">Erro ao salvar</span></>)}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════
-// Homepage Tab — 2-column layout
+// Tab 1: Thumbnail
 // ═══════════════════════════════════════════
-function HomepageTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
+const CARD_STYLES = [
+  { key: "preview", label: "Preview", desc: "Imagem grande e detalhes" },
+  { key: "callout", label: "Callout", desc: "Título e CTA em destaque" },
+  { key: "button", label: "Button", desc: "Link rápido minimalista" },
+];
+
+function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
   const { enqueue, status } = useAutosave(course, setSaving);
-  const { data: modules = [] } = useModules(course.id);
-  const moduleIds = modules.map((m) => m.id);
-  const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
 
-  const [title, setTitle] = useState(course.title);
-  const [description, setDescription] = useState(course.description_richtext || "");
-  const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
-  const [titleFont, setTitleFont] = useState(course.branding_title_font || "Inter");
-  const [bgColor, setBgColor] = useState(course.branding_bg_color || "#ffffff");
-  const [hlColor, setHlColor] = useState(course.branding_highlight_color || "#6366f1");
-
-  const titleError = title.length > 100 ? "Máximo 100 caracteres" : title.length === 0 ? "Título obrigatório" : null;
+  const [cardStyle, setCardStyle] = useState(course.thumbnail_style || "preview");
+  const [thumbImage, setThumbImage] = useState(course.thumbnail_image || course.hero_image_url || "");
+  const [thumbTitle, setThumbTitle] = useState(course.thumbnail_title || course.title || "");
+  const [thumbSubtitle, setThumbSubtitle] = useState(course.thumbnail_subtitle || "");
 
   const update = (fields: Partial<Course>) => enqueue(fields);
 
   return (
-    <div className="flex gap-8 items-start">
-      <div className="flex-1 min-w-0 space-y-6">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {status === "saving" && (<><Loader2 className="h-3 w-3 animate-spin" /><span>Salvando...</span></>)}
-          {status === "saved" && (<><Check className="h-3 w-3 text-green-500" /><span className="text-green-600">Salvo</span></>)}
-          {status === "error" && (<><AlertCircle className="h-3 w-3 text-destructive" /><span className="text-destructive">Erro ao salvar</span></>)}
-        </div>
+    <div className="space-y-8 animate-in fade-in">
+      <SaveStatusIndicator status={status} />
 
-        <ImageUploadField
-          value={heroUrl || null}
-          onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
-        />
-
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Título do curso</Label>
-          <Input
-            value={title}
-            onChange={(e) => {
-              const v = e.target.value;
-              setTitle(v);
-              if (v.length <= 100 && v.length > 0) update({ title: v });
-            }}
-            maxLength={100}
-            className={titleError ? "border-destructive" : ""}
-          />
-          <div className="flex justify-between">
-            {titleError ? <p className="text-xs text-destructive">{titleError}</p> : <span />}
-            <p className="text-xs text-muted-foreground">{title.length}/100</p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Descrição</Label>
-          <RichTextEditor
-            value={description}
-            onChange={(html) => { setDescription(html); update({ description_richtext: html }); }}
-            minHeight="140px"
-          />
-        </div>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Branding do curso</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Fonte do título</Label>
-              <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {["Inter", "Poppins", "Montserrat", "Roboto", "Playfair Display", "DM Sans", "Space Grotesk"].map(f => (
-                    <SelectItem key={f} value={f}>{f}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <BrandingColorPicker label="Cor de fundo" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
-              <BrandingColorPicker label="Cor de destaque" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold">Vitrine da Loja (Thumbnail)</h2>
+        <p className="text-sm text-muted-foreground">Escolha como o curso vai aparecer na sua loja.</p>
       </div>
 
-      <CourseMobilePreview
-        title={title}
-        description={description}
-        heroImageUrl={heroUrl || null}
-        bgColor={bgColor}
-        highlightColor={hlColor}
-        titleFont={titleFont}
-        modulesCount={modules.length}
-        lessonsCount={allLessons.length}
-      />
+      {/* Card style selector */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Estilo do card</Label>
+        <div className="flex gap-3">
+          {CARD_STYLES.map(({ key, label, desc }) => (
+            <button
+              key={key}
+              onClick={() => { setCardStyle(key); update({ thumbnail_style: key }); }}
+              className={cn(
+                "flex-1 p-3 rounded-xl border-2 text-center transition-all",
+                cardStyle === key
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-border bg-card hover:border-border/80 text-foreground"
+              )}
+            >
+              <p className="text-sm font-semibold">{label}</p>
+              <p className="text-[10px] text-muted-foreground mt-1 hidden sm:block">{desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Thumbnail image */}
+      {cardStyle !== "button" && (
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Imagem de Capa</Label>
+          <ImageUploadField
+            value={thumbImage || null}
+            onChange={(url) => { setThumbImage(url || ""); update({ thumbnail_image: url, hero_image_url: url }); }}
+          />
+        </div>
+      )}
+
+      {/* Title */}
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Título na vitrine</Label>
+        <Input
+          value={thumbTitle}
+          onChange={(e) => { const v = e.target.value; setThumbTitle(v); if (v.length <= 100) update({ thumbnail_title: v, title: v }); }}
+          maxLength={100}
+          placeholder="Ex: Curso de Marketing Digital"
+        />
+        <p className="text-right text-[10px] text-muted-foreground">{thumbTitle.length}/100</p>
+      </div>
+
+      {/* Subtitle */}
+      {cardStyle !== "button" && (
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
+          <Textarea
+            placeholder="Aquela frase que captura a atenção do cliente na vitrine."
+            maxLength={120}
+            value={thumbSubtitle}
+            onChange={(e) => { setThumbSubtitle(e.target.value); update({ thumbnail_subtitle: e.target.value }); }}
+            rows={2}
+            className="resize-none"
+          />
+          <p className="text-right text-[10px] text-muted-foreground">{thumbSubtitle.length}/120</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Tab 2: Checkout
+// ═══════════════════════════════════════════
+function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
+  const { enqueue, status } = useAutosave(course, setSaving);
+
+  const [checkoutImage, setCheckoutImage] = useState(course.checkout_image || "");
+  const [checkoutTitle, setCheckoutTitle] = useState(course.checkout_title || course.title || "");
+  const [checkoutDesc, setCheckoutDesc] = useState(course.checkout_description || "");
+
+  const update = (fields: Partial<Course>) => enqueue(fields);
+
+  return (
+    <div className="space-y-8 animate-in fade-in">
+      <SaveStatusIndicator status={status} />
+
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold">Página de Checkout</h2>
+        <p className="text-sm text-muted-foreground">Configure a página de conversão do curso.</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Imagem do Checkout (Hero)</Label>
+        <ImageUploadField
+          value={checkoutImage || null}
+          onChange={(url) => { setCheckoutImage(url || ""); update({ checkout_image: url }); }}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Título da página de checkout</Label>
+        <Input
+          value={checkoutTitle}
+          onChange={(e) => { setCheckoutTitle(e.target.value); update({ checkout_title: e.target.value }); }}
+          maxLength={100}
+          placeholder="Título que aparece na página de compra"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Descrição da oferta</Label>
+        <RichTextEditor
+          placeholder="Descreva o que o aluno vai receber..."
+          value={checkoutDesc}
+          onChange={(v) => { setCheckoutDesc(v); update({ checkout_description: v }); }}
+          minHeight="140px"
+        />
+      </div>
     </div>
   );
 }
@@ -331,17 +537,15 @@ function StatusBadge({ status, dripType }: { status: string; dripType?: string }
 }
 
 // ═══════════════════════════════════════════
-// Content Tab — Full drag-and-drop tree
+// Tab 3: Content (Course modules/lessons tree)
 // ═══════════════════════════════════════════
 function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => void }) {
   const { data: serverModules = [] } = useModules(course.id);
   const moduleIds = serverModules.map((m) => m.id);
   const { data: serverLessons = [] } = useAllLessons(course.id, moduleIds);
 
-  // Selected lesson for editing
   const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);
 
-  // Optimistic local state
   const [localModules, setLocalModules] = useState<CourseModule[]>(serverModules);
   const [localLessons, setLocalLessons] = useState<CourseLesson[]>(serverLessons);
   useEffect(() => { setLocalModules(serverModules); }, [serverModules]);
@@ -361,7 +565,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ type: "module" | "lesson"; id: string; title: string; courseId?: string; moduleId?: string } | null>(null);
-  const [dripConfigId, setDripConfigId] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
   const sensors = useSensors(
@@ -369,14 +572,12 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Compute flat ordered list of all lessons for navigation (avoid mutating state with sort)
   const flatLessons = [...localModules]
     .sort((a, b) => a.position - b.position)
     .flatMap((mod) =>
       [...localLessons].filter((l) => l.module_id === mod.id).sort((a, b) => a.position - b.position)
     );
 
-  // If a lesson is selected, show the lesson editor
   if (selectedLesson) {
     const currentIdx = flatLessons.findIndex((l) => l.id === selectedLesson.id);
     const prevLesson = currentIdx > 0 ? flatLessons[currentIdx - 1] : null;
@@ -415,7 +616,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     });
   };
 
-  // ── Add Module ──
   const handleAddModule = () => {
     createModule.mutate(
       { course_id: course.id, position: localModules.length },
@@ -428,7 +628,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
-  // ── Add from template ──
   const handleAddFromTemplate = async (templateKey: string) => {
     const template = MODULE_TEMPLATES.find((t) => t.key === templateKey);
     if (!template) return;
@@ -438,7 +637,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
       {
         onSuccess: async (mod) => {
           setExpandedModules((prev) => new Set(prev).add(mod.id));
-          // Create template lessons sequentially
           for (let i = 0; i < template.lessons.length; i++) {
             await createLesson.mutateAsync({ module_id: mod.id, title: template.lessons[i], position: i });
           }
@@ -448,7 +646,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
-  // ── Add Lesson ──
   const handleAddLesson = (moduleId: string) => {
     const count = localLessons.filter((l) => l.module_id === moduleId).length;
     createLesson.mutate(
@@ -462,7 +659,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
-  // ── Duplicate Lesson ──
   const handleDuplicateLesson = (lesson: CourseLesson) => {
     const moduleLessons = localLessons.filter((l) => l.module_id === lesson.module_id);
     duplicateLesson.mutate(
@@ -471,7 +667,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
-  // ── Rename ──
   const startRename = (id: string, currentTitle: string) => {
     setRenamingId(id);
     setRenameValue(currentTitle);
@@ -481,7 +676,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     setRenamingId(null);
     const trimmed = renameValue.trim() || "Sem título";
     if (type === "module") {
-      // Optimistic
       setLocalModules((prev) => prev.map((m) => m.id === id ? { ...m, title: trimmed } : m));
       updateModule.mutate(
         { id, course_id: parentId, title: trimmed },
@@ -496,7 +690,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     }
   };
 
-  // ── Delete ──
   const confirmDelete = () => {
     if (!deleteTarget) return;
     const { type, id, courseId, moduleId } = deleteTarget;
@@ -523,7 +716,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     setDeleteTarget(null);
   };
 
-  // ── Module status change ──
   const setModuleStatus = (mod: CourseModule, newStatus: string) => {
     const dripType = newStatus === "drip" ? (mod.drip_type === "none" ? "days_after_purchase" : mod.drip_type) : "none";
     setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, status: newStatus, drip_type: dripType } : m));
@@ -531,10 +723,8 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
       { id: mod.id, course_id: mod.course_id, status: newStatus, drip_type: dripType } as any,
       { onError: () => { setLocalModules(serverModules); toast.error("Erro ao alterar status"); } }
     );
-    if (newStatus === "drip") setDripConfigId(mod.id);
   };
 
-  // ── Drip config ──
   const updateDrip = (mod: CourseModule, dripType: string, dripDays?: number | null, dripAt?: string | null) => {
     setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, drip_type: dripType, drip_days: dripDays ?? m.drip_days, drip_at: dripAt ?? m.drip_at } : m));
     updateModule.mutate(
@@ -543,7 +733,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
-  // ── Module DnD ──
   const handleModuleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -558,7 +747,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
-  // ── Lesson DnD ──
   const handleLessonDragEnd = (moduleId: string) => (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -624,7 +812,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                         {moduleLessons.length} aula{moduleLessons.length !== 1 ? "s" : ""}
                       </span>
 
-                      {/* Module menu */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Menu do módulo">
@@ -659,17 +846,11 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 
                   {isExpanded && (
                     <CardContent className="pt-0 pb-3 px-4">
-                      {/* Drip config inline */}
                       {mod.status === "drip" && (
                         <div className="flex items-center gap-3 mb-3 pl-2 py-2 px-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                           <Droplets className="h-4 w-4 text-blue-600 shrink-0" />
-                          <Select
-                            value={mod.drip_type}
-                            onValueChange={(v) => updateDrip(mod, v)}
-                          >
-                            <SelectTrigger className="h-7 text-xs w-44">
-                              <SelectValue />
-                            </SelectTrigger>
+                          <Select value={mod.drip_type} onValueChange={(v) => updateDrip(mod, v)}>
+                            <SelectTrigger className="h-7 text-xs w-44"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="date">
                                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Data específica</span>
@@ -680,71 +861,42 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                             </SelectContent>
                           </Select>
                           {mod.drip_type === "days_after_purchase" && (
-                            <Input
-                              type="number"
-                              min={1}
-                              className="h-7 w-20 text-xs"
-                              defaultValue={mod.drip_days ?? ""}
-                              placeholder="Dias"
-                              onBlur={(e) => updateDrip(mod, "days_after_purchase", parseInt(e.target.value) || null)}
-                            />
+                            <Input type="number" min={1} className="h-7 w-20 text-xs" defaultValue={mod.drip_days ?? ""} placeholder="Dias"
+                              onBlur={(e) => updateDrip(mod, "days_after_purchase", parseInt(e.target.value) || null)} />
                           )}
                           {mod.drip_type === "date" && (
-                            <Input
-                              type="date"
-                              className="h-7 text-xs w-40"
-                              defaultValue={mod.drip_at ? mod.drip_at.split("T")[0] : ""}
-                              onBlur={(e) => updateDrip(mod, "date", undefined, e.target.value ? new Date(e.target.value).toISOString() : null)}
-                            />
+                            <Input type="date" className="h-7 text-xs w-40" defaultValue={mod.drip_at ? mod.drip_at.split("T")[0] : ""}
+                              onBlur={(e) => updateDrip(mod, "date", undefined, e.target.value ? new Date(e.target.value).toISOString() : null)} />
                           )}
                         </div>
                       )}
 
-                      {/* Lessons list with DnD */}
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleLessonDragEnd(mod.id)}
-                      >
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd(mod.id)}>
                         <SortableContext items={moduleLessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
                           <div className="space-y-1 pl-2">
                             {moduleLessons.map((lesson) => (
-                              <SortableItem
-                                key={lesson.id}
-                                id={lesson.id}
-                                className="rounded-md hover:bg-muted/50 transition-colors"
-                              >
+                              <SortableItem key={lesson.id} id={lesson.id} className="rounded-md hover:bg-muted/50 transition-colors">
                                 <div className="flex items-center gap-2 py-1.5 px-2 group">
                                   <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                   {renamingId === lesson.id ? (
-                                    <Input
-                                      autoFocus
-                                      value={renameValue}
-                                      onChange={(e) => setRenameValue(e.target.value)}
-                                      maxLength={100}
+                                    <Input autoFocus value={renameValue} onChange={(e) => setRenameValue(e.target.value)} maxLength={100}
                                       className="h-6 text-xs flex-1"
                                       onBlur={() => commitRename(lesson.id, "lesson", lesson.module_id)}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                                         if (e.key === "Escape") setRenamingId(null);
-                                      }}
-                                    />
+                                      }} />
                                   ) : (
-                                    <span
-                                      className="text-xs cursor-pointer hover:text-primary transition-colors flex-1 truncate"
-                                      onClick={() => setSelectedLesson(lesson)}
-                                    >
+                                    <span className="text-xs cursor-pointer hover:text-primary transition-colors flex-1 truncate"
+                                      onClick={() => setSelectedLesson(lesson)}>
                                       {lesson.title}
                                     </span>
                                   )}
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
+                                      <Button variant="ghost" size="icon"
                                         className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
-                                        aria-label="Menu da aula"
-                                      >
+                                        aria-label="Menu da aula">
                                         <MoreVertical className="h-3 w-3" />
                                       </Button>
                                     </DropdownMenuTrigger>
@@ -756,10 +908,8 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                                         <Copy className="h-4 w-4 mr-2" />Duplicar
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}
-                                      >
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive"
+                                        onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}>
                                         <Trash2 className="h-4 w-4 mr-2" />Excluir
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -771,15 +921,9 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                         </SortableContext>
                       </DndContext>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 ml-2 text-xs gap-1 text-muted-foreground"
-                        onClick={() => handleAddLesson(mod.id)}
-                        disabled={createLesson.isPending}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Adicionar aula
+                      <Button variant="ghost" size="sm" className="mt-2 ml-2 text-xs gap-1 text-muted-foreground"
+                        onClick={() => handleAddLesson(mod.id)} disabled={createLesson.isPending}>
+                        <Plus className="h-3.5 w-3.5" />Adicionar aula
                       </Button>
                     </CardContent>
                   )}
@@ -791,22 +935,11 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
       </DndContext>
 
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          className="flex-1 gap-2"
-          onClick={handleAddModule}
-          disabled={createModule.isPending}
-        >
-          <Plus className="h-4 w-4" />
-          Adicionar módulo
+        <Button variant="outline" className="flex-1 gap-2" onClick={handleAddModule} disabled={createModule.isPending}>
+          <Plus className="h-4 w-4" />Adicionar módulo
         </Button>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => setShowTemplates(true)}
-        >
-          <LayoutTemplate className="h-4 w-4" />
-          Template
+        <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
+          <LayoutTemplate className="h-4 w-4" />Template
         </Button>
       </div>
 
@@ -818,36 +951,26 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
         </div>
       )}
 
-      {/* Template picker dialog */}
+      {/* Template picker */}
       <AlertDialog open={showTemplates} onOpenChange={setShowTemplates}>
         <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <LayoutTemplate className="h-5 w-5" />
-              Criar módulo a partir de template
+              <LayoutTemplate className="h-5 w-5" />Criar módulo a partir de template
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Escolha um template para iniciar com aulas pré-configuradas.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Escolha um template para iniciar com aulas pré-configuradas.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-2">
             {MODULE_TEMPLATES.map((tmpl) => (
-              <button
-                key={tmpl.key}
-                onClick={() => handleAddFromTemplate(tmpl.key)}
-                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
-              >
+              <button key={tmpl.key} onClick={() => handleAddFromTemplate(tmpl.key)}
+                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors">
                 <p className="text-sm font-medium">{tmpl.label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{tmpl.description}</p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {tmpl.lessons.length} aulas: {tmpl.lessons.join(" · ")}
-                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">{tmpl.lessons.length} aulas: {tmpl.lessons.join(" · ")}</p>
               </button>
             ))}
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          </AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -855,9 +978,7 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Excluir {deleteTarget?.type === "module" ? "módulo" : "aula"}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Excluir {deleteTarget?.type === "module" ? "módulo" : "aula"}?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.type === "module"
                 ? `O módulo "${deleteTarget.title}" e todas as suas aulas serão excluídos permanentemente.`
@@ -866,10 +987,7 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -880,32 +998,40 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 }
 
 // ═══════════════════════════════════════════
-// Settings Tab — with publish checklist
+// Tab 4: Options (branding + checklist + status)
 // ═══════════════════════════════════════════
-function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
+function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
+  const { enqueue, status: saveStatus } = useAutosave(course, setSaving);
   const updateCourse = useUpdateCourse();
   const { data: modules = [] } = useModules(course.id);
   const moduleIds = modules.map((m) => m.id);
   const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
-  const [status, setStatus] = useState(course.status);
+
+  const [titleFont, setTitleFont] = useState(course.branding_title_font || "Inter");
+  const [bgColor, setBgColor] = useState(course.branding_bg_color || "#ffffff");
+  const [hlColor, setHlColor] = useState(course.branding_highlight_color || "#6366f1");
+  const [description, setDescription] = useState(course.description_richtext || "");
+  const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
+  const [courseStatus, setCourseStatus] = useState(course.status);
+
+  const update = (fields: Partial<Course>) => enqueue(fields);
 
   const checklist = getCoursePublishChecklist(course, modules, allLessons);
   const hasErrors = checklist.some((c) => c.severity === "error" && !c.passed);
   const allPassed = checklist.every((c) => c.passed);
 
-  const save = (targetStatus?: string) => {
-    const newStatus = targetStatus || status;
-    if (newStatus === "published" && hasErrors) {
+  const saveStatus2 = (targetStatus: string) => {
+    if (targetStatus === "published" && hasErrors) {
       toast.error("Corrija os itens obrigatórios antes de publicar");
       return;
     }
     setSaving(true);
     updateCourse.mutate(
-      { id: course.id, status: newStatus },
+      { id: course.id, status: targetStatus },
       {
         onSuccess: () => {
-          setStatus(newStatus);
-          toast.success(newStatus === "published" ? "Curso publicado!" : "Configurações salvas");
+          setCourseStatus(targetStatus);
+          toast.success(targetStatus === "published" ? "Curso publicado!" : "Configurações salvas");
           setSaving(false);
         },
         onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
@@ -914,13 +1040,55 @@ function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boo
   };
 
   return (
-    <div className="max-w-lg space-y-6">
+    <div className="space-y-8 animate-in fade-in">
+      <SaveStatusIndicator status={saveStatus} />
+
+      {/* Branding */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Branding do curso</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Descrição do curso</Label>
+            <RichTextEditor
+              value={description}
+              onChange={(html) => { setDescription(html); update({ description_richtext: html }); }}
+              minHeight="120px"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Imagem Hero</Label>
+            <ImageUploadField
+              value={heroUrl || null}
+              onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Fonte do título</Label>
+            <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["Inter", "Poppins", "Montserrat", "Roboto", "Playfair Display", "DM Sans", "Space Grotesk"].map(f => (
+                  <SelectItem key={f} value={f}>{f}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <BrandingColorPicker label="Cor de fundo" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
+            <BrandingColorPicker label="Cor de destaque" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Publish checklist */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5" />
-            Checklist de publicação
+            <CheckCircle2 className="h-5 w-5" />Checklist de publicação
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -942,46 +1110,36 @@ function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boo
             </div>
           ))}
           {allPassed && (
-            <p className="text-xs text-green-600 font-medium pt-2">
-              ✓ Tudo pronto para publicar!
-            </p>
+            <p className="text-xs text-green-600 font-medium pt-2">✓ Tudo pronto para publicar!</p>
           )}
         </CardContent>
       </Card>
 
       {/* Status */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Configurações do curso</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Status do curso</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label className="text-sm">Status atual</Label>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant={status === "published" ? "default" : "outline"}>
-                {status === "published" ? "Publicado" : "Rascunho"}
+              <Badge variant={courseStatus === "published" ? "default" : "outline"}>
+                {courseStatus === "published" ? "Publicado" : "Rascunho"}
               </Badge>
             </div>
           </div>
           <div className="flex gap-2">
-            {status === "published" ? (
-              <Button variant="outline" onClick={() => save("draft")} disabled={updateCourse.isPending} className="flex-1">
-                <EyeOff className="h-4 w-4 mr-2" />
-                Voltar para rascunho
+            {courseStatus === "published" ? (
+              <Button variant="outline" onClick={() => saveStatus2("draft")} disabled={updateCourse.isPending} className="flex-1">
+                <EyeOff className="h-4 w-4 mr-2" />Voltar para rascunho
               </Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => save("draft")} disabled={updateCourse.isPending} className="flex-1">
+                <Button variant="outline" onClick={() => saveStatus2("draft")} disabled={updateCourse.isPending} className="flex-1">
                   Salvar rascunho
                 </Button>
-                <Button
-                  onClick={() => save("published")}
-                  disabled={updateCourse.isPending || hasErrors}
-                  className="flex-1"
-                  title={hasErrors ? "Corrija os itens obrigatórios do checklist" : undefined}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Publicar curso
+                <Button onClick={() => saveStatus2("published")} disabled={updateCourse.isPending || hasErrors} className="flex-1"
+                  title={hasErrors ? "Corrija os itens obrigatórios do checklist" : undefined}>
+                  <Eye className="h-4 w-4 mr-2" />Publicar curso
                 </Button>
               </>
             )}
