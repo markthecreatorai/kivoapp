@@ -314,7 +314,7 @@ const App = () => (
                 <Route path="/circles/:slug/plans" element={<CommunitySelectPlan />} />
 
                 {/* Authenticated circle pages — persistent CircleLayout with Outlet */}
-                <Route element={<CircleLayout />}>
+                <Route element={<ErrorBoundary isRouteLevel><CircleLayout /></ErrorBoundary>}>
                   <Route path="/circles/:slug/feed" element={<CircleFeed />} />
                   <Route path="/circles/:slug/spaces/:spaceSlug" element={<CircleFeed />} />
                   <Route path="/circles/:slug/members" element={<CircleMembers />} />
