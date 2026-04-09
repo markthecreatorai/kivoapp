@@ -323,13 +323,13 @@ export default function LandingPage() {
       <FAQSection />
 
       {/* Final CTA */}
-      <section className="py-20 kivo-gradient text-primary-foreground">
+      <section className="py-20 bg-muted/30">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Pronto para vender mais e pagar menos?</h2>
-          <p className="text-lg opacity-90 mb-8">Junte-se a creators que já economizam com Kivo.</p>
-          <Button size="lg" variant="secondary" className="pill-radius gap-2 text-base px-8"
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Comece usar a Kivo ainda hoje</h2>
+          <p className="text-muted-foreground mb-8">Instalação e configuração prática e rápida</p>
+          <Button size="lg" className="pill-radius bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-2 text-base px-8"
             onClick={() => { ctaClick("footer_cta"); navigate("/signup?utm_source=landing&utm_medium=footer"); }}>
-            Começar grátis agora <ArrowRight className="w-4 h-4" />
+            Começar com 14 dias grátis
           </Button>
         </div>
       </section>
