@@ -32,7 +32,7 @@ export default function ValueProposition() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="py-24 md:py-32 bg-[hsl(15,15%,95%)]"
+      className="py-24 md:py-32"
       style={{ perspective: 1200 }}
     >
       <div className="max-w-[1280px] mx-auto px-4 md:px-8">

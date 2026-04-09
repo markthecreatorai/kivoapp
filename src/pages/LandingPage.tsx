@@ -72,7 +72,7 @@ const FAQ_ITEMS = [
 function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <section className="py-20 bg-muted/30">
+    <section className="py-20">
       <div className="max-w-3xl mx-auto px-4">
         <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2">Perguntas frequentes</h2>
         <p className="text-center text-muted-foreground mb-10">Veja como eles usam pra melhorar seus negócios!</p>
@@ -127,9 +127,9 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#F8F1F1]">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b border-border/40">
+      <nav className="sticky top-0 z-50 bg-[#F8F1F1]/80 backdrop-blur border-b border-border/40">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <img src={kivoSymbol} alt="" className="h-8 w-8" />
@@ -151,7 +151,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="py-16 md:py-24 bg-[hsl(15,33%,95%)]">
+      <section className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left — copy */}
@@ -252,7 +252,7 @@ export default function LandingPage() {
       <FAQSection />
 
       {/* Final CTA */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-20">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Comece usar a Kivo ainda hoje</h2>
           <p className="text-muted-foreground mb-8">Instalação e configuração prática e rápida</p>
@@ -264,7 +264,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="pt-16 pb-8">
+      <footer className="pt-16 pb-8 bg-background">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-14">
             {/* Brand */}
