@@ -106,6 +106,7 @@ const PLANS_MINI = [
 
 /* ── Main Landing ── */
 export default function LandingPage() {
+  useSmoothScroll();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const variant = getABVariant();

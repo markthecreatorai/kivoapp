@@ -136,6 +136,20 @@
      and included in the font-family stack via tailwind.config.ts */
 }
 
+/* Lenis smooth-scroll compatibility */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
 .ProseMirror iframe {
   width: 100%;
   aspect-ratio: 16/9;
