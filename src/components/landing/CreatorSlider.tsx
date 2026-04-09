@@ -324,9 +324,9 @@ export default function CreatorSlider() {
         {CREATORS.map((_, i) => (
           <button
             key={i}
-            onClick={() => setActive(i)}
+            onClick={() => setActive(i - normalizedActive + active)}
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              i === active ? "bg-destructive w-6" : "bg-foreground/20 hover:bg-foreground/40"
+              i === normalizedActive ? "bg-destructive w-6" : "bg-foreground/20 hover:bg-foreground/40"
             }`}
             aria-label={`Slide ${i + 1}`}
           />
