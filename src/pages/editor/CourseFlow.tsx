@@ -418,6 +418,26 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
     );
   };
 
+  // ── Add from template ──
+  const handleAddFromTemplate = async (templateKey: string) => {
+    const template = MODULE_TEMPLATES.find((t) => t.key === templateKey);
+    if (!template) return;
+    setShowTemplates(false);
+    createModule.mutate(
+      { course_id: course.id, title: template.moduleName, position: localModules.length },
+      {
+        onSuccess: async (mod) => {
+          setExpandedModules((prev) => new Set(prev).add(mod.id));
+          // Create template lessons sequentially
+          for (let i = 0; i < template.lessons.length; i++) {
+            await createLesson.mutateAsync({ module_id: mod.id, title: template.lessons[i], position: i });
+          }
+          toast.success(`Template "${template.label}" aplicado!`);
+        },
+      }
+    );
+  };
+
   // ── Add Lesson ──
   const handleAddLesson = (moduleId: string) => {
     const count = localLessons.filter((l) => l.module_id === moduleId).length;
@@ -429,6 +449,15 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
           toast.success("Aula criada");
         },
       }
+    );
+  };
+
+  // ── Duplicate Lesson ──
+  const handleDuplicateLesson = (lesson: CourseLesson) => {
+    const moduleLessons = localLessons.filter((l) => l.module_id === lesson.module_id);
+    duplicateLesson.mutate(
+      { lesson, newPosition: moduleLessons.length },
+      { onSuccess: () => toast.success("Aula duplicada!") }
     );
   };
 
