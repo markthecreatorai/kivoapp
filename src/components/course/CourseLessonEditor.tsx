@@ -31,11 +31,26 @@ import {
   useLessonMaterials, useCreateMaterial, useDeleteMaterial,
   type CourseLesson, type LessonMaterial,
 } from "@/hooks/useCourseBuilder";
+import { LessonMobilePreview } from "@/components/course/LessonMobilePreview";
+
+export interface LessonNavInfo {
+  prevLesson: CourseLesson | null;
+  nextLesson: CourseLesson | null;
+}
+
+export interface CourseBranding {
+  highlightColor: string;
+  bgColor: string;
+  titleFont: string;
+}
 
 interface CourseLessonEditorProps {
   lesson: CourseLesson;
   onBack: () => void;
   onDeleted: () => void;
+  onNavigate?: (lesson: CourseLesson) => void;
+  nav?: LessonNavInfo;
+  branding?: CourseBranding;
 }
 
 // ── Publish validation ──
@@ -49,7 +64,7 @@ function getPublishErrors(title: string, videoUrl: string, descHtml: string): st
   return errors;
 }
 
-export function CourseLessonEditor({ lesson, onBack, onDeleted }: CourseLessonEditorProps) {
+export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav, branding }: CourseLessonEditorProps) {
   // ── Local state (versioning: always edit local, save explicitly) ──
   const [title, setTitle] = useState(lesson.title);
   const [videoUrl, setVideoUrl] = useState(lesson.video_url || "");
@@ -233,7 +248,8 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted }: CourseLessonEd
   const canPublish = publishErrors.length === 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex gap-6 items-start">
+    <div className="flex flex-col flex-1 min-w-0 h-full">
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background">
         <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8" aria-label="Voltar">
@@ -544,6 +560,25 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted }: CourseLessonEd
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+    {/* ── Right: Mobile Preview ── */}
+    {branding && (
+      <LessonMobilePreview
+        title={title}
+        description={description}
+        videoUrl={videoUrl || null}
+        materials={materials}
+        highlightColor={branding.highlightColor}
+        bgColor={branding.bgColor}
+        titleFont={branding.titleFont}
+        hasPrev={!!nav?.prevLesson}
+        hasNext={!!nav?.nextLesson}
+        prevTitle={nav?.prevLesson?.title}
+        nextTitle={nav?.nextLesson?.title}
+        onPrev={() => nav?.prevLesson && onNavigate?.(nav.prevLesson)}
+        onNext={() => nav?.nextLesson && onNavigate?.(nav.nextLesson)}
+      />
+    )}
     </div>
   );
 }

@@ -355,14 +355,32 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const [deleteTarget, setDeleteTarget] = useState<{ type: "module" | "lesson"; id: string; title: string; courseId?: string; moduleId?: string } | null>(null);
   const [dripConfigId, setDripConfigId] = useState<string | null>(null);
 
+  // Compute flat ordered list of all lessons for navigation
+  const flatLessons = localModules
+    .sort((a, b) => a.position - b.position)
+    .flatMap((mod) =>
+      localLessons.filter((l) => l.module_id === mod.id).sort((a, b) => a.position - b.position)
+    );
+
   // If a lesson is selected, show the lesson editor
   if (selectedLesson) {
+    const currentIdx = flatLessons.findIndex((l) => l.id === selectedLesson.id);
+    const prevLesson = currentIdx > 0 ? flatLessons[currentIdx - 1] : null;
+    const nextLesson = currentIdx < flatLessons.length - 1 ? flatLessons[currentIdx + 1] : null;
+
     return (
-      <div className="max-w-3xl border border-border rounded-lg overflow-hidden" style={{ minHeight: 500 }}>
+      <div className="max-w-5xl" style={{ minHeight: 500 }}>
         <CourseLessonEditor
           lesson={selectedLesson}
           onBack={() => setSelectedLesson(null)}
           onDeleted={() => setSelectedLesson(null)}
+          onNavigate={(l) => setSelectedLesson(l)}
+          nav={{ prevLesson, nextLesson }}
+          branding={{
+            highlightColor: course.branding_highlight_color || "#6366f1",
+            bgColor: course.branding_bg_color || "#ffffff",
+            titleFont: course.branding_title_font || "Inter",
+          }}
         />
       </div>
     );
