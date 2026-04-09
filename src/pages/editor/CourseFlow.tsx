@@ -1211,11 +1211,12 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
     const reordered = arrayMove(localModules, oldIdx, newIdx).map((m, i) => ({ ...m, position: i }));
     setLocalModules(reordered);
     isReorderingRef.current = true;
+    trackEvent("course_module_reordered", { course_id: course.id });
     reorderModules.mutate(
       { courseId: course.id, order: reordered.map((m) => ({ id: m.id, position: m.position })) },
       {
         onSettled: () => { isReorderingRef.current = false; },
-        onError: () => { setLocalModules(serverModules); toast.error("Erro ao reordenar"); },
+        onError: () => { setLocalModules(serverModules); showToast("error", "Erro ao reordenar"); },
       }
     );
   };
@@ -1233,11 +1234,12 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
       return [...others, ...reordered];
     });
     isReorderingRef.current = true;
+    trackEvent("course_lesson_reordered", { course_id: course.id, module_id: moduleId });
     reorderLessons.mutate(
       { moduleId, order: reordered.map((l) => ({ id: l.id, position: l.position })) },
       {
         onSettled: () => { isReorderingRef.current = false; },
-        onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao reordenar"); },
+        onError: () => { setLocalLessons(serverLessons); showToast("error", "Erro ao reordenar"); },
       }
     );
   };
