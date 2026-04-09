@@ -113,8 +113,18 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
 
   if (isLoading || (!course && createCourse.isPending)) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex flex-col lg:flex-row gap-10">
+          <div className="flex-1 min-w-0 space-y-6">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-32 w-full rounded-lg" />
+          </div>
+          <div className="hidden lg:block w-[320px] shrink-0">
+            <Skeleton className="h-[600px] w-[320px] rounded-[40px]" />
+          </div>
+        </div>
       </div>
     );
   }
