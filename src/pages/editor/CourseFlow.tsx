@@ -542,10 +542,12 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
 
       {/* Step 1 — Escolha o estilo do card */}
       <StepCard stepNumber={1} title="Escolha o estilo do card" description="Como o curso vai aparecer na sua vitrine." completed={!!cardStyle}>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Estilo do card">
           {CARD_STYLES.map(({ key, label, desc }) => (
             <button
               key={key}
+              role="radio"
+              aria-checked={cardStyle === key}
               onClick={() => { setCardStyle(key); update({ thumbnail_style: key }); }}
               className={cn(
                 "flex flex-col items-center gap-2 p-4 rounded-xl border-2 text-center transition-all",
