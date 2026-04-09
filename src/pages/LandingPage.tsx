@@ -254,7 +254,7 @@ export default function LandingPage() {
       <FAQSection />
 
       {/* Final CTA */}
-      <section className="py-20">
+      <section className="py-20 pt-[40px] pb-[100px]">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Comece usar a Kivo ainda hoje</h2>
           <p className="text-muted-foreground mb-8">Instalação e configuração prática e rápida</p>
