@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
 import {
