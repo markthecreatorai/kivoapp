@@ -33,15 +33,6 @@ import { toast } from "@/hooks/use-toast";
 /* ─── Plan data ─── */
 const PLANS = [
   {
-    id: "free",
-    code: "free",
-    name: "Free",
-    monthly: 0,
-    icon: Zap,
-    features: ["1 produto", "Checkout integrado", "Link-in-bio", "Com marca Kivo"],
-    excluded: ["Área de membros", "Afiliados", "Email marketing"],
-  },
-  {
     id: "creator",
     code: "creator",
     name: "Creator",
