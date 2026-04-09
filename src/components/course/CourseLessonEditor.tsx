@@ -561,6 +561,25 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    {/* ── Right: Mobile Preview ── */}
+    {branding && (
+      <LessonMobilePreview
+        title={title}
+        description={description}
+        videoUrl={videoUrl || null}
+        materials={materials}
+        highlightColor={branding.highlightColor}
+        bgColor={branding.bgColor}
+        titleFont={branding.titleFont}
+        hasPrev={!!nav?.prevLesson}
+        hasNext={!!nav?.nextLesson}
+        prevTitle={nav?.prevLesson?.title}
+        nextTitle={nav?.nextLesson?.title}
+        onPrev={() => nav?.prevLesson && onNavigate?.(nav.prevLesson)}
+        onNext={() => nav?.nextLesson && onNavigate?.(nav.nextLesson)}
+      />
+    )}
+    </div>
   );
 }
 
