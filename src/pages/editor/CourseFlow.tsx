@@ -524,7 +524,7 @@ function ThumbnailTab({ course, setSaving }: { course: Course; setSaving: (v: bo
 
   const [cardStyle, setCardStyle] = useState(course.thumbnail_style || "preview");
   const [thumbImage, setThumbImage] = useState(course.thumbnail_image || course.hero_image_url || "");
-  const effectiveThumbImage = thumbImage || DEFAULT_COURSE_COVER;
+  
   const [thumbTitle, setThumbTitle] = useState(course.thumbnail_title || course.title || "");
   const [thumbSubtitle, setThumbSubtitle] = useState(course.thumbnail_subtitle || "");
   const [thumbCta, setThumbCta] = useState(course.thumbnail_cta || "Acessar curso");
@@ -659,7 +659,7 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
   const { enqueue, status } = useAutosave(course, setSaving);
 
   const [checkoutImage, setCheckoutImage] = useState(course.checkout_image || "");
-  const effectiveCheckoutImage = checkoutImage || DEFAULT_COURSE_COVER;
+  
   const [checkoutTitle, setCheckoutTitle] = useState(course.checkout_title || course.title || "");
   const [checkoutDesc, setCheckoutDesc] = useState(course.checkout_description || "");
   const [bottomTitle, setBottomTitle] = useState(course.checkout_bottom_title || "");
@@ -1516,7 +1516,7 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
   const { enqueue, status, flush } = useAutosave(course, setSaving);
 
   const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
-  const effectiveHeroUrl = heroUrl || DEFAULT_COURSE_COVER;
+  
   const [title, setTitle] = useState(course.title || "");
   const [description, setDescription] = useState(course.description_richtext || "");
   const [titleFont, setTitleFont] = useState(course.branding_title_font || "Inter");
