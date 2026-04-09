@@ -143,7 +143,7 @@ function FAQSection() {
   return (
     <section className="py-20 bg-muted/30">
       <div className="max-w-3xl mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2 italic">Perguntas frequentes</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2">Perguntas frequentes</h2>
         <p className="text-center text-muted-foreground mb-10">Veja como eles usam pra melhorar seus negócios!</p>
         <div className="space-y-3">
           {FAQ_ITEMS.map((item, i) => (
