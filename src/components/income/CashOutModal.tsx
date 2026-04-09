@@ -41,7 +41,8 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
 
   const withdrawMutation = useMutation({
     mutationFn: async () => {
-      if (availableBalance <= 0) throw new Error("Saldo insuficiente");
+      const MIN_WITHDRAWAL = 2000; // R$20.00 in cents
+      if (availableBalance < MIN_WITHDRAWAL) throw new Error(`Saldo mínimo para saque é de ${fmt(MIN_WITHDRAWAL)}`);
       if (!effectiveAccount) throw new Error("Selecione uma conta bancária");
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -105,8 +106,11 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
           <DialogDescription>Valor disponível: <strong>{fmt(availableBalance)}</strong></DialogDescription>
         </DialogHeader>
 
-        {availableBalance <= 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nenhum saldo disponível para saque no momento.</p>
+        {availableBalance < 2000 ? (
+          <div className="text-center py-4 space-y-2">
+            <p className="text-sm text-muted-foreground">Saldo mínimo para saque: <strong>{fmt(2000)}</strong></p>
+            <p className="text-xs text-muted-foreground">Seu saldo disponível: {fmt(availableBalance)}</p>
+          </div>
         ) : accounts.length === 0 ? (
           <div className="text-center py-4 space-y-2">
             <p className="text-sm text-muted-foreground">Cadastre uma conta bancária antes de solicitar saque.</p>
@@ -139,7 +143,7 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          {availableBalance > 0 && accounts.length > 0 && (
+          {availableBalance >= 2000 && accounts.length > 0 && (
             <Button onClick={() => withdrawMutation.mutate()} disabled={withdrawMutation.isPending || !effectiveAccount}>
               {withdrawMutation.isPending ? "Processando..." : "Confirmar Saque"}
             </Button>
