@@ -237,10 +237,10 @@ export default function CreatorSlider() {
     >
       <div className="text-center mb-14 px-4">
         <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3">
-          Os melhores criadores já usam Kivo
+          Quem já usa, não troca
         </h2>
         <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto">
-          Veja como eles usam pra melhorar seus negócios!
+          Veja como creators de diferentes nichos operam com a Kivo.
         </p>
       </div>
 
