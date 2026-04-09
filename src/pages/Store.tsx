@@ -1180,6 +1180,10 @@ export default function Store() {
                 onTogglePublish={(id) => togglePublishMutation.mutate(id)}
                 onDelete={(id) => handleDelete(id)}
                 onDuplicate={(id) => duplicateProductMutation.mutate(products.find((p: any) => p.id === id))}
+                onReorder={(reordered) => {
+                  localProductsDirty.current = true;
+                  setProducts(reordered);
+                }}
               />
             </TabsContent>
 
