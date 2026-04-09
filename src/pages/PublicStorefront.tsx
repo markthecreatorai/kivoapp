@@ -59,6 +59,7 @@ interface ProductInfo {
   thumbnail_style: string | null;
   listing_button_text: string | null;
   delivery_url: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface PriceInfo {
