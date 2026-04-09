@@ -364,6 +364,11 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const [dripConfigId, setDripConfigId] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   // Compute flat ordered list of all lessons for navigation (avoid mutating state with sort)
   const flatLessons = [...localModules]
     .sort((a, b) => a.position - b.position)
@@ -401,11 +406,6 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
       </div>
     );
   }
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
 
   const toggleExpand = (id: string) => {
     setExpandedModules((prev) => {
