@@ -1,30 +1,44 @@
 
 
-# Plano: Sincronizar preview com lista de produtos da loja
+# Plano: Corrigir produtos duplicados no preview
 
 ## Problema
 
-O `localProducts` (usado para drag-and-drop) começa como `null` e funciona bem inicialmente. Mas após um reordenamento via drag, `localProducts` recebe um valor e nunca mais é resetado. Depois disso, mutações (excluir, arquivar, publicar) invalidam a query `["all-products"]` e `fetchedProducts` atualiza, mas `localProducts` continua com os dados antigos — e como `products = localProducts ?? fetchedProducts`, o preview fica preso nos dados velhos.
+O `StorefrontPreview` renderiza produtos de **duas fontes independentes**:
+
+1. **Blocos de produto** (linhas 62-79, 118-150): produtos adicionados como blocos individuais na vitrine, buscados via query `preview-products`
+2. **Lista externa** (linhas 492-534): TODOS os produtos publicados passados via prop `externalProducts` do Store.tsx
+
+Resultado: um produto que tem um bloco E está publicado aparece **duas vezes**. Além disso, a lista externa mostra todos os publicados sem filtrar os que já têm bloco.
 
 ## Correção
 
-**Arquivo:** `src/pages/Store.tsx`
+**Arquivo:** `src/components/storefront/StorefrontPreview.tsx`
 
-1. Adicionar um `useEffect` para sincronizar `localProducts` com `fetchedProducts` quando a query atualizar (mesmo padrão usado para storefront/theme com dirty flags):
+Na seção "Product List from store management" (linha 493-534), filtrar os `externalProducts` para **excluir** os que já estão sendo renderizados como blocos de produto:
 
 ```tsx
-useEffect(() => {
-  setLocalProducts(null);
-}, [fetchedProducts]);
+{externalProducts && (() => {
+  // IDs dos produtos já renderizados como blocos
+  const blockProductIds = blocks
+    .filter(b => b.type === 'product' && b.is_visible)
+    .map(b => (b.config as { product_id?: string }).product_id)
+    .filter(Boolean);
+  
+  const filtered = externalProducts
+    .filter((p: any) => p.status === 'PUBLISHED' && !blockProductIds.includes(p.id));
+  
+  return filtered.length > 0 ? (
+    <div className="flex flex-col w-full space-y-2.5 px-5 mt-3 relative z-20">
+      {filtered.map((product: any) => { /* ... card existente ... */ })}
+    </div>
+  ) : null;
+})()}
 ```
-
-2. Nas mutations (`deleteMutation`, `archiveMutation`, `togglePublishMutation`, `duplicateProductMutation`), adicionar `setLocalProducts(null)` no `onSuccess` para forçar o uso de `fetchedProducts` atualizado.
-
-Resultado: o preview atualiza automaticamente quando produtos são excluídos, arquivados, publicados ou duplicados.
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/Store.tsx` | Resetar `localProducts` para `null` no `onSuccess` das mutations e via `useEffect` ao receber novos `fetchedProducts` |
+| `src/components/storefront/StorefrontPreview.tsx` | Filtrar `externalProducts` para excluir produtos já presentes como blocos |
 
