@@ -361,3 +361,128 @@ export function useDeleteMaterial() {
     },
   });
 }
+
+// ── Duplicate Lesson ──
+export function useDuplicateLesson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ lesson, newPosition }: { lesson: CourseLesson; newPosition: number }) => {
+      const { data, error } = await supabase
+        .from("course_lessons" as any)
+        .insert({
+          module_id: lesson.module_id,
+          title: `${lesson.title} (cópia)`,
+          description_richtext: lesson.description_richtext,
+          video_url: lesson.video_url,
+          status: "draft",
+          position: newPosition,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as unknown as CourseLesson;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["course-lessons", data.module_id] });
+      qc.invalidateQueries({ queryKey: ["course-all-lessons"] });
+    },
+  });
+}
+
+// ── Module templates ──
+export const MODULE_TEMPLATES = [
+  {
+    key: "welcome",
+    label: "Boas-vindas",
+    description: "Módulo introdutório com apresentação e orientações",
+    moduleName: "Boas-vindas",
+    lessons: ["Apresentação do curso", "Como aproveitar ao máximo", "Comunidade e suporte"],
+  },
+  {
+    key: "core",
+    label: "Módulo principal",
+    description: "Estrutura padrão para conteúdo principal",
+    moduleName: "Módulo Principal",
+    lessons: ["Introdução", "Conceitos fundamentais", "Exercício prático", "Resumo e próximos passos"],
+  },
+  {
+    key: "bonus",
+    label: "Bônus",
+    description: "Conteúdo extra e materiais complementares",
+    moduleName: "Bônus",
+    lessons: ["Material complementar", "Recursos extras"],
+  },
+] as const;
+
+// ── Publish Checklist ──
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  passed: boolean;
+  severity: "error" | "warning";
+}
+
+export function getCoursePublishChecklist(
+  course: Course,
+  modules: CourseModule[],
+  lessons: CourseLesson[]
+): ChecklistItem[] {
+  const items: ChecklistItem[] = [];
+
+  items.push({
+    key: "title",
+    label: "Título do curso preenchido (mín. 3 caracteres)",
+    passed: course.title.trim().length >= 3,
+    severity: "error",
+  });
+
+  items.push({
+    key: "hero",
+    label: "Imagem de capa adicionada",
+    passed: !!course.hero_image_url,
+    severity: "warning",
+  });
+
+  items.push({
+    key: "description",
+    label: "Descrição do curso preenchida",
+    passed: !!(course.description_richtext && course.description_richtext.replace(/<[^>]*>/g, "").trim().length >= 10),
+    severity: "warning",
+  });
+
+  items.push({
+    key: "modules",
+    label: "Pelo menos 1 módulo criado",
+    passed: modules.length >= 1,
+    severity: "error",
+  });
+
+  items.push({
+    key: "lessons",
+    label: "Pelo menos 1 aula criada",
+    passed: lessons.length >= 1,
+    severity: "error",
+  });
+
+  const publishedLessons = lessons.filter((l) => l.status === "published");
+  items.push({
+    key: "published-lessons",
+    label: "Pelo menos 1 aula publicada",
+    passed: publishedLessons.length >= 1,
+    severity: "error",
+  });
+
+  const lessonsWithContent = lessons.filter((l) => {
+    const hasVideo = !!l.video_url;
+    const hasText = !!(l.description_richtext && l.description_richtext.replace(/<[^>]*>/g, "").trim().length >= 10);
+    return hasVideo || hasText;
+  });
+  items.push({
+    key: "lesson-content",
+    label: "Todas as aulas têm conteúdo (vídeo ou descrição)",
+    passed: lessons.length > 0 && lessonsWithContent.length === lessons.length,
+    severity: "warning",
+  });
+
+  return items;
+}
