@@ -387,7 +387,7 @@ export default function PublicStorefront() {
     );
   }
 
-  const socialLinks = storefront.social_links || {};
+  const socialLinks: Record<string, string> = (typeof storefront.social_links === 'object' && storefront.social_links !== null) ? storefront.social_links : {};
 
   // ─── Block Renderer ───
   const renderBlock = (block: BlockRow) => {
