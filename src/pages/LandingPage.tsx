@@ -10,9 +10,39 @@ import { Separator } from "@/components/ui/separator";
 import {
   Check, ArrowRight, Store, Users, CalendarCheck, Mail,
   BarChart3, Shield, Zap, Crown, Sparkles, ChevronDown, ChevronUp,
-  Calculator,
+  Calculator, Star,
 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
+import kivoSymbol from "@/assets/kivo-symbol.svg";
+import { AccordionGallery } from "@/components/landing/AccordionGallery";
+import type { GalleryItem } from "@/components/landing/types";
+import creator1 from "@/assets/gallery/creator-1.jpg";
+import creator2 from "@/assets/gallery/creator-2.jpg";
+import creator3 from "@/assets/gallery/creator-3.jpg";
+
+const GALLERY_ITEMS: GalleryItem[] = [
+  {
+    id: "1",
+    title: "Hanah Franklin",
+    role: "Creator",
+    imageUrl: creator1,
+    quote: "Fazia muito tempo que eu procurava uma plataforma pra ter minha própria comunidade e gerenciar produtos, com a Kivo ficou muito mais fácil",
+  },
+  {
+    id: "2",
+    title: "Ana Melo",
+    role: "Creator",
+    imageUrl: creator2,
+    quote: "Migrei da Hotmart e em 2 semanas já tinha tudo rodando. A economia nas taxas foi absurda.",
+  },
+  {
+    id: "3",
+    title: "Sarah Rodrigues",
+    role: "Creator",
+    imageUrl: creator3,
+    quote: "O checkout converte muito mais e o suporte é incrível. Recomendo de olhos fechados.",
+  },
+];
 
 /* ── A/B Test ── */
 function getABVariant(): "A" | "B" {
