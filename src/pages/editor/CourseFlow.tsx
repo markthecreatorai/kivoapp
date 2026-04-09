@@ -80,8 +80,10 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
   const { data: course, isLoading } = useCourseByProduct(initialProduct.id);
   const createCourse = useCreateCourse();
 
+  const didCreate = useRef(false);
   useEffect(() => {
-    if (!isLoading && !course && currentWorkspace?.id) {
+    if (!isLoading && !course && currentWorkspace?.id && !createCourse.isPending && !didCreate.current) {
+      didCreate.current = true;
       createCourse.mutate({
         workspace_id: currentWorkspace.id,
         product_id: initialProduct.id,
@@ -361,11 +363,11 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const [dripConfigId, setDripConfigId] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // Compute flat ordered list of all lessons for navigation
-  const flatLessons = localModules
+  // Compute flat ordered list of all lessons for navigation (avoid mutating state with sort)
+  const flatLessons = [...localModules]
     .sort((a, b) => a.position - b.position)
     .flatMap((mod) =>
-      localLessons.filter((l) => l.module_id === mod.id).sort((a, b) => a.position - b.position)
+      [...localLessons].filter((l) => l.module_id === mod.id).sort((a, b) => a.position - b.position)
     );
 
   // If a lesson is selected, show the lesson editor
@@ -515,9 +517,10 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 
   // ── Module status change ──
   const setModuleStatus = (mod: CourseModule, newStatus: string) => {
-    setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, status: newStatus, drip_type: newStatus === "drip" ? m.drip_type : "none" } : m));
+    const dripType = newStatus === "drip" ? (mod.drip_type === "none" ? "days_after_purchase" : mod.drip_type) : "none";
+    setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, status: newStatus, drip_type: dripType } : m));
     updateModule.mutate(
-      { id: mod.id, course_id: mod.course_id, status: newStatus, ...(newStatus !== "drip" ? { drip_type: "none" } : {}) },
+      { id: mod.id, course_id: mod.course_id, status: newStatus, drip_type: dripType } as any,
       { onError: () => { setLocalModules(serverModules); toast.error("Erro ao alterar status"); } }
     );
     if (newStatus === "drip") setDripConfigId(mod.id);

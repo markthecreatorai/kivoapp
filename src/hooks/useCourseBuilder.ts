@@ -222,7 +222,7 @@ export function useLessons(moduleId: string | undefined) {
 
 export function useAllLessons(courseId: string | undefined, moduleIds: string[]) {
   return useQuery({
-    queryKey: ["course-all-lessons", courseId],
+    queryKey: ["course-all-lessons", courseId, moduleIds.join(",")],
     queryFn: async () => {
       if (!moduleIds.length) return [];
       const { data, error } = await supabase
