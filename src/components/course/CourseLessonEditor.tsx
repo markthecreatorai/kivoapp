@@ -222,6 +222,7 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
   // ── Material upload ──
   const handleMaterialUpload = async (files: FileList) => {
     setMaterialUploading(true);
+    trackEvent("course_upload_started", { type: "material", lesson_id: lesson.id, count: files.length });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Sessão expirada"); setMaterialUploading(false); return; }
@@ -244,9 +245,11 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
         } as any);
       }
       toast.success("Material(is) adicionado(s)!");
+      trackEvent("course_upload_success", { type: "material", lesson_id: lesson.id });
     } catch (err) {
       console.error(err);
       toast.error("Erro ao enviar material");
+      trackEvent("course_upload_fail", { type: "material", lesson_id: lesson.id });
     } finally {
       setMaterialUploading(false);
     }
