@@ -166,11 +166,11 @@ export default function NewProduct() {
     if (format.id === "affiliate" && user) {
       const { data: refProfile } = await supabase
         .from("referral_profiles")
-        .select("referral_link")
+        .select("referral_code, referral_link")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (refProfile?.referral_link) {
-        referralLink = refProfile.referral_link;
+      if (refProfile?.referral_code) {
+        referralLink = `${window.location.origin}/?ref=${refProfile.referral_code}`;
       } else {
         const baseName =
           user.user_metadata?.full_name?.split(" ")[0]?.toLowerCase() ||

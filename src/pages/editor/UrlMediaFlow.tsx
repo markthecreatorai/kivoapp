@@ -87,8 +87,9 @@ export default function UrlMediaFlow({
 
   /* Auto-fill target URL for affiliate / referral */
   useEffect(() => {
-    if (isAffiliateOrReferral && referralProfile?.referral_link && !form.targetUrl) {
-      setForm((p) => ({ ...p, targetUrl: referralProfile.referral_link }));
+    if (isAffiliateOrReferral && referralProfile?.referral_code && !form.targetUrl) {
+      const dynamicUrl = `${window.location.origin}/?ref=${referralProfile.referral_code}`;
+      setForm((p) => ({ ...p, targetUrl: dynamicUrl }));
     }
   }, [isAffiliateOrReferral, referralProfile]);
 

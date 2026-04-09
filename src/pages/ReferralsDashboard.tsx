@@ -119,7 +119,8 @@ export default function ReferralsDashboard() {
 
   const copyToClipboard = () => {
     if (!profile) return;
-    navigator.clipboard.writeText(profile.referral_link);
+    const dynamicLink = `${window.location.origin}/?ref=${profile.referral_code}`;
+    navigator.clipboard.writeText(dynamicLink);
     setCopied(true);
     toast.success("Link copiado!");
     setTimeout(() => setCopied(false), 2000);
@@ -146,7 +147,7 @@ export default function ReferralsDashboard() {
             >
               {copied ? <CopyCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               <span className="font-mono truncate max-w-[200px]">
-                {profile.referral_link.replace(/https?:\/\//, "")}
+                {`${window.location.host}/?ref=${profile.referral_code}`}
               </span>
             </button>
           )}
@@ -247,7 +248,7 @@ export default function ReferralsDashboard() {
                 {/* Link pill */}
                 <div className="flex items-center gap-2 bg-muted rounded-xl border border-border p-1.5">
                   <div className="flex-1 px-3 py-2 font-mono text-sm text-foreground truncate select-all">
-                    {profile.referral_link}
+                    {`${window.location.origin}/?ref=${profile.referral_code}`}
                   </div>
                   <Button
                     onClick={copyToClipboard}
