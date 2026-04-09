@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/tracking";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DndContext,
   closestCenter,
@@ -78,6 +80,14 @@ import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { WizardTabLayout } from "@/components/editor/WizardTabLayout";
 import { StepCard } from "@/components/editor/StepCard";
 import { cn } from "@/lib/utils";
+
+// ── Standardized toast helper ──
+function showToast(type: "success" | "error" | "warning", message: string, description?: string) {
+  const durations = { success: 3000, error: 5000, warning: 4000 };
+  if (type === "success") toast.success(message, { description, duration: durations.success });
+  else if (type === "error") toast.error(message, { description, duration: durations.error });
+  else toast.warning(message, { description, duration: durations.warning });
+}
 
 interface CourseFlowProps {
   initialProduct: any;
