@@ -595,7 +595,8 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
       [...localLessons].filter((l) => l.module_id === mod.id).sort((a, b) => a.position - b.position)
     );
 
-  if (selectedLesson) {
+  // ── Sub-view: Lesson Editor ──
+  if (subView === "lesson" && selectedLesson) {
     const currentIdx = flatLessons.findIndex((l) => l.id === selectedLesson.id);
     const prevLesson = currentIdx > 0 ? flatLessons[currentIdx - 1] : null;
     const nextLesson = currentIdx < flatLessons.length - 1 ? flatLessons[currentIdx + 1] : null;
@@ -605,13 +606,13 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
         <ErrorBoundary fallback={
           <div className="p-8 text-center">
             <p className="text-sm text-destructive mb-2">Erro ao carregar o editor da aula.</p>
-            <Button variant="outline" size="sm" onClick={() => setSelectedLesson(null)}>Voltar aos módulos</Button>
+            <Button variant="outline" size="sm" onClick={() => { setSelectedLesson(null); setSubView("main"); }}>Voltar aos módulos</Button>
           </div>
         }>
           <CourseLessonEditor
             lesson={selectedLesson}
-            onBack={() => setSelectedLesson(null)}
-            onDeleted={() => setSelectedLesson(null)}
+            onBack={() => { setSelectedLesson(null); setSubView("main"); }}
+            onDeleted={() => { setSelectedLesson(null); setSubView("main"); }}
             onNavigate={(l) => setSelectedLesson(l)}
             nav={{ prevLesson, nextLesson }}
             branding={{
@@ -624,6 +625,24 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
       </div>
     );
   }
+
+  // ── Sub-view: Edit Page (Course Homepage editor) ──
+  if (subView === "editPage") {
+    return (
+      <EditPageSubView
+        course={course}
+        setSaving={setSaving}
+        onBack={() => setSubView("main")}
+      />
+    );
+  }
+
+  // ── Main view: Course Homepage card + Modules tree ──
+
+  const selectLesson = (lesson: CourseLesson) => {
+    setSelectedLesson(lesson);
+    setSubView("lesson");
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedModules((prev) => {
@@ -783,190 +802,233 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
   };
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
-        <SortableContext items={localModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
-          {localModules.map((mod) => {
-            const moduleLessons = localLessons
-              .filter((l) => l.module_id === mod.id)
-              .sort((a, b) => a.position - b.position);
-            const isExpanded = expandedModules.has(mod.id);
-
-            return (
-              <SortableItem key={mod.id} id={mod.id}>
-                <Card className="border border-border/60">
-                  <CardHeader className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toggleExpand(mod.id)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={isExpanded ? "Recolher módulo" : "Expandir módulo"}
-                      >
-                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </button>
-                      <BookOpen className="h-4 w-4 text-primary shrink-0" />
-
-                      {renamingId === mod.id ? (
-                        <Input
-                          autoFocus
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          maxLength={100}
-                          className="h-7 text-sm font-medium"
-                          onBlur={() => commitRename(mod.id, "module", mod.course_id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            if (e.key === "Escape") setRenamingId(null);
-                          }}
-                        />
-                      ) : (
-                        <span className="text-sm font-medium truncate flex-1">{mod.title}</span>
-                      )}
-
-                      <StatusBadge status={mod.status} dripType={mod.drip_type} />
-
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {moduleLessons.length} aula{moduleLessons.length !== 1 ? "s" : ""}
-                      </span>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Menu do módulo">
-                            <MoreVertical className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => startRename(mod.id, mod.title)}>
-                            <Pencil className="h-4 w-4 mr-2" />Renomear
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setModuleStatus(mod, "published")} disabled={mod.status === "published"}>
-                            <Eye className="h-4 w-4 mr-2" />Publicado
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setModuleStatus(mod, "drip")} disabled={mod.status === "drip"}>
-                            <Droplets className="h-4 w-4 mr-2" />Drip
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setModuleStatus(mod, "draft")} disabled={mod.status === "draft"}>
-                            <EyeOff className="h-4 w-4 mr-2" />Rascunho
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteTarget({ type: "module", id: mod.id, title: mod.title, courseId: mod.course_id })}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />Excluir módulo
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-
-                  {isExpanded && (
-                    <CardContent className="pt-0 pb-3 px-4">
-                      {mod.status === "drip" && (
-                        <div className="flex items-center gap-3 mb-3 pl-2 py-2 px-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                          <Droplets className="h-4 w-4 text-blue-600 shrink-0" />
-                          <Select value={mod.drip_type} onValueChange={(v) => updateDrip(mod, v)}>
-                            <SelectTrigger className="h-7 text-xs w-44"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="date">
-                                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Data específica</span>
-                              </SelectItem>
-                              <SelectItem value="days_after_purchase">
-                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Dias após compra</span>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {mod.drip_type === "days_after_purchase" && (
-                            <Input type="number" min={1} className="h-7 w-20 text-xs" defaultValue={mod.drip_days ?? ""} placeholder="Dias"
-                              onBlur={(e) => updateDrip(mod, "days_after_purchase", parseInt(e.target.value) || null)} />
-                          )}
-                          {mod.drip_type === "date" && (
-                            <Input type="date" className="h-7 text-xs w-40" defaultValue={mod.drip_at ? mod.drip_at.split("T")[0] : ""}
-                              onBlur={(e) => updateDrip(mod, "date", undefined, e.target.value ? new Date(e.target.value).toISOString() : null)} />
-                          )}
-                        </div>
-                      )}
-
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd(mod.id)}>
-                        <SortableContext items={moduleLessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                          <div className="space-y-1 pl-2">
-                            {moduleLessons.map((lesson) => (
-                              <SortableItem key={lesson.id} id={lesson.id} className="rounded-md hover:bg-muted/50 transition-colors">
-                                <div className="flex items-center gap-2 py-1.5 px-2 group">
-                                  <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                  {renamingId === lesson.id ? (
-                                    <Input autoFocus value={renameValue} onChange={(e) => setRenameValue(e.target.value)} maxLength={100}
-                                      className="h-6 text-xs flex-1"
-                                      onBlur={() => commitRename(lesson.id, "lesson", lesson.module_id)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                                        if (e.key === "Escape") setRenamingId(null);
-                                      }} />
-                                  ) : (
-                                    <span className="text-xs cursor-pointer hover:text-primary transition-colors flex-1 truncate"
-                                      onClick={() => setSelectedLesson(lesson)}>
-                                      {lesson.title}
-                                    </span>
-                                  )}
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon"
-                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
-                                        aria-label="Menu da aula">
-                                        <MoreVertical className="h-3 w-3" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => startRename(lesson.id, lesson.title)}>
-                                        <Pencil className="h-4 w-4 mr-2" />Renomear
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleDuplicateLesson(lesson)}>
-                                        <Copy className="h-4 w-4 mr-2" />Duplicar
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive focus:text-destructive"
-                                        onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}>
-                                        <Trash2 className="h-4 w-4 mr-2" />Excluir
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              </SortableItem>
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-
-                      <Button variant="ghost" size="sm" className="mt-2 ml-2 text-xs gap-1 text-muted-foreground"
-                        onClick={() => handleAddLesson(mod.id)} disabled={createLesson.isPending}>
-                        <Plus className="h-3.5 w-3.5" />Adicionar aula
-                      </Button>
-                    </CardContent>
-                  )}
-                </Card>
-              </SortableItem>
-            );
-          })}
-        </SortableContext>
-      </DndContext>
-
-      <div className="flex gap-2">
-        <Button variant="outline" className="flex-1 gap-2" onClick={handleAddModule} disabled={createModule.isPending}>
-          <Plus className="h-4 w-4" />Adicionar módulo
-        </Button>
-        <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
-          <LayoutTemplate className="h-4 w-4" />Template
-        </Button>
+    <div className="max-w-3xl space-y-6 animate-in fade-in">
+      {/* ── Section 1: Course Homepage ── */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">1</span>
+          <div>
+            <h3 className="text-base font-bold">Course Homepage</h3>
+            <p className="text-xs text-muted-foreground">Start by giving your course a title, description, and image.</p>
+          </div>
+        </div>
+        <div
+          className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card cursor-pointer hover:border-primary/40 transition-colors"
+          onClick={() => setSubView("editPage")}
+        >
+          <div className="h-[60px] w-[80px] rounded-lg border border-border bg-muted/50 overflow-hidden shrink-0 flex items-center justify-center">
+            {course.hero_image_url ? (
+              <img src={course.hero_image_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Homepage</p>
+            <p className="text-sm font-semibold truncate">{course.title || "Sem título"}</p>
+          </div>
+          <Button variant="ghost" size="sm" className="shrink-0 gap-1.5 text-xs text-primary">
+            Edit Page <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
-      {localModules.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm mb-1">Nenhum módulo criado ainda</p>
-          <p className="text-xs">Use um template ou crie um módulo em branco</p>
+      {/* ── Section 2: Add Modules ── */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">2</span>
+          <div>
+            <h3 className="text-base font-bold">Add modules</h3>
+            <p className="text-xs text-muted-foreground">Organize your course content into modules and lessons.</p>
+          </div>
         </div>
-      )}
+
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
+          <SortableContext items={localModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+            {localModules.map((mod, modIndex) => {
+              const moduleLessons = localLessons
+                .filter((l) => l.module_id === mod.id)
+                .sort((a, b) => a.position - b.position);
+              const isExpanded = expandedModules.has(mod.id);
+
+              return (
+                <SortableItem key={mod.id} id={mod.id}>
+                  <Card className="border border-border/60">
+                    <CardHeader className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleExpand(mod.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label={isExpanded ? "Recolher módulo" : "Expandir módulo"}
+                        >
+                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </button>
+
+                        {renamingId === mod.id ? (
+                          <Input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            maxLength={100}
+                            className="h-7 text-sm font-medium"
+                            onBlur={() => commitRename(mod.id, "module", mod.course_id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              if (e.key === "Escape") setRenamingId(null);
+                            }}
+                          />
+                        ) : (
+                          <span className="text-sm font-semibold truncate flex-1">
+                            Module {modIndex + 1}: {mod.title}
+                          </span>
+                        )}
+
+                        <StatusBadge status={mod.status} dripType={mod.drip_type} />
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Menu do módulo">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => startRename(mod.id, mod.title)}>
+                              <Pencil className="h-4 w-4 mr-2" />Renomear
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setModuleStatus(mod, "published")} disabled={mod.status === "published"}>
+                              <Eye className="h-4 w-4 mr-2" />Published
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setModuleStatus(mod, "drip")} disabled={mod.status === "drip"}>
+                              <Droplets className="h-4 w-4 mr-2" />Drip
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setModuleStatus(mod, "draft")} disabled={mod.status === "draft"}>
+                              <EyeOff className="h-4 w-4 mr-2" />Draft
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteTarget({ type: "module", id: mod.id, title: mod.title, courseId: mod.course_id })}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />Delete Module
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+
+                    {isExpanded && (
+                      <CardContent className="pt-0 pb-3 px-4">
+                        {mod.status === "drip" && (
+                          <div className="flex items-center gap-3 mb-3 pl-2 py-2 px-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                            <Droplets className="h-4 w-4 text-blue-600 shrink-0" />
+                            <Select value={mod.drip_type} onValueChange={(v) => updateDrip(mod, v)}>
+                              <SelectTrigger className="h-7 text-xs w-44"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="date">
+                                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Data específica</span>
+                                </SelectItem>
+                                <SelectItem value="days_after_purchase">
+                                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Dias após compra</span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {mod.drip_type === "days_after_purchase" && (
+                              <Input type="number" min={1} className="h-7 w-20 text-xs" defaultValue={mod.drip_days ?? ""} placeholder="Dias"
+                                onBlur={(e) => updateDrip(mod, "days_after_purchase", parseInt(e.target.value) || null)} />
+                            )}
+                            {mod.drip_type === "date" && (
+                              <Input type="date" className="h-7 text-xs w-40" defaultValue={mod.drip_at ? mod.drip_at.split("T")[0] : ""}
+                                onBlur={(e) => updateDrip(mod, "date", undefined, e.target.value ? new Date(e.target.value).toISOString() : null)} />
+                            )}
+                          </div>
+                        )}
+
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd(mod.id)}>
+                          <SortableContext items={moduleLessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-0.5 pl-2">
+                              {moduleLessons.map((lesson, lessonIdx) => (
+                                <SortableItem key={lesson.id} id={lesson.id} className="rounded-md hover:bg-muted/50 transition-colors">
+                                  <div
+                                    className="flex items-center gap-2 py-2 px-2 group cursor-pointer"
+                                    onClick={() => selectLesson(lesson)}
+                                  >
+                                    <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    {renamingId === lesson.id ? (
+                                      <Input autoFocus value={renameValue} onChange={(e) => setRenameValue(e.target.value)} maxLength={100}
+                                        className="h-6 text-xs flex-1"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onBlur={() => commitRename(lesson.id, "lesson", lesson.module_id)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                          if (e.key === "Escape") setRenamingId(null);
+                                        }} />
+                                    ) : (
+                                      <span className="text-sm flex-1 truncate">
+                                        Lesson {lessonIdx + 1}: {lesson.title}
+                                      </span>
+                                    )}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
+                                          onClick={(e) => e.stopPropagation()}
+                                          aria-label="Menu da aula">
+                                          <MoreVertical className="h-3 w-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); startRename(lesson.id, lesson.title); }}>
+                                          <Pencil className="h-4 w-4 mr-2" />Renomear
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicateLesson(lesson); }}>
+                                          <Copy className="h-4 w-4 mr-2" />Duplicar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="text-destructive focus:text-destructive"
+                                          onClick={(e) => { e.stopPropagation(); setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id }); }}>
+                                          <Trash2 className="h-4 w-4 mr-2" />Excluir
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  </div>
+                                </SortableItem>
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+
+                        <Button variant="outline" size="sm" className="mt-2 w-full text-xs gap-1.5"
+                          onClick={() => handleAddLesson(mod.id)} disabled={createLesson.isPending}>
+                          <Plus className="h-3.5 w-3.5" />Add Lesson
+                        </Button>
+                      </CardContent>
+                    )}
+                  </Card>
+                </SortableItem>
+              );
+            })}
+          </SortableContext>
+        </DndContext>
+
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1 gap-2" onClick={handleAddModule} disabled={createModule.isPending}>
+            <Plus className="h-4 w-4" />Add Module
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
+            <LayoutTemplate className="h-4 w-4" />Template
+          </Button>
+        </div>
+
+        {localModules.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm mb-1">Nenhum módulo criado ainda</p>
+            <p className="text-xs">Use um template ou crie um módulo em branco</p>
+          </div>
+        )}
+      </div>
 
       {/* Template picker */}
       <AlertDialog open={showTemplates} onOpenChange={setShowTemplates}>
@@ -1010,6 +1072,118 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Edit Page sub-view (Course Homepage editor)
+// ═══════════════════════════════════════════
+function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSaving: (v: boolean) => void; onBack: () => void }) {
+  const { enqueue, status, flush } = useAutosave(course, setSaving);
+
+  const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
+  const [title, setTitle] = useState(course.title || "");
+  const [description, setDescription] = useState(course.description_richtext || "");
+  const [titleFont, setTitleFont] = useState(course.branding_title_font || "Inter");
+  const [bgColor, setBgColor] = useState(course.branding_bg_color || "#ffffff");
+  const [hlColor, setHlColor] = useState(course.branding_highlight_color || "#6366f1");
+
+  const update = (fields: Partial<Course>) => enqueue(fields);
+
+  const handleSave = () => {
+    flush();
+    setTimeout(() => onBack(), 400);
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in">
+      {/* Header */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ChevronRight className="h-4 w-4 rotate-180" />
+        <span>Course Homepage</span>
+      </button>
+
+      <SaveStatusIndicator status={status} />
+
+      {/* Section 1: Page Description */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">1</span>
+            <CardTitle className="text-base">Page Description</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <ImageUploadField
+            value={heroUrl || null}
+            onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
+            label="Course Image"
+            recommendation="Recommended: 1920×1080"
+          />
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Title</Label>
+            <Input
+              value={title}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTitle(v);
+                if (v.length <= 100) update({ title: v });
+              }}
+              maxLength={100}
+              placeholder="My 12-week Program"
+            />
+            <p className="text-right text-[10px] text-muted-foreground">{title.length}/100</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Description</Label>
+            <RichTextEditor
+              value={description}
+              onChange={(html) => { setDescription(html); update({ description_richtext: html }); }}
+              minHeight="140px"
+              placeholder="Describe what students will learn..."
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section 2: Customize Branding */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">2</span>
+            <CardTitle className="text-base">Customize Branding</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Title Font</Label>
+            <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["Inter", "Poppins", "Montserrat", "Roboto", "Playfair Display", "DM Sans", "Space Grotesk"].map(f => (
+                  <SelectItem key={f} value={f}>{f}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <BrandingColorPicker label="Background Color" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
+            <BrandingColorPicker label="Highlight Color" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Footer actions */}
+      <div className="flex justify-end gap-3 pt-2">
+        <Button variant="outline" onClick={onBack}>Cancel</Button>
+        <Button onClick={handleSave}>Save</Button>
+      </div>
     </div>
   );
 }
