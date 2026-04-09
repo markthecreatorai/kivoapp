@@ -61,75 +61,6 @@ const HEADLINES = {
   B: { title: "Pague até 60% menos em taxas que Hotmart e Kiwify.", sub: "A plataforma all-in-one que devolve mais receita para o creator. Comece grátis, sem cartão." },
 };
 
-/* ── Savings Calculator ── */
-function SavingsCalculator() {
-  const [price, setPrice] = useState(97);
-  const [sales, setSales] = useState(50);
-  const navigate = useNavigate();
-
-  const hotmartRate = 0.099 + 0.039; // ~13.9% total
-  const kiwifyRate = 0.089 + 0.039;
-  const kivoRate = 0.049;
-
-  const gmv = price * sales;
-  const hotmartFees = gmv * hotmartRate;
-  const kiwifyFees = gmv * kiwifyRate;
-  const kivoFees = gmv * kivoRate;
-  const savingsHotmart = hotmartFees - kivoFees;
-  const savingsKiwify = kiwifyFees - kivoFees;
-
-  const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-  return (
-    <section id="calculator" className="py-20 bg-muted/30">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-10">
-          <Badge variant="secondary" className="mb-4"><Calculator className="w-3 h-3 mr-1" /> Calculadora</Badge>
-          <h2 className="text-3xl font-bold text-foreground">Quanto você economiza com Kivo?</h2>
-          <p className="text-muted-foreground mt-2">Compare suas taxas atuais com as nossas</p>
-        </div>
-        <Card className="card-radius overflow-hidden">
-          <CardContent className="p-6 md:p-10">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <Label>Preço do produto (R$)</Label>
-                  <Input type="number" value={price} onChange={e => setPrice(+e.target.value)} className="input-radius" min={1} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Vendas por mês</Label>
-                  <Input type="number" value={sales} onChange={e => setSales(+e.target.value)} className="input-radius" min={1} />
-                </div>
-                <p className="text-sm text-muted-foreground">GMV mensal: <span className="font-semibold text-foreground">{fmt(gmv)}</span></p>
-              </div>
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-destructive/10 space-y-1">
-                  <p className="text-sm font-medium text-foreground">Hotmart (~13,9%)</p>
-                  <p className="text-lg font-bold text-destructive">{fmt(hotmartFees)}/mês em taxas</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted space-y-1">
-                  <p className="text-sm font-medium text-foreground">Kiwify (~12,8%)</p>
-                  <p className="text-lg font-bold text-muted-foreground">{fmt(kiwifyFees)}/mês em taxas</p>
-                </div>
-                <div className="p-4 rounded-lg bg-accent space-y-1">
-                  <p className="text-sm font-medium text-foreground">Kivo (4,9%)</p>
-                  <p className="text-lg font-bold text-primary">{fmt(kivoFees)}/mês em taxas</p>
-                </div>
-                <Separator />
-                <p className="text-center text-lg font-bold text-primary">
-                  Economia de até {fmt(Math.max(savingsHotmart, savingsKiwify))}/mês
-                </p>
-                <Button className="w-full pill-radius gap-2" onClick={() => navigate("/signup?utm_source=calculator&utm_medium=landing")}>
-                  Quero pagar menos taxas <ArrowRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </section>
-  );
-}
 
 /* ── FAQ ── */
 const FAQ_ITEMS = [
@@ -286,8 +217,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Calculator */}
-      <SavingsCalculator />
 
       {/* Value Proposition — Section 4 */}
       <ValueProposition />
