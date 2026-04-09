@@ -194,8 +194,10 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
     setVideoUploading(true);
     setVideoProgress(10);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Sessão expirada"); setVideoUploading(false); return; }
       const ext = file.name.split(".").pop();
-      const path = `course-videos/${lesson.id}/${Date.now()}.${ext}`;
+      const path = `${user.id}/course-videos/${lesson.id}/${Date.now()}.${ext}`;
       setVideoProgress(30);
       const { error } = await supabase.storage.from("private-files").upload(path, file);
       if (error) throw error;
@@ -217,13 +219,15 @@ export function CourseLessonEditor({ lesson, onBack, onDeleted, onNavigate, nav,
   const handleMaterialUpload = async (files: FileList) => {
     setMaterialUploading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Sessão expirada"); setMaterialUploading(false); return; }
       for (const file of Array.from(files)) {
         if (file.size > 50 * 1024 * 1024) {
           toast.error(`${file.name}: máximo 50MB`);
           continue;
         }
         const ext = file.name.split(".").pop();
-        const path = `course-materials/${lesson.id}/${Date.now()}-${file.name}`;
+        const path = `${user.id}/course-materials/${lesson.id}/${Date.now()}-${file.name}`;
         const { error } = await supabase.storage.from("private-files").upload(path, file);
         if (error) throw error;
         const { data: urlData } = supabase.storage.from("private-files").getPublicUrl(path);
