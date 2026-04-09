@@ -114,13 +114,14 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
 // ═══════════════════════════════════════════
 function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course; initialProduct: any; setSaving: (v: boolean) => void }) {
   const [tab, setTab] = useState("thumbnail");
+  const [courseSubView, setCourseSubView] = useState<"main" | "editPage" | "lesson">("main");
   const themeTokens = useStorefrontTheme();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
       <div className="flex flex-col lg:flex-row gap-10">
         <div className="flex-1 min-w-0">
-          <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v !== "course") setCourseSubView("main"); }} className="w-full">
             <TabsList className="bg-muted/50 p-1 w-full flex mb-6">
               <TabsTrigger value="thumbnail" className="flex-1 text-xs sm:text-sm">1. Thumbnail</TabsTrigger>
               <TabsTrigger value="checkout" className="flex-1 text-xs sm:text-sm">2. Checkout</TabsTrigger>
@@ -135,7 +136,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
               <CheckoutTab course={course} setSaving={setSaving} />
             </TabsContent>
             <TabsContent value="course">
-              <ContentTab course={course} setSaving={setSaving} />
+              <ContentTab course={course} setSaving={setSaving} subView={courseSubView} setSubView={setCourseSubView} />
             </TabsContent>
             <TabsContent value="options">
               <OptionsTab course={course} setSaving={setSaving} />
@@ -144,7 +145,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
         </div>
 
         {/* Mobile preview — context-aware */}
-        <MobilePreviewPanel tab={tab} course={course} themeTokens={themeTokens} />
+        <MobilePreviewPanel tab={tab} course={course} themeTokens={themeTokens} courseSubView={courseSubView} />
       </div>
     </div>
   );
