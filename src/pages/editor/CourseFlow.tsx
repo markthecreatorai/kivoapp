@@ -47,6 +47,7 @@ import {
   Copy, LayoutTemplate, CheckCircle2, XCircle, AlertTriangle,
   Image as ImageIcon, ShoppingCart, Settings, DollarSign,
   User, Mail, Type, ListChecks, ToggleLeft,
+  Star, Zap, Gift, Share2, MailCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
