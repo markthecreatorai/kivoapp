@@ -180,7 +180,7 @@ export default function LandingPage() {
                 5 ferramentas.
               </h1>
               <p className="text-base md:text-lg text-foreground/60 max-w-lg leading-relaxed">
-                Loja, checkout, comunidade, cursos e email — num ecossistema só. Comece grátis, escale sem limites.
+                Loja, checkout, comunidade, cursos e email tudo em um ecossistema só. Comece grátis, escale sem limites.
               </p>
               <div className="pt-2">
                 <Button
