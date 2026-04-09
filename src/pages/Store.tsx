@@ -873,6 +873,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto excluído.");
@@ -926,6 +927,7 @@ export default function Store() {
       return data;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto duplicado.");
