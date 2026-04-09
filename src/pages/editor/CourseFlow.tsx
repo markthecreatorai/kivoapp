@@ -141,6 +141,23 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
   const [tab, setTab] = useState("thumbnail");
   const [courseSubView, setCourseSubView] = useState<"main" | "editPage" | "lesson">("main");
   const themeTokens = useStorefrontTheme();
+  const isDirtyRef = useRef(false);
+
+  // Telemetry: opened
+  useEffect(() => {
+    trackEvent("course_builder_opened", { course_id: course.id });
+  }, [course.id]);
+
+  // Guard: beforeunload
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current || updateCourse.isPending) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   // For publish logic from OptionsTab
   const updateCourse = useUpdateCourse();
@@ -157,7 +174,13 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
     if (idx < tabOrder.length - 1) setTab(tabOrder[idx + 1]);
   };
 
+  const handlePrev = () => {
+    const idx = tabOrder.indexOf(tab);
+    if (idx > 0) setTab(tabOrder[idx - 1]);
+  };
+
   const handleTabChange = (v: string) => {
+    trackEvent("course_builder_tab_switched", { from: tab, to: v, course_id: course.id });
     setTab(v);
     if (v !== "course") setCourseSubView("main");
   };
@@ -167,23 +190,39 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
     updateCourse.mutate(
       { id: course.id, status: "draft" },
       {
-        onSuccess: () => { toast.success("Rascunho salvo!"); setSaving(false); },
-        onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
+        onSuccess: () => {
+          showToast("success", "Rascunho salvo!");
+          setSaving(false);
+          isDirtyRef.current = false;
+          trackEvent("course_draft_saved", { course_id: course.id });
+        },
+        onError: () => { showToast("error", "Erro ao salvar"); setSaving(false); },
       }
     );
   };
 
   const handlePublish = () => {
+    trackEvent("course_publish_attempt", { course_id: course.id });
     if (hasErrors) {
-      toast.error("Corrija os itens obrigatórios antes de publicar");
+      showToast("error", "Corrija os itens obrigatórios antes de publicar");
+      trackEvent("course_publish_fail", { course_id: course.id, reason: "checklist_errors" });
       return;
     }
     setSaving(true);
     updateCourse.mutate(
       { id: course.id, status: "published" },
       {
-        onSuccess: () => { toast.success("Curso publicado!"); setSaving(false); },
-        onError: () => { toast.error("Erro ao publicar"); setSaving(false); },
+        onSuccess: () => {
+          showToast("success", "Curso publicado!");
+          setSaving(false);
+          isDirtyRef.current = false;
+          trackEvent("course_publish_success", { course_id: course.id });
+        },
+        onError: () => {
+          showToast("error", "Erro ao publicar");
+          setSaving(false);
+          trackEvent("course_publish_fail", { course_id: course.id, reason: "mutation_error" });
+        },
       }
     );
   };
@@ -201,8 +240,10 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
       preview={<MobilePreviewPanel tab={tab} course={course} themeTokens={themeTokens} courseSubView={courseSubView} />}
       onSaveDraft={handleSaveDraft}
       onNext={handleNext}
+      onPrev={handlePrev}
       onPublish={handlePublish}
       isLastTab={tab === "options"}
+      isFirstTab={tab === "thumbnail"}
       canPublish={!hasErrors}
       isSaving={updateCourse.isPending}
     >
