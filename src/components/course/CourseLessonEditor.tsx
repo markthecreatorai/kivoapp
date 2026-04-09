@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import {
   useUpdateLesson, useDeleteLesson,
