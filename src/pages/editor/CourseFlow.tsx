@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
 import {
@@ -17,14 +17,17 @@ import {
   type CourseModule,
   type CourseLesson,
 } from "@/hooks/useCourseBuilder";
-import { Loader2, Plus, GripVertical, BookOpen, Play, Trash2, ChevronDown, ChevronRight, Palette, Settings } from "lucide-react";
+import { Loader2, Plus, GripVertical, BookOpen, Play, Trash2, ChevronDown, ChevronRight, Settings, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { ImageUploadField } from "@/components/course/ImageUploadField";
+import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
+import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
 
 interface CourseFlowProps {
   initialProduct: any;
@@ -35,9 +38,7 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
   const { currentWorkspace } = useWorkspace();
   const { data: course, isLoading } = useCourseByProduct(initialProduct.id);
   const createCourse = useCreateCourse();
-  const updateCourse = useUpdateCourse();
 
-  // Auto-create course record if missing
   useEffect(() => {
     if (!isLoading && !course && currentWorkspace?.id) {
       createCourse.mutate({
@@ -59,16 +60,16 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
   if (!course) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-      <Tabs defaultValue="content" className="w-full">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <Tabs defaultValue="homepage" className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="content" className="gap-2">
+          <TabsTrigger value="homepage" className="gap-2">
             <BookOpen className="h-4 w-4" />
-            Conteúdo
+            Homepage
           </TabsTrigger>
-          <TabsTrigger value="branding" className="gap-2">
-            <Palette className="h-4 w-4" />
-            Branding
+          <TabsTrigger value="content" className="gap-2">
+            <Play className="h-4 w-4" />
+            Conteúdo
           </TabsTrigger>
           <TabsTrigger value="settings" className="gap-2">
             <Settings className="h-4 w-4" />
@@ -76,12 +77,12 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content">
-          <ContentTab course={course} setSaving={setSaving} />
+        <TabsContent value="homepage">
+          <HomepageTab course={course} setSaving={setSaving} />
         </TabsContent>
 
-        <TabsContent value="branding">
-          <BrandingTab course={course} setSaving={setSaving} />
+        <TabsContent value="content">
+          <ContentTab course={course} setSaving={setSaving} />
         </TabsContent>
 
         <TabsContent value="settings">
@@ -93,7 +94,221 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
 }
 
 // ═══════════════════════════════════════════
-// Content Tab
+// Autosave hook
+// ═══════════════════════════════════════════
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+function useAutosave(course: Course, setSaving: (v: boolean) => void) {
+  const updateCourse = useUpdateCourse();
+  const [status, setStatus] = useState<SaveStatus>("idle");
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const pendingRef = useRef<Partial<Course> | null>(null);
+
+  const flush = useCallback(() => {
+    const payload = pendingRef.current;
+    if (!payload) return;
+    pendingRef.current = null;
+    setStatus("saving");
+    setSaving(true);
+    updateCourse.mutate(
+      { id: course.id, ...payload },
+      {
+        onSuccess: () => {
+          setStatus("saved");
+          setSaving(false);
+          setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 2000);
+        },
+        onError: () => {
+          setStatus("error");
+          setSaving(false);
+        },
+      }
+    );
+  }, [course.id, updateCourse, setSaving]);
+
+  const enqueue = useCallback(
+    (fields: Partial<Course>) => {
+      pendingRef.current = { ...pendingRef.current, ...fields };
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(flush, 1200);
+    },
+    [flush]
+  );
+
+  // Flush on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (pendingRef.current) flush();
+    };
+  }, [flush]);
+
+  return { enqueue, status, flush };
+}
+
+// ═══════════════════════════════════════════
+// Homepage Tab — 2-column layout
+// ═══════════════════════════════════════════
+function HomepageTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
+  const { enqueue, status } = useAutosave(course, setSaving);
+  const { data: modules = [] } = useModules(course.id);
+  const moduleIds = modules.map((m) => m.id);
+  const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
+
+  // Local state mirrors course fields for instant preview
+  const [title, setTitle] = useState(course.title);
+  const [description, setDescription] = useState(course.description_richtext || "");
+  const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
+  const [titleFont, setTitleFont] = useState(course.branding_title_font || "Inter");
+  const [bgColor, setBgColor] = useState(course.branding_bg_color || "#ffffff");
+  const [hlColor, setHlColor] = useState(course.branding_highlight_color || "#6366f1");
+
+  const titleError = title.length > 100 ? "Máximo 100 caracteres" : title.length === 0 ? "Título obrigatório" : null;
+
+  const update = (fields: Partial<Course>) => enqueue(fields);
+
+  return (
+    <div className="flex gap-8 items-start">
+      {/* ── Left: Form ── */}
+      <div className="flex-1 min-w-0 space-y-6">
+        {/* Save status indicator */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {status === "saving" && (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Salvando...</span>
+            </>
+          )}
+          {status === "saved" && (
+            <>
+              <Check className="h-3 w-3 text-green-500" />
+              <span className="text-green-600">Salvo</span>
+            </>
+          )}
+          {status === "error" && (
+            <>
+              <AlertCircle className="h-3 w-3 text-destructive" />
+              <span className="text-destructive">Erro ao salvar</span>
+            </>
+          )}
+        </div>
+
+        {/* Hero image */}
+        <ImageUploadField
+          value={heroUrl || null}
+          onChange={(url) => {
+            setHeroUrl(url || "");
+            update({ hero_image_url: url });
+          }}
+        />
+
+        {/* Title */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Título do curso</Label>
+          <Input
+            value={title}
+            onChange={(e) => {
+              const v = e.target.value;
+              setTitle(v);
+              if (v.length <= 100 && v.length > 0) update({ title: v });
+            }}
+            maxLength={100}
+            className={titleError ? "border-destructive" : ""}
+          />
+          <div className="flex justify-between">
+            {titleError ? (
+              <p className="text-xs text-destructive">{titleError}</p>
+            ) : (
+              <span />
+            )}
+            <p className="text-xs text-muted-foreground">{title.length}/100</p>
+          </div>
+        </div>
+
+        {/* Description rich text */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Descrição</Label>
+          <RichTextEditor
+            value={description}
+            onChange={(html) => {
+              setDescription(html);
+              update({ description_richtext: html });
+            }}
+            minHeight="140px"
+          />
+        </div>
+
+        {/* Branding section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Branding do curso</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Font */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Fonte do título</Label>
+              <Select
+                value={titleFont}
+                onValueChange={(v) => {
+                  setTitleFont(v);
+                  update({ branding_title_font: v });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Inter">Inter</SelectItem>
+                  <SelectItem value="Poppins">Poppins</SelectItem>
+                  <SelectItem value="Montserrat">Montserrat</SelectItem>
+                  <SelectItem value="Roboto">Roboto</SelectItem>
+                  <SelectItem value="Playfair Display">Playfair Display</SelectItem>
+                  <SelectItem value="DM Sans">DM Sans</SelectItem>
+                  <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Colors */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <BrandingColorPicker
+                label="Cor de fundo"
+                value={bgColor}
+                onChange={(c) => {
+                  setBgColor(c);
+                  update({ branding_bg_color: c });
+                }}
+              />
+              <BrandingColorPicker
+                label="Cor de destaque"
+                value={hlColor}
+                onChange={(c) => {
+                  setHlColor(c);
+                  update({ branding_highlight_color: c });
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Right: Mobile preview ── */}
+      <CourseMobilePreview
+        title={title}
+        description={description}
+        heroImageUrl={heroUrl || null}
+        bgColor={bgColor}
+        highlightColor={hlColor}
+        titleFont={titleFont}
+        modulesCount={modules.length}
+        lessonsCount={allLessons.length}
+      />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Content Tab (modules + lessons)
 // ═══════════════════════════════════════════
 function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
   const { data: modules = [] } = useModules(course.id);
@@ -165,8 +380,8 @@ function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: bool
   };
 
   return (
-    <div className="space-y-4">
-      {modules.map((mod, mi) => {
+    <div className="max-w-3xl space-y-4">
+      {modules.map((mod) => {
         const moduleLessons = allLessons.filter((l) => l.module_id === mod.id);
         const isExpanded = expandedModules.has(mod.id);
 
@@ -217,7 +432,6 @@ function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: bool
 
             {isExpanded && (
               <CardContent className="pt-0 pb-3 px-4">
-                {/* Drip config */}
                 <div className="flex items-center gap-3 mb-3 pl-8">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Liberação:</Label>
                   <Select
@@ -251,7 +465,6 @@ function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: bool
                   )}
                 </div>
 
-                {/* Lessons list */}
                 <div className="space-y-1 pl-8">
                   {moduleLessons.map((lesson) => (
                     <div
@@ -315,101 +528,16 @@ function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: bool
 }
 
 // ═══════════════════════════════════════════
-// Branding Tab
-// ═══════════════════════════════════════════
-function BrandingTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
-  const updateCourse = useUpdateCourse();
-  const [font, setFont] = useState(course.branding_title_font || "Inter");
-  const [bgColor, setBgColor] = useState(course.branding_bg_color || "#ffffff");
-  const [hlColor, setHlColor] = useState(course.branding_highlight_color || "#6366f1");
-  const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
-
-  const save = () => {
-    setSaving(true);
-    updateCourse.mutate(
-      {
-        id: course.id,
-        branding_title_font: font,
-        branding_bg_color: bgColor,
-        branding_highlight_color: hlColor,
-        hero_image_url: heroUrl || null,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Branding salvo");
-          setSaving(false);
-        },
-        onError: () => {
-          toast.error("Erro ao salvar branding");
-          setSaving(false);
-        },
-      }
-    );
-  };
-
-  return (
-    <div className="max-w-lg space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Aparência do curso</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label className="text-sm">Imagem de capa (URL)</Label>
-            <Input value={heroUrl} onChange={(e) => setHeroUrl(e.target.value)} placeholder="https://..." />
-          </div>
-          <div>
-            <Label className="text-sm">Fonte do título</Label>
-            <Select value={font} onValueChange={setFont}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Inter">Inter</SelectItem>
-                <SelectItem value="Poppins">Poppins</SelectItem>
-                <SelectItem value="Montserrat">Montserrat</SelectItem>
-                <SelectItem value="Roboto">Roboto</SelectItem>
-                <SelectItem value="Playfair Display">Playfair Display</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm">Cor de fundo</Label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-8 h-8 rounded border cursor-pointer" />
-                <Input value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="flex-1" />
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm">Cor de destaque</Label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={hlColor} onChange={(e) => setHlColor(e.target.value)} className="w-8 h-8 rounded border cursor-pointer" />
-                <Input value={hlColor} onChange={(e) => setHlColor(e.target.value)} className="flex-1" />
-              </div>
-            </div>
-          </div>
-
-          <Button onClick={save} disabled={updateCourse.isPending} className="w-full">
-            Salvar branding
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════
 // Settings Tab
 // ═══════════════════════════════════════════
 function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
   const updateCourse = useUpdateCourse();
-  const [title, setTitle] = useState(course.title);
-  const [description, setDescription] = useState(course.description_richtext || "");
   const [status, setStatus] = useState(course.status);
 
   const save = () => {
     setSaving(true);
     updateCourse.mutate(
-      { id: course.id, title, description_richtext: description, status },
+      { id: course.id, status },
       {
         onSuccess: () => {
           toast.success("Configurações salvas");
@@ -430,15 +558,6 @@ function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boo
           <CardTitle className="text-base">Configurações do curso</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label className="text-sm">Título do curso</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} />
-            <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
-          </div>
-          <div>
-            <Label className="text-sm">Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
-          </div>
           <div>
             <Label className="text-sm">Status</Label>
             <Select value={status} onValueChange={setStatus}>
