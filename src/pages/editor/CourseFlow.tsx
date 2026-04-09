@@ -843,14 +843,7 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
   return (
     <div className="max-w-3xl space-y-6 animate-in fade-in">
       {/* ── Section 1: Course Homepage ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">1</span>
-          <div>
-            <h3 className="text-base font-bold">Course Homepage</h3>
-            <p className="text-xs text-muted-foreground">Start by giving your course a title, description, and image.</p>
-          </div>
-        </div>
+      <StepCard stepNumber={1} title="Course Homepage" description="Start by giving your course a title, description, and image." completed={!!course.title && !!course.hero_image_url}>
         <div
           className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card cursor-pointer hover:border-primary/40 transition-colors"
           onClick={() => setSubView("editPage")}
