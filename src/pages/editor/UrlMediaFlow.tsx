@@ -19,6 +19,7 @@ import {
   Trash2,
   Lock
 } from "lucide-react";
+import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
 
 /* ─────────────── helpers ─────────────── */
 
@@ -204,12 +205,42 @@ export default function UrlMediaFlow({
         <div className="w-full h-full rounded-[32px] overflow-hidden bg-[hsl(var(--background))] flex flex-col relative overflow-y-auto">
           <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20" />
           <div className="p-4 pt-10 flex flex-col items-center h-full">
-            {form.cardStyle === "button" && (
+            {form.cardStyle === "button" && isAffiliateOrReferral && (
+              <div className="w-full rounded-2xl border bg-card p-4 shadow-sm flex items-center gap-3">
+                <img
+                  src={form.thumbnailUrl || kivoReferralLogo}
+                  alt=""
+                  className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                />
+                <p className="font-bold text-sm leading-snug truncate">{form.name || "Acesso Rápido"}</p>
+              </div>
+            )}
+            {form.cardStyle === "button" && !isAffiliateOrReferral && (
               <div className="w-full py-4 px-6 rounded-2xl border-2 border-primary bg-card text-center text-sm font-bold shadow-sm truncate">
                 {form.name || "Acesso Rápido"}
               </div>
             )}
-            {form.cardStyle === "callout" && (
+            {form.cardStyle === "callout" && isAffiliateOrReferral && (
+              <div className="w-full rounded-2xl border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={form.thumbnailUrl || kivoReferralLogo}
+                    alt=""
+                    className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                  />
+                  <p className="font-bold text-base leading-snug">{form.name || "Título Destaque"}</p>
+                </div>
+                {form.shortDescription && (
+                  <p className="text-sm text-muted-foreground mt-3 line-clamp-2">
+                    {form.shortDescription}
+                  </p>
+                )}
+                <div className="mt-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium text-center">
+                  {form.ctaText || "Acessar"}
+                </div>
+              </div>
+            )}
+            {form.cardStyle === "callout" && !isAffiliateOrReferral && (
               <div className="w-full rounded-2xl border bg-card p-4 shadow-sm">
                 {form.thumbnailUrl && (
                   <div className="h-32 bg-muted overflow-hidden rounded-xl mb-4">
@@ -331,7 +362,7 @@ export default function UrlMediaFlow({
             >
               {form.thumbnailUrl ? (
                 <div className="space-y-3">
-                  <div className="w-full max-w-[200px] aspect-square rounded-xl overflow-hidden border bg-muted">
+                  <div className="w-full max-w-[200px] aspect-square rounded-2xl overflow-hidden border bg-muted">
                     <img src={form.thumbnailUrl} alt="Capa" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex gap-2">
@@ -356,13 +387,21 @@ export default function UrlMediaFlow({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">URL da imagem</Label>
-                  <Input
-                    placeholder="Cole a URL da imagem aqui"
-                    value={form.thumbnailUrl}
-                    onChange={(e) => updateForm({ thumbnailUrl: e.target.value })}
-                  />
+                <div className="space-y-3">
+                  <div className="relative w-full max-w-[200px]">
+                    <div className="aspect-square rounded-2xl overflow-hidden border bg-muted">
+                      <img src={kivoReferralLogo} alt="Padrão" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="absolute top-2 right-2 text-[10px] font-medium bg-background/80 backdrop-blur-sm border rounded-md px-1.5 py-0.5">Padrão</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">URL da imagem</Label>
+                    <Input
+                      placeholder="Cole a URL da imagem aqui"
+                      value={form.thumbnailUrl}
+                      onChange={(e) => updateForm({ thumbnailUrl: e.target.value })}
+                    />
+                  </div>
                 </div>
               )}
             </StepCard>
