@@ -297,6 +297,15 @@ function MobilePreviewPanel({ tab, course, themeTokens, courseSubView }: { tab: 
   }
 
   if (tab === "checkout") {
+    const displayPrice = course.checkout_discount_price_cents && course.checkout_discount_price_cents > 0
+      ? course.checkout_discount_price_cents
+      : (course.checkout_price_cents || 0);
+    const hasDiscount = (course.checkout_discount_price_cents ?? 0) > 0 && (course.checkout_discount_price_cents ?? 0) < (course.checkout_price_cents ?? 0);
+    const priceLabel = `R$ ${(displayPrice / 100).toFixed(2).replace(".", ",")}`;
+    const originalLabel = hasDiscount ? `R$ ${((course.checkout_price_cents || 0) / 100).toFixed(2).replace(".", ",")}` : null;
+    const isSubscription = course.checkout_price_type === "subscription";
+    const intervalLabel = course.checkout_billing_interval === "yearly" ? "/ano" : course.checkout_billing_interval === "quarterly" ? "/tri" : "/mês";
+
     return (
       <div className="hidden lg:block w-[320px] shrink-0 sticky top-24">
         <p className="text-xs font-medium text-muted-foreground mb-3 text-center">Preview em tempo real</p>
@@ -304,32 +313,57 @@ function MobilePreviewPanel({ tab, course, themeTokens, courseSubView }: { tab: 
           <div className="w-full h-full rounded-[32px] overflow-hidden flex flex-col relative overflow-y-auto" style={{ backgroundColor: themeTokens?.backgroundColor || "#fff" }}>
             <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20" />
             {course.checkout_image && (
-              <div className="h-48 bg-muted overflow-hidden">
+              <div className="h-40 bg-muted overflow-hidden shrink-0">
                 <img src={course.checkout_image} className="w-full h-full object-cover" alt="" />
               </div>
             )}
-            <div className="p-5 space-y-4 pt-10">
-              <p className="font-bold text-xl leading-snug" style={{ color: themeTokens?.textColor || "#000" }}>
-                {course.checkout_title || course.title || "Título do Curso"}
-              </p>
+            <div className="p-4 space-y-3 pt-10 flex-1">
+              {/* Price */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-bold" style={{ color: hlColor }}>{priceLabel}{isSubscription && <span className="text-xs font-normal">{intervalLabel}</span>}</span>
+                {originalLabel && <span className="text-xs line-through text-muted-foreground">{originalLabel}</span>}
+              </div>
+
+              {/* Description */}
               {course.checkout_description && (
-                <p className="text-sm line-clamp-5 mt-2" style={{ color: themeTokens?.textColor || "#000", opacity: 0.8 }}>
-                  {course.checkout_description.replace(/<[^>]*>/g, "")}
+                <div className="text-[11px] leading-relaxed line-clamp-6 prose prose-xs max-w-none" style={{ color: (themeTokens?.textColor || "#000") + "cc" }}
+                  dangerouslySetInnerHTML={{ __html: course.checkout_description }}
+                />
+              )}
+
+              {/* Bottom title */}
+              {(course.checkout_bottom_title || course.checkout_title) && (
+                <p className="font-bold text-sm text-center pt-2" style={{ color: themeTokens?.textColor || "#000" }}>
+                  {course.checkout_bottom_title || course.checkout_title}
                 </p>
               )}
-              <div className="pt-6 space-y-3">
+
+              {/* Form fields */}
+              <div className="space-y-2 pt-1">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium" style={{ color: themeTokens?.textColor || "#000" }}>Nome completo</p>
-                  <div className="h-10 border rounded-lg" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "10", borderColor: (themeTokens?.textColor || "#000") + "30" }} />
+                  <p className="text-[10px] font-medium" style={{ color: themeTokens?.textColor || "#000" }}>Nome</p>
+                  <div className="h-8 border rounded-md" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "08", borderColor: (themeTokens?.textColor || "#000") + "20" }} />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium" style={{ color: themeTokens?.textColor || "#000" }}>E-mail</p>
-                  <div className="h-10 border rounded-lg" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "10", borderColor: (themeTokens?.textColor || "#000") + "30" }} />
+                  <p className="text-[10px] font-medium" style={{ color: themeTokens?.textColor || "#000" }}>E-mail</p>
+                  <div className="h-8 border rounded-md" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "08", borderColor: (themeTokens?.textColor || "#000") + "20" }} />
                 </div>
-                <div className="pt-2">
-                  <div className="w-full py-4 text-white font-medium text-center rounded-lg" style={{ backgroundColor: hlColor }}>
-                    Finalizar Compra
+                {(course.checkout_custom_fields as CustomField[] | null)?.map((f: any) => f.label && (
+                  <div key={f.id} className="space-y-1">
+                    <p className="text-[10px] font-medium" style={{ color: themeTokens?.textColor || "#000" }}>{f.label}</p>
+                    <div className="h-8 border rounded-md" style={{ backgroundColor: (themeTokens?.textColor || "#000") + "08", borderColor: (themeTokens?.textColor || "#000") + "20" }} />
                   </div>
+                ))}
+              </div>
+
+              {/* Total + CTA */}
+              <div className="pt-2 space-y-2">
+                <div className="flex items-center justify-between text-xs font-medium" style={{ color: themeTokens?.textColor || "#000" }}>
+                  <span>Total :</span>
+                  <span className="font-bold">{priceLabel}</span>
+                </div>
+                <div className="w-full py-3 text-white font-bold text-center rounded-lg text-sm tracking-wide" style={{ backgroundColor: hlColor }}>
+                  {course.checkout_cta || "COMPRAR"}
                 </div>
               </div>
             </div>
