@@ -208,6 +208,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Value Proposition */}
+      <ValueProposition />
+
       {/* Features */}
       <section id="features" className="py-20 bg-muted/30">
         <div className="max-w-6xl mx-auto px-4">
@@ -237,11 +240,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-
-      {/* Value Proposition — Section 4 */}
-      <ValueProposition />
-
 
 
       {/* Creator Showcase */}
