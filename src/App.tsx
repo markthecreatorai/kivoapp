@@ -366,7 +366,7 @@ const App = () => (
                 <Route path="/book/:productSlug" element={<GlobalTrackingWrapper><BookAppointment /></GlobalTrackingWrapper>} />
                 <Route path="/affiliate/apply/:workspaceSlug" element={<GlobalTrackingWrapper><AffiliateApply /></GlobalTrackingWrapper>} />
                 <Route path="/affiliate/dashboard" element={<GlobalTrackingWrapper><AffiliateDashboard /></GlobalTrackingWrapper>} />
-                <Route path="/:slug" element={<GlobalTrackingWrapper><PublicStorefront /></GlobalTrackingWrapper>} />
+                <Route path="/:slug" element={<ErrorBoundary isRouteLevel><GlobalTrackingWrapper><PublicStorefront /></GlobalTrackingWrapper></ErrorBoundary>} />
                 <Route path="*" element={<GlobalTrackingWrapper><NotFound /></GlobalTrackingWrapper>} />
               </Routes>
               </SuspenseWithTimeout>
