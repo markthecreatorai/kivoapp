@@ -18,6 +18,7 @@ import type { GalleryItem } from "@/components/landing/types";
 import creator1 from "@/assets/gallery/creator-1.jpg";
 import creator2 from "@/assets/gallery/creator-2.jpg";
 import creator3 from "@/assets/gallery/creator-3.jpg";
+import creatorWorking from "@/assets/gallery/creator-working.jpg";
 
 const GALLERY_ITEMS: GalleryItem[] = [
   {
