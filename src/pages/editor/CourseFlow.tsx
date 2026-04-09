@@ -2,6 +2,23 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   useCourseByProduct,
   useCreateCourse,
   useModules,
@@ -13,21 +30,40 @@ import {
   useUpdateLesson,
   useDeleteLesson,
   useUpdateCourse,
+  useReorderModules,
+  useReorderLessons,
   type Course,
   type CourseModule,
   type CourseLesson,
 } from "@/hooks/useCourseBuilder";
-import { Loader2, Plus, GripVertical, BookOpen, Play, Trash2, ChevronDown, ChevronRight, Settings, Check, AlertCircle } from "lucide-react";
+import {
+  Loader2, Plus, GripVertical, BookOpen, Play, Trash2,
+  ChevronDown, ChevronRight, Settings, Check, AlertCircle,
+  MoreVertical, Pencil, Calendar, Clock, Eye, EyeOff, Droplets,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploadField } from "@/components/course/ImageUploadField";
 import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
+import { cn } from "@/lib/utils";
 
 interface CourseFlowProps {
   initialProduct: any;
@@ -135,7 +171,6 @@ function useAutosave(course: Course, setSaving: (v: boolean) => void) {
     [flush]
   );
 
-  // Flush on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -155,7 +190,6 @@ function HomepageTab({ course, setSaving }: { course: Course; setSaving: (v: boo
   const moduleIds = modules.map((m) => m.id);
   const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
 
-  // Local state mirrors course fields for instant preview
   const [title, setTitle] = useState(course.title);
   const [description, setDescription] = useState(course.description_richtext || "");
   const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
@@ -169,40 +203,18 @@ function HomepageTab({ course, setSaving }: { course: Course; setSaving: (v: boo
 
   return (
     <div className="flex gap-8 items-start">
-      {/* ── Left: Form ── */}
       <div className="flex-1 min-w-0 space-y-6">
-        {/* Save status indicator */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {status === "saving" && (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Salvando...</span>
-            </>
-          )}
-          {status === "saved" && (
-            <>
-              <Check className="h-3 w-3 text-green-500" />
-              <span className="text-green-600">Salvo</span>
-            </>
-          )}
-          {status === "error" && (
-            <>
-              <AlertCircle className="h-3 w-3 text-destructive" />
-              <span className="text-destructive">Erro ao salvar</span>
-            </>
-          )}
+          {status === "saving" && (<><Loader2 className="h-3 w-3 animate-spin" /><span>Salvando...</span></>)}
+          {status === "saved" && (<><Check className="h-3 w-3 text-green-500" /><span className="text-green-600">Salvo</span></>)}
+          {status === "error" && (<><AlertCircle className="h-3 w-3 text-destructive" /><span className="text-destructive">Erro ao salvar</span></>)}
         </div>
 
-        {/* Hero image */}
         <ImageUploadField
           value={heroUrl || null}
-          onChange={(url) => {
-            setHeroUrl(url || "");
-            update({ hero_image_url: url });
-          }}
+          onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
         />
 
-        {/* Title */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Título do curso</Label>
           <Input
@@ -216,83 +228,44 @@ function HomepageTab({ course, setSaving }: { course: Course; setSaving: (v: boo
             className={titleError ? "border-destructive" : ""}
           />
           <div className="flex justify-between">
-            {titleError ? (
-              <p className="text-xs text-destructive">{titleError}</p>
-            ) : (
-              <span />
-            )}
+            {titleError ? <p className="text-xs text-destructive">{titleError}</p> : <span />}
             <p className="text-xs text-muted-foreground">{title.length}/100</p>
           </div>
         </div>
 
-        {/* Description rich text */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Descrição</Label>
           <RichTextEditor
             value={description}
-            onChange={(html) => {
-              setDescription(html);
-              update({ description_richtext: html });
-            }}
+            onChange={(html) => { setDescription(html); update({ description_richtext: html }); }}
             minHeight="140px"
           />
         </div>
 
-        {/* Branding section */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold">Branding do curso</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Font */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Fonte do título</Label>
-              <Select
-                value={titleFont}
-                onValueChange={(v) => {
-                  setTitleFont(v);
-                  update({ branding_title_font: v });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Inter">Inter</SelectItem>
-                  <SelectItem value="Poppins">Poppins</SelectItem>
-                  <SelectItem value="Montserrat">Montserrat</SelectItem>
-                  <SelectItem value="Roboto">Roboto</SelectItem>
-                  <SelectItem value="Playfair Display">Playfair Display</SelectItem>
-                  <SelectItem value="DM Sans">DM Sans</SelectItem>
-                  <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                  {["Inter", "Poppins", "Montserrat", "Roboto", "Playfair Display", "DM Sans", "Space Grotesk"].map(f => (
+                    <SelectItem key={f} value={f}>{f}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Colors */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <BrandingColorPicker
-                label="Cor de fundo"
-                value={bgColor}
-                onChange={(c) => {
-                  setBgColor(c);
-                  update({ branding_bg_color: c });
-                }}
-              />
-              <BrandingColorPicker
-                label="Cor de destaque"
-                value={hlColor}
-                onChange={(c) => {
-                  setHlColor(c);
-                  update({ branding_highlight_color: c });
-                }}
-              />
+              <BrandingColorPicker label="Cor de fundo" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
+              <BrandingColorPicker label="Cor de destaque" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* ── Right: Mobile preview ── */}
       <CourseMobilePreview
         title={title}
         description={description}
@@ -308,21 +281,80 @@ function HomepageTab({ course, setSaving }: { course: Course; setSaving: (v: boo
 }
 
 // ═══════════════════════════════════════════
-// Content Tab (modules + lessons)
+// Sortable wrapper
 // ═══════════════════════════════════════════
-function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
-  const { data: modules = [] } = useModules(course.id);
-  const moduleIds = modules.map((m) => m.id);
-  const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
+function SortableItem({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <div ref={setNodeRef} style={style} className={cn(className, isDragging && "opacity-50 z-50")} {...attributes}>
+      <div className="flex items-center">
+        <button
+          {...listeners}
+          className="cursor-grab hover:cursor-grabbing p-1 text-muted-foreground/50 hover:text-muted-foreground touch-none"
+          aria-label="Arrastar para reordenar"
+          tabIndex={0}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Status badge
+// ═══════════════════════════════════════════
+function StatusBadge({ status, dripType }: { status: string; dripType?: string }) {
+  if (status === "published") {
+    return <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 bg-green-600 hover:bg-green-600"><Eye className="h-2.5 w-2.5 mr-0.5" />Publicado</Badge>;
+  }
+  if (status === "drip") {
+    return (
+      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 hover:bg-blue-100">
+        <Droplets className="h-2.5 w-2.5 mr-0.5" />
+        {dripType === "date" ? "Drip (data)" : dripType === "days_after_purchase" ? "Drip (dias)" : "Drip"}
+      </Badge>
+    );
+  }
+  return <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4"><EyeOff className="h-2.5 w-2.5 mr-0.5" />Rascunho</Badge>;
+}
+
+// ═══════════════════════════════════════════
+// Content Tab — Full drag-and-drop tree
+// ═══════════════════════════════════════════
+function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => void }) {
+  const { data: serverModules = [] } = useModules(course.id);
+  const moduleIds = serverModules.map((m) => m.id);
+  const { data: serverLessons = [] } = useAllLessons(course.id, moduleIds);
+
+  // Optimistic local state
+  const [localModules, setLocalModules] = useState<CourseModule[]>(serverModules);
+  const [localLessons, setLocalLessons] = useState<CourseLesson[]>(serverLessons);
+  useEffect(() => { setLocalModules(serverModules); }, [serverModules]);
+  useEffect(() => { setLocalLessons(serverLessons); }, [serverLessons]);
+
   const createModule = useCreateModule();
   const updateModule = useUpdateModule();
-  const deleteModule = useDeleteModule();
+  const deleteModuleMut = useDeleteModule();
   const createLesson = useCreateLesson();
   const updateLesson = useUpdateLesson();
-  const deleteLesson = useDeleteLesson();
+  const deleteLessonMut = useDeleteLesson();
+  const reorderModules = useReorderModules();
+  const reorderLessons = useReorderLessons();
 
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "module" | "lesson"; id: string; title: string; courseId?: string; moduleId?: string } | null>(null);
+  const [dripConfigId, setDripConfigId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const toggleExpand = (id: string) => {
     setExpandedModules((prev) => {
@@ -332,9 +364,10 @@ function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: bool
     });
   };
 
+  // ── Add Module ──
   const handleAddModule = () => {
     createModule.mutate(
-      { course_id: course.id, position: modules.length },
+      { course_id: course.id, position: localModules.length },
       {
         onSuccess: (mod) => {
           setExpandedModules((prev) => new Set(prev).add(mod.id));
@@ -344,185 +377,362 @@ function ContentTab({ course, setSaving }: { course: Course; setSaving: (v: bool
     );
   };
 
+  // ── Add Lesson ──
   const handleAddLesson = (moduleId: string) => {
-    const moduleLessons = allLessons.filter((l) => l.module_id === moduleId);
+    const count = localLessons.filter((l) => l.module_id === moduleId).length;
     createLesson.mutate(
-      { module_id: moduleId, position: moduleLessons.length },
-      { onSuccess: () => toast.success("Aula criada") }
+      { module_id: moduleId, position: count },
+      {
+        onSuccess: () => {
+          setExpandedModules((prev) => new Set(prev).add(moduleId));
+          toast.success("Aula criada");
+        },
+      }
     );
   };
 
-  const handleDeleteModule = (mod: CourseModule) => {
-    if (!confirm("Excluir módulo e todas as aulas?")) return;
-    deleteModule.mutate(
-      { id: mod.id, course_id: mod.course_id },
-      { onSuccess: () => toast.success("Módulo excluído") }
+  // ── Rename ──
+  const startRename = (id: string, currentTitle: string) => {
+    setRenamingId(id);
+    setRenameValue(currentTitle);
+  };
+
+  const commitRename = (id: string, type: "module" | "lesson", parentId: string) => {
+    setRenamingId(null);
+    const trimmed = renameValue.trim() || "Sem título";
+    if (type === "module") {
+      // Optimistic
+      setLocalModules((prev) => prev.map((m) => m.id === id ? { ...m, title: trimmed } : m));
+      updateModule.mutate(
+        { id, course_id: parentId, title: trimmed },
+        { onError: () => { setLocalModules(serverModules); toast.error("Erro ao renomear"); } }
+      );
+    } else {
+      setLocalLessons((prev) => prev.map((l) => l.id === id ? { ...l, title: trimmed } : l));
+      updateLesson.mutate(
+        { id, module_id: parentId, title: trimmed },
+        { onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao renomear"); } }
+      );
+    }
+  };
+
+  // ── Delete ──
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const { type, id, courseId, moduleId } = deleteTarget;
+    if (type === "module") {
+      setLocalModules((prev) => prev.filter((m) => m.id !== id));
+      setLocalLessons((prev) => prev.filter((l) => l.module_id !== id));
+      deleteModuleMut.mutate(
+        { id, course_id: courseId! },
+        {
+          onSuccess: () => toast.success("Módulo excluído"),
+          onError: () => { setLocalModules(serverModules); setLocalLessons(serverLessons); toast.error("Erro ao excluir"); },
+        }
+      );
+    } else {
+      setLocalLessons((prev) => prev.filter((l) => l.id !== id));
+      deleteLessonMut.mutate(
+        { id, module_id: moduleId! },
+        {
+          onSuccess: () => toast.success("Aula excluída"),
+          onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao excluir"); },
+        }
+      );
+    }
+    setDeleteTarget(null);
+  };
+
+  // ── Module status change ──
+  const setModuleStatus = (mod: CourseModule, newStatus: string) => {
+    setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, status: newStatus, drip_type: newStatus === "drip" ? m.drip_type : "none" } : m));
+    updateModule.mutate(
+      { id: mod.id, course_id: mod.course_id, status: newStatus, ...(newStatus !== "drip" ? { drip_type: "none" } : {}) },
+      { onError: () => { setLocalModules(serverModules); toast.error("Erro ao alterar status"); } }
+    );
+    if (newStatus === "drip") setDripConfigId(mod.id);
+  };
+
+  // ── Drip config ──
+  const updateDrip = (mod: CourseModule, dripType: string, dripDays?: number | null, dripAt?: string | null) => {
+    setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, drip_type: dripType, drip_days: dripDays ?? m.drip_days, drip_at: dripAt ?? m.drip_at } : m));
+    updateModule.mutate(
+      { id: mod.id, course_id: mod.course_id, drip_type: dripType, ...(dripDays !== undefined ? { drip_days: dripDays } : {}), ...(dripAt !== undefined ? { drip_at: dripAt } : {}) } as any,
+      { onError: () => { setLocalModules(serverModules); toast.error("Erro ao configurar drip"); } }
     );
   };
 
-  const handleDeleteLesson = (lesson: CourseLesson) => {
-    deleteLesson.mutate(
-      { id: lesson.id, module_id: lesson.module_id },
-      { onSuccess: () => toast.success("Aula excluída") }
+  // ── Module DnD ──
+  const handleModuleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = localModules.findIndex((m) => m.id === active.id);
+    const newIdx = localModules.findIndex((m) => m.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(localModules, oldIdx, newIdx).map((m, i) => ({ ...m, position: i }));
+    setLocalModules(reordered);
+    reorderModules.mutate(
+      { courseId: course.id, order: reordered.map((m) => ({ id: m.id, position: m.position })) },
+      { onError: () => { setLocalModules(serverModules); toast.error("Erro ao reordenar"); } }
     );
   };
 
-  const handleModuleTitleBlur = (mod: CourseModule, newTitle: string) => {
-    setEditingTitle(null);
-    if (newTitle === mod.title) return;
-    updateModule.mutate({ id: mod.id, course_id: mod.course_id, title: newTitle });
-  };
-
-  const handleLessonTitleBlur = (lesson: CourseLesson, newTitle: string) => {
-    setEditingTitle(null);
-    if (newTitle === lesson.title) return;
-    updateLesson.mutate({ id: lesson.id, module_id: lesson.module_id, title: newTitle });
+  // ── Lesson DnD ──
+  const handleLessonDragEnd = (moduleId: string) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const moduleLessons = localLessons.filter((l) => l.module_id === moduleId).sort((a, b) => a.position - b.position);
+    const oldIdx = moduleLessons.findIndex((l) => l.id === active.id);
+    const newIdx = moduleLessons.findIndex((l) => l.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(moduleLessons, oldIdx, newIdx).map((l, i) => ({ ...l, position: i }));
+    setLocalLessons((prev) => {
+      const others = prev.filter((l) => l.module_id !== moduleId);
+      return [...others, ...reordered];
+    });
+    reorderLessons.mutate(
+      { moduleId, order: reordered.map((l) => ({ id: l.id, position: l.position })) },
+      { onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao reordenar"); } }
+    );
   };
 
   return (
     <div className="max-w-3xl space-y-4">
-      {modules.map((mod) => {
-        const moduleLessons = allLessons.filter((l) => l.module_id === mod.id);
-        const isExpanded = expandedModules.has(mod.id);
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
+        <SortableContext items={localModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+          {localModules.map((mod) => {
+            const moduleLessons = localLessons
+              .filter((l) => l.module_id === mod.id)
+              .sort((a, b) => a.position - b.position);
+            const isExpanded = expandedModules.has(mod.id);
 
-        return (
-          <Card key={mod.id} className="border border-border/60">
-            <CardHeader className="py-3 px-4">
-              <div className="flex items-center gap-2">
-                <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
-                <button onClick={() => toggleExpand(mod.id)} className="text-muted-foreground">
-                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </button>
-                <BookOpen className="h-4 w-4 text-primary" />
-                {editingTitle === mod.id ? (
-                  <Input
-                    autoFocus
-                    defaultValue={mod.title}
-                    maxLength={100}
-                    className="h-7 text-sm font-medium"
-                    onBlur={(e) => handleModuleTitleBlur(mod, e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    }}
-                  />
-                ) : (
-                  <span
-                    className="text-sm font-medium cursor-pointer hover:text-primary transition-colors flex-1 truncate"
-                    onClick={() => {
-                      setEditingTitle(mod.id);
-                      setExpandedModules((prev) => new Set(prev).add(mod.id));
-                    }}
-                  >
-                    {mod.title}
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground ml-auto mr-2">
-                  {moduleLessons.length} aula{moduleLessons.length !== 1 ? "s" : ""}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDeleteModule(mod)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </CardHeader>
+            return (
+              <SortableItem key={mod.id} id={mod.id}>
+                <Card className="border border-border/60">
+                  <CardHeader className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleExpand(mod.id)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={isExpanded ? "Recolher módulo" : "Expandir módulo"}
+                      >
+                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </button>
+                      <BookOpen className="h-4 w-4 text-primary shrink-0" />
 
-            {isExpanded && (
-              <CardContent className="pt-0 pb-3 px-4">
-                <div className="flex items-center gap-3 mb-3 pl-8">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Liberação:</Label>
-                  <Select
-                    value={mod.drip_type}
-                    onValueChange={(v) => updateModule.mutate({ id: mod.id, course_id: mod.course_id, drip_type: v })}
-                  >
-                    <SelectTrigger className="h-7 text-xs w-44">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Imediata</SelectItem>
-                      <SelectItem value="date">Data específica</SelectItem>
-                      <SelectItem value="days_after_purchase">Dias após compra</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {mod.drip_type === "days_after_purchase" && (
-                    <Input
-                      type="number"
-                      min={1}
-                      className="h-7 w-20 text-xs"
-                      defaultValue={mod.drip_days ?? ""}
-                      placeholder="Dias"
-                      onBlur={(e) =>
-                        updateModule.mutate({
-                          id: mod.id,
-                          course_id: mod.course_id,
-                          drip_days: parseInt(e.target.value) || null,
-                        } as any)
-                      }
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-1 pl-8">
-                  {moduleLessons.map((lesson) => (
-                    <div
-                      key={lesson.id}
-                      className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 group"
-                    >
-                      <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 cursor-grab" />
-                      <Play className="h-3.5 w-3.5 text-muted-foreground" />
-                      {editingTitle === lesson.id ? (
+                      {renamingId === mod.id ? (
                         <Input
                           autoFocus
-                          defaultValue={lesson.title}
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
                           maxLength={100}
-                          className="h-6 text-xs"
-                          onBlur={(e) => handleLessonTitleBlur(lesson, e.target.value)}
+                          className="h-7 text-sm font-medium"
+                          onBlur={() => commitRename(mod.id, "module", mod.course_id)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                            if (e.key === "Escape") setRenamingId(null);
                           }}
                         />
                       ) : (
-                        <span
-                          className="text-xs cursor-pointer hover:text-primary transition-colors flex-1 truncate"
-                          onClick={() => setEditingTitle(lesson.id)}
-                        >
-                          {lesson.title}
-                        </span>
+                        <span className="text-sm font-medium truncate flex-1">{mod.title}</span>
                       )}
+
+                      <StatusBadge status={mod.status} dripType={mod.drip_type} />
+
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {moduleLessons.length} aula{moduleLessons.length !== 1 ? "s" : ""}
+                      </span>
+
+                      {/* Module menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Menu do módulo">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => startRename(mod.id, mod.title)}>
+                            <Pencil className="h-4 w-4 mr-2" />Renomear
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setModuleStatus(mod, "published")} disabled={mod.status === "published"}>
+                            <Eye className="h-4 w-4 mr-2" />Publicado
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setModuleStatus(mod, "drip")} disabled={mod.status === "drip"}>
+                            <Droplets className="h-4 w-4 mr-2" />Drip
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setModuleStatus(mod, "draft")} disabled={mod.status === "draft"}>
+                            <EyeOff className="h-4 w-4 mr-2" />Rascunho
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteTarget({ type: "module", id: mod.id, title: mod.title, courseId: mod.course_id })}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />Excluir módulo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+
+                  {isExpanded && (
+                    <CardContent className="pt-0 pb-3 px-4">
+                      {/* Drip config inline */}
+                      {mod.status === "drip" && (
+                        <div className="flex items-center gap-3 mb-3 pl-2 py-2 px-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                          <Droplets className="h-4 w-4 text-blue-600 shrink-0" />
+                          <Select
+                            value={mod.drip_type === "none" ? "days_after_purchase" : mod.drip_type}
+                            onValueChange={(v) => updateDrip(mod, v)}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-44">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="date">
+                                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Data específica</span>
+                              </SelectItem>
+                              <SelectItem value="days_after_purchase">
+                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Dias após compra</span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {mod.drip_type === "days_after_purchase" && (
+                            <Input
+                              type="number"
+                              min={1}
+                              className="h-7 w-20 text-xs"
+                              defaultValue={mod.drip_days ?? ""}
+                              placeholder="Dias"
+                              onBlur={(e) => updateDrip(mod, "days_after_purchase", parseInt(e.target.value) || null)}
+                            />
+                          )}
+                          {mod.drip_type === "date" && (
+                            <Input
+                              type="date"
+                              className="h-7 text-xs w-40"
+                              defaultValue={mod.drip_at ? mod.drip_at.split("T")[0] : ""}
+                              onBlur={(e) => updateDrip(mod, "date", undefined, e.target.value ? new Date(e.target.value).toISOString() : null)}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Lessons list with DnD */}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleLessonDragEnd(mod.id)}
+                      >
+                        <SortableContext items={moduleLessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-1 pl-2">
+                            {moduleLessons.map((lesson) => (
+                              <SortableItem
+                                key={lesson.id}
+                                id={lesson.id}
+                                className="rounded-md hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="flex items-center gap-2 py-1.5 px-2 group">
+                                  <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  {renamingId === lesson.id ? (
+                                    <Input
+                                      autoFocus
+                                      value={renameValue}
+                                      onChange={(e) => setRenameValue(e.target.value)}
+                                      maxLength={100}
+                                      className="h-6 text-xs flex-1"
+                                      onBlur={() => commitRename(lesson.id, "lesson", lesson.module_id)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                        if (e.key === "Escape") setRenamingId(null);
+                                      }}
+                                    />
+                                  ) : (
+                                    <span
+                                      className="text-xs cursor-pointer hover:text-primary transition-colors flex-1 truncate"
+                                      onClick={() => startRename(lesson.id, lesson.title)}
+                                    >
+                                      {lesson.title}
+                                    </span>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                                    onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}
+                                    aria-label="Excluir aula"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </SortableItem>
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDeleteLesson(lesson)}
+                        size="sm"
+                        className="mt-2 ml-2 text-xs gap-1 text-muted-foreground"
+                        onClick={() => handleAddLesson(mod.id)}
+                        disabled={createLesson.isPending}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Plus className="h-3.5 w-3.5" />
+                        Adicionar aula
                       </Button>
-                    </div>
-                  ))}
-                </div>
+                    </CardContent>
+                  )}
+                </Card>
+              </SortableItem>
+            );
+          })}
+        </SortableContext>
+      </DndContext>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 ml-8 text-xs gap-1 text-muted-foreground"
-                  onClick={() => handleAddLesson(mod.id)}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Adicionar aula
-                </Button>
-              </CardContent>
-            )}
-          </Card>
-        );
-      })}
-
-      <Button variant="outline" className="w-full gap-2" onClick={handleAddModule}>
+      <Button
+        variant="outline"
+        className="w-full gap-2"
+        onClick={handleAddModule}
+        disabled={createModule.isPending}
+      >
         <Plus className="h-4 w-4" />
         Adicionar módulo
       </Button>
+
+      {localModules.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p className="text-sm mb-1">Nenhum módulo criado ainda</p>
+          <p className="text-xs">Clique em "Adicionar módulo" para começar</p>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {deleteTarget?.type === "module" ? "módulo" : "aula"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.type === "module"
+                ? `O módulo "${deleteTarget.title}" e todas as suas aulas serão excluídos permanentemente.`
+                : `A aula "${deleteTarget?.title}" será excluída permanentemente.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -539,14 +749,8 @@ function SettingsTab({ course, setSaving }: { course: Course; setSaving: (v: boo
     updateCourse.mutate(
       { id: course.id, status },
       {
-        onSuccess: () => {
-          toast.success("Configurações salvas");
-          setSaving(false);
-        },
-        onError: () => {
-          toast.error("Erro ao salvar");
-          setSaving(false);
-        },
+        onSuccess: () => { toast.success("Configurações salvas"); setSaving(false); },
+        onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
       }
     );
   };
