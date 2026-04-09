@@ -31,7 +31,7 @@ const GALLERY_ITEMS: GalleryItem[] = [
   },
   {
     id: "2",
-    title: "Ana Melo",
+    title: "Carlos Melo",
     role: "Creator",
     imageUrl: creator2,
     quote: "Migrei da Hotmart e em 2 semanas já tinha tudo rodando. A economia nas taxas foi absurda.",
