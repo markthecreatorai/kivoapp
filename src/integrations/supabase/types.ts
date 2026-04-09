@@ -4144,6 +4144,7 @@ export type Database = {
           checkout_title: string | null
           created_at: string
           description_richtext: string | null
+          growth_blocks: Json | null
           hero_image_url: string | null
           id: string
           product_id: string | null
@@ -4173,6 +4174,7 @@ export type Database = {
           checkout_title?: string | null
           created_at?: string
           description_richtext?: string | null
+          growth_blocks?: Json | null
           hero_image_url?: string | null
           id?: string
           product_id?: string | null
@@ -4202,6 +4204,7 @@ export type Database = {
           checkout_title?: string | null
           created_at?: string
           description_richtext?: string | null
+          growth_blocks?: Json | null
           hero_image_url?: string | null
           id?: string
           product_id?: string | null

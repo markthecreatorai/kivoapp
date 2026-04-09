@@ -47,6 +47,7 @@ import {
   Copy, LayoutTemplate, CheckCircle2, XCircle, AlertTriangle,
   Image as ImageIcon, ShoppingCart, Settings, DollarSign,
   User, Mail, Type, ListChecks, ToggleLeft,
+  Star, Zap, Gift, Share2, MailCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { Switch } from "@/components/ui/switch";
 import { ImageUploadField } from "@/components/course/ImageUploadField";
 import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
@@ -1546,8 +1548,17 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
 }
 
 // ═══════════════════════════════════════════
-// Tab 4: Options (branding + checklist + status)
+// Tab 4: Options (branding + growth blocks + checklist + status)
 // ═══════════════════════════════════════════
+
+const GROWTH_BLOCKS = [
+  { key: "reviews", label: "Reviews", desc: "Exibir avaliações de alunos no curso", icon: Star },
+  { key: "email_flows", label: "Email Flows", desc: "Automação de e-mails pós-compra", icon: Zap },
+  { key: "order_bump", label: "Order Bump", desc: "Oferta adicional no checkout", icon: Gift },
+  { key: "affiliate_share", label: "Affiliate Share", desc: "Permitir afiliados divulgarem", icon: Share2 },
+  { key: "confirmation_email", label: "Confirmation Email", desc: "E-mail de confirmação de compra", icon: MailCheck },
+] as const;
+
 function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
   const { enqueue, status: saveStatus } = useAutosave(course, setSaving);
   const updateCourse = useUpdateCourse();
@@ -1561,25 +1572,58 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
   const [description, setDescription] = useState(course.description_richtext || "");
   const [heroUrl, setHeroUrl] = useState(course.hero_image_url || "");
   const [courseStatus, setCourseStatus] = useState(course.status);
+  const [growthBlocks, setGrowthBlocks] = useState<Record<string, boolean>>(
+    (course.growth_blocks as Record<string, boolean>) || {}
+  );
 
   const update = (fields: Partial<Course>) => enqueue(fields);
 
   const checklist = getCoursePublishChecklist(course, modules, allLessons);
-  const hasErrors = checklist.some((c) => c.severity === "error" && !c.passed);
-  const allPassed = checklist.every((c) => c.passed);
+  const errorItems = checklist.filter((c) => c.severity === "error");
+  const warningItems = checklist.filter((c) => c.severity === "warning");
+  const hasErrors = errorItems.some((c) => !c.passed);
+  const passedCount = checklist.filter((c) => c.passed).length;
 
-  const saveStatus2 = (targetStatus: string) => {
-    if (targetStatus === "published" && hasErrors) {
-      toast.error("Corrija os itens obrigatórios antes de publicar");
+  const toggleGrowthBlock = (key: string) => {
+    const next = { ...growthBlocks, [key]: !growthBlocks[key] };
+    setGrowthBlocks(next);
+    update({ growth_blocks: next } as any);
+  };
+
+  const handlePublish = () => {
+    if (hasErrors) {
+      const pending = errorItems.filter((c) => !c.passed).map((c) => c.label);
+      toast.error("Corrija os itens obrigatórios antes de publicar", {
+        description: `Faltam: ${pending.join("; ")}`,
+        duration: 6000,
+      });
       return;
     }
     setSaving(true);
     updateCourse.mutate(
-      { id: course.id, status: targetStatus },
+      { id: course.id, status: "published" },
       {
         onSuccess: () => {
-          setCourseStatus(targetStatus);
-          toast.success(targetStatus === "published" ? "Curso publicado!" : "Configurações salvas");
+          setCourseStatus("published");
+          toast.success("Curso publicado com sucesso!");
+          setSaving(false);
+        },
+        onError: (err: any) => {
+          toast.error("Erro ao publicar", { description: err?.message || "Tente novamente." });
+          setSaving(false);
+        },
+      }
+    );
+  };
+
+  const saveAsDraft = () => {
+    setSaving(true);
+    updateCourse.mutate(
+      { id: course.id, status: "draft" },
+      {
+        onSuccess: () => {
+          setCourseStatus("draft");
+          toast.success(courseStatus === "published" ? "Curso despublicado" : "Rascunho salvo!");
           setSaving(false);
         },
         onError: () => { toast.error("Erro ao salvar"); setSaving(false); },
@@ -1591,6 +1635,7 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
     <div className="space-y-6 animate-in fade-in">
       <SaveStatusIndicator status={saveStatus} />
 
+      {/* Step 1 — Branding */}
       <StepCard stepNumber={1} title="Branding do curso" completed={!!bgColor && !!hlColor}>
         <div className="space-y-5">
           <div className="space-y-2">
@@ -1626,32 +1671,99 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
         </div>
       </StepCard>
 
-      <StepCard stepNumber={2} title="Checklist de publicação" completed={allPassed}>
-        <div className="space-y-2">
-          {checklist.map((item) => (
-            <div key={item.key} className="flex items-start gap-2 py-1">
-              {item.passed ? (
-                <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-              ) : item.severity === "error" ? (
-                <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-              )}
-              <span className={cn(
-                "text-sm",
-                item.passed ? "text-muted-foreground" : item.severity === "error" ? "text-foreground font-medium" : "text-foreground"
-              )}>
-                {item.label}
-              </span>
+      {/* Step 2 — Growth Blocks */}
+      <StepCard stepNumber={2} title="Blocos de crescimento" description="Ative recursos para aumentar vendas e engajamento.">
+        <div className="space-y-3">
+          {GROWTH_BLOCKS.map(({ key, label, desc, icon: Icon }) => {
+            const enabled = !!growthBlocks[key];
+            const isComingSoon = key !== "confirmation_email";
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "flex items-center gap-4 p-4 rounded-xl border transition-all",
+                  enabled ? "border-primary/30 bg-primary/5" : "border-border bg-card"
+                )}
+              >
+                <div className={cn(
+                  "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                  enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                )}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{label}</p>
+                    {isComingSoon && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">Em breve</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+                <Switch
+                  checked={enabled}
+                  onCheckedChange={() => toggleGrowthBlock(key)}
+                  disabled={isComingSoon}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </StepCard>
+
+      {/* Step 3 — Checklist */}
+      <StepCard stepNumber={3} title="Checklist de publicação" completed={passedCount === checklist.length}>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground mb-3">{passedCount}/{checklist.length} itens completos</p>
+
+          {/* Obrigatórios */}
+          {errorItems.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs font-semibold text-foreground mb-1.5">Obrigatórios</p>
+              {errorItems.map((item) => (
+                <div key={item.key} className="flex items-start gap-2 py-1">
+                  {item.passed ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  )}
+                  <span className={cn(
+                    "text-sm",
+                    item.passed ? "text-muted-foreground line-through" : "text-foreground font-medium"
+                  )}>{item.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-          {allPassed && (
+          )}
+
+          {/* Recomendados */}
+          {warningItems.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-foreground mb-1.5">Recomendados</p>
+              {warningItems.map((item) => (
+                <div key={item.key} className="flex items-start gap-2 py-1">
+                  {item.passed ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  )}
+                  <span className={cn(
+                    "text-sm",
+                    item.passed ? "text-muted-foreground line-through" : "text-foreground"
+                  )}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {passedCount === checklist.length && (
             <p className="text-xs text-green-600 font-medium pt-2">✓ Tudo pronto para publicar!</p>
           )}
         </div>
       </StepCard>
 
-      <StepCard stepNumber={3} title="Status do curso">
+      {/* Step 4 — Status */}
+      <StepCard stepNumber={4} title="Status do curso">
         <div className="space-y-4">
           <div>
             <Label className="text-sm">Status atual</Label>
@@ -1663,15 +1775,15 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           </div>
           <div className="flex gap-2">
             {courseStatus === "published" ? (
-              <Button variant="outline" onClick={() => saveStatus2("draft")} disabled={updateCourse.isPending} className="flex-1">
+              <Button variant="outline" onClick={saveAsDraft} disabled={updateCourse.isPending} className="flex-1">
                 <EyeOff className="h-4 w-4 mr-2" />Voltar para rascunho
               </Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => saveStatus2("draft")} disabled={updateCourse.isPending} className="flex-1">
+                <Button variant="outline" onClick={saveAsDraft} disabled={updateCourse.isPending} className="flex-1">
                   Salvar rascunho
                 </Button>
-                <Button onClick={() => saveStatus2("published")} disabled={updateCourse.isPending || hasErrors} className="flex-1"
+                <Button onClick={handlePublish} disabled={updateCourse.isPending || hasErrors} className="flex-1"
                   title={hasErrors ? "Corrija os itens obrigatórios do checklist" : undefined}>
                   <Eye className="h-4 w-4 mr-2" />Publicar curso
                 </Button>
