@@ -183,6 +183,30 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Full-bleed image banner */}
+      <section className="relative w-full h-[480px] md:h-[560px] lg:h-[640px] overflow-hidden">
+        <img
+          src={creatorWorking}
+          alt="Creator trabalhando"
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          width={1920}
+          height={960}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 lg:p-20 max-w-4xl">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.1] mb-4">
+            Tudo que você precisa{" "}
+            <br className="hidden md:block" />
+            para vender no digital
+          </h2>
+          <p className="text-white/70 text-base md:text-lg max-w-lg leading-relaxed">
+            Storefront, checkout, comunidade, cursos, email e afiliados, sem pagar por 5 ferramentas separadas.
+          </p>
+        </div>
+      </section>
+
       {/* Features */}
       <section id="features" className="py-20 bg-muted/30">
         <div className="max-w-6xl mx-auto px-4">
