@@ -217,7 +217,7 @@ export default function LandingPage() {
       <CreatorSlider />
 
       {/* Features */}
-      <section id="features" className="py-20 bg-muted/30">
+      <section id="features" className="py-20 bg-muted/30 pt-0">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">Tudo em uma plataforma</h2>
