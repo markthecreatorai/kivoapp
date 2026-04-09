@@ -24,24 +24,24 @@ import creatorWorking from "@/assets/gallery/creator-working.jpg";
 const GALLERY_ITEMS: GalleryItem[] = [
   {
     id: "1",
-    title: "Hanah Franklin",
+    title: "Rafaela Linhares",
     role: "Creator",
     imageUrl: creator1,
-    quote: "Fazia muito tempo que eu procurava uma plataforma pra ter minha própria comunidade e gerenciar produtos, com a Kivo ficou muito mais fácil",
+    quote: "Finalmente tenho controle total sobre o meu negócio. Comunidade, produtos e pagamentos, tudo num painel só.",
   },
   {
     id: "2",
     title: "Carlos Melo",
     role: "Creator",
     imageUrl: creator2,
-    quote: "Migrei da Hotmart e em 2 semanas já tinha tudo rodando. A economia nas taxas foi absurda.",
+    quote: "Saí da Hotmart em 3 dias e economizei mais de R$4.000 por mês em taxas. Não volto nunca mais.",
   },
   {
     id: "3",
     title: "Sarah Rodrigues",
     role: "Creator",
     imageUrl: creator3,
-    quote: "O checkout converte muito mais e o suporte é incrível. Recomendo de olhos fechados.",
+    quote: "Meu checkout converteu 38% mais no primeiro mês. O suporte resolve tudo em minutos.",
   },
 ];
 
@@ -55,19 +55,19 @@ function getABVariant(): "A" | "B" {
 }
 
 const HEADLINES = {
-  A: { title: "Tudo que você precisa para vender digital. Em um só lugar.", sub: "Storefront, checkout, comunidade, cursos, email e afiliados — sem pagar por 5 ferramentas separadas." },
-  B: { title: "Pague até 60% menos em taxas que Hotmart e Kiwify.", sub: "A plataforma all-in-one que devolve mais receita para o creator. Comece grátis, sem cartão." },
+  A: { title: "Monetize sua audiência sem depender de 5 ferramentas.", sub: "Loja, checkout, comunidade, cursos e email — num ecossistema só. Comece grátis." },
+  B: { title: "Pague até 60% menos em taxas que Hotmart e Kiwify.", sub: "O ecossistema que devolve mais receita para quem cria. Comece grátis, sem cartão." },
 };
 
 
 /* ── FAQ ── */
 const FAQ_ITEMS = [
-  { q: "Preciso de cartão de crédito para começar?", a: "Não. O plano Free é grátis de verdade, sem necessidade de cartão." },
-  { q: "Como funciona o checkout?", a: "Integrado com Pagar.me — aceita PIX, cartão e boleto. Você recebe na sua conta em poucos dias." },
-  { q: "Posso migrar de outra plataforma?", a: "Sim. Você pode importar seus produtos e configurar tudo em menos de 30 minutos." },
-  { q: "Tem suporte em português?", a: "Claro! Suporte por chat e email, 100% em português." },
-  { q: "Quais formas de pagamento são aceitas?", a: "PIX, cartão de crédito (até 12x) e boleto bancário. Tudo integrado no checkout." },
-  { q: "A Kivo é realmente segura?", a: "Sim. Usamos criptografia de ponta a ponta, infraestrutura na AWS e conformidade com LGPD." },
+  { q: "Preciso de cartão de crédito para começar?", a: "Não. O plano Free funciona sem cartão e sem pegadinha. Você só faz upgrade quando quiser." },
+  { q: "Como funciona o checkout?", a: "Integrado com Pagar.me — aceita PIX, cartão e boleto. O dinheiro cai na sua conta em até 2 dias úteis." },
+  { q: "Consigo migrar de outra plataforma?", a: "Sim. A maioria dos creators migra em menos de 30 minutos. Se precisar, a equipe ajuda na transição." },
+  { q: "O suporte é em português?", a: "100%. Chat e email em português, com tempo médio de resposta abaixo de 10 minutos." },
+  { q: "Quais formas de pagamento aceitas?", a: "PIX, cartão de crédito (até 12x) e boleto bancário. Tudo nativo no checkout, sem integração extra." },
+  { q: "A Kivo é segura para operar?", a: "Infraestrutura AWS, criptografia de ponta a ponta e conformidade total com a LGPD." },
 ];
 
 function FAQSection() {
