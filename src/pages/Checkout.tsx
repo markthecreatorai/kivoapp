@@ -519,7 +519,13 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div
+      className="min-h-screen bg-muted/30"
+      style={branding ? {
+        '--checkout-primary': branding.primary,
+        '--checkout-accent': branding.accent,
+      } as React.CSSProperties : undefined}
+    >
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4 pb-28">
         {/* Header */}
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
@@ -639,6 +645,13 @@ export default function Checkout() {
             <RefreshCw className="w-5 h-5 mx-auto text-accent" />
             <p className="text-[10px] text-muted-foreground leading-tight">Suporte disponível</p>
           </div>
+        </div>
+
+        {/* Asaas trust seal */}
+        <div className="text-center pt-1">
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Processado por <span className="font-semibold">Asaas</span> — Instituição de pagamento autorizada pelo Banco Central do Brasil
+          </p>
         </div>
 
         {/* Footer */}
