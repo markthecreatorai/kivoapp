@@ -421,8 +421,8 @@ function AbaLoja({
     const oldIndex = products.findIndex((p: any) => p.id === active.id);
     const newIndex = products.findIndex((p: any) => p.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
-    localProductsDirty.current = true;
-    setProducts(arrayMove(products, oldIndex, newIndex));
+    const reordered = arrayMove(products, oldIndex, newIndex);
+    onReorder(reordered);
   };
 
   return (
