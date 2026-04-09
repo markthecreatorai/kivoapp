@@ -286,28 +286,28 @@ export default function PublicStorefront() {
         .map((b: any) => ({ ...b, config: b.config || {} })) as BlockRow[];
       setBlocks(visibleBlocks);
 
-      // 3. Fetch products referenced in blocks
-      const productIds = visibleBlocks
-        .filter((b) => b.type === "product")
-        .map((b) => (b.config as any).product_id)
-        .filter(Boolean) as string[];
+      // 3. Fetch ALL published products for the workspace (aligns with preview)
+      const [allProdRes, allPriceRes] = await Promise.all([
+        supabase
+          .from("products")
+          .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url, metadata")
+          .eq("workspace_id", sf.workspace_id)
+          .eq("status", "PUBLISHED")
+          .is("deleted_at", null),
+        supabase
+          .from("prices")
+          .select("product_id, amount, currency")
+          .eq("is_default", true)
+          .eq("is_active", true),
+      ]);
 
-      if (productIds.length > 0) {
-        const [prodRes, priceRes] = await Promise.all([
-          supabase
-            .from("products")
-            .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url, metadata")
-            .in("id", productIds),
-          supabase
-            .from("prices")
-            .select("product_id, amount, currency")
-            .in("product_id", productIds)
-            .eq("is_default", true)
-            .eq("is_active", true),
-        ]);
-        setProducts((prodRes.data || []) as ProductInfo[]);
-        setPrices((priceRes.data || []) as PriceInfo[]);
-      }
+      const allProducts = (allProdRes.data || []) as ProductInfo[];
+      const allPrices = (allPriceRes.data || []).filter((p: any) =>
+        allProducts.some((prod) => prod.id === p.product_id)
+      ) as PriceInfo[];
+
+      setProducts(allProducts);
+      setPrices(allPrices);
 
       setLoading(false);
 
