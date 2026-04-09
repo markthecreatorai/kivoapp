@@ -63,6 +63,7 @@ import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploadField } from "@/components/course/ImageUploadField";
 import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
+import { CourseLessonEditor } from "@/components/course/CourseLessonEditor";
 import { cn } from "@/lib/utils";
 
 interface CourseFlowProps {
