@@ -210,19 +210,24 @@ export default function Checkout() {
         setOrderBumps(enriched);
       }
 
-      // Fetch creator branding colors from storefront
+      // Fetch creator branding colors
       const { data: storefront } = await supabase
         .from("storefronts")
-        .select("theme")
+        .select("id")
         .eq("workspace_id", prod.workspace_id)
         .maybeSingle();
 
-      if (storefront?.theme) {
-        const theme = storefront.theme as Record<string, string>;
-        if (theme.primary_color || theme.accent_color) {
+      if (storefront?.id) {
+        const { data: themeData } = await supabase
+          .from("storefront_themes")
+          .select("primary_color, secondary_color")
+          .eq("storefront_id", storefront.id)
+          .maybeSingle();
+
+        if (themeData?.primary_color || themeData?.secondary_color) {
           setBranding({
-            primary: theme.primary_color || "#7c3aed",
-            accent: theme.accent_color || "#10b981",
+            primary: themeData.primary_color || "#7c3aed",
+            accent: themeData.secondary_color || "#10b981",
           });
         }
       }
