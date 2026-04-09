@@ -6799,13 +6799,20 @@ export type Database = {
           clicked_at: string | null
           created_at: string | null
           first_paid_at: string | null
+          first_paid_subscription_at: string | null
           id: string
           lock_status: string | null
+          payment_provider_event_id: string | null
+          plan_id: string | null
           referral_code: string
+          referral_source: string
+          referral_status: string
+          referral_terminated_at: string | null
           referred_user_id: string | null
           referrer_user_id: string | null
           signed_up_at: string | null
           source: string | null
+          subscription_id: string | null
           trial_started_at: string | null
         }
         Insert: {
@@ -6813,13 +6820,20 @@ export type Database = {
           clicked_at?: string | null
           created_at?: string | null
           first_paid_at?: string | null
+          first_paid_subscription_at?: string | null
           id?: string
           lock_status?: string | null
+          payment_provider_event_id?: string | null
+          plan_id?: string | null
           referral_code: string
+          referral_source?: string
+          referral_status?: string
+          referral_terminated_at?: string | null
           referred_user_id?: string | null
           referrer_user_id?: string | null
           signed_up_at?: string | null
           source?: string | null
+          subscription_id?: string | null
           trial_started_at?: string | null
         }
         Update: {
@@ -6827,14 +6841,57 @@ export type Database = {
           clicked_at?: string | null
           created_at?: string | null
           first_paid_at?: string | null
+          first_paid_subscription_at?: string | null
           id?: string
           lock_status?: string | null
+          payment_provider_event_id?: string | null
+          plan_id?: string | null
           referral_code?: string
+          referral_source?: string
+          referral_status?: string
+          referral_terminated_at?: string | null
           referred_user_id?: string | null
           referrer_user_id?: string | null
           signed_up_at?: string | null
           source?: string | null
+          subscription_id?: string | null
           trial_started_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_audit_log: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          payment_provider_event_id: string | null
+          plan_id: string | null
+          referred_user_id: string | null
+          referrer_user_id: string | null
+          subscription_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          payment_provider_event_id?: string | null
+          plan_id?: string | null
+          referred_user_id?: string | null
+          referrer_user_id?: string | null
+          subscription_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          payment_provider_event_id?: string | null
+          plan_id?: string | null
+          referred_user_id?: string | null
+          referrer_user_id?: string | null
+          subscription_id?: string | null
         }
         Relationships: []
       }
