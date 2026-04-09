@@ -1,73 +1,117 @@
 
-Plano: auditoria e correção dos erros frequentes de navegação
+# Plano: Sistema completo de referral de afiliados Kivo
 
-Diagnóstico da auditoria
-- A tela da imagem é o fallback do `ErrorBoundary` global (`src/components/ErrorBoundary.tsx`), então hoje qualquer erro de rota derruba o app inteiro.
-- A causa mais provável e mais crítica está em `src/lib/lazyWithRetry.ts`: o código diz que faz retry com cache-busting, mas na prática só repete o mesmo `import()`; isso não resolve erro de chunk/preload após deploy e explica falhas durante navegação entre páginas lazy.
-- `src/App.tsx` lazy-loada praticamente todas as rotas. Como existe só um boundary global, uma falha pontual numa página vira erro global.
-- Há pontos frágeis em páginas públicas de loja (`src/pages/PublicStorefront.tsx` e preview/storefront components) com dados vindos do banco sem normalização defensiva; qualquer shape inesperado em JSON/campos opcionais pode explodir a renderização.
+## Estado atual
 
-O que vou corrigir
-1. Blindar erros de chunk/navegação
-- Reescrever `lazyWithRetry` para:
-  - detectar erro real de chunk/preload do Vite;
-  - fazer no máximo 1 auto-reload controlado por `sessionStorage` para atualizar assets após deploy;
-  - evitar loop infinito de reload;
-  - registrar contexto completo no `reportAppError`.
-- Expandir `src/lib/globalErrorHandlers.ts` para capturar também `vite:preloadError` e acionar a mesma estratégia de recuperação.
+Existem duas camadas de tracking paralelas e desconectadas:
+1. **useAffiliateTracking** — para afiliados de produtos de criadores (affiliate_links, commissions)
+2. **useReferralTracking** — para indicacoes Kivo (referral_profiles), mas so salva cookie, nao vincula no signup nem gera comissao
 
-2. Parar de derrubar o app inteiro por erro local
-- Em `src/App.tsx`, adicionar boundaries locais nos shells principais:
-  - dashboard
-  - admin
-  - rotas públicas principais
-  - círculos
-- Resultado: se uma página falhar na navegação, a falha fica isolada naquele trecho, sem mandar o usuário para a tela global do app inteiro.
-- Manter o boundary global apenas como última linha de defesa.
+Tabelas ja existentes: `referral_profiles`, `referral_attributions`, `referral_commissions`. Porem `referral_attributions` nao tem campos para `referral_status`, `first_paid_subscription_at`, `referral_terminated_at`, `subscription_id`, `plan_id`. E nenhum webhook processa comissoes de referral.
 
-3. Endurecer páginas de navegação pública
-- Revisar `src/pages/PublicStorefront.tsx` para normalizar com segurança:
-  - `social_links`
-  - `title`
-  - URLs externas
-  - blocos/configs opcionais
-- Revisar `src/components/storefront/StoreProductPreviewRenderer.tsx` e `src/components/storefront/StorefrontPreview.tsx` para eliminar acessos inseguros a strings/objetos opcionais.
-- Objetivo: dados incompletos ou antigos não podem quebrar a navegação.
+## Arquitetura proposta
 
-4. Melhorar UX de recuperação
-- Ajustar fallbacks locais para mostrar:
-  - mensagem clara de “erro nesta página”
-  - botão para tentar novamente
-  - botão para voltar ao destino seguro anterior
-- Evitar recarregar a aplicação inteira quando o erro for só da rota atual.
+```text
+Visitante → ?ref=code → useReferralTracking (cookie 30d, last-click)
+                              ↓
+                         Signup → Signup.tsx envia referral_code no user_metadata
+                              ↓
+                         Edge Function handle-referral-signup (trigger ou post-signup)
+                              → cria referral_attributions com status pending_subscription
+                              ↓
+                         Webhook Asaas PAYMENT_CONFIRMED + subscription context
+                              → webhook-asaas detecta 1o pagamento de assinatura
+                              → ativa comissao, cria referral_commissions
+                              ↓
+                         Webhook SUBSCRIPTION_DELETED/INACTIVATED
+                              → termina vinculo permanentemente
+```
 
-5. Telemetria e rastreabilidade
-- Padronizar `reportAppError` com:
-  - rota atual
-  - contexto (lazy route, public storefront, shell, preload)
-  - tipo do erro
-- Isso ajuda a monitorar se o problema restante é chunk stale, dado inválido ou bug de render.
+## Mudancas
 
-Arquivos-alvo
-- `src/lib/lazyWithRetry.ts`
-- `src/lib/globalErrorHandlers.ts`
-- `src/App.tsx`
-- `src/components/ErrorBoundary.tsx`
-- `src/pages/PublicStorefront.tsx`
-- `src/components/storefront/StoreProductPreviewRenderer.tsx`
-- `src/components/storefront/StorefrontPreview.tsx`
+### 1. Migracao SQL — expandir referral_attributions + audit log
 
-Validação planejada
-- Navegar entre páginas lazy do dashboard sem cair no fallback global.
-- Simular falha de import/chunk e confirmar:
-  - no máximo 1 reload automático
-  - sem loop
-  - recovery visível
-- Validar loja pública com campos nulos/parciais sem crash.
-- Garantir que erro local continue sem tela branca e sem corromper a navegação.
+Adicionar colunas a `referral_attributions`:
+- `referral_status` TEXT DEFAULT 'pending' (pending → pending_subscription → active → terminated)
+- `referral_source` TEXT DEFAULT 'affiliate_link'
+- `first_paid_subscription_at` TIMESTAMPTZ
+- `referral_terminated_at` TIMESTAMPTZ
+- `subscription_id` UUID
+- `plan_id` TEXT
+- `payment_provider_event_id` TEXT
 
-Resultado esperado
-- Queda drástica dos erros “Algo deu errado ao carregar o app” durante navegação.
-- Sem tela branca.
-- Falhas de rota isoladas e recuperáveis.
-- Melhor resiliência após deploy e com dados imperfeitos no banco.
+Criar tabela `referral_audit_log`:
+- id, referrer_user_id, referred_user_id, event_type, subscription_id, plan_id, payment_provider_event_id, metadata JSONB, created_at
+
+RLS: referrer e referred podem ver seus proprios logs.
+
+### 2. useReferralTracking — last-click + 30 dias
+
+Alterar `src/hooks/useReferralTracking.ts`:
+- Mudar cookie para 30 dias (era 90)
+- Sempre sobrescrever cookie existente (last-click attribution)
+- Salvar tambem em localStorage com expiry (fallback)
+- Registrar evento `affiliate_link_clicked` no `referral_audit_log` via supabase insert
+
+### 3. Signup.tsx — vincular referral no cadastro
+
+No `handleSignup` e `handleGoogleSignup`:
+- Ler referral_code do cookie/localStorage
+- Enviar como `referral_code` no `user_metadata` do signUp
+- Apos signup bem-sucedido, criar `referral_attributions` com:
+  - referrer_user_id (lookup pelo referral_code na referral_profiles)
+  - referred_user_id (novo user)
+  - referral_status = 'pending_subscription'
+  - signed_up_at = now()
+- Registrar evento `account_created_from_referral` no audit log
+- Limpar cookie apos vinculacao
+
+### 4. webhook-asaas — ativar comissao no 1o pagamento
+
+Na funcao `handleSubscriptionInvoicePaid`:
+- Apos confirmar pagamento de workspace_subscriptions:
+  - Buscar referral_attributions onde referred_user_id = sub.user_id AND referral_status = 'pending_subscription'
+  - Se encontrar E first_paid_subscription_at IS NULL:
+    - Atualizar referral_status = 'active', first_paid_subscription_at = now(), subscription_id, plan_id
+    - Criar referral_commissions com 20%, gross = valor pago, status = 'pending'
+    - Registrar evento `first_subscription_paid`
+  - Se referral_status = 'active' (renovacoes subsequentes):
+    - Criar referral_commissions para cada renovacao
+  - Se referral_status = 'terminated':
+    - NAO gerar comissao. Registrar `resubscription_without_referral`
+  - Idempotencia: checar payment_provider_event_id duplicado antes de inserir comissao
+
+### 5. webhook-asaas — terminar vinculo no cancelamento
+
+Na funcao `handleSubscriptionEvent` quando eventType = SUBSCRIPTION_DELETED ou SUBSCRIPTION_INACTIVATED:
+- Buscar referral_attributions onde referred_user_id = sub.user_id AND referral_status = 'active'
+- Se encontrar:
+  - Atualizar referral_status = 'terminated', referral_terminated_at = now()
+  - Registrar evento `referral_terminated_on_cancel`
+
+### 6. Edge cases cobertos
+
+| Cenario | Comportamento |
+|---|---|
+| Clicou link, criou conta dias depois | Cookie 30d persiste, vincula no signup |
+| Clicou 2 links diferentes | Last-click: cookie sobrescrito |
+| Criou conta mas nunca assinou | referral_status = pending_subscription para sempre |
+| Assinou, cancelou, reassinou | Cancelamento → terminated. Reassinatura nao reativa |
+| Webhook duplicado | Idempotencia por payment_provider_event_id |
+| Upgrade/downgrade sem cancelamento | Vinculo mantido (so DELETED/INACTIVATED termina) |
+| Falha de pagamento sem cancelamento | past_due nao termina vinculo |
+
+## Arquivos alterados
+
+| Arquivo | Mudanca |
+|---|---|
+| Nova migracao SQL | Expandir referral_attributions + criar referral_audit_log |
+| `src/hooks/useReferralTracking.ts` | Last-click 30d, localStorage fallback, audit log insert |
+| `src/pages/Signup.tsx` | Ler referral, vincular no signup, criar attribution |
+| `supabase/functions/webhook-asaas/index.ts` | Comissao no 1o pagamento, comissoes recorrentes, terminacao no cancelamento |
+
+## O que NAO muda
+
+- Sistema de afiliados de produtos (useAffiliateTracking, affiliate_links, commissions) — continua independente
+- Fluxo de checkout de produtos
+- Dashboard de referrals existente (so passa a ter dados reais)
