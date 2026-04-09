@@ -208,6 +208,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Creator Slider */}
+      <CreatorSlider />
+
       {/* Value Proposition */}
       <ValueProposition />
 
@@ -244,9 +247,6 @@ export default function LandingPage() {
 
       {/* Creator Showcase */}
       <CreatorShowcase />
-
-      {/* Creator Slider */}
-      <CreatorSlider />
 
       {/* FAQ */}
       <FAQSection />
