@@ -726,15 +726,33 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                                       {lesson.title}
                                     </span>
                                   )}
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                                    onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}
-                                    aria-label="Excluir aula"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
+                                        aria-label="Menu da aula"
+                                      >
+                                        <MoreVertical className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => startRename(lesson.id, lesson.title)}>
+                                        <Pencil className="h-4 w-4 mr-2" />Renomear
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDuplicateLesson(lesson)}>
+                                        <Copy className="h-4 w-4 mr-2" />Duplicar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => setDeleteTarget({ type: "lesson", id: lesson.id, title: lesson.title, moduleId: lesson.module_id })}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />Excluir
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </SortableItem>
                             ))}
