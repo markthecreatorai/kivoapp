@@ -490,11 +490,17 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             </div>
 
             {/* Product List from store management */}
-            {externalProducts && externalProducts.filter((p: any) => p.status === 'PUBLISHED').length > 0 && (
-              <div className="flex flex-col w-full space-y-2.5 px-5 mt-3 relative z-20">
-                {externalProducts
-                  .filter((p: any) => p.status === 'PUBLISHED')
-                  .map((product: any) => {
+            {externalProducts && (() => {
+              const blockProductIds = blocks
+                .filter(b => b.type === 'product' && b.is_visible)
+                .map(b => (b.config as { product_id?: string }).product_id)
+                .filter(Boolean);
+              const filtered = externalProducts.filter(
+                (p: any) => p.status === 'PUBLISHED' && !blockProductIds.includes(p.id)
+              );
+              return filtered.length > 0 ? (
+                <div className="flex flex-col w-full space-y-2.5 px-5 mt-3 relative z-20">
+                  {filtered.map((product: any) => {
                     const price = product.prices?.find((p: any) => p.is_default && p.is_active);
                     return (
                       <div
@@ -531,8 +537,9 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
                       </div>
                     );
                   })}
-              </div>
-            )}
+                </div>
+              ) : null;
+            })()}
 
         {/* Footer */}
         <div className="mt-8 mb-6 pb-4 text-center">
