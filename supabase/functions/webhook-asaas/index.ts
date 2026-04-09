@@ -766,6 +766,13 @@ async function handleSubscriptionInvoicePaid(supabase: any, paymentData: any): P
       },
     });
 
+    // ── Referral commission processing ──
+    try {
+      await processReferralCommission(supabase, wsSub, paymentData);
+    } catch (refErr) {
+      console.error("Referral commission error (non-fatal):", refErr);
+    }
+
     console.log(`Workspace subscription ${wsSub.id} renewed. Plan: ${updateData.plan_code || wsSub.plan_code}`);
     return "active";
   }
