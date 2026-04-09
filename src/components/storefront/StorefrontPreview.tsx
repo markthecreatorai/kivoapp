@@ -97,6 +97,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
 
     switch (block.type) {
       case 'link':
+        if (!config.url) return null;
         return (
           <a
             href={config.url as string || '#'}

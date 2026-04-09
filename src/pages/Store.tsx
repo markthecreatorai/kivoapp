@@ -390,6 +390,7 @@ function AbaLoja({
   onTogglePublish,
   onDelete,
   onDuplicate,
+  onReorder,
 }: {
   storefront: any;
   storeUrl: string | null;
@@ -405,6 +406,7 @@ function AbaLoja({
   onTogglePublish: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onReorder: (reordered: any[]) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -419,7 +421,8 @@ function AbaLoja({
     const oldIndex = products.findIndex((p: any) => p.id === active.id);
     const newIndex = products.findIndex((p: any) => p.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
-    setProducts(arrayMove(products, oldIndex, newIndex));
+    const reordered = arrayMove(products, oldIndex, newIndex);
+    onReorder(reordered);
   };
 
   return (
@@ -804,6 +807,7 @@ export default function Store() {
   // Dirty flags — prevent refetch from overwriting pending local edits
   const localStorefrontDirty = useRef(false);
   const localThemeDirty = useRef(false);
+  const localProductsDirty = useRef(false);
   const storefrontTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const themeTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -817,7 +821,9 @@ export default function Store() {
   }, [theme]);
 
   useEffect(() => {
-    setLocalProducts(null);
+    if (!localProductsDirty.current) {
+      setLocalProducts(null);
+    }
   }, [fetchedProducts]);
 
   const products: any[] = (localProducts ?? fetchedProducts ?? []) as any[];
@@ -833,6 +839,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto arquivado.");
@@ -850,6 +857,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Status do produto atualizado.");
@@ -865,6 +873,7 @@ export default function Store() {
       if (error) throw error;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto excluído.");
@@ -918,6 +927,7 @@ export default function Store() {
       return data;
     },
     onSuccess: () => {
+      localProductsDirty.current = false;
       setLocalProducts(null);
       queryClient.invalidateQueries({ queryKey: ["all-products"] });
       toast.success("Produto duplicado.");
@@ -1172,6 +1182,10 @@ export default function Store() {
                 onTogglePublish={(id) => togglePublishMutation.mutate(id)}
                 onDelete={(id) => handleDelete(id)}
                 onDuplicate={(id) => duplicateProductMutation.mutate(products.find((p: any) => p.id === id))}
+                onReorder={(reordered) => {
+                  localProductsDirty.current = true;
+                  setProducts(reordered);
+                }}
               />
             </TabsContent>
 
