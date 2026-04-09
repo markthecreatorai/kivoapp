@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
 import {
@@ -80,8 +81,10 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
   const { data: course, isLoading } = useCourseByProduct(initialProduct.id);
   const createCourse = useCreateCourse();
 
+  const didCreate = useRef(false);
   useEffect(() => {
-    if (!isLoading && !course && currentWorkspace?.id) {
+    if (!isLoading && !course && currentWorkspace?.id && !createCourse.isPending && !didCreate.current) {
+      didCreate.current = true;
       createCourse.mutate({
         workspace_id: currentWorkspace.id,
         product_id: initialProduct.id,
@@ -361,11 +364,11 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const [dripConfigId, setDripConfigId] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // Compute flat ordered list of all lessons for navigation
-  const flatLessons = localModules
+  // Compute flat ordered list of all lessons for navigation (avoid mutating state with sort)
+  const flatLessons = [...localModules]
     .sort((a, b) => a.position - b.position)
     .flatMap((mod) =>
-      localLessons.filter((l) => l.module_id === mod.id).sort((a, b) => a.position - b.position)
+      [...localLessons].filter((l) => l.module_id === mod.id).sort((a, b) => a.position - b.position)
     );
 
   // If a lesson is selected, show the lesson editor
@@ -376,18 +379,25 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 
     return (
       <div className="max-w-5xl" style={{ minHeight: 500 }}>
-        <CourseLessonEditor
-          lesson={selectedLesson}
-          onBack={() => setSelectedLesson(null)}
-          onDeleted={() => setSelectedLesson(null)}
-          onNavigate={(l) => setSelectedLesson(l)}
-          nav={{ prevLesson, nextLesson }}
-          branding={{
-            highlightColor: course.branding_highlight_color || "#6366f1",
-            bgColor: course.branding_bg_color || "#ffffff",
-            titleFont: course.branding_title_font || "Inter",
-          }}
-        />
+        <ErrorBoundary fallback={
+          <div className="p-8 text-center">
+            <p className="text-sm text-destructive mb-2">Erro ao carregar o editor da aula.</p>
+            <Button variant="outline" size="sm" onClick={() => setSelectedLesson(null)}>Voltar aos módulos</Button>
+          </div>
+        }>
+          <CourseLessonEditor
+            lesson={selectedLesson}
+            onBack={() => setSelectedLesson(null)}
+            onDeleted={() => setSelectedLesson(null)}
+            onNavigate={(l) => setSelectedLesson(l)}
+            nav={{ prevLesson, nextLesson }}
+            branding={{
+              highlightColor: course.branding_highlight_color || "#6366f1",
+              bgColor: course.branding_bg_color || "#ffffff",
+              titleFont: course.branding_title_font || "Inter",
+            }}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -515,9 +525,10 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 
   // ── Module status change ──
   const setModuleStatus = (mod: CourseModule, newStatus: string) => {
-    setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, status: newStatus, drip_type: newStatus === "drip" ? m.drip_type : "none" } : m));
+    const dripType = newStatus === "drip" ? (mod.drip_type === "none" ? "days_after_purchase" : mod.drip_type) : "none";
+    setLocalModules((prev) => prev.map((m) => m.id === mod.id ? { ...m, status: newStatus, drip_type: dripType } : m));
     updateModule.mutate(
-      { id: mod.id, course_id: mod.course_id, status: newStatus, ...(newStatus !== "drip" ? { drip_type: "none" } : {}) },
+      { id: mod.id, course_id: mod.course_id, status: newStatus, drip_type: dripType } as any,
       { onError: () => { setLocalModules(serverModules); toast.error("Erro ao alterar status"); } }
     );
     if (newStatus === "drip") setDripConfigId(mod.id);
@@ -653,7 +664,7 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                         <div className="flex items-center gap-3 mb-3 pl-2 py-2 px-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                           <Droplets className="h-4 w-4 text-blue-600 shrink-0" />
                           <Select
-                            value={mod.drip_type === "none" ? "days_after_purchase" : mod.drip_type}
+                            value={mod.drip_type}
                             onValueChange={(v) => updateDrip(mod, v)}
                           >
                             <SelectTrigger className="h-7 text-xs w-44">
