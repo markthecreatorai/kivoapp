@@ -4132,12 +4132,19 @@ export type Database = {
           branding_bg_color: string | null
           branding_highlight_color: string | null
           branding_title_font: string | null
+          checkout_description: string | null
+          checkout_image: string | null
+          checkout_title: string | null
           created_at: string
           description_richtext: string | null
           hero_image_url: string | null
           id: string
           product_id: string | null
           status: string
+          thumbnail_image: string | null
+          thumbnail_style: string | null
+          thumbnail_subtitle: string | null
+          thumbnail_title: string | null
           title: string
           updated_at: string
           workspace_id: string
@@ -4146,12 +4153,19 @@ export type Database = {
           branding_bg_color?: string | null
           branding_highlight_color?: string | null
           branding_title_font?: string | null
+          checkout_description?: string | null
+          checkout_image?: string | null
+          checkout_title?: string | null
           created_at?: string
           description_richtext?: string | null
           hero_image_url?: string | null
           id?: string
           product_id?: string | null
           status?: string
+          thumbnail_image?: string | null
+          thumbnail_style?: string | null
+          thumbnail_subtitle?: string | null
+          thumbnail_title?: string | null
           title?: string
           updated_at?: string
           workspace_id: string
@@ -4160,12 +4174,19 @@ export type Database = {
           branding_bg_color?: string | null
           branding_highlight_color?: string | null
           branding_title_font?: string | null
+          checkout_description?: string | null
+          checkout_image?: string | null
+          checkout_title?: string | null
           created_at?: string
           description_richtext?: string | null
           hero_image_url?: string | null
           id?: string
           product_id?: string | null
           status?: string
+          thumbnail_image?: string | null
+          thumbnail_style?: string | null
+          thumbnail_subtitle?: string | null
+          thumbnail_title?: string | null
           title?: string
           updated_at?: string
           workspace_id?: string
