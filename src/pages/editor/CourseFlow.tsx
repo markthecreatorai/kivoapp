@@ -378,18 +378,25 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
 
     return (
       <div className="max-w-5xl" style={{ minHeight: 500 }}>
-        <CourseLessonEditor
-          lesson={selectedLesson}
-          onBack={() => setSelectedLesson(null)}
-          onDeleted={() => setSelectedLesson(null)}
-          onNavigate={(l) => setSelectedLesson(l)}
-          nav={{ prevLesson, nextLesson }}
-          branding={{
-            highlightColor: course.branding_highlight_color || "#6366f1",
-            bgColor: course.branding_bg_color || "#ffffff",
-            titleFont: course.branding_title_font || "Inter",
-          }}
-        />
+        <ErrorBoundary fallback={
+          <div className="p-8 text-center">
+            <p className="text-sm text-destructive mb-2">Erro ao carregar o editor da aula.</p>
+            <Button variant="outline" size="sm" onClick={() => setSelectedLesson(null)}>Voltar aos módulos</Button>
+          </div>
+        }>
+          <CourseLessonEditor
+            lesson={selectedLesson}
+            onBack={() => setSelectedLesson(null)}
+            onDeleted={() => setSelectedLesson(null)}
+            onNavigate={(l) => setSelectedLesson(l)}
+            nav={{ prevLesson, nextLesson }}
+            branding={{
+              highlightColor: course.branding_highlight_color || "#6366f1",
+              bgColor: course.branding_bg_color || "#ffffff",
+              titleFont: course.branding_title_font || "Inter",
+            }}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -656,7 +663,7 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
                         <div className="flex items-center gap-3 mb-3 pl-2 py-2 px-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                           <Droplets className="h-4 w-4 text-blue-600 shrink-0" />
                           <Select
-                            value={mod.drip_type === "none" ? "days_after_purchase" : mod.drip_type}
+                            value={mod.drip_type}
                             onValueChange={(v) => updateDrip(mod, v)}
                           >
                             <SelectTrigger className="h-7 text-xs w-44">
