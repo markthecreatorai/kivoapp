@@ -296,7 +296,7 @@ export default function PublicStorefront() {
         const [prodRes, priceRes] = await Promise.all([
           supabase
             .from("products")
-            .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url")
+            .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url, metadata")
             .in("id", productIds),
           supabase
             .from("prices")
