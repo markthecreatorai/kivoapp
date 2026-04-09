@@ -3846,6 +3846,97 @@ export type Database = {
           },
         ]
       }
+      course_lessons: {
+        Row: {
+          created_at: string
+          description_richtext: string | null
+          id: string
+          module_id: string
+          position: number
+          status: string
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description_richtext?: string | null
+          id?: string
+          module_id: string
+          position?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description_richtext?: string | null
+          id?: string
+          module_id?: string
+          position?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_modules: {
+        Row: {
+          course_id: string
+          created_at: string
+          drip_at: string | null
+          drip_days: number | null
+          drip_type: string
+          id: string
+          position: number
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          drip_at?: string | null
+          drip_days?: number | null
+          drip_type?: string
+          id?: string
+          position?: number
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          drip_at?: string | null
+          drip_days?: number | null
+          drip_type?: string
+          id?: string
+          position?: number
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_quiz_answers: {
         Row: {
           attempt_id: string
@@ -4032,6 +4123,66 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "circle_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          branding_bg_color: string | null
+          branding_highlight_color: string | null
+          branding_title_font: string | null
+          created_at: string
+          description_richtext: string | null
+          hero_image_url: string | null
+          id: string
+          product_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          branding_bg_color?: string | null
+          branding_highlight_color?: string | null
+          branding_title_font?: string | null
+          created_at?: string
+          description_richtext?: string | null
+          hero_image_url?: string | null
+          id?: string
+          product_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          branding_bg_color?: string | null
+          branding_highlight_color?: string | null
+          branding_title_font?: string | null
+          created_at?: string
+          description_richtext?: string | null
+          hero_image_url?: string | null
+          id?: string
+          product_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -5264,6 +5415,44 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_materials: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          lesson_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          lesson_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          lesson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_materials_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
             referencedColumns: ["id"]
           },
         ]
