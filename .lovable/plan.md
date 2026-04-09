@@ -1,55 +1,52 @@
 
 
-# Plano: Tornar todos os links dinâmicos conforme domínio acessado
+# Plano: Preview do afiliado idêntico à Stan Store com logo Kivo arredondado
 
-## Problema
+## O que muda
 
-Links de referral e outros são persistidos no banco com URL fixa (ex: `https://f37fc079-...lovableproject.com/?ref=lucas460`). Quando o site é acessado de outro domínio (produção, custom domain), os links ficam errados.
-
-## Estratégia
-
-**Princípio**: nunca armazenar domínio completo no banco. Armazenar apenas o `referral_code` e construir a URL completa dinamicamente com `window.location.origin` no momento da exibição/cópia.
+O preview do callout para affiliate/referral deve espelhar exatamente o layout da Stan Store: um **ícone pequeno arredondado** (logo Kivo) à esquerda do título, com o botão CTA abaixo. Hoje o preview mostra uma imagem de capa grande acima do texto — não é o layout correto.
 
 ## Mudanças
 
-### 1. `src/pages/ReferralsDashboard.tsx`
+### 1. `src/pages/editor/UrlMediaFlow.tsx`
 
-- Na criação do perfil (linhas 70, 96): continuar salvando `referral_link` no banco (campo obrigatório), mas usar `window.location.origin` (já faz isso — OK)
-- Na **exibição** (linhas 122, 149, 250): substituir `profile.referral_link` por URL construída dinamicamente: `${window.location.origin}/?ref=${profile.referral_code}`
-- Isso garante que mesmo perfis criados em preview mostrem a URL correta no domínio atual
+**Preview callout (affiliate)** — reescrever o bloco `form.cardStyle === "callout"` dentro do `MobilePreview` para o layout Stan Store:
 
-### 2. `src/pages/NewProduct.tsx`
+```
+┌─────────────────────────┐
+│  [🟣 logo]  Título      │
+│            arredondado   │
+│                          │
+│  ┌──────────────────┐   │
+│  │   CTA Button     │   │
+│  └──────────────────┘   │
+└─────────────────────────┘
+```
 
-- Linha 180: já usa `window.location.origin` — OK
-- Linha 172-173: ao ler `refProfile.referral_link` do banco para preencher o produto, reconstruir dinamicamente: `${window.location.origin}/?ref=${refProfile.referral_code}`
-- Precisa buscar `referral_code` além de `referral_link` na query (linha 169)
+- Importar `kivoReferralLogo` de `@/assets/kivo-referral-logo.png`
+- Quando `isAffiliateOrReferral`: usar layout com `flex-row` — logo 48×48 com `rounded-2xl` à esquerda, título à direita
+- O logo vem do `form.thumbnailUrl` se definido, senão usa `kivoReferralLogo` como fallback
+- Botão CTA abaixo com `bg-primary rounded-xl`
 
-### 3. `src/pages/editor/UrlMediaFlow.tsx`
+**Preview button (affiliate)** — layout simples: logo pequeno arredondado + título numa row, sem botão extra (o próprio card é o botão).
 
-- Linha 90-91: ao auto-preencher `targetUrl` do affiliate, reconstruir: `${window.location.origin}/?ref=${referralProfile.referral_code}`
-- Atualizar query (linha 67) para incluir `referral_code`
+**Step 2 (Imagem de capa)** — quando não há thumbnail, mostrar o `kivoReferralLogo` como fallback com badge "Padrão" e bordas arredondadas (`rounded-2xl`).
 
-### 4. `supabase/functions/webhook-pagarme/index.ts`
+### 2. `src/pages/PublicStorefront.tsx`
 
-- Linha 441: substituir `https://kivostore.lovable.app/member/dashboard` por URL dinâmica baseada no `origin` do request ou uma env var `SITE_URL`
+No `renderBlock` case `"product"` — quando o produto tem `thumbnail_style === "callout"` (buscar campo na query), renderizar com o layout de logo arredondado + título + CTA, em vez do card genérico com imagem grande.
 
-### 5. `src/pages/Privacy.tsx` e `src/pages/Terms.tsx`
+Atualizar a query de produtos (linha 294) para incluir `thumbnail_style, listing_button_text, delivery_url`.
 
-- Substituir `kivostore.lovable.app` hardcoded por `window.location.host` dinâmico
+### 3. `src/components/storefront/StoreProductPreviewRenderer.tsx`
 
-### 6. Demais arquivos (já corretos)
-
-Os seguintes já usam `window.location.origin` ou `window.location.host` corretamente:
-- `MyInvitesPanel.tsx`, `useMemberInvite.ts`, `useInviteLinks.ts`, `AdminInviteTab.tsx`, `CircleRightSidebarSkool.tsx`, `MyCommunities.tsx`, `Store.tsx`
+No callout style — quando `thumbnailUrl` está presente, renderizar como ícone arredondado (48×48, `rounded-2xl`) à esquerda do título em `flex-row`, em vez de imagem full-width acima. Isso garante consistência entre editor preview e storefront renderer.
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/ReferralsDashboard.tsx` | Exibição/cópia usa `origin + code` em vez de campo do DB |
-| `src/pages/NewProduct.tsx` | Reconstruir referral URL dinamicamente ao criar produto affiliate |
-| `src/pages/editor/UrlMediaFlow.tsx` | Auto-fill com URL dinâmica em vez de valor do DB |
-| `src/pages/Privacy.tsx` | Domínio dinâmico |
-| `src/pages/Terms.tsx` | Domínio dinâmico |
-| `supabase/functions/webhook-pagarme/index.ts` | Usar env var `SITE_URL` ou header origin |
+| `src/pages/editor/UrlMediaFlow.tsx` | Importar logo; reescrever preview callout/button para affiliate com layout Stan; fallback no Step 2 |
+| `src/pages/PublicStorefront.tsx` | Buscar `thumbnail_style` e `listing_button_text`; renderizar callout com layout logo+título |
+| `src/components/storefront/StoreProductPreviewRenderer.tsx` | Callout com ícone arredondado à esquerda do título |
 
