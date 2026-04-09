@@ -369,7 +369,7 @@ export default function RecurringProductFlow({
               <div className="space-y-4 p-5 rounded-2xl border-2 border-purple-500/30 bg-purple-50/20 dark:bg-card shadow-sm">
                 <div className="flex items-center gap-2 border-b border-purple-500/20 pb-3 mb-2 font-bold text-purple-600 dark:text-purple-400">
                   <RefreshCw className="w-5 h-5"/>
-                  Moteur de Recorrência Stripe/Pagar.me
+                  Motor de Recorrência Asaas
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
