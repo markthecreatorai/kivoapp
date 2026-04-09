@@ -209,6 +209,23 @@ export default function Checkout() {
         }).filter((b) => b.bump_price > 0);
         setOrderBumps(enriched);
       }
+
+      // Fetch creator branding colors from storefront
+      const { data: storefront } = await supabase
+        .from("storefronts")
+        .select("theme")
+        .eq("workspace_id", prod.workspace_id)
+        .maybeSingle();
+
+      if (storefront?.theme) {
+        const theme = storefront.theme as Record<string, string>;
+        if (theme.primary_color || theme.accent_color) {
+          setBranding({
+            primary: theme.primary_color || "#7c3aed",
+            accent: theme.accent_color || "#10b981",
+          });
+        }
+      }
     }
     load();
   }, [productSlug, searchParams]);
