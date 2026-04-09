@@ -1028,6 +1028,10 @@ export default function Store() {
     ? `${window.location.origin}/${storefront.slug}` 
     : null;
 
+  const previewBlocks = tab === "loja"
+    ? blocks.filter((block) => block.type !== "product")
+    : blocks;
+
   const copyLink = () => {
     if (storeUrl) {
       navigator.clipboard.writeText(storeUrl);
@@ -1222,7 +1226,7 @@ export default function Store() {
           <PremiumPhonePreview
             storefront={localStorefront ?? storefront}
             theme={localTheme ?? theme}
-            blocks={blocks}
+            blocks={previewBlocks}
             products={products}
           />
         </div>
