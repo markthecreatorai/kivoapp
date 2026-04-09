@@ -32,7 +32,7 @@ export function SettingsPayments() {
       const planKey = plan === "CREATOR_PRO" ? "pro" : "creator";
       const { data } = await supabase
         .from("fee_config")
-        .select("plan_type, gateway_fee_percent, platform_fee_percent")
+        .select("plan_type, credit_card_percent, pix_percent, platform_percent, boleto_fixed_cents")
         .eq("plan_type", planKey)
         .maybeSingle();
       return data;
