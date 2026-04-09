@@ -45,7 +45,8 @@ import {
   ChevronDown, ChevronRight, Check, AlertCircle,
   MoreVertical, Pencil, Calendar, Clock, Eye, EyeOff, Droplets,
   Copy, LayoutTemplate, CheckCircle2, XCircle, AlertTriangle,
-  Image as ImageIcon, ShoppingCart, Settings,
+  Image as ImageIcon, ShoppingCart, Settings, DollarSign,
+  User, Mail, Type, ListChecks, ToggleLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
