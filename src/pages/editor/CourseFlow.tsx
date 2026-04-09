@@ -352,12 +352,14 @@ function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => voi
   const deleteLessonMut = useDeleteLesson();
   const reorderModules = useReorderModules();
   const reorderLessons = useReorderLessons();
+  const duplicateLesson = useDuplicateLesson();
 
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ type: "module" | "lesson"; id: string; title: string; courseId?: string; moduleId?: string } | null>(null);
   const [dripConfigId, setDripConfigId] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Compute flat ordered list of all lessons for navigation
   const flatLessons = localModules
