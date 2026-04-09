@@ -13,6 +13,13 @@ export interface Course {
   branding_title_font: string | null;
   branding_bg_color: string | null;
   branding_highlight_color: string | null;
+  thumbnail_style: string | null;
+  thumbnail_image: string | null;
+  thumbnail_title: string | null;
+  thumbnail_subtitle: string | null;
+  checkout_image: string | null;
+  checkout_title: string | null;
+  checkout_description: string | null;
   status: string;
   created_at: string;
   updated_at: string;
