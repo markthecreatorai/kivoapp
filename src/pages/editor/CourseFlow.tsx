@@ -72,6 +72,8 @@ import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
 import { CourseLessonEditor } from "@/components/course/CourseLessonEditor";
 import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
+import { WizardTabLayout } from "@/components/editor/WizardTabLayout";
+import { StepCard } from "@/components/editor/StepCard";
 import { cn } from "@/lib/utils";
 
 interface CourseFlowProps {
