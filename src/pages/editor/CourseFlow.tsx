@@ -154,7 +154,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
 // ═══════════════════════════════════════════
 // Mobile Preview Panel (context-aware by tab)
 // ═══════════════════════════════════════════
-function MobilePreviewPanel({ tab, course, themeTokens }: { tab: string; course: Course; themeTokens: any }) {
+function MobilePreviewPanel({ tab, course, themeTokens, courseSubView }: { tab: string; course: Course; themeTokens: any; courseSubView: string }) {
   const { data: modules = [] } = useModules(course.id);
   const moduleIds = modules.map((m) => m.id);
   const { data: allLessons = [] } = useAllLessons(course.id, moduleIds);
@@ -163,9 +163,25 @@ function MobilePreviewPanel({ tab, course, themeTokens }: { tab: string; course:
   const hlColor = course.branding_highlight_color || "#6366f1";
   const titleFont = course.branding_title_font || "Inter";
 
-  if (tab === "course") {
-    // Content tab has its own preview within lesson editor
+  if (tab === "course" && courseSubView === "lesson") {
+    // Lesson editor has its own preview
     return null;
+  }
+
+  if (tab === "course") {
+    // Show course homepage preview
+    return (
+      <CourseMobilePreview
+        title={course.title}
+        description={course.description_richtext || ""}
+        heroImageUrl={course.hero_image_url || null}
+        bgColor={bgColor}
+        highlightColor={hlColor}
+        titleFont={titleFont}
+        modulesCount={modules.length}
+        lessonsCount={allLessons.length}
+      />
+    );
   }
 
   if (tab === "thumbnail") {
@@ -540,7 +556,7 @@ function StatusBadge({ status, dripType }: { status: string; dripType?: string }
 // ═══════════════════════════════════════════
 // Tab 3: Content (Course modules/lessons tree)
 // ═══════════════════════════════════════════
-function ContentTab({ course }: { course: Course; setSaving: (v: boolean) => void }) {
+function ContentTab({ course, setSaving, subView, setSubView }: { course: Course; setSaving: (v: boolean) => void; subView: "main" | "editPage" | "lesson"; setSubView: (v: "main" | "editPage" | "lesson") => void }) {
   const { data: serverModules = [] } = useModules(course.id);
   const moduleIds = serverModules.map((m) => m.id);
   const { data: serverLessons = [] } = useAllLessons(course.id, moduleIds);
