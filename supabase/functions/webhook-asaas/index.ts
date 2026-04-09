@@ -707,6 +707,15 @@ async function handleSubscriptionEvent(supabase: any, eventType: string, payload
 
   await supabase.from("workspace_subscriptions").update(updatePayload).eq("id", sub.id);
 
+  // ── Terminate referral on cancellation ──
+  if (newStatus === "canceled") {
+    try {
+      await terminateReferralOnCancel(supabase, sub);
+    } catch (refErr) {
+      console.error("Referral termination error (non-fatal):", refErr);
+    }
+  }
+
   await supabase.from("audit_logs").insert({
     workspace_id: sub.workspace_id,
     entity_type: "subscription",
