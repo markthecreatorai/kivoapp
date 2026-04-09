@@ -1178,6 +1178,12 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
   };
 
   return (
+    <ErrorBoundary fallback={
+      <div className="p-8 text-center max-w-3xl">
+        <p className="text-sm text-destructive mb-2">Erro ao carregar o conteúdo do curso.</p>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Recarregar página</Button>
+      </div>
+    }>
     <div className="max-w-3xl space-y-6 animate-in fade-in">
       {/* ── Section 1: Course Homepage ── */}
       <StepCard stepNumber={1} title="Course Homepage" description="Start by giving your course a title, description, and image." completed={!!course.title && !!course.hero_image_url}>
@@ -1435,6 +1441,7 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </ErrorBoundary>
   );
 }
 
