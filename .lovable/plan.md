@@ -1,117 +1,114 @@
 
-# Plano: Sistema completo de referral de afiliados Kivo
+# Plano: corrigir o carrossel contínuo sem espaços em branco
 
-## Estado atual
+## Diagnóstico
 
-Existem duas camadas de tracking paralelas e desconectadas:
-1. **useAffiliateTracking** — para afiliados de produtos de criadores (affiliate_links, commissions)
-2. **useReferralTracking** — para indicacoes Kivo (referral_profiles), mas so salva cookie, nao vincula no signup nem gera comissao
+O problema não está só no autoplay: a implementação atual do `CreatorSlider` simula infinito manualmente com:
+- array triplicado
+- `virtualIndex`
+- cálculo fixo de `slideWidth`
+- `offset` baseado em `window.innerWidth`
+- reset silencioso ao fim da animação
 
-Tabelas ja existentes: `referral_profiles`, `referral_attributions`, `referral_commissions`. Porem `referral_attributions` nao tem campos para `referral_status`, `first_paid_subscription_at`, `referral_terminated_at`, `subscription_id`, `plan_id`. E nenhum webhook processa comissoes de referral.
+Isso é frágil e explica os “espaços”:
+1. o track tem largura finita e pode expor área vazia durante transições/reset;
+2. o cálculo usa larguras fixas (320/420/480) que não refletem o layout real renderizado;
+3. `containerWidth = Math.min(window.innerWidth, 1280)` não corresponde necessariamente à largura visual disponível;
+4. o reset acontece após a animação, então o usuário pode perceber o fim do conjunto.
 
-## Arquitetura proposta
+## Correção proposta
+
+### 1) Reescrever o `CreatorSlider` usando Embla
+A base do projeto já possui `embla-carousel-react` e um wrapper em `src/components/ui/carousel.tsx`.
+
+Vou substituir a lógica manual por um slider controlado pelo Embla, com:
+- `loop: true`
+- alinhamento central
+- drag nativo
+- seleção do slide ativo pelo índice real
+- autoplay manual via timer chamando `scrollNext()`
+
+Isso elimina o “fim e começo” visual porque o loop passa a ser gerenciado pela própria engine do carrossel.
+
+### 2) Manter o visual premium atual
+Preservar:
+- card central em destaque
+- cards laterais menores/opacos
+- CTA visual e mockup do celular
+- setas laterais
+- dots sincronizados
+- hover/tap para foco
+
+Mas a animação de posição horizontal deixará de depender de `offset` calculado manualmente.
+
+### 3) Ajustar layout de cada slide para evitar respiro lateral
+No novo slider:
+- definir largura responsiva do item com classes Tailwind reais;
+- usar `basis-[320px] md:basis-[420px] lg:basis-[480px]` ou equivalente;
+- aplicar `pl/gap` de forma consistente no track;
+- garantir que o viewport tenha `overflow-hidden` e sem padding que exponha “buracos”.
+
+### 4) Sincronizar estado ativo com a API do carrossel
+Adicionar estado baseado em `selectedScrollSnap()`:
+- slide central = ativo;
+- laterais = reduzidos/opacos;
+- dots usam índice real;
+- clique num dot chama `scrollTo()`;
+- clique numa seta chama `scrollPrev/scrollNext`.
+
+### 5) Revisar comportamento em desktop e mobile
+Garantir:
+- swipe natural no mobile;
+- pausa de autoplay no hover;
+- sem dependência direta de `window.innerWidth` no render;
+- sem flicker de hidratação/re-render desnecessário.
+
+## Arquivos a alterar
+
+### `src/components/landing/CreatorSlider.tsx`
+Refatoração principal:
+- remover `virtualIndex`, `offset`, `handleAnimationComplete` e cálculo manual;
+- integrar com `Carousel`/Embla ou usar `useEmblaCarousel` diretamente;
+- manter o design dos cards;
+- implementar loop real sem espaços.
+
+### Opcional: `src/components/ui/carousel.tsx`
+Só se necessário para suportar melhor o caso do slider:
+- expor `api` de forma mais conveniente;
+- ajustar algum detalhe de classes/layout.
+Mas a princípio dá para corrigir sem mexer no componente base.
+
+## Resultado esperado
+
+Após a implementação:
+- o slider fica realmente contínuo;
+- não aparece espaço branco no final/início;
+- o card central continua destacado;
+- autoplay, swipe, setas e dots continuam funcionando;
+- o comportamento fica mais robusto e menos sujeito a quebra por viewport/layout.
+
+## Validação
+
+Vou validar estes cenários:
+- autoplay contínuo por vários ciclos sem espaços;
+- clique nas setas próximo da “virada” do loop;
+- clique nos dots;
+- swipe no mobile;
+- resize entre desktop/tablet/mobile;
+- confirmação de que sempre existe slide visível, sem faixa vazia no track.
+
+## Detalhes técnicos
 
 ```text
-Visitante → ?ref=code → useReferralTracking (cookie 30d, last-click)
-                              ↓
-                         Signup → Signup.tsx envia referral_code no user_metadata
-                              ↓
-                         Edge Function handle-referral-signup (trigger ou post-signup)
-                              → cria referral_attributions com status pending_subscription
-                              ↓
-                         Webhook Asaas PAYMENT_CONFIRMED + subscription context
-                              → webhook-asaas detecta 1o pagamento de assinatura
-                              → ativa comissao, cria referral_commissions
-                              ↓
-                         Webhook SUBSCRIPTION_DELETED/INACTIVATED
-                              → termina vinculo permanentemente
+Atual:
+array triplicado + translateX manual + reset de índice
+
+Novo:
+Embla loop=true
+  -> viewport oculto
+  -> track flex
+  -> slides com largura real via CSS
+  -> índice ativo vindo da API
 ```
 
-## Mudancas
-
-### 1. Migracao SQL — expandir referral_attributions + audit log
-
-Adicionar colunas a `referral_attributions`:
-- `referral_status` TEXT DEFAULT 'pending' (pending → pending_subscription → active → terminated)
-- `referral_source` TEXT DEFAULT 'affiliate_link'
-- `first_paid_subscription_at` TIMESTAMPTZ
-- `referral_terminated_at` TIMESTAMPTZ
-- `subscription_id` UUID
-- `plan_id` TEXT
-- `payment_provider_event_id` TEXT
-
-Criar tabela `referral_audit_log`:
-- id, referrer_user_id, referred_user_id, event_type, subscription_id, plan_id, payment_provider_event_id, metadata JSONB, created_at
-
-RLS: referrer e referred podem ver seus proprios logs.
-
-### 2. useReferralTracking — last-click + 30 dias
-
-Alterar `src/hooks/useReferralTracking.ts`:
-- Mudar cookie para 30 dias (era 90)
-- Sempre sobrescrever cookie existente (last-click attribution)
-- Salvar tambem em localStorage com expiry (fallback)
-- Registrar evento `affiliate_link_clicked` no `referral_audit_log` via supabase insert
-
-### 3. Signup.tsx — vincular referral no cadastro
-
-No `handleSignup` e `handleGoogleSignup`:
-- Ler referral_code do cookie/localStorage
-- Enviar como `referral_code` no `user_metadata` do signUp
-- Apos signup bem-sucedido, criar `referral_attributions` com:
-  - referrer_user_id (lookup pelo referral_code na referral_profiles)
-  - referred_user_id (novo user)
-  - referral_status = 'pending_subscription'
-  - signed_up_at = now()
-- Registrar evento `account_created_from_referral` no audit log
-- Limpar cookie apos vinculacao
-
-### 4. webhook-asaas — ativar comissao no 1o pagamento
-
-Na funcao `handleSubscriptionInvoicePaid`:
-- Apos confirmar pagamento de workspace_subscriptions:
-  - Buscar referral_attributions onde referred_user_id = sub.user_id AND referral_status = 'pending_subscription'
-  - Se encontrar E first_paid_subscription_at IS NULL:
-    - Atualizar referral_status = 'active', first_paid_subscription_at = now(), subscription_id, plan_id
-    - Criar referral_commissions com 20%, gross = valor pago, status = 'pending'
-    - Registrar evento `first_subscription_paid`
-  - Se referral_status = 'active' (renovacoes subsequentes):
-    - Criar referral_commissions para cada renovacao
-  - Se referral_status = 'terminated':
-    - NAO gerar comissao. Registrar `resubscription_without_referral`
-  - Idempotencia: checar payment_provider_event_id duplicado antes de inserir comissao
-
-### 5. webhook-asaas — terminar vinculo no cancelamento
-
-Na funcao `handleSubscriptionEvent` quando eventType = SUBSCRIPTION_DELETED ou SUBSCRIPTION_INACTIVATED:
-- Buscar referral_attributions onde referred_user_id = sub.user_id AND referral_status = 'active'
-- Se encontrar:
-  - Atualizar referral_status = 'terminated', referral_terminated_at = now()
-  - Registrar evento `referral_terminated_on_cancel`
-
-### 6. Edge cases cobertos
-
-| Cenario | Comportamento |
-|---|---|
-| Clicou link, criou conta dias depois | Cookie 30d persiste, vincula no signup |
-| Clicou 2 links diferentes | Last-click: cookie sobrescrito |
-| Criou conta mas nunca assinou | referral_status = pending_subscription para sempre |
-| Assinou, cancelou, reassinou | Cancelamento → terminated. Reassinatura nao reativa |
-| Webhook duplicado | Idempotencia por payment_provider_event_id |
-| Upgrade/downgrade sem cancelamento | Vinculo mantido (so DELETED/INACTIVATED termina) |
-| Falha de pagamento sem cancelamento | past_due nao termina vinculo |
-
-## Arquivos alterados
-
-| Arquivo | Mudanca |
-|---|---|
-| Nova migracao SQL | Expandir referral_attributions + criar referral_audit_log |
-| `src/hooks/useReferralTracking.ts` | Last-click 30d, localStorage fallback, audit log insert |
-| `src/pages/Signup.tsx` | Ler referral, vincular no signup, criar attribution |
-| `supabase/functions/webhook-asaas/index.ts` | Comissao no 1o pagamento, comissoes recorrentes, terminacao no cancelamento |
-
-## O que NAO muda
-
-- Sistema de afiliados de produtos (useAffiliateTracking, affiliate_links, commissions) — continua independente
-- Fluxo de checkout de produtos
-- Dashboard de referrals existente (so passa a ter dados reais)
+Essa é a forma mais estável de corrigir o problema de forma definitiva, em vez de continuar ajustando cálculos manuais.
