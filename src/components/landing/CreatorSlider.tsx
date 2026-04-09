@@ -166,10 +166,6 @@ function SlideCard({ creator, isActive }: { creator: CreatorSlide; isActive: boo
               <span className="text-white/80 text-sm font-medium">{creator.followers} Followers</span>
             </div>
           </div>
-          <Badge className="absolute bottom-[-22px] left-5 bg-background/95 backdrop-blur text-foreground border-0 px-3 py-1.5 text-xs font-semibold gap-1.5 shadow-lg z-10">
-            <span>{creator.nicheEmoji}</span>
-            {creator.niche}
-          </Badge>
           <div
             className="absolute -right-3 md:right-2 top-4 z-20 transition-transform duration-[450ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
             style={{ transform: isActive ? "translateY(0)" : "translateY(8px)" }}
@@ -178,6 +174,10 @@ function SlideCard({ creator, isActive }: { creator: CreatorSlide; isActive: boo
           </div>
         </div>
       </div>
+      <Badge className="absolute bottom-[-10px] left-5 bg-background/95 backdrop-blur text-foreground border-0 px-3 py-1.5 text-xs font-semibold gap-1.5 shadow-lg z-10">
+        <span>{creator.nicheEmoji}</span>
+        {creator.niche}
+      </Badge>
     </div>
   );
 }
