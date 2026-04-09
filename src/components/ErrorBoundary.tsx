@@ -4,6 +4,8 @@ import { reportAppError } from "@/lib/reportAppError";
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  /** When true, shows a lighter "page error" UI instead of full-screen */
+  isRouteLevel?: boolean;
 }
 
 interface State {
@@ -12,8 +14,9 @@ interface State {
 }
 
 /**
- * Global React ErrorBoundary.
- * Catches any render / lifecycle error and shows a friendly recovery UI.
+ * React ErrorBoundary with two modes:
+ * - Global (default): full-screen recovery UI
+ * - Route-level (isRouteLevel=true): inline recovery without crashing the whole app
  */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -30,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
       message: error.message,
       stack: error.stack,
       componentStack: info.componentStack ?? undefined,
-      context: "ErrorBoundary",
+      context: this.props.isRouteLevel ? "RouteBoundary" : "ErrorBoundary",
     });
   }
 
@@ -42,10 +45,73 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.href = "/";
   };
 
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
+      // Route-level: inline, non-destructive
+      if (this.props.isRouteLevel) {
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "48px 24px",
+              fontFamily: "Inter, system-ui, sans-serif",
+              color: "#111",
+            }}
+          >
+            <div style={{ maxWidth: 400, textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+                Erro ao carregar esta página
+              </h2>
+              <p style={{ fontSize: 13, color: "#666", marginBottom: 20, lineHeight: 1.5 }}>
+                Ocorreu um problema nesta seção. Você pode tentar novamente sem perder o restante do app.
+              </p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                <button
+                  onClick={this.handleRetry}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#111",
+                    color: "#fff",
+                    fontWeight: 500,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  Tentar novamente
+                </button>
+                <button
+                  onClick={this.handleGoHome}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: 8,
+                    border: "1px solid #ddd",
+                    background: "#fff",
+                    color: "#333",
+                    fontWeight: 500,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  Voltar ao início
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Global fallback
       return (
         <div
           style={{
