@@ -12,6 +12,7 @@ interface ImageUploadFieldProps {
   recommendation?: string;
   bucket?: string;
   folder?: string;
+  defaultImage?: string;
 }
 
 export function ImageUploadField({
@@ -21,6 +22,7 @@ export function ImageUploadField({
   recommendation = "Recomendado: 1920×1080",
   bucket = "community",
   folder = "course-covers",
+  defaultImage,
 }: ImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -89,6 +91,31 @@ export function ImageUploadField({
             >
               <X className="h-3.5 w-3.5" />
               Remover
+            </Button>
+          </div>
+        </div>
+      ) : defaultImage ? (
+        <div className="relative group rounded-lg overflow-hidden border border-border">
+          <img
+            src={defaultImage}
+            alt="Default cover"
+            className="w-full aspect-video object-cover opacity-80"
+          />
+          <div className="absolute top-2 left-2">
+            <span className="text-[10px] font-medium bg-background/80 backdrop-blur-sm text-muted-foreground px-2 py-0.5 rounded-full border border-border">
+              Padrão
+            </span>
+          </div>
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
+              disabled={uploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Trocar
             </Button>
           </div>
         </div>
