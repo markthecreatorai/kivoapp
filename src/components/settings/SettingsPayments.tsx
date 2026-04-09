@@ -74,7 +74,7 @@ export function SettingsPayments() {
               <div>
                 <p className="text-sm font-medium text-foreground">Cartão de crédito</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {feeConfig ? fmt(feeConfig.gateway_fee_percent) : "3.5%"} gateway + {feeConfig ? fmt(feeConfig.platform_fee_percent) : "5.0%"} plataforma
+                  {feeConfig ? fmt(feeConfig.credit_card_percent) : "3.5%"} gateway + {feeConfig ? fmt(feeConfig.platform_percent) : "5.0%"} plataforma
                 </p>
                 <p className="text-[10px] text-muted-foreground">Disponível em D+2</p>
               </div>
@@ -85,7 +85,7 @@ export function SettingsPayments() {
               <div>
                 <p className="text-sm font-medium text-foreground">PIX</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {feeConfig ? fmt(feeConfig.gateway_fee_percent) : "1.5%"} gateway + {feeConfig ? fmt(feeConfig.platform_fee_percent) : "5.0%"} plataforma
+                  {feeConfig ? fmt(feeConfig.pix_percent) : "1.5%"} gateway + {feeConfig ? fmt(feeConfig.platform_percent) : "5.0%"} plataforma
                 </p>
                 <p className="text-[10px] text-muted-foreground">Disponível em D+0</p>
               </div>
@@ -96,7 +96,7 @@ export function SettingsPayments() {
               <div>
                 <p className="text-sm font-medium text-foreground">Boleto</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  R$3,49 por boleto + {feeConfig ? fmt(feeConfig.platform_fee_percent) : "5.0%"} plataforma
+                  R${feeConfig ? (feeConfig.boleto_fixed_cents / 100).toFixed(2).replace('.', ',') : "3,49"} por boleto + {feeConfig ? fmt(feeConfig.platform_percent) : "5.0%"} plataforma
                 </p>
                 <p className="text-[10px] text-muted-foreground">Disponível em D+1</p>
               </div>
