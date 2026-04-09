@@ -1,44 +1,45 @@
 
 
-# Plano: Corrigir produtos duplicados no preview
+# Plano: Corrigir preview da loja — ordem de drag e "Meu Link" fantasma
 
-## Problema
+## Problemas
 
-O `StorefrontPreview` renderiza produtos de **duas fontes independentes**:
+1. **Drag reorder não reflete no preview**: Quando você reordena produtos na aba "Loja", o `localProducts` é atualizado com a nova ordem. Porém o `StorefrontPreview` renderiza os `externalProducts` na ordem original sem respeitar a ordem passada via prop.
 
-1. **Blocos de produto** (linhas 62-79, 118-150): produtos adicionados como blocos individuais na vitrine, buscados via query `preview-products`
-2. **Lista externa** (linhas 492-534): TODOS os produtos publicados passados via prop `externalProducts` do Store.tsx
+2. **"Meu Link" aparecendo no preview**: Existe um bloco do tipo `link` na tabela `storefront_blocks` com o título padrão "Meu Link" (criado automaticamente ao adicionar um bloco de link na aba Vitrine). Ele aparece no preview porque está marcado como visível, mesmo que não tenha URL configurada.
 
-Resultado: um produto que tem um bloco E está publicado aparece **duas vezes**. Além disso, a lista externa mostra todos os publicados sem filtrar os que já têm bloco.
+## Correções
 
-## Correção
+### 1. Respeitar ordem dos produtos no preview
 
-**Arquivo:** `src/components/storefront/StorefrontPreview.tsx`
+**Arquivo:** `src/components/storefront/StorefrontPreview.tsx` (linhas 498-499)
 
-Na seção "Product List from store management" (linha 493-534), filtrar os `externalProducts` para **excluir** os que já estão sendo renderizados como blocos de produto:
+O filtro de `externalProducts` já funciona, mas não respeita a ordem do array `products` passado pelo Store. O array `products` já vem na ordem correta após drag-and-drop. Basta manter a ordem original do array ao filtrar (o `.filter` já preserva ordem, então o problema é que `fetchedProducts` volta com `order by created_at desc`).
+
+A correção real é no `handleDragEnd` do `Store.tsx` — após reordenar localmente, o preview já recebe a nova ordem via prop. Preciso verificar se o `useEffect` que reseta `localProducts` ao receber novos `fetchedProducts` está desfazendo a reordenação. O `useEffect` na linha 819 reseta `localProducts` para `null` quando `fetchedProducts` muda, o que é correto após mutations mas pode conflitar com drag. Solução: adicionar um `dirty flag` para products similar ao usado para storefront/theme, para não resetar durante drag.
+
+**Arquivo:** `src/pages/Store.tsx`
+- Adicionar `localProductsDirty` ref
+- No `handleDragEnd`, setar `localProductsDirty.current = true`
+- No `useEffect` de sync, só resetar se `!localProductsDirty.current`
+- Nas mutations (`onSuccess`), resetar o dirty flag junto com `setLocalProducts(null)`
+
+### 2. Filtrar blocos de link sem URL no preview
+
+**Arquivo:** `src/components/storefront/StorefrontPreview.tsx` (linha 99-115)
+
+No `renderBlock`, caso `link`, retornar `null` se a URL estiver vazia:
 
 ```tsx
-{externalProducts && (() => {
-  // IDs dos produtos já renderizados como blocos
-  const blockProductIds = blocks
-    .filter(b => b.type === 'product' && b.is_visible)
-    .map(b => (b.config as { product_id?: string }).product_id)
-    .filter(Boolean);
-  
-  const filtered = externalProducts
-    .filter((p: any) => p.status === 'PUBLISHED' && !blockProductIds.includes(p.id));
-  
-  return filtered.length > 0 ? (
-    <div className="flex flex-col w-full space-y-2.5 px-5 mt-3 relative z-20">
-      {filtered.map((product: any) => { /* ... card existente ... */ })}
-    </div>
-  ) : null;
-})()}
+case 'link':
+  if (!config.url) return null;
+  return ( /* ... existente ... */ );
 ```
 
 ## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/storefront/StorefrontPreview.tsx` | Filtrar `externalProducts` para excluir produtos já presentes como blocos |
+| `src/pages/Store.tsx` | Adicionar dirty flag para evitar reset de ordem durante drag |
+| `src/components/storefront/StorefrontPreview.tsx` | Não renderizar blocos de link sem URL |
 
