@@ -10,9 +10,39 @@ import { Separator } from "@/components/ui/separator";
 import {
   Check, ArrowRight, Store, Users, CalendarCheck, Mail,
   BarChart3, Shield, Zap, Crown, Sparkles, ChevronDown, ChevronUp,
-  Calculator,
+  Calculator, Star,
 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
+import kivoSymbol from "@/assets/kivo-symbol.svg";
+import { AccordionGallery } from "@/components/landing/AccordionGallery";
+import type { GalleryItem } from "@/components/landing/types";
+import creator1 from "@/assets/gallery/creator-1.jpg";
+import creator2 from "@/assets/gallery/creator-2.jpg";
+import creator3 from "@/assets/gallery/creator-3.jpg";
+
+const GALLERY_ITEMS: GalleryItem[] = [
+  {
+    id: "1",
+    title: "Hanah Franklin",
+    role: "Creator",
+    imageUrl: creator1,
+    quote: "Fazia muito tempo que eu procurava uma plataforma pra ter minha própria comunidade e gerenciar produtos, com a Kivo ficou muito mais fácil",
+  },
+  {
+    id: "2",
+    title: "Ana Melo",
+    role: "Creator",
+    imageUrl: creator2,
+    quote: "Migrei da Hotmart e em 2 semanas já tinha tudo rodando. A economia nas taxas foi absurda.",
+  },
+  {
+    id: "3",
+    title: "Sarah Rodrigues",
+    role: "Creator",
+    imageUrl: creator3,
+    quote: "O checkout converte muito mais e o suporte é incrível. Recomendo de olhos fechados.",
+  },
+];
 
 /* ── A/B Test ── */
 function getABVariant(): "A" | "B" {
@@ -159,49 +189,61 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
+      <nav className="sticky top-0 z-50 bg-[hsl(15,33%,95%)]/80 backdrop-blur border-b border-border/40">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            <img src={kivoLogo} alt="Kivo" className="h-7" />
+            <img src={kivoSymbol} alt="" className="h-8 w-8" />
+            <span className="text-xl font-bold text-foreground">Kivo</span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Recursos</a>
-            <a href="#calculator" className="hover:text-foreground transition-colors">Calculadora</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Preços</a>
+          <div className="hidden md:flex items-center gap-8 text-sm text-foreground/70 font-medium">
+            <a href="#mission" className="hover:text-foreground transition-colors">Missão</a>
+            <a href="#features" className="hover:text-foreground transition-colors">Soluções</a>
+            <a href="#calculator" className="hover:text-foreground transition-colors">Taxas</a>
+            <a href="#faq" className="hover:text-foreground transition-colors">Ajuda</a>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>Entrar</Button>
-            <Button size="sm" className="pill-radius" onClick={() => { ctaClick("nav_cta"); navigate("/signup?utm_source=landing&utm_medium=nav"); }}>
-              Começar grátis
+            <Button variant="ghost" size="sm" className="text-foreground/70 font-medium" onClick={() => navigate("/login")}>Entrar</Button>
+            <Button size="sm" className="pill-radius bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold px-6" onClick={() => { ctaClick("nav_cta"); navigate("/signup?utm_source=landing&utm_medium=nav"); }}>
+              Criar Conta
             </Button>
           </div>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="py-20 md:py-32">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <Badge variant="secondary" className="mb-6 text-sm">
-            <Zap className="w-3 h-3 mr-1" /> Plataforma brasileira para creators
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight tracking-tight">
-            {hl.title}
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mt-6 max-w-2xl mx-auto">
-            {hl.sub}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
-            <Button size="lg" className="pill-radius gap-2 text-base px-8" onClick={() => { ctaClick("hero_primary"); navigate("/signup?utm_source=landing&utm_medium=hero&utm_campaign=ab_" + variant); }}>
-              Começar grátis <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button size="lg" variant="outline" className="pill-radius text-base px-8" onClick={() => navigate("/demo-store")}>
-              Ver demo
-            </Button>
+      <section className="py-16 md:py-24 bg-[hsl(15,33%,95%)]">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Left — copy */}
+            <div className="space-y-6">
+              <Badge variant="outline" className="rounded-full border-border/60 text-foreground/80 bg-background px-4 py-1.5 text-sm font-medium gap-1.5">
+                <Star className="w-3.5 h-3.5 text-primary fill-primary" />
+                Plataforma para creators
+              </Badge>
+              <h1 className="text-4xl md:text-5xl lg:text-[3.4rem] font-bold text-foreground leading-[1.1] tracking-tight">
+                Tudo que você precisa para vender no digital em um só lugar.
+              </h1>
+              <p className="text-base md:text-lg text-foreground/60 max-w-lg leading-relaxed">
+                Storefront, checkout, comunidade, cursos, email e afiliados, sem pagar por 5 ferramentas separadas.
+              </p>
+              <div className="pt-2">
+                <Button
+                  size="lg"
+                  className="pill-radius bg-destructive hover:bg-destructive/90 text-destructive-foreground text-base font-semibold px-10 py-6 gap-2 shadow-lg shadow-destructive/20"
+                  onClick={() => { ctaClick("hero_primary"); navigate("/signup?utm_source=landing&utm_medium=hero&utm_campaign=ab_" + variant); }}
+                >
+                  Começar agora
+                </Button>
+              </div>
+            </div>
+
+            {/* Right — accordion gallery */}
+            <div className="w-full">
+              <AccordionGallery items={GALLERY_ITEMS} height="520px" />
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-4">Sem cartão de crédito · Setup em 5 minutos</p>
         </div>
       </section>
-
       {/* Features */}
       <section id="features" className="py-20 bg-muted/30">
         <div className="max-w-6xl mx-auto px-4">
