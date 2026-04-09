@@ -80,9 +80,8 @@ export function useReferralTracking() {
             } as any);
           }
         })
-        .catch(() => {
-          // non-fatal
-        });
+        .then(() => {})
+        .catch(() => {});
     }
   }, [searchParams]);
 }
