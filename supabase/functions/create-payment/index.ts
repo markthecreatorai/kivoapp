@@ -516,6 +516,80 @@ Deno.serve(async (req) => {
       await grantEntitlements(supabase, order.id, customerId, orderItems);
     }
 
+    // ─── Create transaction record (new split model) ───
+    try {
+      const planType = workspace?.plan_type || "free";
+      const { data: feeConfig } = await supabase
+        .from("fee_config")
+        .select("*")
+        .eq("plan_type", planType === "free" ? "creator" : planType)
+        .maybeSingle();
+
+      const gatewayFeePercent = feeConfig?.gateway_fee_percent || 3.49;
+      const platformFeePercent = feeConfig?.platform_fee_percent || 10;
+      const reservePercent = feeConfig?.reserve_percent || 10;
+
+      const grossAmount = Math.round(totalAmount * 100); // store in centavos
+      const gatewayFee = Math.round(grossAmount * gatewayFeePercent / 100);
+      const platformFee = Math.round((grossAmount - gatewayFee) * platformFeePercent / 100);
+      const netAmount = grossAmount - gatewayFee - platformFee;
+
+      // Calculate available_at based on payment method
+      let availableAt: string;
+      const now = new Date();
+      if (method === "pix") {
+        availableAt = now.toISOString(); // D+0
+      } else if (method === "boleto") {
+        availableAt = new Date(now.getTime() + 1 * 86400000).toISOString(); // D+1
+      } else {
+        availableAt = new Date(now.getTime() + 2 * 86400000).toISOString(); // D+2
+      }
+
+      const txStatus = paymentStatus === "SUCCEEDED" ? "paid" : "pending";
+
+      await supabase.from("transactions").insert({
+        workspace_id,
+        order_id: order.id,
+        payment_id: payment!.id,
+        gateway_payment_id: gatewayResult.gateway_payment_id || null,
+        payment_method: method,
+        gross_amount: grossAmount,
+        gateway_fee: gatewayFee,
+        platform_fee: platformFee,
+        net_amount: netAmount,
+        currency: "BRL",
+        status: txStatus,
+        installments: selectedInstallments,
+        pix_qr_code: method === "pix" ? gatewayResult.pix?.qr_code : null,
+        pix_qr_code_url: method === "pix" ? gatewayResult.pix?.qr_code_url : null,
+        pix_expires_at: method === "pix" ? gatewayResult.pix?.expires_at : null,
+        boleto_barcode: method === "boleto" ? gatewayResult.boleto?.barcode : null,
+        boleto_url: method === "boleto" ? gatewayResult.boleto?.pdf_url : null,
+        boleto_due_at: method === "boleto" ? gatewayResult.boleto?.due_at : null,
+        available_at: txStatus === "paid" ? availableAt : null,
+        provider: gatewayResult.provider || "asaas",
+        fee_config_snapshot: feeConfig || null,
+      });
+
+      // Create security reserve if paid immediately
+      if (txStatus === "paid" && netAmount > 0) {
+        const reserveAmount = Math.round(netAmount * reservePercent / 100);
+        const releaseDays = feeConfig?.reserve_release_days || 30;
+        if (reserveAmount > 0) {
+          await supabase.from("security_reserves").insert({
+            workspace_id,
+            order_id: order.id,
+            transaction_id: null, // will be linked via order_id
+            amount: reserveAmount,
+            release_at: new Date(now.getTime() + releaseDays * 86400000).toISOString(),
+            status: "held",
+          });
+        }
+      }
+    } catch (txErr) {
+      console.error("Transaction record creation error (non-fatal):", txErr);
+    }
+
     // Build response
     const response: any = {
       order_id: order.id,
