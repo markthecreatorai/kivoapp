@@ -179,12 +179,15 @@ function usePrefetchRoutes() {
 /** Persistent dashboard shell — sidebar/topbar mount once, pages swap via Outlet */
 function DashboardShell() {
   usePrefetchRoutes();
+  useEffect(() => { clearChunkReloadFlag(); }, []);
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <Suspense fallback={<PageSkeleton />}>
-          <Outlet />
-        </Suspense>
+        <ErrorBoundary isRouteLevel>
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </DashboardLayout>
     </ProtectedRoute>
   );
@@ -204,9 +207,11 @@ function AdminShell() {
     <ProtectedRoute>
       <AdminRoute>
         <DashboardLayout>
-          <Suspense fallback={<PageSkeleton />}>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary isRouteLevel>
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </DashboardLayout>
       </AdminRoute>
     </ProtectedRoute>
