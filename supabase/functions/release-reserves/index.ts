@@ -25,7 +25,11 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
-    // Find held reserves that are past their release date
+    let releasedLegacy = 0;
+    let releasedNew = 0;
+    let heldDueToChargeback = 0;
+
+    // ─── Legacy: reserve_entries ───
     const { data: dueReserves, error } = await supabase
       .from("reserve_entries")
       .select("id, workspace_id, amount, order_id")
@@ -35,9 +39,7 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    let released = 0;
     for (const reserve of (dueReserves || [])) {
-      // Check if the related order doesn't have an active chargeback
       const { data: activeChargeback } = await supabase
         .from("chargeback_cases")
         .select("id")
@@ -46,10 +48,10 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (activeChargeback) {
-        // Don't release — extend by 30 days
         await supabase.from("reserve_entries").update({
           release_at: new Date(Date.now() + 30 * 86400000).toISOString(),
         }).eq("id", reserve.id);
+        heldDueToChargeback++;
         continue;
       }
 
@@ -58,7 +60,6 @@ Deno.serve(async (req) => {
         released_at: new Date().toISOString(),
       }).eq("id", reserve.id);
 
-      // Notify creator about released reserve
       try {
         await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
           method: "POST",
@@ -71,15 +72,63 @@ Deno.serve(async (req) => {
         });
       } catch (e) { console.error("Notify error (non-fatal):", e); }
 
-      released++;
+      releasedLegacy++;
+    }
+
+    // ─── New model: security_reserves ───
+    const { data: dueSecReserves, error: secError } = await supabase
+      .from("security_reserves")
+      .select("id, workspace_id, amount, order_id")
+      .eq("status", "held")
+      .lte("release_at", new Date().toISOString())
+      .limit(500);
+
+    if (secError) throw secError;
+
+    for (const reserve of (dueSecReserves || [])) {
+      const { data: activeChargeback } = await supabase
+        .from("chargeback_cases")
+        .select("id")
+        .eq("order_id", reserve.order_id)
+        .in("status", ["new", "evidence_pending", "submitted"])
+        .maybeSingle();
+
+      if (activeChargeback) {
+        await supabase.from("security_reserves").update({
+          release_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+        }).eq("id", reserve.id);
+        heldDueToChargeback++;
+        continue;
+      }
+
+      await supabase.from("security_reserves").update({
+        status: "released",
+        released_at: new Date().toISOString(),
+      }).eq("id", reserve.id);
+
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_type: "reserve_released",
+            workspace_id: reserve.workspace_id,
+            data: { amount: reserve.amount },
+          }),
+        });
+      } catch (e) { console.error("Notify error (non-fatal):", e); }
+
+      releasedNew++;
     }
 
     const summary = {
       event: "release_reserves_complete",
       duration_ms: Date.now() - startedAt,
-      total_due: dueReserves?.length || 0,
-      released,
-      held_due_to_chargeback: (dueReserves?.length || 0) - released,
+      total_due_legacy: dueReserves?.length || 0,
+      total_due_new: dueSecReserves?.length || 0,
+      released_legacy: releasedLegacy,
+      released_new: releasedNew,
+      held_due_to_chargeback: heldDueToChargeback,
     };
 
     console.log(JSON.stringify(summary));

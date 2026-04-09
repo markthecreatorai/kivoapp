@@ -176,6 +176,85 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     return "NOT_FOUND";
   }
 
+  // ─── Update transaction record ───
+  try {
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("id, payment_method, gross_amount, gateway_fee, platform_fee, net_amount")
+      .eq("order_id", paymentRecord.order_id)
+      .maybeSingle();
+
+    if (tx) {
+      // Calculate available_at based on method
+      let availableAt: string;
+      const now = new Date();
+      if (tx.payment_method === "pix") {
+        availableAt = now.toISOString(); // D+0
+      } else if (tx.payment_method === "boleto") {
+        availableAt = new Date(now.getTime() + 1 * 86400000).toISOString(); // D+1
+      } else {
+        availableAt = new Date(now.getTime() + 2 * 86400000).toISOString(); // D+2
+      }
+
+      // Update with real gateway fee if available from Asaas
+      const updateData: any = {
+        status: "paid",
+        paid_at: new Date().toISOString(),
+        available_at: availableAt,
+      };
+
+      if (paymentData?.netValue) {
+        const realGatewayFee = tx.gross_amount - Math.round(Number(paymentData.netValue) * 100);
+        if (realGatewayFee > 0) {
+          updateData.gateway_fee = realGatewayFee;
+          updateData.net_amount = tx.gross_amount - realGatewayFee - tx.platform_fee;
+        }
+      }
+
+      await supabase.from("transactions").update(updateData).eq("id", tx.id);
+
+      // Create security reserve if not yet created
+      const { data: existingReserve } = await supabase
+        .from("security_reserves")
+        .select("id")
+        .eq("order_id", paymentRecord.order_id)
+        .maybeSingle();
+
+      if (!existingReserve && tx.net_amount > 0) {
+        const { data: ws } = await supabase
+          .from("workspaces")
+          .select("plan_type")
+          .eq("id", paymentRecord.workspace_id)
+          .maybeSingle();
+
+        const planType = ws?.plan_type || "creator";
+        const { data: feeConfig } = await supabase
+          .from("fee_config")
+          .select("reserve_percent, reserve_release_days")
+          .eq("plan_type", planType)
+          .maybeSingle();
+
+        const reservePercent = feeConfig?.reserve_percent || 10;
+        const releaseDays = feeConfig?.reserve_release_days || 30;
+        const finalNet = updateData.net_amount || tx.net_amount;
+        const reserveAmount = Math.round(finalNet * reservePercent / 100);
+
+        if (reserveAmount > 0) {
+          await supabase.from("security_reserves").insert({
+            workspace_id: paymentRecord.workspace_id,
+            order_id: paymentRecord.order_id,
+            transaction_id: tx.id,
+            amount: reserveAmount,
+            release_at: new Date(Date.now() + releaseDays * 86400000).toISOString(),
+            status: "held",
+          });
+        }
+      }
+    }
+  } catch (txErr) {
+    console.error("Transaction update error (non-fatal):", txErr);
+  }
+
   await supabase.from("payments").update({
     status: "SUCCEEDED",
     processed_at: new Date().toISOString(),
@@ -476,6 +555,14 @@ async function handleFailed(supabase: any, paymentRecord: any, paymentData: any)
   }).eq("id", paymentRecord.id);
 
   await supabase.from("orders").update({ status: "FAILED" }).eq("id", paymentRecord.order_id);
+
+  // Update transaction
+  await supabase.from("transactions").update({
+    status: "failed",
+    failed_at: new Date().toISOString(),
+    failure_reason: paymentData?.failReason || "Payment failed",
+  }).eq("order_id", paymentRecord.order_id);
+
   return "FAILED";
 }
 
@@ -513,8 +600,19 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
     refunded_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
-  // Forfeit reserve
+  // Forfeit any held reserve for this order
   await supabase.from("reserve_entries").update({
+    status: "forfeited",
+    released_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
+  // Update transaction + security_reserves (new model)
+  await supabase.from("transactions").update({
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id);
+
+  await supabase.from("security_reserves").update({
     status: "forfeited",
     released_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id).eq("status", "held");
@@ -560,11 +658,21 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     refunded_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
-  // 5. Forfeit any held reserve for this order
+  // 5. Forfeit any held reserve for this order (legacy + new model)
   await supabase.from("reserve_entries").update({
     status: "forfeited",
     released_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
+  await supabase.from("security_reserves").update({
+    status: "forfeited",
+    released_at: new Date().toISOString(),
+  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+
+  // 5b. Update transaction to disputed
+  await supabase.from("transactions").update({
+    status: "disputed",
+  }).eq("order_id", paymentRecord.order_id);
 
   // 6. Ledger reversal
   await supabase.from("wallet_ledger").update({ status: "canceled" })
