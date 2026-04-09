@@ -1,88 +1,34 @@
 
-# Plano: Testes e Gate de Release do Course Builder
 
-## 1. Testes unitários — `src/test/course-builder.test.ts`
+# Plano: Corrigir slider de templates "rodando sozinho"
 
-Funções puras testáveis sem mocks de Supabase:
+## Causa raiz
 
-**`getCoursePublishChecklist`** (7 cenários):
-- Curso completo → todos passam
-- Curso vazio → falha em title, modules, lessons, published-lessons
-- Título < 3 chars → falha title
-- Sem módulos → falha modules
-- Sem aulas publicadas → falha published-lessons
-- Sem preço → falha price (severity warning)
-- Sem thumbnail title → falha thumbnail (warning)
+Na `ThemeSection`, o `useEffect([theme])` (linha 544) recria o objeto `currentTheme` toda vez que a prop `theme` muda. O fluxo problemático:
 
-**`useProductDraft`** (via `renderHook`, 4 cenários):
-- Inicia sem dirty
-- `updateField` marca dirty + atualiza draft
-- `markSaved` limpa dirty e seta lastSavedAt
-- `reset` limpa tudo
+1. Usuário seleciona template → `handleTemplateSelect` → `setCurrentTheme(novo)` + `onUpdate(novo)`
+2. `onUpdate` → pai faz `setLocalTheme(novo)` → prop `theme` muda (nova referência)
+3. `useEffect([theme])` dispara → `setCurrentTheme({...})` com novo objeto → re-render
+4. Quando o `saveThemeMutation` completa, faz `localThemeDirty.current = false` + `invalidateQueries` → refetch do DB → `theme` query retorna dados (possivelmente com `template_key` anterior) → `useEffect` no Store (linha 819-821) seta `localTheme` para dados do DB (dirty já é false) → ThemeSection recebe prop atualizada → `useEffect` reseta `currentTheme` → slider pula
 
-**`MODULE_TEMPLATES`** (3 cenários):
-- Todos têm key, label, moduleName, lessons
-- Sem keys duplicadas
-- Contém welcome, core, bonus
+Além disso, `handleTemplateSelect` não é memoizado com `useCallback`, gerando nova referência a cada render.
 
-## 2. Testes de integração — `src/test/course-builder-integration.test.tsx`
+## Correção
 
-Com mock de Supabase (padrão do projeto `vi.mock`):
+**Arquivo:** `src/components/storefront/ThemeSection.tsx`
 
-- Curso incompleto bloqueia publicação (errors count ≥ 4)
-- Curso completo não tem erros bloqueantes
-- Tab order = thumbnail → checkout → course → options
-- Navegação next/prev funciona corretamente
-- Separação error vs warning: erros passam com conteúdo mínimo, warnings falham sem hero/price/thumbnail
+1. No `useEffect([theme])`, guardar comparação: só chamar `setCurrentTheme` se os valores realmente mudaram (comparar `template_key`, cores, fontes) — evita re-renders espúrios
+2. Envolver `handleTemplateSelect` em `useCallback`
+3. Adicionar `key` estável no `CoverflowSlider` para evitar remontagem
 
-## 3. Documentação E2E — `docs/course-builder-e2e-scenarios.md`
+**Arquivo:** `src/pages/Store.tsx`
 
-Cenários documentados para automação futura (Playwright não configurado no projeto):
-- Fluxo completo: criar curso → módulo → aula → publicar
-- Bloqueio por checklist incompleto
-- Reorder módulo via DnD + persistência
-- Upload de vídeo/material
-- Erro de rede: reorder falha → rollback visual
-- Preview mobile sem overflow
+4. No `onSuccess` do `saveThemeMutation` (linha 994-998), NÃO fazer `invalidateQueries` imediatamente — só marcar dirty como false. O `invalidateQueries` pode causar refetch que sobrescreve o estado local. Alternativa: atrasar o reset do dirty para depois do refetch completar, ou não invalidar se `localTheme` já está definido.
 
-## 4. Release doc — `docs/course-builder-release.md`
+## Arquivos alterados
 
-**Release Checklist (10 itens):**
-1. Migrações SQL aplicadas sem erro
-2. RLS policies ativas em courses/modules/lessons/materials
-3. Testes unitários passam (`vitest`)
-4. Testes de integração passam
-5. Build sem erros TypeScript
-6. Fluxo manual: criar curso → módulo → aula → publicar
-7. Reorder DnD persiste corretamente
-8. Upload vídeo + material funciona
-9. Preview mobile sem overflow
-10. Telemetria: eventos `course_builder_opened` e `course_publish_success` chegam
-
-**Rollout gradual (useExperiment):**
-- 10%: `useExperiment("course_builder_v2")` variant B
-- 50%: ajustar peso no banco
-- 100%: remover flag
-
-**Rollback criteria:**
-- Erro rate publish > 5%
-- Tickets suporte +20%
-- ErrorBoundary crash > 1%
-
-**Métricas de sucesso:**
-- 90%+ cursos passam checklist na 1ª tentativa
-- Tempo criação < 15 min
-- Taxa publicação > 70% dos drafts
-
-## Arquivos criados
-
-| Arquivo | Conteúdo |
+| Arquivo | Mudança |
 |---|---|
-| `src/test/course-builder.test.ts` | 14 testes unitários |
-| `src/test/course-builder-integration.test.tsx` | 5 testes de integração |
-| `docs/course-builder-release.md` | Release checklist + rollout + rollback |
-| `docs/course-builder-e2e-scenarios.md` | Cenários E2E documentados |
+| `src/components/storefront/ThemeSection.tsx` | Guard no useEffect para comparar valores antes de setar; useCallback no handleTemplateSelect |
+| `src/pages/Store.tsx` | Remover invalidateQueries do onSuccess do saveThemeMutation (dados locais já são a fonte de verdade) |
 
-## O que NÃO muda
-- Código de produção
-- Configuração de CI existente
