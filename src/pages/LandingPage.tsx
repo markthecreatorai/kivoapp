@@ -339,13 +339,64 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Kivo. Todos os direitos reservados.</p>
-          <div className="flex gap-6">
-            <a href="/terms" className="hover:text-foreground">Termos</a>
-            <a href="/privacy" className="hover:text-foreground">Privacidade</a>
-            <a href="/pricing" className="hover:text-foreground">Preços</a>
+      <footer className="pt-16 pb-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-14">
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1 space-y-4">
+              <div className="flex items-center gap-2">
+                <img src={kivoSymbol} alt="" className="h-8 w-8" />
+                <span className="text-xl font-bold text-foreground">Kivo</span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
+                Plataforma all-in-one para creators venderem no digital.
+              </p>
+            </div>
+
+            {/* Navegue */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground text-sm">Navegue</h4>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li><a href="#features" className="hover:text-foreground transition-colors">Como Funciona</a></li>
+                <li><a href="#calculator" className="hover:text-foreground transition-colors">Calculadora</a></li>
+                <li><a href="#pricing" className="hover:text-foreground transition-colors">Preços</a></li>
+                <li><a href="#faq" className="hover:text-foreground transition-colors">Blog</a></li>
+              </ul>
+            </div>
+
+            {/* Suporte */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground text-sm">Suporte</h4>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li><a href="/terms" className="hover:text-foreground transition-colors">Termos de Uso</a></li>
+                <li><a href="/privacy" className="hover:text-foreground transition-colors">Políticas de Privacidade</a></li>
+                <li><a href="#faq" className="hover:text-foreground transition-colors">FAQ</a></li>
+              </ul>
+            </div>
+
+            {/* Social */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground text-sm">Siga nossas redes sociais</h4>
+              <div className="flex items-center gap-3">
+                {[
+                  { label: "Instagram", path: "M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2Zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5A4.25 4.25 0 0 0 7.75 20.5h8.5A4.25 4.25 0 0 0 20.5 16.25v-8.5A4.25 4.25 0 0 0 16.25 3.5ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm5.25-2a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z" },
+                  { label: "Facebook", path: "M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.563V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10Z" },
+                  { label: "YouTube", path: "M21.543 6.498C22 8.28 22 12 22 12s0 3.72-.457 5.502c-.254.985-.997 1.76-1.938 2.022C17.896 20 12 20 12 20s-5.893 0-7.605-.476c-.945-.266-1.687-1.04-1.938-2.022C2 15.72 2 12 2 12s0-3.72.457-5.502c.254-.985.997-1.76 1.938-2.022C6.107 4 12 4 12 4s5.896 0 7.605.476c.945.266 1.687 1.04 1.938 2.022ZM10 15.5l6-3.5-6-3.5v7Z" },
+                  { label: "LinkedIn", path: "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286ZM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065ZM7.119 20.452H3.555V9h3.564v11.452Z" },
+                ].map((s) => (
+                  <a key={s.label} href="#" aria-label={s.label} className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d={s.path} /></svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="border-t border-border pt-6">
+            <p className="text-center text-sm text-muted-foreground">
+              © Kivo Store. Todos os direitos reservados.
+            </p>
           </div>
         </div>
       </footer>
