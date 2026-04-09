@@ -57,17 +57,17 @@ export default function CreatorShowcase() {
               className="rounded-full border-border/60 text-foreground/80 bg-muted/50 px-4 py-1.5 text-sm font-medium gap-1.5"
             >
               <Star className="w-3.5 h-3.5 text-destructive fill-destructive" />
-              Plataforma para creators
+              Feito para quem cria
             </Badge>
 
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-[1.1] tracking-tight">
-              Os melhores criadores{" "}
+              Creators escolhem{" "}
               <br className="hidden md:block" />
-              já usam Kivo
+              Kivo por um motivo
             </h2>
 
             <p className="text-base md:text-lg text-muted-foreground max-w-md leading-relaxed">
-              Storefront, checkout, comunidade, cursos, email e afiliados, sem pagar por 5 ferramentas separadas.
+              Mais controle, menos ferramentas, maior margem. Quem opera com Kivo não volta atrás.
             </p>
 
             <a

@@ -27,21 +27,21 @@ const GALLERY_ITEMS: GalleryItem[] = [
     title: "Rafaela Linhares",
     role: "Creator",
     imageUrl: creator1,
-    quote: "Fazia muito tempo que eu procurava uma plataforma pra ter minha própria comunidade e gerenciar produtos, com a Kivo ficou muito mais fácil",
+    quote: "Finalmente tenho controle total sobre o meu negócio. Comunidade, produtos e pagamentos, tudo num painel só.",
   },
   {
     id: "2",
     title: "Carlos Melo",
     role: "Creator",
     imageUrl: creator2,
-    quote: "Migrei da Hotmart e em 2 semanas já tinha tudo rodando. A economia nas taxas foi absurda.",
+    quote: "Saí da Hotmart em 3 dias e economizei mais de R$4.000 por mês em taxas. Não volto nunca mais.",
   },
   {
     id: "3",
     title: "Sarah Rodrigues",
     role: "Creator",
     imageUrl: creator3,
-    quote: "O checkout converte muito mais e o suporte é incrível. Recomendo de olhos fechados.",
+    quote: "Meu checkout converteu 38% mais no primeiro mês. O suporte resolve tudo em minutos.",
   },
 ];
 
@@ -55,19 +55,19 @@ function getABVariant(): "A" | "B" {
 }
 
 const HEADLINES = {
-  A: { title: "Tudo que você precisa para vender digital. Em um só lugar.", sub: "Storefront, checkout, comunidade, cursos, email e afiliados — sem pagar por 5 ferramentas separadas." },
-  B: { title: "Pague até 60% menos em taxas que Hotmart e Kiwify.", sub: "A plataforma all-in-one que devolve mais receita para o creator. Comece grátis, sem cartão." },
+  A: { title: "Monetize sua audiência sem depender de 5 ferramentas.", sub: "Loja, checkout, comunidade, cursos e email — num ecossistema só. Comece grátis." },
+  B: { title: "Pague até 60% menos em taxas que Hotmart e Kiwify.", sub: "O ecossistema que devolve mais receita para quem cria. Comece grátis, sem cartão." },
 };
 
 
 /* ── FAQ ── */
 const FAQ_ITEMS = [
-  { q: "Preciso de cartão de crédito para começar?", a: "Não. O plano Free é grátis de verdade, sem necessidade de cartão." },
-  { q: "Como funciona o checkout?", a: "Integrado com Pagar.me — aceita PIX, cartão e boleto. Você recebe na sua conta em poucos dias." },
-  { q: "Posso migrar de outra plataforma?", a: "Sim. Você pode importar seus produtos e configurar tudo em menos de 30 minutos." },
-  { q: "Tem suporte em português?", a: "Claro! Suporte por chat e email, 100% em português." },
-  { q: "Quais formas de pagamento são aceitas?", a: "PIX, cartão de crédito (até 12x) e boleto bancário. Tudo integrado no checkout." },
-  { q: "A Kivo é realmente segura?", a: "Sim. Usamos criptografia de ponta a ponta, infraestrutura na AWS e conformidade com LGPD." },
+  { q: "Preciso de cartão de crédito para começar?", a: "Não. O plano Free funciona sem cartão e sem pegadinha. Você só faz upgrade quando quiser." },
+  { q: "Como funciona o checkout?", a: "Integrado com Pagar.me — aceita PIX, cartão e boleto. O dinheiro cai na sua conta em até 2 dias úteis." },
+  { q: "Consigo migrar de outra plataforma?", a: "Sim. A maioria dos creators migra em menos de 30 minutos. Se precisar, a equipe ajuda na transição." },
+  { q: "O suporte é em português?", a: "100%. Chat e email em português, com tempo médio de resposta abaixo de 10 minutos." },
+  { q: "Quais formas de pagamento aceitas?", a: "PIX, cartão de crédito (até 12x) e boleto bancário. Tudo nativo no checkout, sem integração extra." },
+  { q: "A Kivo é segura para operar?", a: "Infraestrutura AWS, criptografia de ponta a ponta e conformidade total com a LGPD." },
 ];
 
 function FAQSection() {
@@ -75,8 +75,8 @@ function FAQSection() {
   return (
     <section className="py-20">
       <div className="max-w-3xl mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2">Perguntas frequentes</h2>
-        <p className="text-center text-muted-foreground mb-10">Veja como eles usam pra melhorar seus negócios!</p>
+        <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2">Tire suas dúvidas</h2>
+        <p className="text-center text-muted-foreground mb-10">Respostas rápidas para você decidir com confiança.</p>
         <div className="space-y-3">
           {FAQ_ITEMS.map((item, i) => (
             <button
@@ -138,10 +138,10 @@ export default function LandingPage() {
             <span className="text-xl font-bold text-foreground">Kivo</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-foreground/70 font-medium">
-            <a href="#mission" className="hover:text-foreground transition-colors">Missão</a>
+            <a href="#mission" className="hover:text-foreground transition-colors">Por quê</a>
             <a href="#features" className="hover:text-foreground transition-colors">Soluções</a>
             <a href="#calculator" className="hover:text-foreground transition-colors">Taxas</a>
-            <a href="#faq" className="hover:text-foreground transition-colors">Ajuda</a>
+            <a href="#faq" className="hover:text-foreground transition-colors">Dúvidas</a>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" className="text-foreground/70 font-medium" onClick={() => navigate("/login")}>Entrar</Button>
@@ -160,13 +160,17 @@ export default function LandingPage() {
             <div className="space-y-6">
               <Badge variant="outline" className="rounded-full border-border/60 text-foreground/80 bg-background px-4 py-1.5 text-sm font-medium gap-1.5">
                 <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-                Plataforma para creators
+                O ecossistema do creator
               </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-[3.4rem] font-bold text-foreground leading-[1.1] tracking-tight">
-                Tudo que você precisa para vender no digital em um só lugar.
+                Monetize sua audiência{" "}
+                <br className="hidden md:block" />
+                sem depender de{" "}
+                <br className="hidden md:block" />
+                5 ferramentas.
               </h1>
               <p className="text-base md:text-lg text-foreground/60 max-w-lg leading-relaxed">
-                Storefront, checkout, comunidade, cursos, email e afiliados, sem pagar por 5 ferramentas separadas.
+                Loja, checkout, comunidade, cursos e email — num ecossistema só. Comece grátis, escale sem limites.
               </p>
               <div className="pt-2">
                 <Button
@@ -174,7 +178,7 @@ export default function LandingPage() {
                   className="pill-radius bg-destructive hover:bg-destructive/90 text-destructive-foreground text-base font-semibold px-10 py-6 gap-2 shadow-lg shadow-destructive/20"
                   onClick={() => { ctaClick("hero_primary"); navigate("/signup?utm_source=landing&utm_medium=hero&utm_campaign=ab_" + variant); }}
                 >
-                  Começar agora
+                  Criar minha conta grátis
                 </Button>
               </div>
             </div>
@@ -200,12 +204,12 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 lg:p-20 max-w-4xl">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.1] mb-4">
-            Tudo que você precisa{" "}
+            Seu negócio digital{" "}
             <br className="hidden md:block" />
-            para vender no digital
+            merece infraestrutura de verdade
           </h2>
           <p className="text-white/70 text-base md:text-lg max-w-lg leading-relaxed">
-            Storefront, checkout, comunidade, cursos, email e afiliados, sem pagar por 5 ferramentas separadas.
+            Chega de improvisar com ferramentas soltas. Centralize tudo e foque no que importa: criar.
           </p>
         </div>
       </section>
@@ -220,17 +224,17 @@ export default function LandingPage() {
       <section id="features" className="py-20 bg-muted/30 pt-0">
         <div className="max-w-6xl mx-auto px-4 pt-[48px]">
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Tudo em uma plataforma</h2>
-            <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Pare de pagar por 5 ferramentas separadas. Tenha tudo integrado.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Cada peça do seu negócio, conectada</h2>
+            <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Ferramentas que funcionam juntas desde o primeiro clique.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: Store, title: "Storefront + Checkout", desc: "Loja bonita e checkout otimizado para conversão. PIX, cartão e boleto." },
-              { icon: Users, title: "Comunidade (Circle)", desc: "Comunidade integrada estilo Skool. Gamificação, eventos e cursos." },
-              { icon: CalendarCheck, title: "Agendamentos", desc: "Venda mentorias e consultorias com booking integrado." },
-              { icon: Mail, title: "Email Marketing", desc: "Sequências automáticas, carrinho abandonado e campanhas segmentadas." },
-              { icon: BarChart3, title: "Analytics Completo", desc: "Funil de conversão, coorte de clientes e dashboard executivo." },
-              { icon: Shield, title: "Fiscal Automático", desc: "Emissão automática de NFS-e e fechamento mensal simplificado." },
+              { icon: Store, title: "Storefront + Checkout", desc: "Vitrine profissional e checkout otimizado. PIX, cartão e boleto numa única experiência." },
+              { icon: Users, title: "Comunidade Integrada", desc: "Engaje sua audiência com feed, gamificação, eventos ao vivo e cursos internos." },
+              { icon: CalendarCheck, title: "Agenda & Mentorias", desc: "Booking nativo para consultorias. Seus clientes agendam e pagam direto." },
+              { icon: Mail, title: "Email & Automações", desc: "Sequências inteligentes, recuperação de carrinho e campanhas segmentadas." },
+              { icon: BarChart3, title: "Métricas em Tempo Real", desc: "Funil completo, coorte de clientes e dashboard executivo num só lugar." },
+              { icon: Shield, title: "Fiscal Automático", desc: "NFS-e emitida automaticamente. Fechamento mensal sem planilha." },
             ].map((f, i) => (
               <Card key={i} className="card-radius border bg-card hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
@@ -256,11 +260,11 @@ export default function LandingPage() {
       {/* Final CTA */}
       <section className="py-20 pt-[40px] pb-[100px]">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Comece usar a Kivo ainda hoje</h2>
-          <p className="text-muted-foreground mb-8">Instalação e configuração prática e rápida</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Pronto para escalar seu negócio?</h2>
+          <p className="text-muted-foreground mb-8">Crie sua conta em 30 segundos. Sem cartão, sem contrato.</p>
           <Button size="lg" className="pill-radius bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-2 text-base px-8"
             onClick={() => { ctaClick("footer_cta"); navigate("/signup?utm_source=landing&utm_medium=footer"); }}>
-            Começar com 14 dias grátis
+            Começar agora — é grátis
           </Button>
         </div>
       </section>
@@ -276,7 +280,7 @@ export default function LandingPage() {
                 <span className="text-xl font-bold text-foreground">Kivo</span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
-                Plataforma all-in-one para creators venderem no digital.
+                O ecossistema completo para creators monetizarem sua audiência.
               </p>
             </div>
 

@@ -63,15 +63,15 @@ export default function ValueProposition() {
           {/* Right — Copy */}
           <div className="space-y-6 lg:space-y-8 text-center lg:text-left">
             <h2 className="text-3xl md:text-4xl lg:text-[2.8rem] font-bold text-foreground leading-[1.15] tracking-tight">
-              Tudo que você precisa{" "}
+              Substitua 5 assinaturas{" "}
               <br className="hidden md:block" />
-              para vender no digital{" "}
+              por uma plataforma{" "}
               <br className="hidden md:block" />
-              em um só lugar.
+              que cresce com você.
             </h2>
 
             <p className="text-base md:text-lg text-muted-foreground max-w-md leading-relaxed mx-auto lg:mx-0">
-              Storefront, checkout, comunidade, cursos, email e afiliados, sem pagar por 5 ferramentas separadas.
+              Loja, checkout, comunidade, cursos, email e afiliados — conectados nativamente num único painel.
             </p>
 
             <Button
@@ -79,7 +79,7 @@ export default function ValueProposition() {
               className="pill-radius bg-destructive hover:bg-destructive/90 text-destructive-foreground text-base font-semibold px-10 py-6 shadow-lg shadow-destructive/20 hover:shadow-xl hover:shadow-destructive/30 hover:scale-[1.02] transition-all duration-300"
               onClick={() => navigate("/signup?utm_source=landing&utm_medium=value_prop")}
             >
-              Solicitar informações
+              Solicitar acesso
             </Button>
           </div>
         </div>
