@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/tracking";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
