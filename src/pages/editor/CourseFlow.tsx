@@ -69,6 +69,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { Switch } from "@/components/ui/switch";
 import { ImageUploadField } from "@/components/course/ImageUploadField";
 import { BrandingColorPicker } from "@/components/course/BrandingColorPicker";
 import { CourseMobilePreview } from "@/components/course/CourseMobilePreview";
