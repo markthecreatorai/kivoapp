@@ -100,11 +100,27 @@ export function usePlanLimits(): PlanInfo {
       if (data?.plan_code) {
         const codeMap: Record<string, PlanType> = { creator: "CREATOR", "creator-pro": "CREATOR_PRO", free: "FREE" };
         setRealPlan(codeMap[data.plan_code] || "FREE");
-      } else {
-        // Fallback to workspace metadata
-        const metaPlan = ((currentWorkspace as any)?.plan as PlanType);
-        setRealPlan(metaPlan || "FREE");
+        return;
       }
+
+      // Fallback: workspace.plan_type (from Asaas integration)
+      const { data: ws } = await supabase
+        .from("workspaces")
+        .select("plan_type")
+        .eq("id", currentWorkspace.id)
+        .single();
+
+      if (ws?.plan_type) {
+        const typeMap: Record<string, PlanType> = {
+          creator: "CREATOR", "creator-pro": "CREATOR_PRO", pro: "CREATOR_PRO", free: "FREE",
+        };
+        setRealPlan(typeMap[ws.plan_type] || "FREE");
+        return;
+      }
+
+      // Final fallback
+      const metaPlan = ((currentWorkspace as any)?.plan as PlanType);
+      setRealPlan(metaPlan || "FREE");
     };
     fetchPlan();
   }, [currentWorkspace]);
