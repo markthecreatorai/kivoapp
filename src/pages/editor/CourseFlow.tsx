@@ -1135,14 +1135,8 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
       <SaveStatusIndicator status={status} />
 
       {/* Section 1: Page Description */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">1</span>
-            <CardTitle className="text-base">Page Description</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <StepCard stepNumber={1} title="Page Description" completed={!!title && !!heroUrl}>
+        <div className="space-y-5">
           <ImageUploadField
             value={heroUrl || null}
             onChange={(url) => { setHeroUrl(url || ""); update({ hero_image_url: url }); }}
@@ -1174,18 +1168,12 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
               placeholder="Describe what students will learn..."
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
       {/* Section 2: Customize Branding */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">2</span>
-            <CardTitle className="text-base">Customize Branding</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <StepCard stepNumber={2} title="Customize Branding" completed={!!bgColor && !!hlColor}>
+        <div className="space-y-5">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Title Font</Label>
             <Select value={titleFont} onValueChange={(v) => { setTitleFont(v); update({ branding_title_font: v }); }}>
@@ -1201,8 +1189,8 @@ function EditPageSubView({ course, setSaving, onBack }: { course: Course; setSav
             <BrandingColorPicker label="Background Color" value={bgColor} onChange={(c) => { setBgColor(c); update({ branding_bg_color: c }); }} />
             <BrandingColorPicker label="Highlight Color" value={hlColor} onChange={(c) => { setHlColor(c); update({ branding_highlight_color: c }); }} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
       {/* Footer actions */}
       <div className="flex justify-end gap-3 pt-2">
