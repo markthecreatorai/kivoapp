@@ -14,6 +14,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SuspenseWithTimeout } from "@/components/SuspenseWithTimeout";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { clearChunkReloadFlag } from "@/lib/lazyWithRetry";
 
 // Lazy-loaded pages
 const Login = lazyWithRetry(() => import("./pages/Login"));
@@ -178,12 +179,15 @@ function usePrefetchRoutes() {
 /** Persistent dashboard shell — sidebar/topbar mount once, pages swap via Outlet */
 function DashboardShell() {
   usePrefetchRoutes();
+  useEffect(() => { clearChunkReloadFlag(); }, []);
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <Suspense fallback={<PageSkeleton />}>
-          <Outlet />
-        </Suspense>
+        <ErrorBoundary isRouteLevel>
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </DashboardLayout>
     </ProtectedRoute>
   );
@@ -203,9 +207,11 @@ function AdminShell() {
     <ProtectedRoute>
       <AdminRoute>
         <DashboardLayout>
-          <Suspense fallback={<PageSkeleton />}>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary isRouteLevel>
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </DashboardLayout>
       </AdminRoute>
     </ProtectedRoute>
@@ -308,7 +314,7 @@ const App = () => (
                 <Route path="/circles/:slug/plans" element={<CommunitySelectPlan />} />
 
                 {/* Authenticated circle pages — persistent CircleLayout with Outlet */}
-                <Route element={<CircleLayout />}>
+                <Route element={<ErrorBoundary isRouteLevel><CircleLayout /></ErrorBoundary>}>
                   <Route path="/circles/:slug/feed" element={<CircleFeed />} />
                   <Route path="/circles/:slug/spaces/:spaceSlug" element={<CircleFeed />} />
                   <Route path="/circles/:slug/members" element={<CircleMembers />} />
@@ -360,7 +366,7 @@ const App = () => (
                 <Route path="/book/:productSlug" element={<GlobalTrackingWrapper><BookAppointment /></GlobalTrackingWrapper>} />
                 <Route path="/affiliate/apply/:workspaceSlug" element={<GlobalTrackingWrapper><AffiliateApply /></GlobalTrackingWrapper>} />
                 <Route path="/affiliate/dashboard" element={<GlobalTrackingWrapper><AffiliateDashboard /></GlobalTrackingWrapper>} />
-                <Route path="/:slug" element={<GlobalTrackingWrapper><PublicStorefront /></GlobalTrackingWrapper>} />
+                <Route path="/:slug" element={<ErrorBoundary isRouteLevel><GlobalTrackingWrapper><PublicStorefront /></GlobalTrackingWrapper></ErrorBoundary>} />
                 <Route path="*" element={<GlobalTrackingWrapper><NotFound /></GlobalTrackingWrapper>} />
               </Routes>
               </SuspenseWithTimeout>

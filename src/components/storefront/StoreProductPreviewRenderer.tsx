@@ -52,7 +52,7 @@ export function StoreProductPreviewRenderer({
   showContext = true,
 }: StoreProductPreviewRendererProps) {
   
-  const socialEntries = Object.entries(profile.socialLinks).filter(([_, url]) => url);
+  const socialEntries = Object.entries(profile.socialLinks || {}).filter(([_, url]) => url);
 
   return (
     <div 

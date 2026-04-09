@@ -29,11 +29,14 @@ function isChunkError(msg: string): boolean {
   return (
     lower.includes("failed to fetch dynamically imported module") ||
     lower.includes("loading chunk") ||
-    lower.includes("loading css chunk")
+    lower.includes("loading css chunk") ||
+    lower.includes("unable to preload") ||
+    lower.includes("error loading dynamically imported module")
   );
 }
 
 export function installGlobalErrorHandlers(): void {
+  // Standard window.onerror
   window.onerror = (message, source, lineno, colno, error) => {
     const msg = typeof message === "string" ? message : "Unknown error";
     reportAppError({
@@ -47,6 +50,7 @@ export function installGlobalErrorHandlers(): void {
     }
   };
 
+  // Unhandled promise rejections
   window.onunhandledrejection = (event: PromiseRejectionEvent) => {
     const error = event.reason;
     const msg = error instanceof Error ? error.message : String(error);
@@ -60,4 +64,20 @@ export function installGlobalErrorHandlers(): void {
       showCriticalFallback();
     }
   };
+
+  // Vite-specific preload error handler
+  window.addEventListener("vite:preloadError", (event: Event) => {
+    const customEvent = event as CustomEvent;
+    const error = customEvent?.detail?.error;
+    const msg = error instanceof Error ? error.message : "vite:preloadError";
+
+    reportAppError({
+      message: msg,
+      stack: error instanceof Error ? error.stack : undefined,
+      context: "vite:preloadError",
+    });
+
+    // Prevent default Vite error handling — our lazyWithRetry handles recovery
+    event.preventDefault();
+  });
 }

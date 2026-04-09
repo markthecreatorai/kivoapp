@@ -285,7 +285,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
     }
   };
 
-  const socialLinks = storefront.social_links || {};
+  const socialLinks: Record<string, string> = (typeof storefront.social_links === 'object' && storefront.social_links !== null) ? storefront.social_links as Record<string, string> : {};
 
   return (
     <div 
