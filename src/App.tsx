@@ -14,6 +14,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SuspenseWithTimeout } from "@/components/SuspenseWithTimeout";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { clearChunkReloadFlag } from "@/lib/lazyWithRetry";
 
 // Lazy-loaded pages
 const Login = lazyWithRetry(() => import("./pages/Login"));
