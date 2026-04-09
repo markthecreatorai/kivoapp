@@ -8436,6 +8436,8 @@ export type Database = {
       }
     }
     Functions: {
+      batch_reorder_lessons: { Args: { items: Json }; Returns: undefined }
+      batch_reorder_modules: { Args: { items: Json }; Returns: undefined }
       calculate_payout_risk: {
         Args: { p_workspace_id: string }
         Returns: {

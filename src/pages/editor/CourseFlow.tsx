@@ -932,8 +932,9 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
 
   const [localModules, setLocalModules] = useState<CourseModule[]>(serverModules);
   const [localLessons, setLocalLessons] = useState<CourseLesson[]>(serverLessons);
-  useEffect(() => { setLocalModules(serverModules); }, [serverModules]);
-  useEffect(() => { setLocalLessons(serverLessons); }, [serverLessons]);
+  const isReorderingRef = useRef(false);
+  useEffect(() => { if (!isReorderingRef.current) setLocalModules(serverModules); }, [serverModules]);
+  useEffect(() => { if (!isReorderingRef.current) setLocalLessons(serverLessons); }, [serverLessons]);
 
   const createModule = useCreateModule();
   const updateModule = useUpdateModule();
@@ -1144,9 +1145,13 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
     if (oldIdx === -1 || newIdx === -1) return;
     const reordered = arrayMove(localModules, oldIdx, newIdx).map((m, i) => ({ ...m, position: i }));
     setLocalModules(reordered);
+    isReorderingRef.current = true;
     reorderModules.mutate(
       { courseId: course.id, order: reordered.map((m) => ({ id: m.id, position: m.position })) },
-      { onError: () => { setLocalModules(serverModules); toast.error("Erro ao reordenar"); } }
+      {
+        onSettled: () => { isReorderingRef.current = false; },
+        onError: () => { setLocalModules(serverModules); toast.error("Erro ao reordenar"); },
+      }
     );
   };
 
@@ -1162,13 +1167,23 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
       const others = prev.filter((l) => l.module_id !== moduleId);
       return [...others, ...reordered];
     });
+    isReorderingRef.current = true;
     reorderLessons.mutate(
       { moduleId, order: reordered.map((l) => ({ id: l.id, position: l.position })) },
-      { onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao reordenar"); } }
+      {
+        onSettled: () => { isReorderingRef.current = false; },
+        onError: () => { setLocalLessons(serverLessons); toast.error("Erro ao reordenar"); },
+      }
     );
   };
 
   return (
+    <ErrorBoundary fallback={
+      <div className="p-8 text-center max-w-3xl">
+        <p className="text-sm text-destructive mb-2">Erro ao carregar o conteúdo do curso.</p>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Recarregar página</Button>
+      </div>
+    }>
     <div className="max-w-3xl space-y-6 animate-in fade-in">
       {/* ── Section 1: Course Homepage ── */}
       <StepCard stepNumber={1} title="Course Homepage" description="Start by giving your course a title, description, and image." completed={!!course.title && !!course.hero_image_url}>
@@ -1426,6 +1441,7 @@ function ContentTab({ course, setSaving, subView, setSubView }: { course: Course
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </ErrorBoundary>
   );
 }
 
