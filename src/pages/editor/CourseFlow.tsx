@@ -531,10 +531,13 @@ function useAutosave(course: Course, setSaving: (v: boolean) => void) {
           setStatus("saved");
           setSaving(false);
           setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 2000);
+          const merged = { ...course, ...payload } as Course;
           // Sync prices if price-related fields changed
           if ("checkout_price_cents" in (payload || {}) || "checkout_discount_price_cents" in (payload || {}) || "checkout_price_type" in (payload || {})) {
-            syncCoursePricesToDb({ ...course, ...payload } as Course);
+            syncCoursePricesToDb(merged);
           }
+          // Always sync display fields to products table
+          syncCourseToProduct(merged);
         },
         onError: () => {
           setStatus("error");
