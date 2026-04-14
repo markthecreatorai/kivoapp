@@ -259,6 +259,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           setSaving(false);
           isDirtyRef.current = false;
           trackEvent("course_publish_success", { course_id: course.id });
+          syncCoursePricesToDb(course);
         },
         onError: () => {
           showToast("error", "Erro ao publicar");
@@ -513,6 +514,10 @@ function useAutosave(course: Course, setSaving: (v: boolean) => void) {
           setStatus("saved");
           setSaving(false);
           setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 2000);
+          // Sync prices if price-related fields changed
+          if ("checkout_price_cents" in (payload || {}) || "checkout_discount_price_cents" in (payload || {}) || "checkout_price_type" in (payload || {})) {
+            syncCoursePricesToDb({ ...course, ...payload } as Course);
+          }
         },
         onError: () => {
           setStatus("error");
