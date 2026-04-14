@@ -268,6 +268,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
       return;
     }
     setSaving(true);
+    // Flush any pending autosave before publishing
     updateCourse.mutate(
       { id: course.id, status: "published" },
       {
@@ -277,6 +278,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           isDirtyRef.current = false;
           trackEvent("course_publish_success", { course_id: course.id });
           syncCoursePricesToDb(course);
+          syncCourseToProduct(course);
         },
         onError: () => {
           showToast("error", "Erro ao publicar");

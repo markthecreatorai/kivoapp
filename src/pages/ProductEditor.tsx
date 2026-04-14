@@ -124,21 +124,7 @@ export default function ProductEditor() {
 
           <div className="flex-1" />
           
-          <div className="hidden sm:flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              className="gap-2"
-              onClick={() => {
-                // To be wired via global store or ref later if global save is needed outside flow component
-                toast.success("Rascunho salvo!");
-              }}
-            >
-              <Save className="h-4 w-4" />
-              Salvar
-            </Button>
-          </div>
+          {/* Save button removed — each flow handles its own autosave */}
         </div>
       </div>
 
