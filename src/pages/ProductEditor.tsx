@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Rocket, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import CollectEmailsFlow from "./editor/CollectEmailsFlow";
@@ -124,21 +124,7 @@ export default function ProductEditor() {
 
           <div className="flex-1" />
           
-          <div className="hidden sm:flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              className="gap-2"
-              onClick={() => {
-                // To be wired via global store or ref later if global save is needed outside flow component
-                toast.success("Rascunho salvo!");
-              }}
-            >
-              <Save className="h-4 w-4" />
-              Salvar
-            </Button>
-          </div>
+          {/* Save button removed — each flow handles its own autosave */}
         </div>
       </div>
 

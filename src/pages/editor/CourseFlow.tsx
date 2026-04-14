@@ -123,6 +123,23 @@ async function syncCoursePricesToDb(course: Course) {
   }
 }
 
+// ── Sync course display fields to products table so storefront/checkout stay in sync ──
+async function syncCourseToProduct(course: Course) {
+  if (!course.product_id) return;
+  await supabase
+    .from("products")
+    .update({
+      name: course.title || "Sem título",
+      thumbnail_url: course.thumbnail_image || course.hero_image_url || null,
+      short_description: course.thumbnail_subtitle || course.checkout_description || null,
+      checkout_image: course.checkout_image || null,
+      checkout_description: course.checkout_description || null,
+      listing_button_text: course.thumbnail_cta || null,
+      thumbnail_style: course.thumbnail_style || "preview",
+    })
+    .eq("id", course.product_id);
+}
+
 // ── Standardized toast helper ──
 function showToast(type: "success" | "error" | "warning", message: string, description?: string) {
   const durations = { success: 3000, error: 5000, warning: 4000 };
@@ -237,6 +254,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           setSaving(false);
           isDirtyRef.current = false;
           trackEvent("course_draft_saved", { course_id: course.id });
+          syncCourseToProduct(course);
         },
         onError: () => { showToast("error", "Erro ao salvar"); setSaving(false); },
       }
@@ -251,6 +269,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
       return;
     }
     setSaving(true);
+    // Flush any pending autosave before publishing
     updateCourse.mutate(
       { id: course.id, status: "published" },
       {
@@ -260,6 +279,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           isDirtyRef.current = false;
           trackEvent("course_publish_success", { course_id: course.id });
           syncCoursePricesToDb(course);
+          syncCourseToProduct(course);
         },
         onError: () => {
           showToast("error", "Erro ao publicar");
@@ -514,10 +534,13 @@ function useAutosave(course: Course, setSaving: (v: boolean) => void) {
           setStatus("saved");
           setSaving(false);
           setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 2000);
+          const merged = { ...course, ...payload } as Course;
           // Sync prices if price-related fields changed
           if ("checkout_price_cents" in (payload || {}) || "checkout_discount_price_cents" in (payload || {}) || "checkout_price_type" in (payload || {})) {
-            syncCoursePricesToDb({ ...course, ...payload } as Course);
+            syncCoursePricesToDb(merged);
           }
+          // Always sync display fields to products table
+          syncCourseToProduct(merged);
         },
         onError: () => {
           setStatus("error");
@@ -1718,6 +1741,7 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           toast.success("Curso publicado com sucesso!");
           setSaving(false);
           syncCoursePricesToDb(course);
+          syncCourseToProduct(course);
         },
         onError: (err: any) => {
           toast.error("Erro ao publicar", { description: err?.message || "Tente novamente." });
