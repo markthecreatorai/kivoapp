@@ -1717,6 +1717,7 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           setCourseStatus("published");
           toast.success("Curso publicado com sucesso!");
           setSaving(false);
+          syncCoursePricesToDb(course);
         },
         onError: (err: any) => {
           toast.error("Erro ao publicar", { description: err?.message || "Tente novamente." });
