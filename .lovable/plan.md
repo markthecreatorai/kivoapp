@@ -1,27 +1,37 @@
 
 
-## Fix: Sincronizar ordem de produtos entre preview e loja publica
+## Fix: Sincronizar preços entre o editor de curso e o checkout
 
-### Problema
-A reordenacao por drag-and-drop no editor da loja (`Store.tsx`) atualiza apenas o estado local — nunca persiste a ordem no banco de dados. A coluna `storefront_order` ja existe na tabela `products` mas nao e utilizada em nenhum lugar do codigo. O `PublicStorefront.tsx` busca produtos sem ordenacao especifica.
+### Problema Identificado
 
-### Plano
+O editor de curso (`CourseFlow.tsx`) salva preços na tabela `courses.checkout_price_cents` (em centavos), mas **nunca sincroniza** com a tabela `prices` (em reais). O checkout (`Checkout.tsx`) lê exclusivamente da tabela `prices`.
 
-**1. Store.tsx — Persistir a ordem ao reordenar**
-- No callback `onReorder`, alem de atualizar o estado local, salvar a nova ordem no banco via `supabase.from('products').update({ storefront_order: index }).eq('id', product.id)` para cada produto reordenado
-- Usar o debounce existente ou salvar imediatamente apos o drag terminar
+**Dados atuais no banco** (produto "sdadsa"):
+- `courses.checkout_price_cents` = 243 (R$ 2,43)
+- `prices.amount` = 297.00 (R$ 297,00) — valor antigo/desatualizado
 
-**2. Store.tsx — Buscar produtos ordenados por `storefront_order`**
-- Alterar a query de fetch de produtos de `.order("created_at", { ascending: false })` para `.order("storefront_order", { ascending: true }).order("created_at", { ascending: false })`
+Isso explica por que o checkout mostra valores diferentes do que foi configurado no editor.
 
-**3. PublicStorefront.tsx — Ordenar produtos por `storefront_order`**
-- Adicionar `storefront_order` ao SELECT da query de produtos
-- Ordenar os resultados por `storefront_order` ASC, depois `created_at` DESC como fallback
+### Plano de Correção
 
-**4. StorefrontPreview.tsx — Garantir consistencia**
-- Como o preview recebe `externalProducts` do Store.tsx (ja ordenado localmente), nenhuma alteracao necessaria aqui
+**1. `src/pages/editor/CourseFlow.tsx` — Sincronizar preço com tabela `prices` ao salvar**
 
-### Arquivos alterados
-- `src/pages/Store.tsx` — persistir ordem + ordenar query
-- `src/pages/PublicStorefront.tsx` — adicionar storefront_order ao fetch e ordenar
+Quando o usuário altera `checkout_price_cents` ou `checkout_discount_price_cents`, além de atualizar a tabela `courses`, também atualizar a tabela `prices`:
+- `prices.amount` = `checkout_price_cents / 100`
+- `prices.compare_at_amount` = se houver desconto, o preço original vira `compare_at_amount` e o desconto vira `amount`
+- `prices.type` = `"ONE_TIME"` ou `"RECURRING"` conforme `checkout_price_type`
+
+A sincronização será feita no `handlePublish` e no autosave do checkout tab, garantindo que a tabela `prices` reflita sempre o último estado do editor.
+
+**2. `src/pages/editor/CourseFlow.tsx` — Sincronizar na publicação**
+
+No `handlePublish`, antes de atualizar o status do curso, upsert na tabela `prices` com:
+```
+amount = checkout_price_cents / 100
+compare_at_amount = (se desconto ativo) checkout_price_cents / 100, amount = checkout_discount_price_cents / 100
+type = priceType === "subscription" ? "RECURRING" : "ONE_TIME"
+```
+
+### Arquivos Alterados
+- `src/pages/editor/CourseFlow.tsx` — Adicionar sync com tabela `prices` ao salvar preço e ao publicar
 
