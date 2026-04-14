@@ -423,6 +423,10 @@ function AbaLoja({
     if (oldIndex === -1 || newIndex === -1) return;
     const reordered = arrayMove(products, oldIndex, newIndex);
     onReorder(reordered);
+    // Persist new order to database
+    reordered.forEach((p: any, index: number) => {
+      supabase.from("products").update({ storefront_order: index }).eq("id", p.id).then();
+    });
   };
 
   return (
@@ -797,6 +801,7 @@ export default function Store() {
         .select("*, prices(*)")
         .eq("workspace_id", currentWorkspace.id)
         .is("deleted_at", null)
+        .order("storefront_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
