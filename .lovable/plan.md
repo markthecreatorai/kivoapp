@@ -1,55 +1,27 @@
 
 
-## Auditoria: Preview vs Storefront Pública - Produtos Desincronizados
+## Fix: Sincronizar ordem de produtos entre preview e loja publica
 
-### Problema Identificado
+### Problema
+A reordenacao por drag-and-drop no editor da loja (`Store.tsx`) atualiza apenas o estado local — nunca persiste a ordem no banco de dados. A coluna `storefront_order` ja existe na tabela `products` mas nao e utilizada em nenhum lugar do codigo. O `PublicStorefront.tsx` busca produtos sem ordenacao especifica.
 
-Existem **duas fontes de produtos** que divergem entre o preview e a pagina publica:
+### Plano
 
-| Contexto | O que mostra |
-|---|---|
-| **Preview (Store.tsx)** | Blocos + todos os produtos PUBLISHED do workspace que nao estao em blocos |
-| **Pagina publica (PublicStorefront.tsx)** | Apenas produtos referenciados em blocos |
+**1. Store.tsx — Persistir a ordem ao reordenar**
+- No callback `onReorder`, alem de atualizar o estado local, salvar a nova ordem no banco via `supabase.from('products').update({ storefront_order: index }).eq('id', product.id)` para cada produto reordenado
+- Usar o debounce existente ou salvar imediatamente apos o drag terminar
 
-Resultado: o preview mostra 3 produtos, mas a pagina publica mostra apenas 1 (o outro bloco referencia um produto que foi excluido: `1d36e818-...`).
+**2. Store.tsx — Buscar produtos ordenados por `storefront_order`**
+- Alterar a query de fetch de produtos de `.order("created_at", { ascending: false })` para `.order("storefront_order", { ascending: true }).order("created_at", { ascending: false })`
 
-### Dados Atuais no Banco
+**3. PublicStorefront.tsx — Ordenar produtos por `storefront_order`**
+- Adicionar `storefront_order` ao SELECT da query de produtos
+- Ordenar os resultados por `storefront_order` ASC, depois `created_at` DESC como fallback
 
-- **3 produtos PUBLISHED**: "Guia completo...", "Link de Afiliado Kivo", "sdadsa"
-- **3 blocos**: 1 bloco de produto com ID inexistente, 1 link vazio, 1 bloco de produto valido
-- Apenas "Guia completo" aparece na pagina publica; os outros 2 produtos publicados nao aparecem
+**4. StorefrontPreview.tsx — Garantir consistencia**
+- Como o preview recebe `externalProducts` do Store.tsx (ja ordenado localmente), nenhuma alteracao necessaria aqui
 
-### Plano de Correcao
-
-**1. PublicStorefront: buscar e exibir todos os produtos publicados do workspace**
-
-Alinhar o comportamento da pagina publica com o preview. Alem dos produtos referenciados em blocos, buscar TODOS os produtos PUBLISHED do workspace e exibi-los abaixo dos blocos (filtrando os que ja aparecem via blocos para evitar duplicidade).
-
-- Adicionar query para buscar todos os produtos publicados do workspace junto com precos
-- Renderizar os produtos extras abaixo dos blocos, usando o mesmo estilo de card
-
-**2. StorefrontPreview: limpar blocos com produtos inexistentes**
-
-O bloco que referencia `1d36e818-...` nao encontra produto e renderiza `null`. Isso e inofensivo mas gera espaco vazio. Nenhuma acao de codigo necessaria, mas o usuario pode querer excluir esse bloco manualmente.
-
-**3. Garantir consistencia de estilo**
-
-Os cards de produtos extras na pagina publica devem usar o mesmo layout (thumbnail, nome, preco, botao CTA) que ja existe no preview (`StorefrontPreview.tsx` linhas 494-543).
-
-### Arquivos Alterados
-
-- `src/pages/PublicStorefront.tsx` - Adicionar fetch de todos os produtos publicados e renderiza-los apos os blocos
-
-### Detalhes Tecnicos
-
-No `useEffect` de fetch do PublicStorefront, apos buscar os blocos, adicionar uma query paralela:
-
-```sql
-SELECT id, name, slug, thumbnail_url, short_description, 
-       thumbnail_style, listing_button_text, delivery_url, metadata
-FROM products 
-WHERE workspace_id = ? AND status = 'PUBLISHED' AND deleted_at IS NULL
-```
-
-Com os precos correspondentes. Depois, no render, filtrar produtos que ja estao em blocos e exibir os restantes abaixo da secao de blocos.
+### Arquivos alterados
+- `src/pages/Store.tsx` — persistir ordem + ordenar query
+- `src/pages/PublicStorefront.tsx` — adicionar storefront_order ao fetch e ordenar
 
