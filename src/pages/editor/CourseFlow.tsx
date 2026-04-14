@@ -123,6 +123,23 @@ async function syncCoursePricesToDb(course: Course) {
   }
 }
 
+// ── Sync course display fields to products table so storefront/checkout stay in sync ──
+async function syncCourseToProduct(course: Course) {
+  if (!course.product_id) return;
+  await supabase
+    .from("products")
+    .update({
+      name: course.title || "Sem título",
+      thumbnail_url: course.thumbnail_image || course.hero_image_url || null,
+      short_description: course.thumbnail_subtitle || course.checkout_description || null,
+      checkout_image: course.checkout_image || null,
+      checkout_description: course.checkout_description || null,
+      listing_button_text: course.thumbnail_cta || null,
+      thumbnail_style: course.thumbnail_style || "preview",
+    })
+    .eq("id", course.product_id);
+}
+
 // ── Standardized toast helper ──
 function showToast(type: "success" | "error" | "warning", message: string, description?: string) {
   const durations = { success: 3000, error: 5000, warning: 4000 };
