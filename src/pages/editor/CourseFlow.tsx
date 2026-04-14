@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { trackEvent } from "@/lib/tracking";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -81,6 +82,46 @@ import { useStorefrontTheme } from "@/hooks/useStorefrontTheme";
 import { WizardTabLayout } from "@/components/editor/WizardTabLayout";
 import { StepCard } from "@/components/editor/StepCard";
 import { cn } from "@/lib/utils";
+
+// ── Sync course prices to prices table so checkout stays in sync ──
+async function syncCoursePricesToDb(course: Course) {
+  if (!course.product_id) return;
+  const priceCents = course.checkout_price_cents ?? 0;
+  const discountCents = course.checkout_discount_price_cents ?? 0;
+  const hasDiscount = discountCents > 0 && discountCents < priceCents;
+  const priceType = course.checkout_price_type === "subscription" ? "RECURRING" : "ONE_TIME";
+
+  const amount = hasDiscount ? discountCents / 100 : priceCents / 100;
+  const compareAt = hasDiscount ? priceCents / 100 : null;
+
+  // Try to update existing default price first
+  const { data: existing } = await supabase
+    .from("prices")
+    .select("id")
+    .eq("product_id", course.product_id)
+    .eq("is_default", true)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from("prices")
+      .update({
+        amount,
+        compare_at_amount: compareAt,
+        type: priceType,
+      })
+      .eq("id", existing.id);
+  } else {
+    await supabase.from("prices").insert({
+      product_id: course.product_id,
+      amount,
+      compare_at_amount: compareAt,
+      type: priceType,
+      is_default: true,
+      is_active: true,
+    });
+  }
+}
 
 // ── Standardized toast helper ──
 function showToast(type: "success" | "error" | "warning", message: string, description?: string) {
@@ -218,6 +259,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           setSaving(false);
           isDirtyRef.current = false;
           trackEvent("course_publish_success", { course_id: course.id });
+          syncCoursePricesToDb(course);
         },
         onError: () => {
           showToast("error", "Erro ao publicar");
@@ -472,6 +514,10 @@ function useAutosave(course: Course, setSaving: (v: boolean) => void) {
           setStatus("saved");
           setSaving(false);
           setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 2000);
+          // Sync prices if price-related fields changed
+          if ("checkout_price_cents" in (payload || {}) || "checkout_discount_price_cents" in (payload || {}) || "checkout_price_type" in (payload || {})) {
+            syncCoursePricesToDb({ ...course, ...payload } as Course);
+          }
         },
         onError: () => {
           setStatus("error");
@@ -1671,6 +1717,7 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           setCourseStatus("published");
           toast.success("Curso publicado com sucesso!");
           setSaving(false);
+          syncCoursePricesToDb(course);
         },
         onError: (err: any) => {
           toast.error("Erro ao publicar", { description: err?.message || "Tente novamente." });
