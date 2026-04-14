@@ -290,10 +290,12 @@ export default function PublicStorefront() {
       const [allProdRes, allPriceRes] = await Promise.all([
         supabase
           .from("products")
-          .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url, metadata")
+          .select("id, name, slug, thumbnail_url, short_description, thumbnail_style, listing_button_text, delivery_url, metadata, storefront_order")
           .eq("workspace_id", sf.workspace_id)
           .eq("status", "PUBLISHED")
-          .is("deleted_at", null),
+          .is("deleted_at", null)
+          .order("storefront_order", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: false }),
         supabase
           .from("prices")
           .select("product_id, amount, currency")
