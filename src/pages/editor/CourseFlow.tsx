@@ -254,6 +254,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           setSaving(false);
           isDirtyRef.current = false;
           trackEvent("course_draft_saved", { course_id: course.id });
+          syncCourseToProduct(course);
         },
         onError: () => { showToast("error", "Erro ao salvar"); setSaving(false); },
       }
@@ -1740,6 +1741,7 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           toast.success("Curso publicado com sucesso!");
           setSaving(false);
           syncCoursePricesToDb(course);
+          syncCourseToProduct(course);
         },
         onError: (err: any) => {
           toast.error("Erro ao publicar", { description: err?.message || "Tente novamente." });
