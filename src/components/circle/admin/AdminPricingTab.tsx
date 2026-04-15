@@ -477,6 +477,9 @@ export default function AdminPricingTab({ community }: Props) {
                     <span className="text-sm text-muted-foreground shrink-0">pagamento único</span>
                   )}
                 </div>
+                {tier.price_cents > 0 && tier.price_cents < 500 && (
+                  <p className="text-xs text-destructive">O valor mínimo é R$ 5,00</p>
+                )}
               )}
 
               {/* Benefits */}
