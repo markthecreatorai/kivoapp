@@ -468,7 +468,7 @@ Deno.serve(async (req) => {
         order_id: order.id,
         status: "FAILED",
       }), {
-        status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
