@@ -297,8 +297,8 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           setSaving(false);
           isDirtyRef.current = false;
           trackEvent("course_publish_success", { course_id: course.id });
-          syncCoursePricesToDb(course.id);
-          syncCourseToProduct(course.id);
+          syncCoursePricesToDb(course.id).then(() => queryClient.invalidateQueries({ queryKey: ["all-products"] }));
+          syncCourseToProduct(course.id).then(() => queryClient.invalidateQueries({ queryKey: ["all-products"] }));
         },
         onError: () => {
           showToast("error", "Erro ao publicar");
@@ -1765,8 +1765,8 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           setCourseStatus("published");
           toast.success("Curso publicado com sucesso!");
           setSaving(false);
-          syncCoursePricesToDb(course.id);
-          syncCourseToProduct(course.id);
+          syncCoursePricesToDb(course.id).then(() => queryClient.invalidateQueries({ queryKey: ["all-products"] }));
+          syncCourseToProduct(course.id).then(() => queryClient.invalidateQueries({ queryKey: ["all-products"] }));
         },
         onError: (err: any) => {
           toast.error("Erro ao publicar", { description: err?.message || "Tente novamente." });
