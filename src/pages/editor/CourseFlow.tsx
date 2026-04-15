@@ -754,7 +754,8 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
     return isNaN(num) ? 0 : Math.round(num * 100);
   };
 
-  const priceValid = priceCents > 0;
+  const priceBelowMinimum = priceCents > 0 && priceCents < 500;
+  const priceValid = priceCents > 0 && !priceBelowMinimum;
   const discountValid = !showDiscount || (discountCents > 0 && discountCents < priceCents);
 
   const addCustomField = () => {
@@ -897,7 +898,12 @@ function CheckoutTab({ course, setSaving }: { course: Course; setSaving: (v: boo
                 placeholder="0,00"
                 className={cn(!priceValid && priceCents === 0 && "border-destructive")}
               />
-              {!priceValid && (
+              {priceBelowMinimum && (
+                <p className="text-[11px] text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> O valor mínimo é R$ 5,00
+                </p>
+              )}
+              {!priceValid && !priceBelowMinimum && (
                 <p className="text-[11px] text-destructive flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" /> Preço obrigatório
                 </p>

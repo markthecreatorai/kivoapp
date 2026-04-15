@@ -118,6 +118,9 @@ export function ProductPricingStep({ form, updateForm }: Props) {
                 onChange={(e) => handlePriceChange(e.target.value)}
               />
             </div>
+            {form.price > 0 && form.price < 5 && (
+              <p className="text-sm text-destructive">O valor mínimo é R$ 5,00</p>
+            )}
             {isMembership && form.price > 0 && form.trialDays > 0 && (
               <p className="text-sm text-accent">
                 ✨ Comece grátis por {form.trialDays} dias, depois R${formatInputPrice(form.price)}

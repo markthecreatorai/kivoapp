@@ -508,5 +508,13 @@ export function getCoursePublishChecklist(
     severity: "warning",
   });
 
+  const pc = course.checkout_price_cents ?? 0;
+  items.push({
+    key: "price-minimum",
+    label: "Preço mínimo de R$ 5,00 (gateway exige)",
+    passed: pc === 0 || pc >= 500,
+    severity: "error",
+  });
+
   return items;
 }
