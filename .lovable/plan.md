@@ -1,27 +1,27 @@
 
 
-## Ocultar preço R$ 0,00 para produtos sem preço (lead magnets)
+## Validação de preço mínimo R$ 5,00 na plataforma
 
 ### Problema
-Produtos gratuitos como lead magnets têm `price.amount = 0` na tabela `prices`. As telas da loja (Store.tsx), storefront pública (PublicStorefront.tsx) e preview (StorefrontPreview.tsx) exibem "R$ 0,00" em vez de omitir o valor.
+O gateway Asaas rejeita cobranças abaixo de R$ 5,00, mas a plataforma permite que o creator cadastre qualquer valor. O erro só aparece no momento do checkout para o comprador, quando deveria ser impedido já na hora de cadastrar o produto.
 
 ### Correção
 
-Adicionar a condição `price.amount > 0` em todos os locais que renderizam o preço:
+Adicionar validação inline em todos os pontos de entrada de preço, exibindo mensagem de erro quando o valor for > 0 e < 5,00 (produtos gratuitos/lead magnets com valor 0 continuam permitidos).
 
-**1. `src/pages/Store.tsx`** (2 ocorrências — desktop e mobile)
-- Linha ~269: `{price && (product.metadata as any)?.format_id !== "affiliate" && ...}`
-  → `{price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && ...}`
-- Linha ~579: mesma alteração
+**1. `src/components/products/ProductPricingStep.tsx`**
+- Após o input de preço, mostrar erro se `form.price > 0 && form.price < 5`
+- Texto: "O valor mínimo é R$ 5,00"
 
-**2. `src/pages/PublicStorefront.tsx`** (2 ocorrências — desktop e mobile)
-- Linha ~491: mesma condição
-- Linha ~783: mesma condição
+**2. `src/pages/editor/CourseFlow.tsx`** (aba Checkout)
+- Após o input de preço, mostrar erro se `priceCents > 0 && priceCents < 500`
+- Texto: "O valor mínimo é R$ 5,00"
+- Bloquear publicação nessa condição (adicionar ao checklist de publish)
 
-**3. `src/components/storefront/StoreProductPreviewRenderer.tsx`** — verificar se também renderiza preço e aplicar a mesma lógica
-
-**4. `src/components/checkout/ProductSummary.tsx`** — adicionar guard para não exibir bloco de preço quando `price.amount === 0`
+**3. `src/components/circle/admin/AdminPricingTab.tsx`** (tiers de comunidade)
+- Após o input de preço do tier, mostrar erro se `!tier.is_free && tier.price_cents > 0 && tier.price_cents < 500`
+- Desabilitar botão "Salvar" se qualquer tier pago estiver abaixo de R$ 5,00
 
 ### Resultado
-Lead magnets e outros produtos gratuitos não exibirão "R$ 0,00" em nenhuma tela da loja.
+Creator recebe feedback imediato ao tentar definir preço entre R$ 0,01 e R$ 4,99, evitando erros no gateway durante o checkout.
 
