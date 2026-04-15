@@ -272,7 +272,7 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           setSaving(false);
           isDirtyRef.current = false;
           trackEvent("course_draft_saved", { course_id: course.id });
-          syncCourseToProduct(course);
+          syncCourseToProduct(course.id);
         },
         onError: () => { showToast("error", "Erro ao salvar"); setSaving(false); },
       }
@@ -296,8 +296,8 @@ function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course
           setSaving(false);
           isDirtyRef.current = false;
           trackEvent("course_publish_success", { course_id: course.id });
-          syncCoursePricesToDb(course);
-          syncCourseToProduct(course);
+          syncCoursePricesToDb(course.id);
+          syncCourseToProduct(course.id);
         },
         onError: () => {
           showToast("error", "Erro ao publicar");
@@ -555,10 +555,10 @@ function useAutosave(course: Course, setSaving: (v: boolean) => void) {
           const merged = { ...course, ...payload } as Course;
           // Sync prices if price-related fields changed
           if ("checkout_price_cents" in (payload || {}) || "checkout_discount_price_cents" in (payload || {}) || "checkout_price_type" in (payload || {})) {
-            syncCoursePricesToDb(merged);
+            syncCoursePricesToDb(course.id);
           }
           // Always sync display fields to products table
-          syncCourseToProduct(merged);
+          syncCourseToProduct(course.id);
         },
         onError: () => {
           setStatus("error");
@@ -1764,8 +1764,8 @@ function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: bool
           setCourseStatus("published");
           toast.success("Curso publicado com sucesso!");
           setSaving(false);
-          syncCoursePricesToDb(course);
-          syncCourseToProduct(course);
+          syncCoursePricesToDb(course.id);
+          syncCourseToProduct(course.id);
         },
         onError: (err: any) => {
           toast.error("Erro ao publicar", { description: err?.message || "Tente novamente." });
