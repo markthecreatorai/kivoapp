@@ -1718,6 +1718,7 @@ const GROWTH_BLOCKS = [
 ] as const;
 
 function OptionsTab({ course, setSaving }: { course: Course; setSaving: (v: boolean) => void }) {
+  const queryClient = useQueryClient();
   const { enqueue, status: saveStatus } = useAutosave(course, setSaving);
   const updateCourse = useUpdateCourse();
   const { data: modules = [] } = useModules(course.id);
