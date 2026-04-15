@@ -448,38 +448,40 @@ export default function AdminPricingTab({ community }: Props) {
 
               {/* Price + billing */}
               {!tier.is_free && (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center border border-border rounded-lg overflow-hidden flex-1">
-                    <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-border">R$</span>
-                    <input
-                      type="number"
-                      value={tier.price_cents > 0 ? (tier.price_cents / 100).toString() : ""}
-                      onChange={(e) => updateTier(idx, { price_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
-                      placeholder="0"
-                      className={cn("flex-1 px-3 py-2 text-sm outline-none bg-background min-w-0", !tier.is_free && tier.price_cents > 0 && tier.price_cents < 500 && "text-destructive")}
-                    />
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center border border-border rounded-lg overflow-hidden flex-1">
+                      <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-border">R$</span>
+                      <input
+                        type="number"
+                        value={tier.price_cents > 0 ? (tier.price_cents / 100).toString() : ""}
+                        onChange={(e) => updateTier(idx, { price_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                        placeholder="0"
+                        className={cn("flex-1 px-3 py-2 text-sm outline-none bg-background min-w-0", tier.price_cents > 0 && tier.price_cents < 500 && "text-destructive")}
+                      />
+                    </div>
+                    {model !== "one_time" && (
+                      <Select
+                        value={tier.billing_period || "monthly"}
+                        onValueChange={(v) => updateTier(idx, { billing_period: v })}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Mensal</SelectItem>
+                          <SelectItem value="yearly">Anual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {model === "one_time" && (
+                      <span className="text-sm text-muted-foreground shrink-0">pagamento único</span>
+                    )}
                   </div>
-                  {model !== "one_time" && (
-                    <Select
-                      value={tier.billing_period || "monthly"}
-                      onValueChange={(v) => updateTier(idx, { billing_period: v })}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Mensal</SelectItem>
-                        <SelectItem value="yearly">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {tier.price_cents > 0 && tier.price_cents < 500 && (
+                    <p className="text-xs text-destructive">O valor mínimo é R$ 5,00</p>
                   )}
-                  {model === "one_time" && (
-                    <span className="text-sm text-muted-foreground shrink-0">pagamento único</span>
-                  )}
-                </div>
-                {tier.price_cents > 0 && tier.price_cents < 500 && (
-                  <p className="text-xs text-destructive">O valor mínimo é R$ 5,00</p>
-                )}
+                </>
               )}
 
               {/* Benefits */}
