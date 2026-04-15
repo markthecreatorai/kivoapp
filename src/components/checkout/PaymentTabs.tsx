@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { QrCode, CreditCard, FileText, Copy, Check, Loader2, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -89,7 +88,6 @@ export function PaymentTabs({
   const [installmentOptions, setInstallmentOptions] = useState<InstallmentOption[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
 
-  // Fetch real installment rates from Asaas
   useEffect(() => {
     if (maxInstallments <= 1 || total <= 0) {
       setInstallmentOptions([{ number: 1, value: total, total, interest_rate: 0, has_interest: false }]);
@@ -104,13 +102,10 @@ export function PaymentTabs({
         const res = await supabase.functions.invoke("simulate-installments", {
           body: { amount: total, max_installments: maxInstallments },
         });
-
         if (cancelled) return;
-
         if (res.data?.installments?.length) {
           setInstallmentOptions(res.data.installments);
         } else {
-          // Fallback: simple division (no interest shown)
           setInstallmentOptions(
             Array.from({ length: maxInstallments }, (_, i) => ({
               number: i + 1,
@@ -122,7 +117,6 @@ export function PaymentTabs({
           );
         }
       } catch {
-        // Fallback
         setInstallmentOptions(
           Array.from({ length: maxInstallments }, (_, i) => ({
             number: i + 1,
@@ -147,25 +141,20 @@ export function PaymentTabs({
   };
 
   const brand = detectCardBrand(card.number);
-
   const selectedOption = installmentOptions.find(o => o.number === card.installments) || installmentOptions[0];
   const cardTotal = selectedOption?.total || total;
 
   const formatInstallmentLabel = (opt: InstallmentOption) => {
-    if (opt.number === 1) {
-      return `1x de ${formatCurrency(opt.value)} (sem juros)`;
-    }
-    if (opt.has_interest) {
-      return `${opt.number}x de ${formatCurrency(opt.value)} (total ${formatCurrency(opt.total)})`;
-    }
+    if (opt.number === 1) return `1x de ${formatCurrency(opt.value)} (sem juros)`;
+    if (opt.has_interest) return `${opt.number}x de ${formatCurrency(opt.value)} (total ${formatCurrency(opt.total)})`;
     return `${opt.number}x de ${formatCurrency(opt.value)} (sem juros)`;
   };
 
   if (paymentSuccess) {
     return (
-      <div className="p-6 bg-accent/10 border border-accent/30 rounded-xl text-center">
-        <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-accent" />
+      <div className="py-8 text-center">
+        <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check className="w-7 h-7 text-green-600" />
         </div>
         <h3 className="text-lg font-bold text-foreground">Pagamento confirmado! 🎉</h3>
         <p className="text-sm text-muted-foreground mt-2">Você receberá os detalhes por email em instantes.</p>
@@ -174,39 +163,31 @@ export function PaymentTabs({
   }
 
   return (
-    <div className="p-4 bg-card rounded-xl border">
-      <h2 className="text-base font-semibold text-foreground mb-3">Pagamento</h2>
+    <div className="space-y-3">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dados do pagamento</p>
+
       <Tabs defaultValue="pix" onValueChange={(v) => onTabChange?.(v)}>
-        <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="pix" className="text-xs gap-1"><QrCode className="w-3.5 h-3.5" />PIX</TabsTrigger>
-          <TabsTrigger value="card" className="text-xs gap-1"><CreditCard className="w-3.5 h-3.5" />Cartão</TabsTrigger>
-          <TabsTrigger value="boleto" className="text-xs gap-1"><FileText className="w-3.5 h-3.5" />Boleto</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-3 bg-transparent border border-border rounded-lg h-10">
+          <TabsTrigger value="pix" className="text-xs gap-1 data-[state=active]:bg-muted rounded-md"><QrCode className="w-3.5 h-3.5" />PIX</TabsTrigger>
+          <TabsTrigger value="card" className="text-xs gap-1 data-[state=active]:bg-muted rounded-md"><CreditCard className="w-3.5 h-3.5" />Cartão</TabsTrigger>
+          <TabsTrigger value="boleto" className="text-xs gap-1 data-[state=active]:bg-muted rounded-md"><FileText className="w-3.5 h-3.5" />Boleto</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pix" className="mt-4 space-y-4">
           {pixData && !pixExpired ? (
             <div className="text-center space-y-4">
-              <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
-                <p className="text-sm font-semibold text-foreground">⏳ Aguardando pagamento PIX</p>
-              </div>
-
+              <p className="text-sm font-semibold text-foreground">⏳ Aguardando pagamento PIX</p>
               <PixCountdown expiresAt={pixData.expires_at} onExpired={() => setPixExpired(true)} />
-
               {pixData.qr_code_url && (
                 <img src={pixData.qr_code_url} alt="QR Code PIX" className="w-48 h-48 mx-auto rounded-lg border" />
               )}
-
-              <div className="bg-muted p-3 rounded-lg">
+              <div className="bg-muted/50 p-3 rounded-lg">
                 <p className="text-[10px] text-muted-foreground mb-1">Código Copia e Cola</p>
-                <p className="text-xs text-foreground break-all font-mono select-all leading-relaxed">
-                  {pixData.qr_code}
-                </p>
+                <p className="text-xs text-foreground break-all font-mono select-all leading-relaxed">{pixData.qr_code}</p>
               </div>
-
-              <Button onClick={() => copyToClipboard(pixData.qr_code)} variant="outline" className="w-full h-12">
+              <Button onClick={() => copyToClipboard(pixData.qr_code)} variant="outline" className="w-full">
                 {copied ? <><Check className="w-4 h-4 mr-2" /> Copiado!</> : <><Copy className="w-4 h-4 mr-2" /> Copiar código PIX</>}
               </Button>
-
               <div className="flex items-center gap-2 justify-center">
                 <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Confirmação automática ao pagar</p>
@@ -215,24 +196,21 @@ export function PaymentTabs({
           ) : pixExpired ? (
             <div className="text-center space-y-3">
               <p className="text-sm text-destructive font-medium">QR Code expirado</p>
-              <Button onClick={() => { setPixExpired(false); onPayPix(); }} disabled={paymentLoading} className="w-full h-12">
+              <Button onClick={() => { setPixExpired(false); onPayPix(); }} disabled={paymentLoading} className="w-full bg-green-500 hover:bg-green-600 text-white rounded-full h-12 text-base font-bold">
                 {paymentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gerar novo PIX"}
               </Button>
             </div>
           ) : (
-            <div className="text-center space-y-3">
+            <div className="space-y-3">
               {pixTotal && (
-                <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
-                  <p className="text-sm text-foreground font-semibold">
-                    Pague via PIX por apenas {formatCurrency(pixTotal)}
-                  </p>
-                </div>
+                <p className="text-sm text-center text-green-600 font-medium">
+                  Pague via PIX por apenas {formatCurrency(pixTotal)}
+                </p>
               )}
               <Button
                 onClick={onPayPix}
                 disabled={paymentLoading}
-                className="w-full h-14 text-base font-bold"
-                style={{ backgroundColor: 'var(--checkout-primary, hsl(var(--primary)))' }}
+                className="w-full bg-green-500 hover:bg-green-600 text-white rounded-full h-12 text-base font-bold"
               >
                 {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Gerar PIX ${formatCurrency(pixTotal ?? total)}`}
               </Button>
@@ -241,61 +219,48 @@ export function PaymentTabs({
           {paymentError && <p className="text-sm text-destructive text-center">{paymentError}</p>}
         </TabsContent>
 
-        <TabsContent value="card" className="mt-4 space-y-4">
-          <div className="space-y-1">
-            <Label className="text-sm">Número do cartão</Label>
+        <TabsContent value="card" className="mt-4 space-y-3">
+          <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
+            <Input
+              value={card.holder_name}
+              onChange={(e) => setCard({ ...card, holder_name: e.target.value.toUpperCase() })}
+              placeholder="Nome no cartão"
+              className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11"
+            />
             <div className="relative">
               <Input
                 value={card.number}
                 onChange={(e) => setCard({ ...card, number: formatCardNumber(e.target.value) })}
-                placeholder="0000 0000 0000 0000"
-                className="h-12 pr-12"
+                placeholder="Número do cartão"
                 inputMode="numeric"
+                className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 pr-16"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground uppercase">
                 {brand !== 'generic' ? brand : ''}
               </span>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-sm">Validade</Label>
+            <div className="flex divide-x divide-border">
               <Input
                 value={card.expiry}
                 onChange={(e) => setCard({ ...card, expiry: formatExpiry(e.target.value) })}
                 placeholder="MM/AA"
-                className="h-12"
                 inputMode="numeric"
+                className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 flex-1"
               />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-sm">CVV</Label>
               <Input
                 value={card.cvv}
                 onChange={(e) => setCard({ ...card, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                placeholder="123"
-                className="h-12"
+                placeholder="CVC"
                 inputMode="numeric"
+                className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 w-24"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-sm">Nome no cartão</Label>
-            <Input
-              value={card.holder_name}
-              onChange={(e) => setCard({ ...card, holder_name: e.target.value.toUpperCase() })}
-              placeholder="NOME COMO NO CARTÃO"
-              className="h-12"
-            />
-          </div>
-
           {maxInstallments > 1 && (
-            <div className="space-y-1">
-              <Label className="text-sm">Parcelas</Label>
+            <div>
               {loadingInstallments ? (
-                <div className="h-12 flex items-center justify-center border rounded-md bg-muted/30">
+                <div className="h-11 flex items-center justify-center border rounded-lg">
                   <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mr-2" />
                   <span className="text-xs text-muted-foreground">Calculando parcelas...</span>
                 </div>
@@ -304,7 +269,7 @@ export function PaymentTabs({
                   value={String(card.installments)}
                   onValueChange={(v) => setCard({ ...card, installments: parseInt(v) })}
                 >
-                  <SelectTrigger className="h-12">
+                  <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -316,7 +281,6 @@ export function PaymentTabs({
                   </SelectContent>
                 </Select>
               )}
-              {/* Show interest info */}
               {selectedOption?.has_interest && (
                 <p className="text-[10px] text-muted-foreground mt-1">
                   Total com juros: {formatCurrency(selectedOption.total)}
@@ -329,8 +293,7 @@ export function PaymentTabs({
           <Button
             onClick={() => onPayCard(card)}
             disabled={paymentLoading || loadingInstallments}
-            className="w-full h-14 text-base font-bold"
-            style={{ backgroundColor: 'var(--checkout-primary, hsl(var(--primary)))' }}
+            className="w-full bg-green-500 hover:bg-green-600 text-white rounded-full h-12 text-base font-bold"
           >
             {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(cardTotal)}`}
           </Button>
@@ -339,16 +302,16 @@ export function PaymentTabs({
 
         <TabsContent value="boleto" className="mt-4 space-y-4">
           {boletoData ? (
-            <div className="space-y-4">
-              <div className="bg-muted p-3 rounded-lg">
+            <div className="space-y-3">
+              <div className="bg-muted/50 p-3 rounded-lg">
                 <p className="text-xs font-mono break-all">{boletoData.barcode}</p>
               </div>
-              <Button onClick={() => copyToClipboard(boletoData.barcode)} variant="outline" className="w-full h-12">
+              <Button onClick={() => copyToClipboard(boletoData.barcode)} variant="outline" className="w-full">
                 {copied ? <><Check className="w-4 h-4 mr-2" /> Copiado!</> : <><Copy className="w-4 h-4 mr-2" /> Copiar linha digitável</>}
               </Button>
               {boletoData.pdf_url && (
                 <a href={boletoData.pdf_url} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="w-full h-12">
+                  <Button variant="outline" className="w-full">
                     <FileText className="w-4 h-4 mr-2" /> Ver PDF do boleto
                   </Button>
                 </a>
@@ -360,16 +323,13 @@ export function PaymentTabs({
               </p>
             </div>
           ) : (
-            <div className="text-center space-y-3">
-              <Button
-                onClick={onPayBoleto}
-                disabled={paymentLoading}
-                className="w-full h-14 text-base font-bold"
-                style={{ backgroundColor: 'var(--checkout-primary, hsl(var(--primary)))' }}
-              >
-                {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Gerar Boleto ${formatCurrency(total)}`}
-              </Button>
-            </div>
+            <Button
+              onClick={onPayBoleto}
+              disabled={paymentLoading}
+              className="w-full bg-green-500 hover:bg-green-600 text-white rounded-full h-12 text-base font-bold"
+            >
+              {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Gerar Boleto ${formatCurrency(total)}`}
+            </Button>
           )}
           {paymentError && <p className="text-sm text-destructive text-center">{paymentError}</p>}
         </TabsContent>

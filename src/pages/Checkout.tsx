@@ -9,8 +9,7 @@ import { PaymentTabs, type CardData } from "@/components/checkout/PaymentTabs";
 import { OrderTotal } from "@/components/checkout/OrderTotal";
 import { OrderBumpCard, type OrderBump } from "@/components/checkout/OrderBumpCard";
 import { validateCPF } from "@/lib/cpf";
-import { Button } from "@/components/ui/button";
-import { Loader2, ShieldCheck, Lock, RefreshCw } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { trackEvent } from "@/lib/tracking";
 
 interface Product {
@@ -519,65 +518,20 @@ export default function Checkout() {
   }
 
   return (
-    <div
-      className="min-h-screen bg-muted/30"
-      style={branding ? {
-        '--checkout-primary': branding.primary,
-        '--checkout-accent': branding.accent,
-      } as React.CSSProperties : undefined}
-    >
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-4 pb-28">
-        {/* Header */}
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Lock className="w-3.5 h-3.5" />
-          <span>Compra segura</span>
-          <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-        </div>
-
+    <div className="min-h-screen bg-background">
+      <div className="max-w-md mx-auto px-4 py-8 space-y-6">
         {/* Product Summary */}
         <ProductSummary product={product} price={price} />
 
         {/* Subscription info */}
         {subPlan && (
-          <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 text-sm">
+          <p className="text-sm text-muted-foreground">
             {subPlan.trial_days > 0 ? (
-              <p className="text-foreground font-medium">
-                ✨ Comece grátis por {subPlan.trial_days} dias, depois{" "}
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price.amount)}
-                {subPlan.billing_interval === "monthly" ? "/mês" : subPlan.billing_interval === "quarterly" ? "/trimestre" : "/ano"}
-              </p>
+              <>✨ Grátis por {subPlan.trial_days} dias, depois {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price.amount)}{subPlan.billing_interval === "monthly" ? "/mês" : subPlan.billing_interval === "quarterly" ? "/trimestre" : "/ano"}</>
             ) : (
-              <p className="text-foreground font-medium">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price.amount)}
-                {subPlan.billing_interval === "monthly" ? "/mês" : subPlan.billing_interval === "quarterly" ? "/trimestre" : "/ano"}
-                {" "}— Assinatura recorrente
-              </p>
+              <>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price.amount)}{subPlan.billing_interval === "monthly" ? "/mês" : subPlan.billing_interval === "quarterly" ? "/trimestre" : "/ano"} — Assinatura recorrente</>
             )}
-          </div>
-        )}
-
-        {/* Coupon */}
-        <CouponSection
-          appliedCoupon={appliedCoupon}
-          onApply={handleApplyCoupon}
-          onRemove={() => setAppliedCoupon(null)}
-        />
-
-        {/* Order Bumps */}
-        {orderBumps.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              🔥 Aproveite e adicione
-            </p>
-            {orderBumps.map((bump) => (
-              <OrderBumpCard
-                key={bump.id}
-                bump={bump}
-                checked={selectedBumps.has(bump.bump_product_id)}
-                onToggle={toggleBump}
-              />
-            ))}
-          </div>
+          </p>
         )}
 
         {/* Customer Form */}
@@ -604,20 +558,27 @@ export default function Checkout() {
           onTabChange={setActiveTab}
         />
 
-        {/* Payment error with retry - only shown if not already visible in PaymentTabs */}
-        {paymentError && !paymentSuccess && activeTab !== "pix" && activeTab !== "card" && activeTab !== "boleto" && (
-          <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-2">
-            <p className="text-sm text-destructive font-medium">{paymentError}</p>
-            <p className="text-xs text-muted-foreground">Verifique os dados e tente novamente. Seus dados estão salvos.</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPaymentError(null)}
-              className="gap-2"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Tentar novamente
-            </Button>
+        {/* Coupon */}
+        <CouponSection
+          appliedCoupon={appliedCoupon}
+          onApply={handleApplyCoupon}
+          onRemove={() => setAppliedCoupon(null)}
+        />
+
+        {/* Order Bumps */}
+        {orderBumps.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              🔥 Aproveite e adicione
+            </p>
+            {orderBumps.map((bump) => (
+              <OrderBumpCard
+                key={bump.id}
+                bump={bump}
+                checked={selectedBumps.has(bump.bump_product_id)}
+                onToggle={toggleBump}
+              />
+            ))}
           </div>
         )}
 
@@ -631,51 +592,17 @@ export default function Checkout() {
           showPix={activeTab === "pix"}
         />
 
-        {/* Trust signals */}
-        <div className="grid grid-cols-3 gap-3 text-center pt-2">
-          <div className="space-y-1">
-            <ShieldCheck className="w-5 h-5 mx-auto text-accent" />
-            <p className="text-[10px] text-muted-foreground leading-tight">Pagamento 100% seguro</p>
-          </div>
-          <div className="space-y-1">
-            <Lock className="w-5 h-5 mx-auto text-accent" />
-            <p className="text-[10px] text-muted-foreground leading-tight">Dados criptografados</p>
-          </div>
-          <div className="space-y-1">
-            <RefreshCw className="w-5 h-5 mx-auto text-accent" />
-            <p className="text-[10px] text-muted-foreground leading-tight">Suporte disponível</p>
-          </div>
+        {/* Trust badge */}
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <ShieldCheck className="w-4 h-4 text-green-500" />
+          <p className="text-xs text-muted-foreground">Garantia de 7 dias · Pagamento seguro</p>
         </div>
 
-        {/* Asaas trust seal */}
-        <div className="text-center pt-1">
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Processado por <span className="font-semibold">Asaas</span> — Instituição de pagamento autorizada pelo Banco Central do Brasil
-          </p>
-        </div>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground pt-4">
-          Feito com 💜 na{" "}
+        <p className="text-center text-[10px] text-muted-foreground">
+          Processado por <span className="font-medium">Asaas</span> · Feito na{" "}
           <a href="https://kivo.com.br" className="hover:underline text-primary">Kivo</a>
         </p>
       </div>
-
-      {/* Sticky bottom bar */}
-      {!paymentSuccess && (
-        <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4 md:hidden">
-          <div className="max-w-lg mx-auto flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-lg font-bold text-foreground">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(currentTotal)}</p>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-accent">
-              <ShieldCheck className="w-4 h-4" />
-              Pagamento seguro
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

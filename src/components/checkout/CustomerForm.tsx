@@ -1,5 +1,4 @@
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatCPF, formatPhone } from "@/lib/cpf";
 
 interface CustomerData {
@@ -18,59 +17,47 @@ interface CustomerFormProps {
 
 export function CustomerForm({ data, onChange, onEmailBlur, errors }: CustomerFormProps) {
   return (
-    <div className="space-y-4 p-4 bg-card rounded-xl border">
-      <h2 className="text-base font-semibold text-foreground">Seus dados</h2>
+    <div className="space-y-3">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dados de contato</p>
       
-      <div className="space-y-1">
-        <Label htmlFor="name" className="text-sm">Nome completo *</Label>
+      <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
         <Input
-          id="name"
-          value={data.name}
-          onChange={(e) => onChange({ ...data, name: e.target.value })}
-          placeholder="Seu nome completo"
-          className="h-12"
-        />
-        {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="email" className="text-sm">Email *</Label>
-        <Input
-          id="email"
-          type="email"
           value={data.email}
           onChange={(e) => onChange({ ...data, email: e.target.value })}
           onBlur={onEmailBlur}
-          placeholder="seu@email.com"
-          className="h-12"
+          placeholder="Email *"
+          type="email"
+          className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11"
         />
-        {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="cpf" className="text-sm">CPF *</Label>
         <Input
-          id="cpf"
-          value={data.cpf}
-          onChange={(e) => onChange({ ...data, cpf: formatCPF(e.target.value) })}
-          placeholder="000.000.000-00"
-          className="h-12"
-          inputMode="numeric"
-        />
-        {errors.cpf && <p className="text-xs text-destructive">{errors.cpf}</p>}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="phone" className="text-sm">WhatsApp (opcional)</Label>
-        <Input
-          id="phone"
           value={data.phone}
           onChange={(e) => onChange({ ...data, phone: formatPhone(e.target.value) })}
-          placeholder="(11) 99999-9999"
-          className="h-12"
+          placeholder="WhatsApp (opcional)"
           inputMode="tel"
+          className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11"
+        />
+        <Input
+          value={data.name}
+          onChange={(e) => onChange({ ...data, name: e.target.value })}
+          placeholder="Nome completo *"
+          className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11"
+        />
+        <Input
+          value={data.cpf}
+          onChange={(e) => onChange({ ...data, cpf: formatCPF(e.target.value) })}
+          placeholder="CPF *"
+          inputMode="numeric"
+          className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11"
         />
       </div>
+
+      {(errors.name || errors.email || errors.cpf) && (
+        <div className="space-y-1">
+          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+          {errors.cpf && <p className="text-xs text-destructive">{errors.cpf}</p>}
+        </div>
+      )}
     </div>
   );
 }
