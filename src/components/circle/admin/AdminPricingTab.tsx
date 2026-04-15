@@ -459,10 +459,6 @@ export default function AdminPricingTab({ community }: Props) {
                       className={cn("flex-1 px-3 py-2 text-sm outline-none bg-background min-w-0", !tier.is_free && tier.price_cents > 0 && tier.price_cents < 500 && "text-destructive")}
                     />
                   </div>
-                  {!tier.is_free && tier.price_cents > 0 && tier.price_cents < 500 && (
-                    <p className="text-xs text-destructive">O valor mínimo é R$ 5,00</p>
-                  )}
-                  </div>
                   {model !== "one_time" && (
                     <Select
                       value={tier.billing_period || "monthly"}
