@@ -331,12 +331,15 @@ export default function AdminPricingTab({ community }: Props) {
     },
   });
 
+  const hasInvalidMinPrice = tiers.some((t) => !t.is_free && t.price_cents > 0 && t.price_cents < 500);
+
   const pricingReady = (() => {
+    if (hasInvalidMinPrice) return false;
     if (model === "free") return tiers.length === 1 && tiers[0].is_free;
-    if (model === "subscription") return tiers.length === 1 && !tiers[0].is_free && tiers[0].price_cents > 0;
-    if (model === "one_time") return tiers.length === 1 && !tiers[0].is_free && tiers[0].price_cents > 0;
-    if (model === "freemium") return tiers.some((t) => t.is_free) && tiers.some((t) => !t.is_free && t.price_cents > 0);
-    if (model === "tiers") return tiers.filter((t) => !t.is_free).length >= 2 && tiers.filter((t) => !t.is_free).every((t) => t.price_cents > 0);
+    if (model === "subscription") return tiers.length === 1 && !tiers[0].is_free && tiers[0].price_cents >= 500;
+    if (model === "one_time") return tiers.length === 1 && !tiers[0].is_free && tiers[0].price_cents >= 500;
+    if (model === "freemium") return tiers.some((t) => t.is_free) && tiers.some((t) => !t.is_free && t.price_cents >= 500);
+    if (model === "tiers") return tiers.filter((t) => !t.is_free).length >= 2 && tiers.filter((t) => !t.is_free).every((t) => t.price_cents >= 500);
     return false;
   })();
 
@@ -453,8 +456,12 @@ export default function AdminPricingTab({ community }: Props) {
                       value={tier.price_cents > 0 ? (tier.price_cents / 100).toString() : ""}
                       onChange={(e) => updateTier(idx, { price_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
                       placeholder="0"
-                      className="flex-1 px-3 py-2 text-sm outline-none bg-background min-w-0"
+                      className={cn("flex-1 px-3 py-2 text-sm outline-none bg-background min-w-0", !tier.is_free && tier.price_cents > 0 && tier.price_cents < 500 && "text-destructive")}
                     />
+                  </div>
+                  {!tier.is_free && tier.price_cents > 0 && tier.price_cents < 500 && (
+                    <p className="text-xs text-destructive">O valor mínimo é R$ 5,00</p>
+                  )}
                   </div>
                   {model !== "one_time" && (
                     <Select
