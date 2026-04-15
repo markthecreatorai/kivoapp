@@ -215,6 +215,7 @@ export default function CourseFlow({ initialProduct, setSaving }: CourseFlowProp
 // Main inner component with tabs
 // ═══════════════════════════════════════════
 function CourseFlowInner({ course, initialProduct, setSaving }: { course: Course; initialProduct: any; setSaving: (v: boolean) => void }) {
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("thumbnail");
   const [courseSubView, setCourseSubView] = useState<"main" | "editPage" | "lesson">("main");
   const themeTokens = useStorefrontTheme();
