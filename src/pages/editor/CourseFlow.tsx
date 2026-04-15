@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { toast } from "sonner";
@@ -84,12 +85,19 @@ import { StepCard } from "@/components/editor/StepCard";
 import { cn } from "@/lib/utils";
 
 // ── Sync course prices to prices table so checkout stays in sync ──
-async function syncCoursePricesToDb(course: Course) {
-  if (!course.product_id) return;
-  const priceCents = course.checkout_price_cents ?? 0;
-  const discountCents = course.checkout_discount_price_cents ?? 0;
+async function syncCoursePricesToDb(courseId: string) {
+  // Fetch fresh course data from DB to avoid stale local state
+  const { data: freshCourse } = await supabase
+    .from("courses")
+    .select("product_id, checkout_price_cents, checkout_discount_price_cents, checkout_price_type")
+    .eq("id", courseId)
+    .single();
+  if (!freshCourse?.product_id) return;
+
+  const priceCents = freshCourse.checkout_price_cents ?? 0;
+  const discountCents = freshCourse.checkout_discount_price_cents ?? 0;
   const hasDiscount = discountCents > 0 && discountCents < priceCents;
-  const priceType = course.checkout_price_type === "subscription" ? "RECURRING" : "ONE_TIME";
+  const priceType = freshCourse.checkout_price_type === "subscription" ? "RECURRING" : "ONE_TIME";
 
   const amount = hasDiscount ? discountCents / 100 : priceCents / 100;
   const compareAt = hasDiscount ? priceCents / 100 : null;
@@ -98,7 +106,7 @@ async function syncCoursePricesToDb(course: Course) {
   const { data: existing } = await supabase
     .from("prices")
     .select("id")
-    .eq("product_id", course.product_id)
+    .eq("product_id", freshCourse.product_id)
     .eq("is_default", true)
     .maybeSingle();
 
@@ -113,7 +121,7 @@ async function syncCoursePricesToDb(course: Course) {
       .eq("id", existing.id);
   } else {
     await supabase.from("prices").insert({
-      product_id: course.product_id,
+      product_id: freshCourse.product_id,
       amount,
       compare_at_amount: compareAt,
       type: priceType,
@@ -124,20 +132,30 @@ async function syncCoursePricesToDb(course: Course) {
 }
 
 // ── Sync course display fields to products table so storefront/checkout stay in sync ──
-async function syncCourseToProduct(course: Course) {
-  if (!course.product_id) return;
+async function syncCourseToProduct(courseId: string) {
+  // Fetch fresh course data from DB to avoid stale local state
+  const { data: freshCourse } = await supabase
+    .from("courses")
+    .select("product_id, title, thumbnail_image, hero_image_url, thumbnail_subtitle, checkout_description, checkout_image, thumbnail_cta, thumbnail_style, status")
+    .eq("id", courseId)
+    .single();
+  if (!freshCourse?.product_id) return;
+
+  const productStatus = freshCourse.status === "published" ? "PUBLISHED" : "DRAFT";
+
   await supabase
     .from("products")
     .update({
-      name: course.title || "Sem título",
-      thumbnail_url: course.thumbnail_image || course.hero_image_url || null,
-      short_description: course.thumbnail_subtitle || course.checkout_description || null,
-      checkout_image: course.checkout_image || null,
-      checkout_description: course.checkout_description || null,
-      listing_button_text: course.thumbnail_cta || null,
-      thumbnail_style: course.thumbnail_style || "preview",
+      name: freshCourse.title || "Sem título",
+      thumbnail_url: freshCourse.thumbnail_image || freshCourse.hero_image_url || null,
+      short_description: freshCourse.thumbnail_subtitle || freshCourse.checkout_description || null,
+      checkout_image: freshCourse.checkout_image || null,
+      checkout_description: freshCourse.checkout_description || null,
+      listing_button_text: freshCourse.thumbnail_cta || null,
+      thumbnail_style: freshCourse.thumbnail_style || "preview",
+      status: productStatus,
     })
-    .eq("id", course.product_id);
+    .eq("id", freshCourse.product_id);
 }
 
 // ── Standardized toast helper ──
