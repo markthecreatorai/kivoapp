@@ -488,7 +488,7 @@ export default function PublicStorefront() {
                 </p>
               )}
               <div className="flex items-center justify-between mt-3">
-                {price && (product.metadata as any)?.format_id !== "affiliate" && (
+                {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
                   <span className="font-bold text-lg" style={{ color: t.primary }}>
                     {formatCurrency(price.amount, price.currency || "BRL")}
                   </span>
@@ -780,7 +780,7 @@ export default function PublicStorefront() {
                           </p>
                         )}
                         <div className="flex items-center justify-between mt-3">
-                          {price && (product.metadata as any)?.format_id !== "affiliate" && (
+                          {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
                             <span className="font-bold text-lg" style={{ color: t.primary }}>
                               {formatCurrency(price.amount, price.currency || "BRL")}
                             </span>

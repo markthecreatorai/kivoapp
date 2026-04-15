@@ -266,7 +266,7 @@ function SortableProductItem({
         </p>
         <div className="flex items-center gap-1.5 mt-1">
           <span className="text-[12px] text-muted-foreground font-medium">{typeInfo.label}</span>
-          {price && (product.metadata as any)?.format_id !== "affiliate" && (
+          {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
             <>
               <span className="text-border text-[10px]">·</span>
               <span className="text-[12px] font-semibold text-muted-foreground">
@@ -576,7 +576,7 @@ function AbaLandingPages({
                   <p className="text-[14px] font-semibold text-[#111827] truncate">{product.name}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[12px] text-[#6b7280]">{typeInfo.label}</span>
-                    {price && (product.metadata as any)?.format_id !== "affiliate" && (
+                    {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
                       <>
                         <span className="text-[#d4d4d4] text-[10px]">·</span>
                         <span className="text-[12px] font-semibold text-[#6b7280]">
