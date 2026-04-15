@@ -9,8 +9,7 @@ import { PaymentTabs, type CardData } from "@/components/checkout/PaymentTabs";
 import { OrderTotal } from "@/components/checkout/OrderTotal";
 import { OrderBumpCard, type OrderBump } from "@/components/checkout/OrderBumpCard";
 import { validateCPF } from "@/lib/cpf";
-import { Button } from "@/components/ui/button";
-import { Loader2, ShieldCheck, Lock, RefreshCw } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { trackEvent } from "@/lib/tracking";
 
 interface Product {
