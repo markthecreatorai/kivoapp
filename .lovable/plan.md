@@ -1,27 +1,42 @@
 
 
-## Validação de preço mínimo R$ 5,00 na plataforma
+## Curso não atualiza valor/status na loja ao publicar
 
-### Problema
-O gateway Asaas rejeita cobranças abaixo de R$ 5,00, mas a plataforma permite que o creator cadastre qualquer valor. O erro só aparece no momento do checkout para o comprador, quando deveria ser impedido já na hora de cadastrar o produto.
+### Problemas identificados
 
-### Correção
+**1. Status do produto não é sincronizado**
+`syncCourseToProduct()` (linha 127) atualiza `name`, `thumbnail_url`, etc., mas **não** atualiza `products.status`. Quando o curso é publicado (`courses.status = "published"`), o `products.status` permanece `"DRAFT"`. A storefront pública filtra por `status = "PUBLISHED"`, então o curso nunca aparece. Na loja interna, aparece como "Rascunho".
 
-Adicionar validação inline em todos os pontos de entrada de preço, exibindo mensagem de erro quando o valor for > 0 e < 5,00 (produtos gratuitos/lead magnets com valor 0 continuam permitidos).
+**2. Sync usa objeto `course` desatualizado**
+Nos handlers `handlePublish` (linhas 281-282 e 1749-1750), as funções `syncCoursePricesToDb(course)` e `syncCourseToProduct(course)` recebem o objeto `course` original (prop do React Query), que **não contém** as edições feitas na sessão (ex: preço alterado na aba Checkout). O preço antigo é reenviado para `prices`.
 
-**1. `src/components/products/ProductPricingStep.tsx`**
-- Após o input de preço, mostrar erro se `form.price > 0 && form.price < 5`
-- Texto: "O valor mínimo é R$ 5,00"
+### Correções
 
-**2. `src/pages/editor/CourseFlow.tsx`** (aba Checkout)
-- Após o input de preço, mostrar erro se `priceCents > 0 && priceCents < 500`
-- Texto: "O valor mínimo é R$ 5,00"
-- Bloquear publicação nessa condição (adicionar ao checklist de publish)
+**1. `syncCourseToProduct` — adicionar sync de status**
 
-**3. `src/components/circle/admin/AdminPricingTab.tsx`** (tiers de comunidade)
-- Após o input de preço do tier, mostrar erro se `!tier.is_free && tier.price_cents > 0 && tier.price_cents < 500`
-- Desabilitar botão "Salvar" se qualquer tier pago estiver abaixo de R$ 5,00
+Mapear `courses.status` → `products.status`:
+- `"published"` → `"PUBLISHED"`
+- `"draft"` → `"DRAFT"`
+
+Adicionar campo `status` no `.update()` da linha 131.
+
+**2. Buscar curso atualizado antes de sincronizar**
+
+Nos dois `handlePublish` (linhas 273 e 1742), após o `onSuccess` do `updateCourse.mutate`, fazer um `refetch` do curso via query cache ou um `select` direto do banco antes de chamar as funções de sync — garantindo que `syncCoursePricesToDb` e `syncCourseToProduct` recebam os dados mais recentes.
+
+Alternativa mais simples: usar `queryClient.fetchQuery` para obter o curso atualizado, ou ler diretamente do banco com `supabase.from("courses").select("*").eq("id", course.id).single()` dentro das funções de sync.
+
+**3. Invalidar cache da loja**
+
+Após sync bem-sucedido, invalidar `queryKey: ["all-products"]` para que a lista de produtos na `/store` reflita as mudanças imediatamente.
+
+### Arquivos a editar
+
+- `src/pages/editor/CourseFlow.tsx`:
+  - `syncCourseToProduct()`: adicionar campo `status` mapeado
+  - `syncCoursePricesToDb()`: receber `courseId` e buscar dados frescos do DB
+  - `handlePublish` (2 ocorrências): invalidar cache `["all-products"]` no `onSuccess`
 
 ### Resultado
-Creator recebe feedback imediato ao tentar definir preço entre R$ 0,01 e R$ 4,99, evitando erros no gateway durante o checkout.
+Ao publicar o curso, o produto associado terá `status = "PUBLISHED"`, preço correto, e a loja será atualizada automaticamente.
 
