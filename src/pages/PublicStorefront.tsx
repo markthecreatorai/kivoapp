@@ -129,6 +129,7 @@ function LeadFormBlock({
   primaryColor,
   textColor,
   buttonClass,
+  ctaText,
 }: {
   config: Record<string, unknown>;
   workspaceId: string;
@@ -136,6 +137,7 @@ function LeadFormBlock({
   primaryColor: string;
   textColor: string;
   buttonClass: string;
+  ctaText: string;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
