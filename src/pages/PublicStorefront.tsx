@@ -652,18 +652,17 @@ export default function PublicStorefront() {
   const showBio = !!storefront.bio?.trim();
   const initials = storefront.title?.charAt(0)?.toUpperCase() || "K";
 
+  const fontName = theme?.font_body || 'Inter';
+  const googleFontUrl = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;500;600;700&display=swap`;
+
   return (
     <>
-      {/* Load Google Font */}
-      {tokens.fontFamily.includes("Inter") ? null : (
-        <link
-          rel="stylesheet"
-          href={`https://fonts.googleapis.com/css2?family=${(theme?.font_body || "Inter").replace(/ /g, "+")}:wght@400;500;600;700&display=swap`}
-        />
-      )}
+      {/* Always load the selected Google Font */}
+      <link rel="stylesheet" href={googleFontUrl} />
+      <style dangerouslySetInnerHTML={{ __html: `.kivo-storefront, .kivo-storefront * { font-family: ${tokens.fontFamily} !important; }` }} />
       <div
-        className="min-h-screen"
-        style={{ backgroundColor: tokens.backgroundColor, fontFamily: tokens.fontFamily }}
+        className="min-h-screen kivo-storefront"
+        style={{ backgroundColor: tokens.backgroundColor }}
       >
         <div className="max-w-[480px] mx-auto px-5 py-8 pb-16">
           {/* ─── Profile Header (alignment from preset) ─── */}
