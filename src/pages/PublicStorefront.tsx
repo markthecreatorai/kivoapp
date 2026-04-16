@@ -204,7 +204,7 @@ function LeadFormBlock({
         type="submit"
         disabled={loading}
         className={`w-full py-2.5 text-sm font-medium min-h-[44px] ${buttonClass}`}
-        style={{ backgroundColor: primaryColor, color: tokens.ctaTextColor }}
+        style={{ backgroundColor: primaryColor, color: ctaText }}
       >
         {loading ? "Enviando..." : (config.button_text as string) || "Enviar"}
       </button>
