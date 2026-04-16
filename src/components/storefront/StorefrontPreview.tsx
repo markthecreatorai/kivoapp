@@ -127,7 +127,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       className="w-full overflow-hidden"
       style={{ 
         borderRadius: tokens.cardRadius,
-        ...cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor),
+        ...cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor, tokens.backgroundColor),
       }}
     >
       {preset.mediaEmphasis !== 'minimal' ? (
@@ -235,7 +235,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             style={{ 
               borderRadius: tokens.cardRadius,
               padding: pad,
-              ...cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor),
+              ...cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor, tokens.backgroundColor),
             }}
           >
             <p className="font-semibold mb-3" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
