@@ -379,13 +379,18 @@ export default function PublicStorefront() {
         <p className="mb-6" style={{ color: "#666" }}>
           Esse link não existe ou ainda não foi publicado.
         </p>
-        <a
-          href="https://kivo.com.br"
-          className="px-6 py-3 rounded-full text-white font-medium"
-          style={{ backgroundColor: "#F9423A" }}
-        >
-          Crie sua própria loja na Kivo
-        </a>
+        <div className="flex flex-col gap-3 items-center">
+          <a
+            href="https://kivohub.com.br"
+            className="px-6 py-3 rounded-full text-white font-medium"
+            style={{ backgroundColor: "#F9423A" }}
+          >
+            Crie sua própria loja na Kivo
+          </a>
+          <a href="/" className="text-sm text-muted-foreground hover:underline">
+            ← Voltar para Home
+          </a>
+        </div>
       </div>
     );
   }
@@ -803,7 +808,7 @@ export default function PublicStorefront() {
           {/* Footer — Free plan */}
           <div className="mt-12 text-center">
             <a
-              href="https://kivo.com.br"
+              href="https://kivohub.com.br"
               className="text-xs opacity-40 hover:opacity-60 transition-opacity"
               style={{ color: t.text }}
             >

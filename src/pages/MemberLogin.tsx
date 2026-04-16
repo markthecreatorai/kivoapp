@@ -139,7 +139,7 @@ export default function MemberLogin() {
 
         <p className="text-center text-xs text-muted-foreground">
           Feito com 💜 na{" "}
-          <a href="https://kivo.com.br" className="text-primary hover:underline">Kivo</a>
+          <a href="https://kivohub.com.br" className="text-primary hover:underline">Kivo</a>
         </p>
       </div>
     </div>

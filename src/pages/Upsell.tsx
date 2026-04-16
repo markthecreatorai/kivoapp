@@ -272,7 +272,7 @@ export default function Upsell() {
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground pt-4">
           Feito com 💜 na{" "}
-          <a href="https://kivo.com.br" className="hover:underline text-primary">Kivo</a>
+          <a href="https://kivohub.com.br" className="hover:underline text-primary">Kivo</a>
         </p>
       </div>
     </div>
