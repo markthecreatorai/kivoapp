@@ -102,8 +102,10 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       if (productIds.length === 0) return [];
       const { data } = await supabase
         .from('products')
-        .select('id, name, type, source_url, thumbnail_style, thumbnail_url, short_description, listing_button_text, metadata')
-        .in('id', productIds);
+        .select('id, name, type, source_url, thumbnail_style, thumbnail_url, short_description, listing_button_text, metadata, status, deleted_at')
+        .in('id', productIds)
+        .eq('status', 'PUBLISHED')
+        .is('deleted_at', null);
       return data || [];
     },
     enabled: productIds.length > 0
@@ -249,7 +251,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
 
       case 'product': {
         const product = products.find(p => p.id === config.product_id);
-        if (!product) return null;
+        if (!product || product.status !== 'PUBLISHED' || product.deleted_at) return null;
         return renderProductCard(product);
       }
 
