@@ -190,16 +190,27 @@ export function resolveTokens(raw: {
   const font = raw.font_body || 'Inter';
   const btnStyle = raw.button_style || 'rounded';
 
+  // Detect dark theme: bg luminance < 0.2
+  const bgLum = relativeLuminanceHex(bg);
+  const isDark = bgLum < 0.2;
+
   // Price label: primary on bg, ensure AA (4.5:1)
   const priceLbl = ensureContrast(primary, bg, 4.5);
+
+  // Secondary text: for dark themes use higher opacity (85%), light uses 70%
+  const secondaryAlpha = isDark ? 'D9' : 'B3';
+  // Border: dark themes need more visible borders (20% vs 10%)
+  const borderAlpha = isDark ? '33' : '1A';
+  // Surface: dark themes need stronger card differentiation (8% vs 3%)
+  const surfaceAlpha = isDark ? '14' : '08';
 
   return {
     primaryColor: primary,
     backgroundColor: bg,
     textColor: text,
-    textSecondaryColor: text + 'B3', // 70% opacity via hex alpha
-    borderColor: text + '1A', // 10% opacity
-    surfaceColor: text + '08', // ~3% opacity
+    textSecondaryColor: text + secondaryAlpha,
+    borderColor: text + borderAlpha,
+    surfaceColor: text + surfaceAlpha,
     ctaTextColor: ctaTextColor(primary),
     priceLabelColor: priceLbl,
     fontFamily: `'${font}', ${TYPOGRAPHY.fontFamily.fallback}`,
@@ -210,4 +221,15 @@ export function resolveTokens(raw: {
     cardShadow: SHADOWS.card,
     buttonStyle: btnStyle,
   };
+}
+
+/** Relative luminance from hex */
+function relativeLuminanceHex(hex: string): number {
+  const h = hex.replace('#', '');
+  const vals = [
+    parseInt(h.substring(0, 2), 16),
+    parseInt(h.substring(2, 4), 16),
+    parseInt(h.substring(4, 6), 16),
+  ].map(c => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+  return 0.2126 * vals[0] + 0.7152 * vals[1] + 0.0722 * vals[2];
 }

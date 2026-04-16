@@ -269,7 +269,7 @@ export default function PublicStorefront() {
   const gap = blockGap(preset.contentDensity);
   const pad = cardPadding(preset.contentDensity);
   const imgH = mediaHeight(preset.mediaEmphasis);
-  const cardCSS = cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor);
+  const cardCSS = cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor, tokens.backgroundColor);
   const ctaCSS = ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor, tokens.backgroundColor);
 
   // ─── Fetch data ───
