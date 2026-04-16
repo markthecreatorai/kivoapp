@@ -510,9 +510,14 @@ export default function Checkout() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
         <h1 className="text-2xl font-bold text-foreground mb-2">Produto não encontrado</h1>
         <p className="text-muted-foreground mb-6">Este produto não existe ou não está disponível.</p>
-        <Link to="/" className="text-primary hover:underline font-medium">
-          ← Voltar para o início
-        </Link>
+        <div className="flex flex-col gap-3 items-center">
+          <Link to="/" className="text-primary hover:underline font-medium">
+            ← Voltar para Home
+          </Link>
+          <a href="https://kivohub.com.br" className="text-xs text-muted-foreground hover:underline">
+            É creator? Crie sua loja na Kivo
+          </a>
+        </div>
       </div>
     );
   }
@@ -600,7 +605,7 @@ export default function Checkout() {
 
         <p className="text-center text-[10px] text-muted-foreground">
           Processado por <span className="font-medium">Asaas</span> · Feito na{" "}
-          <a href="https://kivo.com.br" className="hover:underline text-primary">Kivo</a>
+          <a href="https://kivohub.com.br" className="hover:underline text-primary">Kivo</a>
         </p>
       </div>
     </div>
