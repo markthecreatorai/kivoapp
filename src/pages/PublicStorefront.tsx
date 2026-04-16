@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { formatCurrency } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/formatPrice";
-import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
+import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES, ctaTextColor as getCTATextColor, getButtonRadius, getCardRadius } from "@/lib/storefront-tokens";
 import {
   Instagram,
   Youtube,
