@@ -83,6 +83,23 @@ export default function MyCommunities() {
     enabled: !!user,
   });
 
+  // Fetch user's purchased courses/products
+  const { data: entitlements = [] } = useQuery({
+    queryKey: ["my-entitlements", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await (supabase as any)
+        .from("user_asset_entitlements")
+        .select("id, product:products(id, name, cover_image_url, type)")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      return (data || []).filter((e: any) => e.product);
+    },
+    enabled: !!user,
+  });
+
   const createCommunity = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Usuário não autenticado");
