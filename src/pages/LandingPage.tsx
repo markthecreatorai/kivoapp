@@ -73,7 +73,7 @@ const FAQ_ITEMS = [
 function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <section className="py-20">
+    <section id="faq" className="py-20">
       <div className="max-w-3xl mx-auto px-4">
         <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-2">Tire suas dúvidas</h2>
         <p className="text-center text-muted-foreground mb-10">Respostas rápidas para você decidir com confiança.</p>
@@ -150,7 +150,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8 text-sm text-foreground/70 font-medium">
             <a href="#mission" className="hover:text-foreground transition-colors">Por quê</a>
             <a href="#features" className="hover:text-foreground transition-colors">Soluções</a>
-            <a href="#calculator" className="hover:text-foreground transition-colors">Taxas</a>
+            <a href="#pricing" className="hover:text-foreground transition-colors">Preços</a>
             <a href="#faq" className="hover:text-foreground transition-colors">Dúvidas</a>
           </div>
           <div className="flex items-center gap-3">
@@ -201,8 +201,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Full-bleed image banner */}
-      <section className="relative w-full h-[480px] md:h-[560px] lg:h-[640px] overflow-hidden">
+      {/* Full-bleed image banner — mission */}
+      <section id="mission" className="relative w-full h-[480px] md:h-[560px] lg:h-[640px] overflow-hidden">
         <img
           src={creatorWorking}
           alt="Creator trabalhando"
@@ -264,6 +264,47 @@ export default function LandingPage() {
       {/* Creator Showcase */}
       <CreatorShowcase />
 
+      {/* Pricing Mini */}
+      <section id="pricing" className="py-20 bg-[#F8F1F1]">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Planos transparentes, sem surpresa</h2>
+            <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Comece grátis. Faça upgrade quando seu negócio pedir.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {PLANS_MINI.map((plan, i) => (
+              <Card key={i} className={`card-radius border ${plan.popular ? "border-destructive ring-2 ring-destructive/20" : "bg-card"} hover:shadow-md transition-shadow relative`}>
+                {plan.popular && (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-xs px-3">Mais popular</Badge>
+                )}
+                <CardContent className="p-6 text-center space-y-4">
+                  <h3 className="font-semibold text-foreground text-lg">{plan.name}</h3>
+                  <p className="text-3xl font-bold text-foreground">{plan.price}</p>
+                  <p className="text-sm text-muted-foreground">{plan.desc}</p>
+                  <ul className="text-sm text-muted-foreground space-y-2 text-left">
+                    {plan.features.map((f, j) => (
+                      <li key={j} className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-primary shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Calculator placeholder */}
+      <section id="calculator" className="py-20">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Compare suas taxas</h2>
+          <p className="text-muted-foreground mb-6">Veja quanto você economiza operando com a Kivo vs. outras plataformas.</p>
+          <p className="text-sm text-muted-foreground italic">Calculadora interativa em breve.</p>
+        </div>
+      </section>
+
       {/* FAQ */}
       <FAQSection />
 
@@ -301,7 +342,7 @@ export default function LandingPage() {
                 <li><a href="#features" className="hover:text-foreground transition-colors">Como Funciona</a></li>
                 <li><a href="#calculator" className="hover:text-foreground transition-colors">Calculadora</a></li>
                 <li><a href="#pricing" className="hover:text-foreground transition-colors">Preços</a></li>
-                <li><a href="#faq" className="hover:text-foreground transition-colors">Blog</a></li>
+                <li><a href="#faq" className="hover:text-foreground transition-colors">Dúvidas</a></li>
               </ul>
             </div>
 
@@ -321,10 +362,7 @@ export default function LandingPage() {
               <div className="flex items-center gap-3">
                 {[
                   { label: "Instagram", url: "https://instagram.com/kivohub", path: "M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2Zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5A4.25 4.25 0 0 0 7.75 20.5h8.5A4.25 4.25 0 0 0 20.5 16.25v-8.5A4.25 4.25 0 0 0 16.25 3.5ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm5.25-2a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z" },
-                  { label: "Facebook", url: "#", path: "M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.563V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10Z" },
-                  { label: "YouTube", url: "#", path: "M21.543 6.498C22 8.28 22 12 22 12s0 3.72-.457 5.502c-.254.985-.997 1.76-1.938 2.022C17.896 20 12 20 12 20s-5.893 0-7.605-.476c-.945-.266-1.687-1.04-1.938-2.022C2 15.72 2 12 2 12s0-3.72.457-5.502c.254-.985.997-1.76 1.938-2.022C6.107 4 12 4 12 4s5.896 0 7.605.476c.945.266 1.687 1.04 1.938 2.022ZM10 15.5l6-3.5-6-3.5v7Z" },
-                  { label: "LinkedIn", url: "#", path: "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286ZM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065ZM7.119 20.452H3.555V9h3.564v11.452Z" },
-                ].map((s) => (
+                ].filter(s => s.url !== "#").map((s) => (
                   <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d={s.path} /></svg>
                   </a>

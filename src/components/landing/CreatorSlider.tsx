@@ -79,7 +79,41 @@ const CREATORS: CreatorSlide[] = [
   },
 ];
 
+const MOCKUP_PRODUCTS: Record<string, { products: { title: string; desc: string; price: string; cta: string }[] }> = {
+  "1": {
+    products: [
+      { title: "Plano de Treino 12 Semanas", desc: "Treinos progressivos com vídeos e planilha de dieta personalizada.", price: "R$ 197", cta: "Comprar Agora" },
+      { title: "Consultoria Fitness Online", desc: "Sessão individual de 60 min para montar seu plano.", price: "R$ 89", cta: "Agendar Sessão" },
+    ],
+  },
+  "2": {
+    products: [
+      { title: "Retiro de Autoconhecimento", desc: "Uma semana de imersão para transformar corpo e mente.", price: "R$ 2.497", cta: "Garantir Vaga" },
+      { title: "Workshop de Manifestação", desc: "Técnicas práticas para alinhar energia e propósito.", price: "R$ 147", cta: "Participar Agora" },
+    ],
+  },
+  "3": {
+    products: [
+      { title: "Mentoria Escala Digital", desc: "8 semanas para estruturar e escalar seu negócio online.", price: "R$ 1.497", cta: "Quero Escalar" },
+      { title: "Planilha Financeira Pro", desc: "Controle completo de receitas, custos e margem.", price: "R$ 47", cta: "Baixar Agora" },
+    ],
+  },
+  "4": {
+    products: [
+      { title: "Guia de Estilo Pessoal", desc: "Descubra as cores e peças ideais para o seu biotipo.", price: "R$ 67", cta: "Comprar Guia" },
+      { title: "Curadoria Mensal de Moda", desc: "Looks exclusivos selecionados todo mês para você.", price: "R$ 39/mês", cta: "Assinar Agora" },
+    ],
+  },
+  "5": {
+    products: [
+      { title: "Curso Preparatório Completo", desc: "Aulas, simulados e materiais para aprovação em concursos.", price: "R$ 297", cta: "Começar Agora" },
+      { title: "Mentoria para Concursos", desc: "Plano de estudos personalizado com acompanhamento semanal.", price: "R$ 497", cta: "Garantir Mentoria" },
+    ],
+  },
+};
+
 function PhoneMockup({ creator }: { creator: CreatorSlide }) {
+  const mockup = MOCKUP_PRODUCTS[creator.id] || MOCKUP_PRODUCTS["1"];
   return (
     <div className="w-[160px] h-[320px] md:w-[180px] md:h-[360px] bg-background rounded-[28px] border-[3px] border-foreground/80 shadow-2xl shadow-black/30 overflow-hidden flex flex-col relative">
       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-4 bg-foreground/80 rounded-full z-10" />
@@ -99,39 +133,31 @@ function PhoneMockup({ creator }: { creator: CreatorSlide }) {
           <p className="text-[7px] text-muted-foreground leading-tight line-clamp-2 px-1">{creator.storefrontBio}</p>
         </div>
         <div className="space-y-1.5">
-          <div className="bg-muted/60 rounded-lg p-1.5">
-            <div className="w-full h-12 bg-muted rounded-md mb-1 overflow-hidden">
-              <img src={creator.imageUrl} alt="" className="w-full h-full object-cover opacity-70" />
-            </div>
-            <p className="text-[7px] font-bold text-foreground truncate">HOT HIGH RETREAT</p>
-            <p className="text-[6px] text-muted-foreground line-clamp-2">The one week that will completely change your life forever.</p>
-            <div className="flex items-center gap-1 mt-1">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="w-[6px] h-[6px] text-primary fill-primary" />
-                ))}
+          {mockup.products.map((product, idx) => (
+            <div key={idx} className="bg-muted/60 rounded-lg p-1.5">
+              {idx === 0 && (
+                <div className="w-full h-12 bg-muted rounded-md mb-1 overflow-hidden">
+                  <img src={creator.imageUrl} alt="" className="w-full h-full object-cover opacity-70" />
+                </div>
+              )}
+              <p className="text-[7px] font-bold text-foreground truncate">{product.title}</p>
+              <p className="text-[6px] text-muted-foreground line-clamp-2">{product.desc}</p>
+              <div className="flex items-center justify-between mt-1">
+                <div className="flex items-center gap-1">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} className="w-[6px] h-[6px] text-primary fill-primary" />
+                    ))}
+                  </div>
+                  <span className="text-[5px] text-muted-foreground">5.0</span>
+                </div>
+                <span className="text-[6px] font-bold text-foreground">{product.price}</span>
               </div>
-              <span className="text-[5px] text-muted-foreground">9999</span>
-            </div>
-            <div className="mt-1 bg-foreground text-background text-[6px] font-bold text-center py-0.5 rounded">
-              Quantum Leap HERE
-            </div>
-          </div>
-          <div className="bg-muted/60 rounded-lg p-1.5">
-            <p className="text-[7px] font-bold text-foreground truncate">Manifest Magic Work...</p>
-            <p className="text-[6px] text-muted-foreground line-clamp-2">More than something! You are a dream and Dreams die?</p>
-            <div className="flex items-center gap-1 mt-1">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="w-[6px] h-[6px] text-primary fill-primary" />
-                ))}
+              <div className="mt-1 bg-foreground text-background text-[6px] font-bold text-center py-0.5 rounded">
+                {product.cta}
               </div>
-              <span className="text-[5px] text-muted-foreground">9999</span>
             </div>
-            <div className="mt-1 bg-foreground text-background text-[6px] font-bold text-center py-0.5 rounded">
-              CHANGE YOUR LIFE NOW
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
