@@ -16,6 +16,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import CommunityAuthModal from "@/components/circle/CommunityAuthModal";
 
 function CommunityCard({ community }: { community: any }) {
   const navigate = useNavigate();
@@ -80,7 +81,11 @@ export default function CommunityDiscovery() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "free" | "paid">("all");
   const [sort, setSort] = useState<"trending" | "newest" | "members">("trending");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalView, setAuthModalView] = useState<"signup" | "login">("login");
 
+  // Dummy community for auth modal context (discovery page, no specific community)
+  const dummyCommunity = { name: "Kivo", slug: "", icon_url: null, id: "", access_type: "OPEN", require_approval: false };
   const { data: communities = [], isLoading } = useQuery({
     queryKey: ["public-communities"],
     queryFn: async () => {
@@ -147,7 +152,7 @@ export default function CommunityDiscovery() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setAuthModalView("login"); setShowAuthModal(true); }} className="gap-2">
                 <LogIn className="h-4 w-4" /> Entrar
               </Button>
             )}
@@ -227,6 +232,15 @@ export default function CommunityDiscovery() {
           </div>
         )}
       </div>
+
+      {!user && (
+        <CommunityAuthModal
+          open={showAuthModal}
+          onOpenChange={setShowAuthModal}
+          community={dummyCommunity}
+          initialView={authModalView}
+        />
+      )}
     </div>
   );
 }
