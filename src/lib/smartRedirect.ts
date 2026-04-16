@@ -28,7 +28,7 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
     .from("workspaces")
     .select("id")
     .eq("owner_id", userId)
-    .limit(1);
+    .limit(1) as { data: any[] | null };
   if (ws && ws.length > 0) return "/dashboard";
 
   // 3. Check community membership (consumer)
@@ -37,7 +37,7 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
     .select("id")
     .eq("user_id", userId)
     .eq("status", "ACTIVE")
-    .limit(1);
+    .limit(1) as { data: any[] | null };
   if (memberships && memberships.length > 0) return "/circles";
 
   // 4. Check entitlements (buyer)
@@ -45,7 +45,7 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
     .from("user_asset_entitlements")
     .select("id")
     .eq("user_id", userId)
-    .limit(1);
+    .limit(1) as { data: any[] | null };
   if (entitlements && entitlements.length > 0) return "/member";
 
   // 5. Fallback
