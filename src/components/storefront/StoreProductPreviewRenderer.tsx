@@ -5,6 +5,12 @@ import type { StorefrontThemeTokens } from "@/hooks/useStorefrontTheme";
 import type { StorefrontProfile } from "@/hooks/useStorefrontProfile";
 import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
 
+function resolveThumb(url: string | null | undefined): string {
+  if (!url) return kivoReferralLogo;
+  if (url.startsWith("/assets/kivo-referral")) return kivoReferralLogo;
+  return url;
+}
+
 // TikTok icon
 const TikTokIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">

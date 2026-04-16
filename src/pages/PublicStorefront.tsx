@@ -26,6 +26,13 @@ import {
 } from "lucide-react";
 import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
 
+/** Detect stale Vite-bundled kivo logo saved in DB from previous builds */
+function resolveThumb(url: string | null | undefined): string {
+  if (!url) return kivoReferralLogo;
+  if (url.startsWith("/assets/kivo-referral")) return kivoReferralLogo;
+  return url;
+}
+
 // TikTok icon
 const TikTokIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
