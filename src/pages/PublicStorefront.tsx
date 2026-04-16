@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveProductDisplay } from "@/lib/productDisplayRules";
 import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
 import {
   getPreset,

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES, type StorefrontDesignTokens } from "@/lib/storefront-tokens";
 import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveProductDisplay } from "@/lib/productDisplayRules";
 import {
   getPreset,
   blockGap,
