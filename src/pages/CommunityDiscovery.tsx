@@ -81,7 +81,11 @@ export default function CommunityDiscovery() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "free" | "paid">("all");
   const [sort, setSort] = useState<"trending" | "newest" | "members">("trending");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalView, setAuthModalView] = useState<"signup" | "login">("login");
 
+  // Dummy community for auth modal context (discovery page, no specific community)
+  const dummyCommunity = { name: "Kivo", slug: "", icon_url: null, id: "", access_type: "OPEN", require_approval: false };
   const { data: communities = [], isLoading } = useQuery({
     queryKey: ["public-communities"],
     queryFn: async () => {
