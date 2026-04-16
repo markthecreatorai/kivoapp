@@ -591,13 +591,6 @@ export default function CircleSettings() {
                     </div>
                   </Card>
                 )}
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
-                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <p className="text-xs text-muted-foreground">
-                    Estas configurações afetam apenas seu perfil nesta comunidade.{" "}
-                    <span className="font-medium">Dados financeiros e de workspace são gerenciados separadamente.</span>
-                  </p>
-                </div>
 
                 {completenessScore < 100 && (
                   <Card className="p-5">
