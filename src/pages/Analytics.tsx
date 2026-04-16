@@ -36,6 +36,7 @@ const SOURCE_LABELS: Record<string, string> = {
 export default function Analytics() {
   const { currentWorkspace } = useWorkspace();
   const [period, setPeriod] = useState<number | "custom">(30);
+  const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const workspaceId = currentWorkspace?.id;
 
   const dateRange = useMemo(() => {
@@ -267,7 +268,12 @@ export default function Analytics() {
           <h1 className="text-xl md:text-2xl font-semibold text-foreground">Analytics</h1>
           <p className="text-sm text-muted-foreground">Visão completa do seu negócio</p>
         </div>
-        <PeriodFilter selectedPeriod={period} onPeriodChange={setPeriod} />
+        <PeriodFilter
+          selectedPeriod={period}
+          onPeriodChange={setPeriod}
+          customRange={customRange}
+          onCustomRangeChange={setCustomRange}
+        />
       </div>
 
       {/* Metric Cards */}
