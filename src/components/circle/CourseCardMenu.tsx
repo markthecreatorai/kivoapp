@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   MoreHorizontal, Pencil, Copy, Trash2, Archive, ArchiveRestore,
@@ -27,6 +32,7 @@ interface CourseCardMenuProps {
 
 export default function CourseCardMenu({ course, onEdit }: CourseCardMenuProps) {
   const queryClient = useQueryClient();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const duplicateMutation = useMutation({
     mutationFn: async () => {
@@ -73,43 +79,58 @@ export default function CourseCardMenu({ course, onEdit }: CourseCardMenuProps) 
   });
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 bg-background/80 backdrop-blur-sm shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={onEdit}>
-          <Pencil className="h-4 w-4 mr-2" /> Editar curso
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => duplicateMutation.mutate()}>
-          <Copy className="h-4 w-4 mr-2" /> Duplicar curso
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => archiveMutation.mutate()}>
-          {course.is_published ? (
-            <><Archive className="h-4 w-4 mr-2" /> Arquivar</>
-          ) : (
-            <><ArchiveRestore className="h-4 w-4 mr-2" /> Publicar</>
-          )}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => {
-            if (confirm("Tem certeza que deseja excluir este curso?")) {
-              deleteMutation.mutate();
-            }
-          }}
-        >
-          <Trash2 className="h-4 w-4 mr-2" /> Excluir curso
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 bg-background/80 backdrop-blur-sm shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="h-4 w-4 mr-2" /> Editar curso
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => duplicateMutation.mutate()}>
+            <Copy className="h-4 w-4 mr-2" /> Duplicar curso
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => archiveMutation.mutate()}>
+            {course.is_published ? (
+              <><Archive className="h-4 w-4 mr-2" /> Arquivar</>
+            ) : (
+              <><ArchiveRestore className="h-4 w-4 mr-2" /> Publicar</>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Excluir curso
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir curso</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este curso? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteMutation.mutate()}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
