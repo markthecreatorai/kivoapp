@@ -127,29 +127,31 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
         sideOffset={8}
         className="w-[260px] p-0"
       >
-        {/* Search */}
-        <div className="p-2 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 pl-8 text-sm"
-              autoFocus
-            />
+        {/* Search — hide for guests */}
+        {!isGuest && (
+          <div className="p-2 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-8 text-sm"
+                autoFocus
+              />
+            </div>
+            <button
+              onClick={() => { setOpen(false); navigate(`/circles/${currentCommunity?.slug || ""}/settings`); }}
+              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <button
-            onClick={() => { setOpen(false); navigate(`/circles/${currentCommunity?.slug || ""}/settings`); }}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        )}
 
         {/* Actions */}
         <div className="px-1">
-          {(currentWorkspace || userWorkspaces.length > 0) && (
+          {!isGuest && (currentWorkspace || userWorkspaces.length > 0) && (
             <button
               onClick={() => { setOpen(false); navigate("/dashboard"); }}
               className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-muted/60 transition-colors text-foreground"
