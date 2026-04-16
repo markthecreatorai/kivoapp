@@ -723,7 +723,12 @@ export default function PublicStorefront() {
               <div className="space-y-3 mt-3">
                 {extraProducts.map((product) => {
                   const price = prices.find((p) => p.product_id === product.id);
-                  const ctaLabel = product.listing_button_text || "Comprar";
+                  const priceDisplay = getDisplayPrice({
+                    amount: price?.amount,
+                    currency: price?.currency,
+                    formatId: (product.metadata as any)?.format_id,
+                  });
+                  const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
                   const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
                   const isExternal = product.delivery_url?.startsWith("http");
                   const isCalloutStyle = product.thumbnail_style === "callout";
@@ -793,9 +798,9 @@ export default function PublicStorefront() {
                           </p>
                         )}
                         <div className="flex items-center justify-between mt-3">
-                          {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
-                            <span className="font-bold text-lg" style={{ color: t.primary }}>
-                              {formatCurrency(price.amount, price.currency || "BRL")}
+                          {priceDisplay.label && (
+                            <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: t.primary }}>
+                              {priceDisplay.label}
                             </span>
                           )}
                           <span
