@@ -3,7 +3,8 @@ import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { formatCurrency } from "@/lib/utils";
-import {
+import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
   Instagram,
   Youtube,
   Twitter,
