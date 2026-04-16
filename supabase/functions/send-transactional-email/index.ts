@@ -234,20 +234,26 @@ Deno.serve(async (req) => {
 
     const { subject, html } = renderTemplate(template_key, payload as any);
 
+    const computedIdempotencyKey = IDEMPOTENT_TEMPLATES.has(template_key)
+      ? (idempotency_key || `${template_key}:${recipient}:${user_id || "anon"}`)
+      : undefined;
+
+    const tags = buildTags({ template_key, user_id, workspace_id });
+
     const { data: logRow } = await supabase
       .from("transactional_email_logs")
       .insert({
         template_key,
+        category: "transactional",
         recipient,
         provider: "resend",
         status: "queued",
+        tags,
+        payload: payload as Record<string, unknown>,
+        idempotency_key: computedIdempotencyKey || null,
       })
       .select("id")
       .single();
-
-    const computedIdempotencyKey = IDEMPOTENT_TEMPLATES.has(template_key)
-      ? (idempotency_key || `${template_key}:${recipient}:${user_id || "anon"}`)
-      : undefined;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
