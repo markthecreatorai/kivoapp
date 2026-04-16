@@ -224,11 +224,20 @@ export default function PublicStorefront() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  // Theme defaults
+  // Resolve design tokens from theme (single source of truth)
+  const tokens = useMemo(() => resolveTokens({
+    primary_color: theme?.primary_color,
+    background_color: theme?.background_color,
+    text_color: theme?.text_color,
+    font_body: theme?.font_body,
+    button_style: theme?.button_style,
+  }), [theme]);
+
+  // Legacy shorthand for backward compat in block renderers
   const t = {
-    primary: theme?.primary_color || "#F9423A",
-    bg: theme?.background_color || "#ffffff",
-    text: theme?.text_color || "#1a1a1a",
+    primary: tokens.primaryColor,
+    bg: tokens.backgroundColor,
+    text: tokens.textColor,
     font: theme?.font_body || "Inter",
     btn: theme?.button_style || "rounded",
   };
@@ -236,7 +245,6 @@ export default function PublicStorefront() {
   const buttonClass =
     t.btn === "pill" ? "rounded-full" : t.btn === "square" ? "rounded-none" : "rounded-xl";
 
-  // Card wrapper uses rounded-2xl for pill to avoid clipping buttons
   const cardClass =
     t.btn === "pill" ? "rounded-2xl" : t.btn === "square" ? "rounded-none" : "rounded-xl";
 
