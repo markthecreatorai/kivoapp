@@ -110,7 +110,7 @@ export default function CollectEmailsFlow({
                 <div className={cn(
                   "h-40 flex items-center justify-center transition-all",
                   "ring-2 ring-primary/40 ring-offset-2"
-                )} style={{ backgroundColor: themeTokens.surfaceColor }}>
+                )} style={{ backgroundColor: themeTokens.textColor + '08' }}>
                   {form.thumbnailUrl ? (
                     <img src={form.thumbnailUrl} className="w-full h-full object-cover" alt="" />
                   ) : <ImageIcon className="h-8 w-8 text-zinc-300 dark:text-zinc-600" />}
@@ -139,7 +139,7 @@ export default function CollectEmailsFlow({
           {tab === "conteudo" && (
             <div className="p-4 pt-10">
               <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
-                <div className="h-40 flex items-center justify-center" style={{ backgroundColor: themeTokens.surfaceColor }}>
+                <div className="h-40 flex items-center justify-center" style={{ backgroundColor: themeTokens.textColor + '08' }}>
                   {form.thumbnailUrl ? (
                     <img src={form.thumbnailUrl} className="w-full h-full object-cover" alt="" />
                   ) : <ImageIcon className="h-8 w-8 text-zinc-300 dark:text-zinc-600" />}
