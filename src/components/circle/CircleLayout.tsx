@@ -343,8 +343,6 @@ export default function CircleLayout() {
                 <CircleRightSidebarSkool
                   community={community}
                   member={null}
-                  isAdmin={false}
-                  activeTab="about"
                 />
               </div>
             </div>
