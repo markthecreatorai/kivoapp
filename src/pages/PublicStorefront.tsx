@@ -270,7 +270,7 @@ export default function PublicStorefront() {
   const pad = cardPadding(preset.contentDensity);
   const imgH = mediaHeight(preset.mediaEmphasis);
   const cardCSS = cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor);
-  const ctaCSS = ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor);
+  const ctaCSS = ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor, tokens.backgroundColor);
 
   // ─── Fetch data ───
   useEffect(() => {
@@ -506,7 +506,7 @@ export default function PublicStorefront() {
           )}
           <div className="flex items-center justify-between mt-3">
             {display.price.label && (
-              <span className={`font-bold ${display.price.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: tokens.primaryColor }}>
+              <span className={`font-bold ${display.price.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: tokens.priceLabelColor }}>
                 {display.price.label}
               </span>
             )}
@@ -540,7 +540,7 @@ export default function PublicStorefront() {
             style={{
               borderRadius: tokens.buttonRadius,
               color: tokens.textColor,
-              ...ctaStyleCSS('outline', tokens.primaryColor, tokens.ctaTextColor),
+              ...ctaStyleCSS('outline', tokens.primaryColor, tokens.ctaTextColor, tokens.backgroundColor),
             }}
           >
             {(config.title as string) || "Link"}
