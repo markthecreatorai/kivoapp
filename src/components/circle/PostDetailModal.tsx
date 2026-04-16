@@ -86,20 +86,6 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
   const [replyBody, setReplyBody] = useState("");
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [isNotified, setIsNotified] = useState(false);
-
-  // Load initial notification subscription state
-  useEffect(() => {
-    if (!member || !postId) return;
-    (supabase as any)
-      .from("community_post_subscriptions")
-      .select("id")
-      .eq("post_id", postId)
-      .eq("member_id", member.id)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        if (data) setIsNotified(true);
-      });
-  }, [member, postId]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [commentImages, setCommentImages] = useState<string[]>([]);
