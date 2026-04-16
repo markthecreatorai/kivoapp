@@ -501,7 +501,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
       </div>
 
       {/* Bottom controls */}
-      <div className="bg-card rounded-lg shadow-sm p-4 flex items-center justify-between">
+      <div className="bg-card rounded-lg shadow-sm p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div className="flex items-center gap-3">
           <Switch id="lesson-published" checked={isPublished} onCheckedChange={(v) => { setIsPublished(v); setHasChanges(true); }} />
           <Label htmlFor="lesson-published" className="text-sm">{isPublished ? "Publicado" : "Rascunho"}</Label>
