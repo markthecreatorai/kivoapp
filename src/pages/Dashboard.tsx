@@ -85,20 +85,22 @@ export default function Dashboard() {
       setLoading(true);
       try {
         let startDate: Date;
+        let endDate = new Date();
+        let periodDays: number;
+
         if (selectedPeriod === "custom" && customRange) {
           startDate = customRange.from;
+          endDate = customRange.to;
+          periodDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         } else {
-          const periodDays = selectedPeriod === "custom" ? 30 : selectedPeriod;
+          periodDays = selectedPeriod === "custom" ? 30 : selectedPeriod;
           startDate = new Date();
           startDate.setDate(startDate.getDate() - periodDays);
         }
 
-        const prevStartDate = new Date();
-        prevStartDate.setDate(prevStartDate.getDate() - periodDays * 2);
-        const prevEndDate = new Date();
-        prevEndDate.setDate(prevEndDate.getDate() - periodDays);
-
-        const endDate = new Date();
+        const prevStartDate = new Date(startDate);
+        prevStartDate.setDate(prevStartDate.getDate() - periodDays);
+        const prevEndDate = new Date(startDate);
 
         // Fetch orders + source breakdown + top communities + tier analytics in parallel
         const [ordersRes, prevRes, sourceRes, communitiesRes, tiersRes, entitlementRes] = await Promise.all([
