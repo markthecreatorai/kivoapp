@@ -85,6 +85,7 @@ export function PaymentTabs({
   });
   const [copied, setCopied] = useState(false);
   const [pixExpired, setPixExpired] = useState(false);
+  const [cardErrors, setCardErrors] = useState<CardValidationErrors>({});
   const [installmentOptions, setInstallmentOptions] = useState<InstallmentOption[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
 
