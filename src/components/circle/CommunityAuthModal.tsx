@@ -283,16 +283,7 @@ export default function CommunityAuthModal({
                 />
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="login-pass" className="text-xs font-medium">Senha</Label>
-                  <button
-                    type="button"
-                    onClick={() => switchView("forgot-password")}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Esqueceu a senha?
-                  </button>
-                </div>
+                <Label htmlFor="login-pass" className="text-xs font-medium">Senha</Label>
                 <div className="relative">
                   <Input
                     id="login-pass"
@@ -309,6 +300,15 @@ export default function CommunityAuthModal({
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => switchView("forgot-password")}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Esqueceu a senha?
                   </button>
                 </div>
               </div>
