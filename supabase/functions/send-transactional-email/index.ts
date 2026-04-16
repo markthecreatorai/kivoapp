@@ -1,3 +1,4 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { baseEmailLayout } from "../_shared/email-system/layout.ts";
 import { ctaPrimary, ctaSecondary, emailText, emailTitle, securityAlertBox } from "../_shared/email-system/components.ts";
 
@@ -136,7 +137,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
     const { subject, html } = renderTemplate(template_key, payload as any);
+
+    const { data: logRow } = await supabase
+      .from("transactional_email_logs")
+      .insert({
+        template_key,
+        recipient,
+        provider: "resend",
+        status: "queued",
+      })
+      .select("id")
+      .single();
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -155,10 +171,27 @@ Deno.serve(async (req) => {
     const resendData = await resendRes.json();
 
     if (!resendRes.ok) {
+      if (logRow?.id) {
+        await supabase
+          .from("transactional_email_logs")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", logRow.id);
+      }
       return new Response(JSON.stringify({ ok: false, error: resendData }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (logRow?.id) {
+      await supabase
+        .from("transactional_email_logs")
+        .update({
+          status: "sent",
+          provider_message_id: resendData.id || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", logRow.id);
     }
 
     return new Response(JSON.stringify({ ok: true, provider: "resend", message_id: resendData.id }), {

@@ -1,0 +1,66 @@
+# Fase 3 — Observabilidade mínima (Resend)
+
+## O que foi implementado
+
+1. Tabela de logs: `public.transactional_email_logs`
+2. Registro no envio (função `send-transactional-email`):
+   - `template_key`
+   - `recipient`
+   - `provider`
+   - `provider_message_id`
+   - `status`
+   - `created_at`
+3. Endpoint webhook: `resend-webhook`
+4. Eventos tratados:
+   - `sent`
+   - `delivered`
+   - `bounced`
+   - `failed`
+
+## Migração
+
+Arquivo:
+- `supabase/migrations/20260416173000_transactional_email_observability.sql`
+
+## Deploy das funções
+
+```bash
+supabase functions deploy send-transactional-email
+supabase functions deploy resend-webhook
+```
+
+## Secrets necessários
+
+- `RESEND_API_KEY` (envio)
+- `EMAIL_FROM` (opcional)
+- `RESEND_WEBHOOK_SECRET` (opcional, para proteção simples via header)
+
+## Configuração do webhook no Resend
+
+URL do endpoint:
+
+`https://<PROJECT_REF>.supabase.co/functions/v1/resend-webhook`
+
+Eventos:
+- email.sent
+- email.delivered
+- email.bounced
+- email.failed
+
+Se usar segredo simples nesta fase, envie no header:
+- `x-webhook-secret: <RESEND_WEBHOOK_SECRET>`
+
+## Teste ponta a ponta
+
+1. Envie email via `send-transactional-email`.
+2. Verifique no banco:
+
+```sql
+select template_key, recipient, provider, provider_message_id, status, created_at
+from public.transactional_email_logs
+order by created_at desc
+limit 20;
+```
+
+3. Dispare evento de webhook (via painel do Resend / teste).
+4. Confirme mudança de status para `delivered`, `bounced` ou `failed`.
