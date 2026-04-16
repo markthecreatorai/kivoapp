@@ -2,16 +2,25 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
-import { formatCurrency } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/formatPrice";
-import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES, ctaTextColor as getCTATextColor, getButtonRadius, getCardRadius } from "@/lib/storefront-tokens";
+import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
+import {
+  getPreset,
+  blockGap,
+  cardPadding,
+  mediaHeight,
+  cardStyleCSS,
+  ctaStyleCSS,
+  headerClasses,
+  socialAlignment,
+} from "@/lib/storefront-layout-presets";
 import {
   Instagram,
   Youtube,
   Twitter,
   Play,
   MessageCircle,
-  ExternalLink,
+  ImageIcon,
   Loader2,
 } from "lucide-react";
 import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
@@ -128,16 +137,20 @@ function LeadFormBlock({
   storefrontId,
   primaryColor,
   textColor,
-  buttonClass,
   ctaText,
+  buttonRadius,
+  ctaCSS,
+  cardCSS,
 }: {
   config: Record<string, unknown>;
   workspaceId: string;
   storefrontId: string;
   primaryColor: string;
   textColor: string;
-  buttonClass: string;
   ctaText: string;
+  buttonRadius: string;
+  ctaCSS: React.CSSProperties;
+  cardCSS: React.CSSProperties;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -177,7 +190,7 @@ function LeadFormBlock({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full p-4 rounded-xl" style={{ borderColor: primaryColor + "40", border: "1px solid" }}>
+    <form onSubmit={handleSubmit} className="w-full p-4" style={{ borderRadius: buttonRadius, ...cardCSS }}>
       <p className="font-medium mb-3" style={{ color: textColor }}>
         {(config.title as string) || "Inscreva-se"}
       </p>
@@ -187,7 +200,7 @@ function LeadFormBlock({
           placeholder="Seu nome"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 border rounded-lg mb-2 text-sm"
+          className="w-full px-3 py-2 border rounded-lg mb-2 text-sm min-h-[44px]"
           style={{ borderColor: textColor + "30" }}
         />
       )}
@@ -197,18 +210,34 @@ function LeadFormBlock({
         placeholder="Seu melhor email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-3 py-2 border rounded-lg mb-2 text-sm"
+        className="w-full px-3 py-2 border rounded-lg mb-2 text-sm min-h-[44px]"
         style={{ borderColor: textColor + "30" }}
       />
       <button
         type="submit"
         disabled={loading}
-        className={`w-full py-2.5 text-sm font-medium min-h-[44px] ${buttonClass}`}
-        style={{ backgroundColor: primaryColor, color: ctaText }}
+        className="w-full py-2.5 text-sm font-medium min-h-[44px]"
+        style={{ borderRadius: buttonRadius, ...ctaCSS }}
       >
         {loading ? "Enviando..." : (config.button_text as string) || "Enviar"}
       </button>
     </form>
+  );
+}
+
+// ─── Social Link Component ───
+function SocialIcon({ href, icon: Icon, tokens }: { href: string; icon: React.ElementType; tokens: ReturnType<typeof resolveTokens> }) {
+  const url = href.startsWith("http") ? href : `https://${href}`;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="p-2 rounded-full transition-opacity hover:opacity-70"
+      style={{ backgroundColor: tokens.surfaceColor }}
+    >
+      <Icon className="h-4 w-4" style={{ color: tokens.textColor }} />
+    </a>
   );
 }
 
@@ -235,20 +264,12 @@ export default function PublicStorefront() {
     button_style: theme?.button_style,
   }), [theme]);
 
-  // Legacy shorthand for backward compat in block renderers
-  const t = {
-    primary: tokens.primaryColor,
-    bg: tokens.backgroundColor,
-    text: tokens.textColor,
-    font: theme?.font_body || "Inter",
-    btn: theme?.button_style || "rounded",
-  };
-
-  const buttonClass =
-    t.btn === "pill" ? "rounded-full" : t.btn === "square" ? "rounded-none" : "rounded-xl";
-
-  const cardClass =
-    t.btn === "pill" ? "rounded-2xl" : t.btn === "square" ? "rounded-none" : "rounded-xl";
+  const preset = useMemo(() => getPreset(theme?.template_key), [theme?.template_key]);
+  const gap = blockGap(preset.contentDensity);
+  const pad = cardPadding(preset.contentDensity);
+  const imgH = mediaHeight(preset.mediaEmphasis);
+  const cardCSS = cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor);
+  const ctaCSS = ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor);
 
   // ─── Fetch data ───
   useEffect(() => {
@@ -257,7 +278,6 @@ export default function PublicStorefront() {
     (async () => {
       setLoading(true);
 
-      // 1. Fetch storefront by slug
       const { data: sf, error: sfErr } = await supabase
         .from("storefronts")
         .select("id, slug, title, bio, avatar_url, social_links, workspace_id")
@@ -277,7 +297,6 @@ export default function PublicStorefront() {
       } as StorefrontRow;
       setStorefront(storefrontData);
 
-      // 2. Parallel fetches: theme, blocks
       const [themeRes, blocksRes] = await Promise.all([
         supabase
           .from("storefront_themes")
@@ -298,7 +317,6 @@ export default function PublicStorefront() {
         .map((b: any) => ({ ...b, config: b.config || {} })) as BlockRow[];
       setBlocks(visibleBlocks);
 
-      // 3. Fetch ALL published products for the workspace (aligns with preview)
       const [allProdRes, allPriceRes] = await Promise.all([
         supabase
           .from("products")
@@ -322,19 +340,16 @@ export default function PublicStorefront() {
 
       setProducts(allProducts);
       setPrices(allPrices);
-
       setLoading(false);
 
-      // 4. Track page view
+      // Track page view
       const utmSource = searchParams.get("utm_source");
       const utmMedium = searchParams.get("utm_medium");
       const utmCampaign = searchParams.get("utm_campaign");
       const utmContent = searchParams.get("utm_content");
       const ref = searchParams.get("ref");
 
-      if (ref) {
-        sessionStorage.setItem("kivo_ref", ref);
-      }
+      if (ref) sessionStorage.setItem("kivo_ref", ref);
 
       supabase.from("analytics_events").insert({
         workspace_id: sf.workspace_id,
@@ -343,13 +358,7 @@ export default function PublicStorefront() {
         page_path: `/${slug}`,
         referrer: document.referrer || null,
         user_agent: navigator.userAgent,
-        metadata: {
-          utm_source: utmSource,
-          utm_medium: utmMedium,
-          utm_campaign: utmCampaign,
-          utm_content: utmContent,
-          ref,
-        } as any,
+        metadata: { utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign, utm_content: utmContent, ref } as any,
       });
     })();
   }, [slug, searchParams]);
@@ -408,6 +417,109 @@ export default function PublicStorefront() {
   }
 
   const socialLinks: Record<string, string> = (typeof storefront.social_links === 'object' && storefront.social_links !== null) ? storefront.social_links : {};
+  const socialPlatforms: { key: string; icon: React.ElementType }[] = [
+    { key: 'instagram', icon: Instagram },
+    { key: 'tiktok', icon: TikTokIcon },
+    { key: 'youtube', icon: Youtube },
+    { key: 'twitter', icon: Twitter },
+  ];
+  const visibleSocials = socialPlatforms.filter(p => socialLinks[p.key]);
+
+  // ─── Product card renderer (shared for blocks + extra) ───
+  const renderProductCard = (product: ProductInfo, priceDisplay: { label: string; isFree: boolean }) => {
+    const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
+    const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
+    const isExternal = product.delivery_url?.startsWith("http");
+    const isCalloutStyle = product.thumbnail_style === "callout";
+    const isButtonStyle = product.thumbnail_style === "button";
+
+    // Callout/button style (compact icon layout)
+    if (isCalloutStyle || isButtonStyle) {
+      return (
+        <a
+          href={linkTarget}
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noopener noreferrer" : undefined}
+          onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
+          className="w-full overflow-hidden block transition-all active:scale-[0.98]"
+          style={{ borderRadius: tokens.cardRadius, ...cardCSS }}
+        >
+          <div style={{ padding: pad }}>
+            <div className="flex items-center gap-3">
+              <img
+                src={product.thumbnail_url || kivoReferralLogo}
+                alt={product.name}
+                className="w-12 h-12 rounded-2xl object-cover shrink-0"
+                loading="lazy"
+              />
+              <p className="font-semibold" style={{ color: tokens.textColor }}>
+                {product.name}
+              </p>
+            </div>
+            {!isButtonStyle && (
+              <div
+                className="mt-4 py-3 text-sm font-medium text-center min-h-[44px]"
+                style={{ borderRadius: tokens.buttonRadius, ...ctaCSS }}
+              >
+                {ctaLabel}
+              </div>
+            )}
+          </div>
+        </a>
+      );
+    }
+
+    // Default card (large image or minimal)
+    return (
+      <a
+        href={linkTarget}
+        target={isExternal ? "_blank" : undefined}
+        rel={isExternal ? "noopener noreferrer" : undefined}
+        onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
+        className="w-full overflow-hidden block transition-all active:scale-[0.98]"
+        style={{ borderRadius: tokens.cardRadius, ...cardCSS }}
+      >
+        {preset.mediaEmphasis !== 'minimal' ? (
+          product.thumbnail_url ? (
+            <img src={product.thumbnail_url} alt={product.name} className="w-full object-cover" style={{ height: imgH }} loading="lazy" />
+          ) : (
+            <div className="w-full flex items-center justify-center" style={{ height: imgH, backgroundColor: tokens.surfaceColor }}>
+              <ImageIcon className="h-8 w-8" style={{ color: tokens.textSecondaryColor }} />
+            </div>
+          )
+        ) : (
+          product.thumbnail_url ? (
+            <div style={{ padding: `${pad} ${pad} 0` }}>
+              <img src={product.thumbnail_url} alt={product.name} className="w-12 h-12 rounded-lg object-cover" loading="lazy" />
+            </div>
+          ) : null
+        )}
+        <div style={{ padding: pad }}>
+          <p className="font-semibold" style={{ color: tokens.textColor }}>
+            {product.name}
+          </p>
+          {product.short_description && (
+            <p className="text-sm mt-1 opacity-70" style={{ color: tokens.textColor }}>
+              {product.short_description}
+            </p>
+          )}
+          <div className="flex items-center justify-between mt-3">
+            {priceDisplay.label && (
+              <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: tokens.primaryColor }}>
+                {priceDisplay.label}
+              </span>
+            )}
+            <span
+              className="px-4 py-2 text-sm font-medium min-h-[44px] flex items-center"
+              style={{ borderRadius: tokens.buttonRadius, ...ctaCSS }}
+            >
+              {ctaLabel}
+            </span>
+          </div>
+        </div>
+      </a>
+    );
+  };
 
   // ─── Block Renderer ───
   const renderBlock = (block: BlockRow) => {
@@ -416,15 +528,19 @@ export default function PublicStorefront() {
     switch (block.type) {
       case "link": {
         const linkUrl = (config.url as string) || "";
-        if (!linkUrl) return null; // Don't render empty links
+        if (!linkUrl) return null;
         return (
           <a
             href={linkUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackEvent("LINK_CLICKED")}
-            className={`w-full py-3.5 px-4 border text-center font-medium block transition-all active:scale-[0.98] ${buttonClass}`}
-            style={{ borderColor: t.primary, color: t.text }}
+            className="w-full py-3.5 px-4 text-center font-medium block transition-all active:scale-[0.98] min-h-[44px]"
+            style={{
+              borderRadius: tokens.buttonRadius,
+              color: tokens.textColor,
+              ...ctaStyleCSS('outline', tokens.primaryColor, tokens.ctaTextColor),
+            }}
           >
             {(config.title as string) || "Link"}
           </a>
@@ -441,91 +557,7 @@ export default function PublicStorefront() {
           productType: undefined,
           formatId: (product.metadata as any)?.format_id,
         });
-        const isCalloutStyle = product.thumbnail_style === "callout";
-        const isButtonStyle = product.thumbnail_style === "button";
-        const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
-        const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
-        const isExternal = product.delivery_url?.startsWith("http");
-
-        // Callout with icon layout (Stan Store style)
-        if (isCalloutStyle || isButtonStyle) {
-          return (
-            <a
-              href={linkTarget}
-              target={isExternal ? "_blank" : undefined}
-              rel={isExternal ? "noopener noreferrer" : undefined}
-              onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
-              className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
-              style={{ borderColor: t.primary + "40" }}
-            >
-              <div className="p-4">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={product.thumbnail_url || kivoReferralLogo}
-                    alt={product.name}
-                    className="w-12 h-12 rounded-2xl object-cover shrink-0"
-                    loading="lazy"
-                  />
-                  <p className="font-semibold" style={{ color: t.text }}>
-                    {product.name}
-                  </p>
-                </div>
-                {!isButtonStyle && (
-                  <div
-                    className={`mt-4 py-3 text-sm font-medium text-center min-h-[44px] ${buttonClass}`}
-                    style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
-                  >
-                    {ctaLabel}
-                  </div>
-                )}
-              </div>
-            </a>
-          );
-        }
-
-        // Default product card (large image)
-        return (
-          <a
-            href={linkTarget}
-            target={isExternal ? "_blank" : undefined}
-            rel={isExternal ? "noopener noreferrer" : undefined}
-            onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
-            className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
-            style={{ borderColor: t.primary + "40" }}
-          >
-            {product.thumbnail_url && (
-              <img
-                src={product.thumbnail_url}
-                alt={product.name}
-                className="w-full h-40 object-cover"
-                loading="lazy"
-              />
-            )}
-            <div className="p-4">
-              <p className="font-semibold" style={{ color: t.text }}>
-                {product.name}
-              </p>
-              {product.short_description && (
-                <p className="text-sm mt-1 opacity-70" style={{ color: t.text }}>
-                  {product.short_description}
-                </p>
-              )}
-              <div className="flex items-center justify-between mt-3">
-                {priceDisplay.label && (
-                  <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: t.primary }}>
-                    {priceDisplay.label}
-                  </span>
-                )}
-                <span
-                  className={`px-4 py-2 text-sm font-medium min-h-[44px] flex items-center ${buttonClass}`}
-                  style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
-                >
-                  {ctaLabel}
-                </span>
-              </div>
-            </div>
-          </a>
-        );
+        return renderProductCard(product, priceDisplay);
       }
 
       case "lead_form":
@@ -534,10 +566,12 @@ export default function PublicStorefront() {
             config={config}
             workspaceId={storefront.workspace_id}
             storefrontId={storefront.id}
-            primaryColor={t.primary}
-            textColor={t.text}
-            buttonClass={buttonClass}
+            primaryColor={tokens.primaryColor}
+            textColor={tokens.textColor}
             ctaText={tokens.ctaTextColor}
+            buttonRadius={tokens.buttonRadius}
+            ctaCSS={ctaCSS}
+            cardCSS={cardCSS}
           />
         );
 
@@ -555,21 +589,12 @@ export default function PublicStorefront() {
         }
 
         return embedSrc ? (
-          <div className="w-full aspect-video rounded-xl overflow-hidden">
-            <iframe
-              src={embedSrc}
-              className="w-full h-full"
-              allowFullScreen
-              loading="lazy"
-              title="Video"
-            />
+          <div className="w-full aspect-video overflow-hidden" style={{ borderRadius: tokens.cardRadius }}>
+            <iframe src={embedSrc} className="w-full h-full" allowFullScreen loading="lazy" title="Video" />
           </div>
         ) : (
-          <div
-            className="w-full aspect-video rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: t.text + "10" }}
-          >
-            <Play className="h-8 w-8" style={{ color: t.primary }} />
+          <div className="w-full aspect-video flex items-center justify-center" style={{ backgroundColor: tokens.surfaceColor, borderRadius: tokens.cardRadius }}>
+            <Play className="h-8 w-8" style={{ color: tokens.primaryColor }} />
           </div>
         );
       }
@@ -578,8 +603,8 @@ export default function PublicStorefront() {
         const isHeading = config.variant === "heading";
         return (
           <p
-            className={`w-full text-center ${isHeading ? "text-xl font-bold" : "text-sm opacity-80"}`}
-            style={{ color: t.text }}
+            className={`w-full ${preset.headerAlignment === 'left' ? 'text-left' : 'text-center'} ${isHeading ? "text-xl font-bold" : "text-sm opacity-80"}`}
+            style={{ color: tokens.textColor }}
           >
             {(config.content as string) || ""}
           </p>
@@ -595,8 +620,8 @@ export default function PublicStorefront() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackEvent("LINK_CLICKED")}
-            className={`w-full py-3.5 px-4 flex items-center justify-center gap-2 font-medium text-white active:scale-[0.98] transition-all ${buttonClass}`}
-            style={{ backgroundColor: "#25D366" }}
+            className="w-full py-3.5 px-4 flex items-center justify-center gap-2 font-medium text-white active:scale-[0.98] transition-all min-h-[44px]"
+            style={{ backgroundColor: "#25D366", borderRadius: tokens.buttonRadius }}
           >
             <MessageCircle className="h-5 w-5" />
             {(config.label as string) || "Chamar no WhatsApp"}
@@ -605,15 +630,15 @@ export default function PublicStorefront() {
       }
 
       case "divider":
-        return <div className="w-full h-px my-1" style={{ backgroundColor: t.text + "20" }} />;
+        return <div className="w-full h-px my-1" style={{ backgroundColor: tokens.borderColor }} />;
 
       case "countdown":
         return (
           <CountdownBlock
             targetDate={(config.target_date as string) || new Date().toISOString()}
             label={(config.label as string) || "Termina em"}
-            primaryColor={t.primary}
-            textColor={t.text}
+            primaryColor={tokens.primaryColor}
+            textColor={tokens.textColor}
           />
         );
 
@@ -622,13 +647,18 @@ export default function PublicStorefront() {
     }
   };
 
+  // ─── Visibility flags ───
+  const showAvatar = !!storefront.avatar_url;
+  const showBio = !!storefront.bio?.trim();
+  const initials = storefront.title?.charAt(0)?.toUpperCase() || "K";
+
   return (
     <>
       {/* Load Google Font */}
-      {t.font !== "Inter" && (
+      {tokens.fontFamily.includes("Inter") ? null : (
         <link
           rel="stylesheet"
-          href={`https://fonts.googleapis.com/css2?family=${t.font.replace(/ /g, "+")}:wght@400;500;600;700&display=swap`}
+          href={`https://fonts.googleapis.com/css2?family=${(theme?.font_body || "Inter").replace(/ /g, "+")}:wght@400;500;600;700&display=swap`}
         />
       )}
       <div
@@ -636,77 +666,48 @@ export default function PublicStorefront() {
         style={{ backgroundColor: tokens.backgroundColor, fontFamily: tokens.fontFamily }}
       >
         <div className="max-w-[480px] mx-auto px-5 py-8 pb-16">
-          {/* Unified Profile Header — same structure as preview */}
-          {(() => {
-            const showAvatar = !!storefront.avatar_url;
-            const showBio = !!storefront.bio?.trim();
-            const initials = storefront.title?.charAt(0)?.toUpperCase() || "K";
-            return (
-              <div className="flex flex-col items-center text-center mb-8">
-                {showAvatar ? (
-                  <img
-                    src={storefront.avatar_url!}
-                    alt={storefront.title || "Avatar"}
-                    className="w-20 h-20 rounded-full object-cover mb-3 ring-4 ring-white/80 shadow-lg"
-                  />
-                ) : (
-                  <div
-                    className="w-16 h-16 rounded-full mb-3 flex items-center justify-center text-xl font-bold shadow-md"
-                    style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}
-                  >
-                    {initials}
-                  </div>
-                )}
-                <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold, lineHeight: TYPOGRAPHY.lineHeight.tight }}>
-                  {storefront.title || ""}
-                </h1>
-                {showBio && (
-                  <p className="mt-1.5 max-w-[320px] leading-relaxed" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
-                    {storefront.bio}
-                  </p>
-                )}
-
-                {/* Social Links */}
-                {Object.values(socialLinks).some(Boolean) && (
-                  <div className="flex gap-2.5 mt-3">
-                    {socialLinks.instagram && (
-                      <a href={socialLinks.instagram.startsWith("http") ? socialLinks.instagram : `https://${socialLinks.instagram}`} target="_blank" rel="noopener noreferrer"
-                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                        <Instagram className="h-4 w-4" style={{ color: tokens.textColor }} />
-                      </a>
-                    )}
-                    {socialLinks.tiktok && (
-                      <a href={socialLinks.tiktok.startsWith("http") ? socialLinks.tiktok : `https://${socialLinks.tiktok}`} target="_blank" rel="noopener noreferrer"
-                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                        <TikTokIcon className="h-4 w-4" />
-                      </a>
-                    )}
-                    {socialLinks.youtube && (
-                      <a href={socialLinks.youtube.startsWith("http") ? socialLinks.youtube : `https://${socialLinks.youtube}`} target="_blank" rel="noopener noreferrer"
-                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                        <Youtube className="h-4 w-4" style={{ color: tokens.textColor }} />
-                      </a>
-                    )}
-                    {socialLinks.twitter && (
-                      <a href={socialLinks.twitter.startsWith("http") ? socialLinks.twitter : `https://${socialLinks.twitter}`} target="_blank" rel="noopener noreferrer"
-                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                        <Twitter className="h-4 w-4" style={{ color: tokens.textColor }} />
-                      </a>
-                    )}
-                  </div>
-                )}
+          {/* ─── Profile Header (alignment from preset) ─── */}
+          <div className={`${headerClasses(preset.headerAlignment)} mb-8`}>
+            {showAvatar ? (
+              <img
+                src={storefront.avatar_url!}
+                alt={storefront.title || "Avatar"}
+                className="w-20 h-20 rounded-full object-cover mb-3 ring-4 ring-white/80 shadow-lg"
+              />
+            ) : (
+              <div
+                className="w-16 h-16 rounded-full mb-3 flex items-center justify-center text-xl font-bold shadow-md"
+                style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}
+              >
+                {initials}
               </div>
-            );
-          })()}
+            )}
+            <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold, lineHeight: TYPOGRAPHY.lineHeight.tight }}>
+              {storefront.title || ""}
+            </h1>
+            {showBio && (
+              <p className="mt-1.5 max-w-[320px] leading-relaxed" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
+                {storefront.bio}
+              </p>
+            )}
 
-          {/* Blocks */}
-          <div className="space-y-3">
+            {visibleSocials.length > 0 && (
+              <div className={`flex gap-2.5 mt-3 ${socialAlignment(preset.headerAlignment)}`}>
+                {visibleSocials.map(p => (
+                  <SocialIcon key={p.key} href={socialLinks[p.key]} icon={p.icon} tokens={tokens} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ─── Blocks ─── */}
+          <div className="flex flex-col" style={{ gap }}>
             {blocks.map((block) => (
               <div key={block.id}>{renderBlock(block)}</div>
             ))}
           </div>
 
-          {/* Extra products not in blocks — mirrors preview behavior */}
+          {/* ─── Extra products not in blocks ─── */}
           {(() => {
             const blockProductIds = blocks
               .filter((b) => b.type === "product")
@@ -717,7 +718,7 @@ export default function PublicStorefront() {
             );
             if (extraProducts.length === 0) return null;
             return (
-              <div className="space-y-3 mt-3">
+              <div className="flex flex-col mt-3" style={{ gap }}>
                 {extraProducts.map((product) => {
                   const price = prices.find((p) => p.product_id === product.id);
                   const priceDisplay = getDisplayPrice({
@@ -725,102 +726,18 @@ export default function PublicStorefront() {
                     currency: price?.currency,
                     formatId: (product.metadata as any)?.format_id,
                   });
-                  const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
-                  const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
-                  const isExternal = product.delivery_url?.startsWith("http");
-                  const isCalloutStyle = product.thumbnail_style === "callout";
-                  const isButtonStyle = product.thumbnail_style === "button";
-
-                  if (isCalloutStyle || isButtonStyle) {
-                    return (
-                      <a
-                        key={product.id}
-                        href={linkTarget}
-                        target={isExternal ? "_blank" : undefined}
-                        rel={isExternal ? "noopener noreferrer" : undefined}
-                        onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
-                        className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
-                        style={{ borderColor: t.primary + "40" }}
-                      >
-                        <div className="p-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={product.thumbnail_url || kivoReferralLogo}
-                              alt={product.name}
-                              className="w-12 h-12 rounded-2xl object-cover shrink-0"
-                              loading="lazy"
-                            />
-                            <p className="font-semibold" style={{ color: t.text }}>
-                              {product.name}
-                            </p>
-                          </div>
-                          {!isButtonStyle && (
-                            <div
-                              className={`mt-4 py-3 text-sm font-medium text-center min-h-[44px] ${buttonClass}`}
-                              style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
-                            >
-                              {ctaLabel}
-                            </div>
-                          )}
-                        </div>
-                      </a>
-                    );
-                  }
-
-                  return (
-                    <a
-                      key={product.id}
-                      href={linkTarget}
-                      target={isExternal ? "_blank" : undefined}
-                      rel={isExternal ? "noopener noreferrer" : undefined}
-                      onClick={() => trackEvent("PRODUCT_VIEW", product.id)}
-                      className={`w-full overflow-hidden border block transition-all active:scale-[0.98] ${cardClass}`}
-                      style={{ borderColor: t.primary + "40" }}
-                    >
-                      {product.thumbnail_url && (
-                        <img
-                          src={product.thumbnail_url}
-                          alt={product.name}
-                          className="w-full h-40 object-cover"
-                          loading="lazy"
-                        />
-                      )}
-                      <div className="p-4">
-                        <p className="font-semibold" style={{ color: t.text }}>
-                          {product.name}
-                        </p>
-                        {product.short_description && (
-                          <p className="text-sm mt-1 opacity-70" style={{ color: t.text }}>
-                            {product.short_description}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between mt-3">
-                          {priceDisplay.label && (
-                            <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: t.primary }}>
-                              {priceDisplay.label}
-                            </span>
-                          )}
-                          <span
-                            className={`px-4 py-2 text-sm font-medium min-h-[44px] flex items-center ${buttonClass}`}
-                            style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
-                          >
-                            {ctaLabel}
-                          </span>
-                        </div>
-                      </div>
-                    </a>
-                  );
+                  return <div key={product.id}>{renderProductCard(product, priceDisplay)}</div>;
                 })}
               </div>
             );
           })()}
 
-          {/* Footer — Free plan */}
-          <div className="mt-12 text-center">
+          {/* ─── Footer ─── */}
+          <div className={`mt-12 ${preset.headerAlignment === 'left' ? 'text-left' : 'text-center'}`}>
             <a
               href="https://kivohub.com.br"
               className="text-xs opacity-40 hover:opacity-60 transition-opacity"
-              style={{ color: t.text }}
+              style={{ color: tokens.textColor }}
             >
               Feito com 💜 na Kivo
             </a>
