@@ -115,7 +115,7 @@ export default function UrlMediaFlow({
           short_description: form.shortDescription,
           listing_button_text: form.ctaText,
           thumbnail_style: form.cardStyle,
-          thumbnail_url: form.thumbnailUrl === kivoReferralLogo ? "" : form.thumbnailUrl,
+          thumbnail_url: form.thumbnailUrl,
           delivery_mode: "none",
           delivery_url: form.targetUrl,
           source_url: form.targetUrl,

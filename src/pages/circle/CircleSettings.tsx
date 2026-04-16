@@ -508,7 +508,7 @@ export default function CircleSettings() {
                 className={cn(
                   "whitespace-nowrap text-left px-4 py-2.5 rounded-md text-sm transition-colors",
                   activeSection === id
-                    ? "bg-amber-100/80 text-foreground font-semibold"
+                    ? "bg-primary/10 text-primary font-semibold"
                     : "text-foreground hover:bg-muted/30"
                 )}
               >
