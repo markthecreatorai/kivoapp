@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { QrCode, CreditCard, FileText, Copy, Check, Loader2, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { formatCardNumber, formatExpiry, detectCardBrand } from "@/lib/cpf";
+import { formatCardNumber, formatExpiry, detectCardBrand, validateCardFields, expectedCvcLength, type CardValidationErrors } from "@/lib/cpf";
 import { supabase } from "@/integrations/supabase/client";
 
 interface InstallmentOption {
