@@ -152,7 +152,7 @@ export default function CommunityDiscovery() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setAuthModalView("login"); setShowAuthModal(true); }} className="gap-2">
                 <LogIn className="h-4 w-4" /> Entrar
               </Button>
             )}
