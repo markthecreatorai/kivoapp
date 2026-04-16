@@ -659,9 +659,10 @@ export default function PublicStorefront() {
     <>
       {/* Always load the selected Google Font */}
       <link rel="stylesheet" href={googleFontUrl} />
+      <style dangerouslySetInnerHTML={{ __html: `.kivo-storefront, .kivo-storefront * { font-family: ${tokens.fontFamily} !important; }` }} />
       <div
-        className="min-h-screen [&_*]:!font-[inherit]"
-        style={{ backgroundColor: tokens.backgroundColor, fontFamily: tokens.fontFamily }}
+        className="min-h-screen kivo-storefront"
+        style={{ backgroundColor: tokens.backgroundColor }}
       >
         <div className="max-w-[480px] mx-auto px-5 py-8 pb-16">
           {/* ─── Profile Header (alignment from preset) ─── */}
