@@ -40,7 +40,7 @@ export default function DigitalProductFlow({
   setSaving: (v: boolean) => void;
 }) {
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState("thumbnail");
+  const [tab, setTab] = useState("visual");
   const themeTokens = useStorefrontTheme();
 
   // Initial Price derived from DB relation (if exists)
@@ -121,12 +121,11 @@ export default function DigitalProductFlow({
   });
 
   const handleNext = () => {
-    if (tab === "thumbnail") {
+    if (tab === "visual") {
       if (!form.name.trim()) { toast.error("Informe título"); return; }
-      setTab("checkout");
-    } else if (tab === "checkout") {
-      if (!form.isFree && form.price <= 0) { toast.error("Informe um preço válido."); return; }
-      setTab("opcoes");
+      setTab("conteudo");
+    } else if (tab === "conteudo") {
+      setTab("config");
     }
   };
 
@@ -147,7 +146,7 @@ export default function DigitalProductFlow({
             <div className="w-32 h-6 bg-black absolute top-0 inset-x-0 mx-auto rounded-b-xl z-20"></div>
 
             {/* Thumbnail Preview */}
-              {tab === "thumbnail" && (
+              {tab === "visual" && (
               <div className="p-4 pt-10 flex items-center h-full">
                 {form.cardStyle === "button" && (
                   <div 
@@ -210,7 +209,7 @@ export default function DigitalProductFlow({
             )}
 
             {/* Checkout / Opções Preview */}
-            {(tab === "checkout" || tab === "opcoes") && (
+            {(tab === "conteudo" || tab === "config") && (
               <div className="min-h-full" style={{ backgroundColor: themeTokens.backgroundColor }}>
                 {form.checkoutImage && (
                   <div className="h-48 bg-zinc-100 overflow-hidden">
@@ -280,11 +279,17 @@ export default function DigitalProductFlow({
         {/* Lado Esquerdo - Formulário */}
         <div className="flex-1 min-w-0">
           <Tabs value={tab} onValueChange={setTab} className="mb-8">
-            <TabsList className="bg-muted/50 p-1 w-full flex mb-6">
-              <TabsTrigger value="thumbnail" className="flex-1 text-xs sm:text-sm">1. Thumbnail</TabsTrigger>
-              <TabsTrigger value="checkout" className="flex-1 text-xs sm:text-sm">2. Checkout</TabsTrigger>
-              <TabsTrigger value="opcoes" className="flex-1 text-xs sm:text-sm">3. Opções Extras</TabsTrigger>
-            </TabsList>
+             <TabsList className="bg-muted/50 p-1 w-full flex mb-6">
+               <TabsTrigger value="visual" className="flex-1 text-xs sm:text-sm gap-1.5">
+                 <Palette className="h-3.5 w-3.5" /> Visual
+               </TabsTrigger>
+               <TabsTrigger value="conteudo" className="flex-1 text-xs sm:text-sm gap-1.5">
+                 <Type className="h-3.5 w-3.5" /> Conteúdo
+               </TabsTrigger>
+               <TabsTrigger value="config" className="flex-1 text-xs sm:text-sm gap-1.5">
+                 <Settings className="h-3.5 w-3.5" /> Configuração
+               </TabsTrigger>
+             </TabsList>
 
             {/* ABA: THUMBNAIL */}
             <TabsContent value="thumbnail" className="space-y-8 animate-in fade-in">
