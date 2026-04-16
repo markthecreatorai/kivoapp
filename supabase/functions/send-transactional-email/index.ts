@@ -11,7 +11,10 @@ type TemplateKey =
   | "welcome_account_created"
   | "subscription_activated"
   | "payment_failed"
-  | "support_received";
+  | "support_received"
+  | "onboarding_complementary"
+  | "cancellation_confirmed"
+  | "subscription_reactivated";
 
 type TemplatePayloadMap = {
   welcome_account_created: {
@@ -35,6 +38,22 @@ type TemplatePayloadMap = {
     ticket_id?: string;
     expected_reply?: string;
     support_url?: string;
+  };
+  onboarding_complementary: {
+    name?: string;
+    checklist_url?: string;
+    next_step?: string;
+  };
+  cancellation_confirmed: {
+    name?: string;
+    plan_name?: string;
+    valid_until?: string;
+    reactivation_url?: string;
+  };
+  subscription_reactivated: {
+    name?: string;
+    plan_name?: string;
+    billing_url?: string;
   };
 };
 
@@ -107,6 +126,53 @@ function renderTemplate<K extends TemplateKey>(templateKey: K, payload: Template
             p.ticket_id ? emailText(`ID do ticket: ${p.ticket_id}`) : "",
             p.expected_reply ? emailText(`Previsão de resposta: ${p.expected_reply}`) : "",
             ctaPrimary("Acompanhar solicitação", p.support_url || "https://www.kivohub.com.br/support"),
+          ].join("\n"),
+        }),
+      };
+    }
+
+    case "onboarding_complementary": {
+      const p = payload as TemplatePayloadMap["onboarding_complementary"];
+      return {
+        subject: "Falta pouco para concluir seu onboarding",
+        html: baseEmailLayout({
+          preheader: "Complete os últimos passos para aproveitar a Kivo.",
+          bodyHtml: [
+            emailTitle("Vamos concluir sua configuração"),
+            emailText(`Olá${p.name ? `, ${p.name}` : ""}! Seu onboarding está quase pronto.`),
+            p.next_step ? emailText(`Próximo passo recomendado: ${p.next_step}`) : "",
+            ctaPrimary("Continuar onboarding", p.checklist_url || "https://www.kivohub.com.br/dashboard"),
+          ].join("\n"),
+        }),
+      };
+    }
+
+    case "cancellation_confirmed": {
+      const p = payload as TemplatePayloadMap["cancellation_confirmed"];
+      return {
+        subject: "Cancelamento confirmado",
+        html: baseEmailLayout({
+          preheader: "Seu cancelamento foi processado com sucesso.",
+          bodyHtml: [
+            emailTitle("Assinatura cancelada"),
+            emailText(`Tudo certo${p.name ? `, ${p.name}` : ""}. O cancelamento do plano ${p.plan_name || "Kivo"} foi confirmado.`),
+            p.valid_until ? emailText(`Seu acesso permanece ativo até: ${p.valid_until}`) : "",
+            ctaSecondary("Reativar assinatura", p.reactivation_url || "https://www.kivohub.com.br/settings/billing"),
+          ].join("\n"),
+        }),
+      };
+    }
+
+    case "subscription_reactivated": {
+      const p = payload as TemplatePayloadMap["subscription_reactivated"];
+      return {
+        subject: "Assinatura reativada com sucesso 🎉",
+        html: baseEmailLayout({
+          preheader: "Sua assinatura está ativa novamente.",
+          bodyHtml: [
+            emailTitle("Bem-vindo(a) de volta!"),
+            emailText(`Sua assinatura ${p.plan_name || "Kivo"} foi reativada${p.name ? `, ${p.name}` : ""}.`),
+            ctaPrimary("Gerenciar assinatura", p.billing_url || "https://www.kivohub.com.br/settings/billing"),
           ].join("\n"),
         }),
       };
