@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { formatCurrency, cn } from "@/lib/utils";
+import { getDisplayPrice } from "@/lib/formatPrice";
 import {
   DndContext,
   closestCenter,
@@ -227,6 +228,12 @@ function SortableProductItem({
   const typeInfo = TYPE_LABELS[product.type] ?? TYPE_LABELS.DIGITAL;
   const TypeIcon = typeInfo.icon;
   const price = product.prices?.find((p: any) => p.is_default && p.is_active);
+  const priceDisplay = getDisplayPrice({
+    amount: price?.amount,
+    currency: price?.currency,
+    productType: product.type,
+    formatId: (product.metadata as any)?.format_id,
+  });
 
   return (
     <div
@@ -266,11 +273,11 @@ function SortableProductItem({
         </p>
         <div className="flex items-center gap-1.5 mt-1">
           <span className="text-[12px] text-muted-foreground font-medium">{typeInfo.label}</span>
-          {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
+          {priceDisplay.label && (
             <>
               <span className="text-border text-[10px]">·</span>
-              <span className="text-[12px] font-semibold text-muted-foreground">
-                {formatCurrency(price.amount)}
+              <span className={cn("text-[12px] font-semibold", priceDisplay.isFree ? "text-primary" : "text-muted-foreground")}>
+                {priceDisplay.label}
               </span>
             </>
           )}
@@ -558,6 +565,12 @@ function AbaLandingPages({
             const typeInfo = TYPE_LABELS[product.type] ?? TYPE_LABELS.DIGITAL;
             const TypeIcon = typeInfo.icon;
             const price = product.prices?.find((p: any) => p.is_default && p.is_active);
+            const priceDisplay = getDisplayPrice({
+              amount: price?.amount,
+              currency: price?.currency,
+              productType: product.type,
+              formatId: (product.metadata as any)?.format_id,
+            });
 
             return (
               <div
@@ -576,11 +589,11 @@ function AbaLandingPages({
                   <p className="text-[14px] font-semibold text-[#111827] truncate">{product.name}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[12px] text-[#6b7280]">{typeInfo.label}</span>
-                    {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
+                    {priceDisplay.label && (
                       <>
                         <span className="text-[#d4d4d4] text-[10px]">·</span>
-                        <span className="text-[12px] font-semibold text-[#6b7280]">
-                          {formatCurrency(price.amount)}
+                        <span className={cn("text-[12px] font-semibold", priceDisplay.isFree ? "text-primary" : "text-[#6b7280]")}>
+                          {priceDisplay.label}
                         </span>
                       </>
                     )}
