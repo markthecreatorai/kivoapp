@@ -347,6 +347,53 @@ export default function MyCommunities() {
             </button>
           </div>
         )}
+
+        {/* My Courses / Products Section */}
+        {entitlements.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" /> Meus Cursos & Produtos
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/member")} className="gap-1 text-primary">
+                Ver todos <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {entitlements.map((e: any) => (
+                <button
+                  key={e.id}
+                  onClick={() => navigate("/member")}
+                  className="text-left group"
+                >
+                  <Card className="overflow-hidden border-border hover:border-primary/40 hover:shadow-md transition-all duration-200 flex items-center gap-3 p-3">
+                    <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                      {e.product?.cover_image_url ? (
+                        <img src={e.product.cover_image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <BookOpen className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                        {e.product?.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground capitalize">{e.product?.type?.toLowerCase()}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
+                  </Card>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Explore CTA */}
+        <div className="mt-8 text-center">
+          <Button variant="outline" onClick={() => navigate("/circles/explore")} className="gap-2">
+            <Compass className="h-4 w-4" /> Explorar comunidades
+          </Button>
+        </div>
       </div>
 
       {/* Create Community Modal */}
