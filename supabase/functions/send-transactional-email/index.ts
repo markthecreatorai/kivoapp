@@ -61,7 +61,28 @@ type SendTransactionalEmailRequest<K extends TemplateKey = TemplateKey> = {
   template_key: K;
   recipient: string;
   payload: TemplatePayloadMap[K];
+  user_id?: string;
+  workspace_id?: string;
+  idempotency_key?: string;
 };
+
+const IDEMPOTENT_TEMPLATES = new Set<TemplateKey>([
+  "subscription_activated",
+  "payment_failed",
+  "support_received",
+]);
+
+function buildTags(input: { template_key: TemplateKey; user_id?: string; workspace_id?: string }) {
+  const tags = [
+    { name: "template_key", value: input.template_key },
+    { name: "category", value: "transactional" },
+  ];
+
+  if (input.user_id) tags.push({ name: "user_id", value: input.user_id.slice(0, 100) });
+  if (input.workspace_id) tags.push({ name: "workspace_id", value: input.workspace_id.slice(0, 100) });
+
+  return tags;
+}
 
 function renderTemplate<K extends TemplateKey>(templateKey: K, payload: TemplatePayloadMap[K]) {
   switch (templateKey) {
@@ -184,7 +205,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { template_key, recipient, payload } = await req.json() as SendTransactionalEmailRequest;
+    const { template_key, recipient, payload, user_id, workspace_id, idempotency_key } = await req.json() as SendTransactionalEmailRequest;
 
     if (!template_key || !recipient || !payload) {
       return new Response(JSON.stringify({ error: "template_key, recipient, payload são obrigatórios" }), {
@@ -224,17 +245,23 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
 
+    const computedIdempotencyKey = IDEMPOTENT_TEMPLATES.has(template_key)
+      ? (idempotency_key || `${template_key}:${recipient}:${user_id || "anon"}`)
+      : undefined;
+
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${RESEND_API_KEY}`,
+        ...(computedIdempotencyKey ? { "Idempotency-Key": computedIdempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: EMAIL_FROM,
         to: [recipient],
         subject,
         html,
+        tags: buildTags({ template_key, user_id, workspace_id }),
       }),
     });
 

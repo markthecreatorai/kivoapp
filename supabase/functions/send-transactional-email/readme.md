@@ -17,6 +17,11 @@ Campos obrigatórios:
 - `recipient`
 - `payload`
 
+Campos opcionais (recomendados para rastreio):
+- `user_id`
+- `workspace_id`
+- `idempotency_key`
+
 ## Templates implementados
 
 - `welcome_account_created`
@@ -104,6 +109,7 @@ Campos obrigatórios:
 
 ## Exemplo de chamada (curl)
 
+### Exemplo 1: payment_failed (com idempotência + tags)
 ```bash
 curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/send-transactional-email" \
   -H "Content-Type: application/json" \
@@ -111,6 +117,9 @@ curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/send-transactional-
   -d '{
     "template_key": "payment_failed",
     "recipient": "user@email.com",
+    "user_id": "usr_123",
+    "workspace_id": "ws_456",
+    "idempotency_key": "payment_failed:inv_987",
     "payload": {
       "name": "Lucas",
       "amount": "R$ 67,00",
@@ -119,13 +128,36 @@ curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/send-transactional-
   }'
 ```
 
+### Exemplo 2: welcome_account_created
+```bash
+curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/send-transactional-email" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <SUPABASE_ANON_OR_SERVICE_KEY>" \
+  -d '{
+    "template_key": "welcome_account_created",
+    "recipient": "user@email.com",
+    "user_id": "usr_123",
+    "workspace_id": "ws_456",
+    "payload": {
+      "name": "Lucas",
+      "dashboard_url": "https://www.kivohub.com.br/dashboard"
+    }
+  }'
+```
+
 ## Teste rápido
 
-1. Configurar `RESEND_API_KEY` e `EMAIL_FROM` nos secrets da função.
+1. Configurar `RESEND_API_KEY` + remetentes (`EMAIL_FROM_DEFAULT` etc.) nos secrets da função.
 2. Deploy da função:
    - `supabase functions deploy send-transactional-email`
-3. Enviar um payload para cada `template_key`.
-4. Validar:
-   - entrega no inbox
+3. Enviar um payload para cada `template_key` obrigatório:
+   - `welcome_account_created`
+   - `subscription_activated`
+   - `payment_failed`
+   - `support_received`
+4. Repetir o envio sensível com a mesma `idempotency_key` e validar que não duplicou.
+5. Validar no Resend:
+   - tags (`template_key`, `category`, `user_id`, `workspace_id`)
+6. Validar no inbox:
    - render consistente com layout base Kivo
    - assunto correto por template
