@@ -23,6 +23,9 @@ Campos obrigatórios:
 - `subscription_activated`
 - `payment_failed`
 - `support_received`
+- `onboarding_complementary`
+- `cancellation_confirmed`
+- `subscription_reactivated`
 
 ## Payload por template
 
@@ -61,6 +64,34 @@ Campos obrigatórios:
   "ticket_id": "SUP-1029",
   "expected_reply": "até 24h úteis",
   "support_url": "https://www.kivohub.com.br/support"
+}
+```
+
+### onboarding_complementary
+```json
+{
+  "name": "Lucas",
+  "next_step": "Configurar checkout",
+  "checklist_url": "https://www.kivohub.com.br/dashboard"
+}
+```
+
+### cancellation_confirmed
+```json
+{
+  "name": "Lucas",
+  "plan_name": "Creator",
+  "valid_until": "30/04/2026",
+  "reactivation_url": "https://www.kivohub.com.br/settings/billing"
+}
+```
+
+### subscription_reactivated
+```json
+{
+  "name": "Lucas",
+  "plan_name": "Creator",
+  "billing_url": "https://www.kivohub.com.br/settings/billing"
 }
 ```
 
