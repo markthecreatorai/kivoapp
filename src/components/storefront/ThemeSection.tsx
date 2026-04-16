@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ctaTextColor } from "@/lib/storefront-tokens";
+import { TEMPLATE_PRESETS, type LayoutPreset } from "@/lib/storefront-layout-presets";
 import type { StorefrontTheme } from "@/pages/StorefrontEditor";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
