@@ -1,57 +1,67 @@
 
 
-## Checkout minimalista inspirado na referência
+# Auditoria e Correção de Responsividade — Classroom (Circles)
 
-### Design atual vs. desejado
-O checkout atual usa múltiplos cards com bordas (`bg-card rounded-xl border`), seções separadas com títulos, tabs de pagamento (PIX/Cartão/Boleto), ícones de trust em grid, e sticky bottom bar. A referência mostra um layout limpo sem cards, campos inline com bordas finas, resumo do pedido integrado ao fluxo, e um único botão CTA verde.
+## Problemas Identificados
 
-### Mudanças
+### 1. Detail View (sidebar + editor) completamente quebrado em mobile
+- **Linha 510**: `w-72 lg:w-80` — sidebar fixa de 288px aparece em TODAS as telas, sem breakpoint mobile
+- Layout `flex` horizontal (sidebar + editor) não colapsa em mobile — conteúdo fica espremido ou overflow horizontal
+- Não existe mecanismo para esconder sidebar e mostrar só o conteúdo da aula em telas pequenas
 
-**1. `src/pages/Checkout.tsx` — Layout principal**
-- Remover header "Compra segura" com ícones
-- Remover sticky bottom bar mobile
-- Remover grid de trust signals (3 colunas)
-- Remover texto Asaas separado
-- Simplificar para: ProductSummary → CustomerForm → PaymentTabs → OrderSummary → CTA → Trust badge simples
-- Background branco puro (`bg-white`), sem `bg-muted/30`
-- Container `max-w-md` (mais estreito)
+### 2. Botão "Voltar" inexistente no detail view
+- No mobile, ao entrar num curso, não há como voltar à lista de cursos sem o sidebar visível
+- O nome do curso é um botão `truncate` que funciona como "voltar", mas fica escondido dentro do sidebar
 
-**2. `src/components/checkout/CustomerForm.tsx` — Campos limpos**
-- Remover card wrapper (`bg-card rounded-xl border`)
-- Remover título "Seus dados"
-- Label "Contact details" → "Dados de contato" acima dos campos
-- Campos com borda simples, sem `h-12` (usar padrão), agrupados visualmente (campos adjacentes compartilham bordas como na referência)
-- Telefone e Email no topo, depois Nome e CPF
+### 3. Altura fixa inadequada
+- **Linha 507**: `h-[calc(100vh-120px)]` — assume header de 120px, mas no mobile o bottom nav bar consome ~64px extras, causando conteúdo cortado
 
-**3. `src/components/checkout/PaymentTabs.tsx` — Simplificar**
-- Remover card wrapper
-- Label "Payment details" → "Dados do pagamento"
-- Manter tabs mas com estilo mais sutil (sem fundo)
-- Na aba cartão: campos Nome no cartão + número + MM/AA + CVC em layout mais compacto (número e MM/AA + CVC na mesma linha, como na referência)
-- Botão CTA com cor verde (#22c55e), texto branco, rounded-full, altura maior
+### 4. Toolbar do editor não responsiva
+- Toolbar do Tiptap (LessonEditor) tem muitos botões inline sem wrap, causa overflow horizontal em telas estreitas
 
-**4. `src/components/checkout/OrderTotal.tsx` — Inline com o fluxo**
-- Remover card wrapper
-- Linhas de resumo com tipografia simples (nome do produto + descrição + preço à direita)
-- Linha de desconto em vermelho com timer de expiração do cupom (se aplicável)
-- "Total due" / "Total" em negrito
-- Separador sutil entre seções
+### 5. Course Cards grid OK mas detail view não tem transição mobile
+- Grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` está correto
+- Mas ao clicar no curso, vai direto para layout de 2 painéis sem adaptação mobile
 
-**5. `src/components/checkout/ProductSummary.tsx` — Simplificar**
-- Remover card wrapper, manter apenas nome + descrição em texto simples no topo
-- Thumbnail menor ou removida para ficar mais limpo
+### 6. `confirm()` nativo usado em 3 locais (linhas 618, 657, 704)
+- Viola regra do projeto (proibido native dialogs)
 
-**6. Trust badge final**
-- Substituir grid de 3 ícones por uma única linha: ícone check verde + "Garantia de 7 dias" (ou texto do creator)
-- Manter "Processado por Asaas" como texto discreto abaixo
+---
 
-### Arquivos editados
-- `src/pages/Checkout.tsx`
-- `src/components/checkout/CustomerForm.tsx`
-- `src/components/checkout/PaymentTabs.tsx`
-- `src/components/checkout/OrderTotal.tsx`
-- `src/components/checkout/ProductSummary.tsx`
+## Plano de Correção
 
-### Resultado
-Checkout com visual minimalista, fundo branco, sem cards excessivos, campos limpos, CTA proeminente verde, e trust badge simples — alinhado à referência enviada.
+### A. Mobile-first Detail View (CircleClassroom.tsx)
+1. **Adicionar estado `showSidebar`** controlado por `useIsMobile()`
+2. **Mobile**: mostrar apenas sidebar OU editor (toggle), com header fixo contendo botão voltar + nome do curso
+3. **Desktop**: manter layout atual (sidebar + editor lado a lado)
+4. **Ajustar altura**: usar `md:h-[calc(100vh-120px)] h-[calc(100vh-128px)]` para considerar bottom nav
+
+### B. Mobile Lesson Navigation
+1. Ao selecionar uma aula no mobile, auto-esconder sidebar e mostrar editor fullscreen
+2. Adicionar botão "← Aulas" no topo do editor em mobile para voltar à sidebar
+3. Transição suave entre os dois estados
+
+### C. Toolbar do LessonEditor Responsiva
+1. Wrap toolbar com `flex-wrap` em mobile
+2. Agrupar ações menos usadas em dropdown no mobile
+
+### D. Substituir `confirm()` por AlertDialog do shadcn/ui
+1. Substituir os 3 usos de `confirm()` por componente de confirmação adequado
+
+### E. Ajustes Finos de Espaçamento
+1. Padding do editor `px-4 md:px-8` (já OK)
+2. ScrollArea do sidebar: padding bottom extra no mobile para não ficar sob bottom nav
+3. Course cards: garantir touch targets >= 44px
+
+---
+
+## Arquivos Alterados
+
+1. **`src/pages/circle/CircleClassroom.tsx`** — reestruturar detail view com estado mobile/desktop, botão voltar, altura corrigida, remover `confirm()`
+2. **`src/components/circle/LessonEditor.tsx`** — toolbar responsiva com flex-wrap
+
+## Estimativa de Impacto
+- Zero mudança em lógica de dados/queries
+- Zero mudança em outros componentes do Circles
+- Preserva toda a funcionalidade admin (drag-drop, menus, quiz)
 
