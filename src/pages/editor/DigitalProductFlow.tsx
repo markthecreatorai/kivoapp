@@ -333,60 +333,61 @@ export default function DigitalProductFlow({
               </div>
             </TabsContent>
 
-            {/* ABA: CHECKOUT */}
+            {/* ─── ABA: CONTEÚDO ─── */}
             <TabsContent value="conteudo" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
-                <h2 className="text-xl font-bold">Conteúdo e Oferta</h2>
-                <p className="text-sm text-muted-foreground">Textos, descrição e preço do produto.</p>
+                <h2 className="text-xl font-bold">Textos e Oferta</h2>
+                <p className="text-sm text-muted-foreground">Nome, descrição e CTA do produto.</p>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Imagem de Fundo do Checkout (Hero Image)</Label>
-                <Input 
-                  placeholder="https://..." 
-                  value={form.checkoutImage} onChange={e => updateForm({checkoutImage: e.target.value})}
-                />
+                <Label className="text-sm font-semibold">Nome do Produto *</Label>
+                <Input maxLength={80} placeholder="Ex: Template de Automação Notion" value={form.name} onChange={e => updateForm({name: e.target.value})} />
+                <p className="text-right text-[10px] text-muted-foreground">{form.name.length}/80</p>
+              </div>
+
+              {form.cardStyle !== "button" && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
+                  <Textarea maxLength={120} placeholder="Frase que captura a atenção do cliente." value={form.shortDescription} onChange={e => updateForm({shortDescription: e.target.value})} rows={2} className="resize-none" />
+                  <p className="text-right text-[10px] text-muted-foreground">{form.shortDescription.length}/120</p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Texto do Botão (CTA)</Label>
+                <Input maxLength={30} placeholder="Comprar Produto" value={form.ctaText} onChange={e => updateForm({ctaText: e.target.value})} />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-foreground">Apresentação da Oferta</Label>
-                <RichTextEditor
-                  placeholder="Liste tudo o que o cliente recebe aqui. Pode abusar do formato."
-                  value={form.description}
-                  onChange={v => updateForm({description: v})}
-                  minHeight="140px"
-                />
+                <Label className="text-sm font-semibold text-foreground">Apresentação da Oferta (Checkout)</Label>
+                <RichTextEditor placeholder="Liste tudo o que o cliente recebe aqui." value={form.description} onChange={v => updateForm({description: v})} minHeight="140px" />
+              </div>
+            </TabsContent>
+
+            {/* ─── ABA: CONFIGURAÇÃO ─── */}
+            <TabsContent value="config" className="space-y-6 animate-in fade-in">
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold">Configuração</h2>
+                <p className="text-sm text-muted-foreground">Preço, entrega e automações.</p>
               </div>
 
               {/* Precificação */}
               <div className="space-y-4 p-5 rounded-2xl border border-border/60 bg-card shadow-sm">
                 <p className="text-base font-semibold text-foreground">Valor e Cobrança</p>
-
                 <div className="flex items-center gap-3">
-                  <Switch
-                    checked={form.isFree}
-                    onCheckedChange={(v) => updateForm({ isFree: v })}
-                    id="is-free"
-                  />
+                  <Switch checked={form.isFree} onCheckedChange={(v) => updateForm({ isFree: v })} id="is-free" />
                   <Label htmlFor="is-free" className="text-sm cursor-pointer">Distribuir gratuitamente</Label>
                 </div>
-
                 {!form.isFree && (
                   <div className="grid grid-cols-2 gap-4 mt-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Qual o preço cobrado? (R$) *</Label>
-                      <Input
-                        type="number" min={0} step={0.01} placeholder="0,00"
-                         className="text-lg font-mono font-medium"
-                        value={form.price || ""} onChange={(e) => updateForm({ price: Number(e.target.value) })}
-                      />
+                      <Label className="text-xs text-muted-foreground">Preço (R$) *</Label>
+                      <Input type="number" min={0} step={0.01} placeholder="0,00" className="text-lg font-mono font-medium" value={form.price || ""} onChange={(e) => updateForm({ price: Number(e.target.value) })} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Preço Original / Ancoragem (R$)</Label>
-                      <Input
-                        type="number" min={0} step={0.01} placeholder="Desconto opcional"
-                        value={form.compareAtPrice ?? ""} onChange={(e) => updateForm({ compareAtPrice: e.target.value ? Number(e.target.value) : null })}
-                      />
+                      <Label className="text-xs text-muted-foreground">Preço Original (R$)</Label>
+                      <Input type="number" min={0} step={0.01} placeholder="Opcional" value={form.compareAtPrice ?? ""} onChange={(e) => updateForm({ compareAtPrice: e.target.value ? Number(e.target.value) : null })} />
                     </div>
                   </div>
                 )}
@@ -394,113 +395,85 @@ export default function DigitalProductFlow({
 
               {/* Entrega */}
               <div className="space-y-4 p-5 rounded-2xl border border-border/60 bg-card shadow-sm">
-                 <p className="text-base font-semibold text-foreground border-b pb-2">Como entregar?</p>
-
-                 <div className="flex gap-2">
-                    <Button 
-                      variant={form.deliveryType === "url" ? "default" : "outline"} 
-                      onClick={() => updateForm({deliveryType: "url"})} className="flex-1"
-                    >
-                       <Link2 className="w-4 h-4 mr-2" /> Link de Acesso Ext./Drive
-                    </Button>
-                    <Button 
-                      variant={form.deliveryType === "file" ? "default" : "outline"} 
-                      onClick={() => updateForm({deliveryType: "file"})} className="flex-1"
-                    >
-                       <UploadCloud className="w-4 h-4 mr-2" /> Auto-Hospedagem (.PDF/Zip)
-                    </Button>
-                 </div>
-
-                 {form.deliveryType === "url" ? (
-                    <div className="space-y-2 mt-4">
-                      <Label className="text-xs font-semibold">URL Secreta de Entrega</Label>
-                      <Input placeholder="https://..." value={form.deliveryUrl} onChange={e => updateForm({deliveryUrl: e.target.value})} />
-                      <p className="text-[11px] text-muted-foreground">Assim que o pagamento bater ou o usuário clicar, ele será teleportado para esse link com o seu recurso.</p>
-                    </div>
-                 ) : (
-                    <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border text-center rounded-xl bg-muted/20">
-                       <UploadCloud className="w-6 h-6 text-muted-foreground/60 mb-2" />
-                       <p className="text-sm font-medium">Upload Seguro Pós-Edição</p>
-                       <p className="text-xs text-muted-foreground">Basta publicar o rascunho. As opções de upload de múltiplas aulas e PDFs estará desbloqueada abaixo.</p>
-                    </div>
-                 )}
+                <p className="text-base font-semibold text-foreground border-b pb-2">Entrega</p>
+                <div className="flex gap-2">
+                  <Button variant={form.deliveryType === "url" ? "default" : "outline"} onClick={() => updateForm({deliveryType: "url"})} className="flex-1">
+                    <Link2 className="w-4 h-4 mr-2" /> Link Externo
+                  </Button>
+                  <Button variant={form.deliveryType === "file" ? "default" : "outline"} onClick={() => updateForm({deliveryType: "file"})} className="flex-1">
+                    <UploadCloud className="w-4 h-4 mr-2" /> Arquivo Hospedado
+                  </Button>
+                </div>
+                {form.deliveryType === "url" ? (
+                  <div className="space-y-2 mt-4">
+                    <Label className="text-xs font-semibold">URL de Entrega</Label>
+                    <Input placeholder="https://..." value={form.deliveryUrl} onChange={e => updateForm({deliveryUrl: e.target.value})} />
+                    <p className="text-[11px] text-muted-foreground">Após o pagamento, o cliente é redirecionado para este link.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border text-center rounded-xl bg-muted/20">
+                    <UploadCloud className="w-6 h-6 text-muted-foreground/60 mb-2" />
+                    <p className="text-sm font-medium">Upload disponível após publicar</p>
+                  </div>
+                )}
               </div>
 
-            </TabsContent>
+              {/* Reviews */}
+              <ReviewsBuilder productId={initialProduct.id} />
 
-            {/* ABA: OPÇÕES */}
-            <TabsContent value="config" className="space-y-6 animate-in fade-in">
-              <div className="space-y-2">
-                <h2 className="text-xl font-bold">Configuração e Extras</h2>
-                <p className="text-sm text-muted-foreground">Entrega, automações e mecanismos de crescimento.</p>
-              </div>
-
+              {/* Locked extras */}
               <div className="space-y-3">
-                  {/* Avaliações / Depoimentos (Prova Social) */}
-                  <ReviewsBuilder productId={initialProduct.id} />
+                <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">
+                  <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-muted text-muted-foreground"><ShoppingCart className="h-5 w-5" /></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold flex gap-2 items-center">One-Click Order Bump <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-secondary text-secondary-foreground h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
+                    <p className="text-xs text-muted-foreground mt-1">Adicione outro produto ao pedido no momento de pagar.</p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">
+                  <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-muted text-muted-foreground"><Users className="h-5 w-5" /></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold flex gap-2 items-center">Rede de Afiliados <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-secondary text-secondary-foreground h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
+                    <p className="text-xs text-muted-foreground mt-1">Links virais com split de receita via Asaas.</p>
+                  </div>
+                </div>
+              </div>
 
-                 {/* Locked - Order Bump */}
-                 <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">
-                     <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-zinc-200 text-zinc-600">
-                        <ShoppingCart className="h-5 w-5" />
-                     </div>
-                     <div className="flex-1">
-                        <p className="text-sm font-semibold flex gap-2 items-center text-zinc-900">One-Click Order Bump <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-zinc-800 text-zinc-100 h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
-                        <p className="text-xs text-zinc-500 mt-1">Adicione outro e-book, mini-curso ou call ao pedido bem no momento mágico de pagar. Impulsiona a conversão brutalmente.</p>
-                     </div>
-                 </div>
-
-                 {/* Locked - Programa de Indicação/Afiliados */}
-                 <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4 opacity-50 grayscale select-none">
-                     <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-zinc-200 text-zinc-600">
-                        <Users className="h-5 w-5" />
-                     </div>
-                     <div className="flex-1">
-                        <p className="text-sm font-semibold flex gap-2 items-center text-zinc-900">Rede de Afiliados (Receita Mútua) <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-zinc-800 text-zinc-100 h-5 gap-1"><Lock className="w-3 h-3"/> Pro</span></p>
-                        <p className="text-xs text-zinc-500 mt-1">Gere links virais pra seus alunos ou afiliados lhe promoverem ganhando X% das vendas em split direto no Asaas.</p>
-                     </div>
-                 </div>
-
-                 {/* Colapsável: Confirmação Email Livre */}
-                 <div className={cn("rounded-xl border bg-card transition-all mt-6", openEmail ? "border-primary/40 shadow-sm" : "border-border/60 hover:border-border")}>
-                    <div className="flex items-center gap-3 p-4 cursor-pointer select-none" onClick={() => setOpenEmail(!openEmail)}>
-                       <div className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
-                          <Mail className="h-5 w-5" />
-                       </div>
-                       <div className="flex-1">
-                          <p className="text-sm font-semibold text-foreground">Email Automático de Acesso Pós-Compra</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Envia o link / material 1s após a operadora aceitar cartão</p>
-                       </div>
-                       <div className="flex items-center gap-2">
-                         <Switch checked={true} disabled />
-                         {openEmail ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
-                       </div>
+              {/* Email confirmation */}
+              <div className={cn("rounded-xl border bg-card transition-all", openEmail ? "border-primary/40 shadow-sm" : "border-border/60 hover:border-border")}>
+                <div className="flex items-center gap-3 p-4 cursor-pointer select-none" onClick={() => setOpenEmail(!openEmail)}>
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary"><Mail className="h-5 w-5" /></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">Email Pós-Compra</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Envia link/material automaticamente</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={true} disabled />
+                    {openEmail ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                  </div>
+                </div>
+                {openEmail && (
+                  <div className="px-5 pb-5 border-t border-border/30 pt-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Assunto</Label>
+                      <Input value={form.confirmationSubject} onChange={e => updateForm({confirmationSubject: e.target.value})} />
                     </div>
-
-                    {openEmail && (
-                      <div className="px-5 pb-5 border-t border-border/30 pt-4 space-y-4">
-                         <div className="space-y-2">
-                           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Assunto</Label>
-                           <Input value={form.confirmationSubject} onChange={e => updateForm({confirmationSubject: e.target.value})} />
-                         </div>
-                         <div className="space-y-2">
-                           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Corpo da Mensagem (E-mail Dinâmico)</Label>
-                           <RichTextEditor
-                             value={form.confirmationBody}
-                             onChange={v => updateForm({confirmationBody: v})}
-                             variables={[
-                               { label: "Nome do Cliente", value: "nome_cliente" },
-                               { label: "Seu Nome", value: "meu_nome" },
-                               { label: "Nome do Produto", value: "nome_produto" },
-                               { label: "Link / Arquivos", value: "arquivos_produto" },
-                             ]}
-                             minHeight="160px"
-                           />
-                         </div>
-                      </div>
-                    )}
-                 </div>
-
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Corpo da Mensagem</Label>
+                      <RichTextEditor
+                        value={form.confirmationBody}
+                        onChange={v => updateForm({confirmationBody: v})}
+                        variables={[
+                          { label: "Nome do Cliente", value: "nome_cliente" },
+                          { label: "Seu Nome", value: "meu_nome" },
+                          { label: "Nome do Produto", value: "nome_produto" },
+                          { label: "Link / Arquivos", value: "arquivos_produto" },
+                        ]}
+                        minHeight="160px"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
