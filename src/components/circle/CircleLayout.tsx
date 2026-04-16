@@ -316,16 +316,7 @@ export default function CircleLayout() {
         <div className="min-h-screen bg-muted/40 flex flex-col">
           <header className="sticky top-0 z-30 bg-card border-b border-border">
             <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
-              <div className="flex items-center gap-2">
-                {community.icon_url ? (
-                  <img src={community.icon_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
-                ) : (
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <MessageSquare className="h-4 w-4 text-primary" />
-                  </div>
-                )}
-                <span className="font-semibold text-foreground">{community.name}</span>
-              </div>
+              <CommunitySwitcher currentCommunity={community} />
               <div className="flex-1" />
               <Button size="sm" onClick={() => navigate(`/login?redirect=/circles/${slug}/about`)}>
                 <LogIn className="h-4 w-4 mr-1.5" /> Entrar

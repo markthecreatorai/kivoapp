@@ -31,6 +31,8 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
   const { user } = useAuth();
   const { currentWorkspace, userWorkspaces } = useWorkspace();
 
+  const isGuest = !user;
+
   const { data: communities = [] } = useQuery({
     queryKey: ["user-communities-switcher", user?.id],
     queryFn: async () => {
@@ -69,6 +71,10 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
   const handleCreate = () => {
     setOpen(false);
     setSearch("");
+    if (isGuest) {
+      navigate("/onboarding");
+      return;
+    }
     if (onCreateCommunity) {
       onCreateCommunity();
     } else if (currentWorkspace) {
@@ -121,29 +127,31 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
         sideOffset={8}
         className="w-[260px] p-0"
       >
-        {/* Search */}
-        <div className="p-2 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 pl-8 text-sm"
-              autoFocus
-            />
+        {/* Search — hide for guests */}
+        {!isGuest && (
+          <div className="p-2 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-8 text-sm"
+                autoFocus
+              />
+            </div>
+            <button
+              onClick={() => { setOpen(false); navigate(`/circles/${currentCommunity?.slug || ""}/settings`); }}
+              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <button
-            onClick={() => { setOpen(false); navigate(`/circles/${currentCommunity?.slug || ""}/settings`); }}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        )}
 
         {/* Actions */}
         <div className="px-1">
-          {(currentWorkspace || userWorkspaces.length > 0) && (
+          {!isGuest && (currentWorkspace || userWorkspaces.length > 0) && (
             <button
               onClick={() => { setOpen(false); navigate("/dashboard"); }}
               className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-muted/60 transition-colors text-foreground"
@@ -168,41 +176,44 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
           </button>
         </div>
 
-        <Separator className="my-1" />
-
-        {/* Community list */}
-        <div className="px-1 pb-1 max-h-[280px] overflow-y-auto">
-          {filtered.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              {search ? "Nenhuma comunidade encontrada" : "Você ainda não faz parte de nenhuma comunidade"}
-            </p>
-          ) : (
-            filtered.map((c: any) => {
-              const isActive = c.id === currentCommunity?.id;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => handleSelect(c.slug)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                    isActive
-                      ? "bg-primary/8 font-medium"
-                      : "hover:bg-muted/60"
-                  )}
-                >
-                  {c.icon_url ? (
-                    <img src={c.icon_url} alt="" className="h-7 w-7 rounded-lg object-cover shrink-0" />
-                  ) : (
-                    <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
-                      {(c.name || "C").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="truncate text-foreground">{c.name}</span>
-                </button>
-              );
-            })
-          )}
-        </div>
+        {/* Community list — only for logged-in users */}
+        {!isGuest && (
+          <>
+            <Separator className="my-1" />
+            <div className="px-1 pb-1 max-h-[280px] overflow-y-auto">
+              {filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  {search ? "Nenhuma comunidade encontrada" : "Você ainda não faz parte de nenhuma comunidade"}
+                </p>
+              ) : (
+                filtered.map((c: any) => {
+                  const isActive = c.id === currentCommunity?.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => handleSelect(c.slug)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                        isActive
+                          ? "bg-primary/8 font-medium"
+                          : "hover:bg-muted/60"
+                      )}
+                    >
+                      {c.icon_url ? (
+                        <img src={c.icon_url} alt="" className="h-7 w-7 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                          {(c.name || "C").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="truncate text-foreground">{c.name}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );
