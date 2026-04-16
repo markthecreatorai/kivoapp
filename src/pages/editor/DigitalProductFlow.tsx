@@ -292,10 +292,10 @@ export default function DigitalProductFlow({
              </TabsList>
 
             {/* ABA: THUMBNAIL */}
-            <TabsContent value="thumbnail" className="space-y-8 animate-in fade-in">
+            <TabsContent value="visual" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
-                <h2 className="text-xl font-bold">Vitrine da Loja (Thumbnail)</h2>
-                <p className="text-sm text-muted-foreground">Escolha como o produto digital vai aparecer para as pessoas.</p>
+                <h2 className="text-xl font-bold">Visual da Vitrine</h2>
+                <p className="text-sm text-muted-foreground">Escolha como o produto vai aparecer na sua loja.</p>
               </div>
 
               {/* Seletor de Estilo */}
@@ -370,10 +370,10 @@ export default function DigitalProductFlow({
             </TabsContent>
 
             {/* ABA: CHECKOUT */}
-            <TabsContent value="checkout" className="space-y-8 animate-in fade-in">
+            <TabsContent value="conteudo" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
-                <h2 className="text-xl font-bold">Página de Checkout</h2>
-                <p className="text-sm text-muted-foreground">A página final de conversão para o seu produto digital.</p>
+                <h2 className="text-xl font-bold">Conteúdo e Oferta</h2>
+                <p className="text-sm text-muted-foreground">Textos, descrição e preço do produto.</p>
               </div>
 
               <div className="space-y-2">
@@ -465,10 +465,10 @@ export default function DigitalProductFlow({
             </TabsContent>
 
             {/* ABA: OPÇÕES */}
-            <TabsContent value="opcoes" className="space-y-6 animate-in fade-in">
+            <TabsContent value="config" className="space-y-6 animate-in fade-in">
               <div className="space-y-2">
-                <h2 className="text-xl font-bold">Mecanismos de Crescimento</h2>
-                <p className="text-sm text-muted-foreground">Ative recursos que expandem seu LTV e Ticket Médio via One-Click Upsells Automáticos.</p>
+                <h2 className="text-xl font-bold">Configuração e Extras</h2>
+                <p className="text-sm text-muted-foreground">Entrega, automações e mecanismos de crescimento.</p>
               </div>
 
               <div className="space-y-3">
@@ -546,7 +546,7 @@ export default function DigitalProductFlow({
             <Button variant="outline" onClick={() => saveMutation.mutate("DRAFT")}>
               <Save className="h-4 w-4 mr-2" /> Salvar Rascunho
             </Button>
-            {tab !== "opcoes" ? (
+            {tab !== "config" ? (
               <Button onClick={handleNext} className="bg-primary hover:bg-primary/90 max-w-[200px] w-full shadow-md transition-transform active:scale-95">
                 Continuar
               </Button>
