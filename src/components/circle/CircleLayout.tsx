@@ -333,11 +333,19 @@ export default function CircleLayout() {
             </div>
           </header>
           <main className="flex-1 pb-6">
-            <div className="max-w-5xl mx-auto flex gap-0">
+            <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-0">
               <div className="flex-1 min-w-0">
                 <Suspense fallback={<PageSkeleton />}>
                   <Outlet />
                 </Suspense>
+              </div>
+              <div className="w-full md:w-[340px] shrink-0">
+                <CircleRightSidebarSkool
+                  community={community}
+                  member={null}
+                  isAdmin={false}
+                  activeTab="about"
+                />
               </div>
             </div>
           </main>
