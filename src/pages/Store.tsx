@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { formatCurrency, cn } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveProductDisplay } from "@/lib/productDisplayRules";
 import {
   DndContext,
   closestCenter,
