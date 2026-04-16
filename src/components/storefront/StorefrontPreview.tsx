@@ -102,7 +102,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       if (productIds.length === 0) return [];
       const { data } = await supabase
         .from('products')
-        .select('id, name, thumbnail_url, short_description, listing_button_text')
+        .select('id, name, type, source_url, thumbnail_style, thumbnail_url, short_description, listing_button_text, metadata')
         .in('id', productIds);
       return data || [];
     },
@@ -121,6 +121,31 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       currency: null,
       customCTA: product.listing_button_text,
     });
+
+    const isExternalLinkLike = !!product.source_url || ['affiliate', 'referral_link'].includes(String(product.type || '').toLowerCase());
+    const isCompactButtonStyle = product.thumbnail_style === 'button' || isExternalLinkLike;
+
+    if (isCompactButtonStyle) {
+      return (
+        <div
+          className="w-full flex items-center gap-3"
+          style={{
+            borderRadius: tokens.cardRadius,
+            padding: `${SPACING.md} ${pad}`,
+            ...cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor, tokens.backgroundColor),
+          }}
+        >
+          {product.thumbnail_url ? (
+            <img src={product.thumbnail_url} alt={product.name} className="h-9 w-9 rounded-md object-cover shrink-0" loading="lazy" />
+          ) : (
+            <div className="h-9 w-9 rounded-md shrink-0" style={{ backgroundColor: tokens.surfaceColor }} />
+          )}
+          <p className="font-semibold truncate" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
+            {product.name || 'Produto'}
+          </p>
+        </div>
+      );
+    }
 
     return (
     <div 
