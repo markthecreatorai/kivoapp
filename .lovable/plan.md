@@ -1,28 +1,33 @@
 
 
-# Corrigir layout da landing page de comunidade para visitantes — estilo Skool
+# Adicionar navegação completa para visitantes não-logados na landing de comunidade
 
 ## Problema
-Quando um usuário não logado acessa `/circles/{slug}`, é redirecionado para `/circles/{slug}/about` mas o layout renderizado (linhas 312-346 do `CircleLayout.tsx`) **não inclui o sidebar direito** com o card da comunidade. O resultado é uma página sem o card lateral com stats, admins e botão "Entrar no Grupo" — diferente do padrão Skool mostrado na referência.
+O header para visitantes não-logados mostra apenas o nome da comunidade + botão "Entrar", sem o dropdown de navegação (CommunitySwitcher). Na referência Skool, o visitante pode usar o dropdown para descobrir comunidades e criar uma nova.
 
 ## Causa raiz
-O bloco de renderização para `!user && isAboutPage` (linha 312) usa um layout simplificado que renderiza apenas o `<Outlet />` sem o `CircleRightSidebarSkool`.
+O bloco de renderização para `!user && isAboutPage` (linhas 317-333 do `CircleLayout.tsx`) usa um header simplificado hardcoded, sem o `CommunitySwitcher`.
 
-## Plano de correção
+## Plano
 
-### 1. Adicionar sidebar no layout de visitante não-logado (`CircleLayout.tsx`)
-- No bloco de renderização para `!user && isAboutPage` (linhas 312-346), adicionar `CircleRightSidebarSkool` no layout de duas colunas, igual ao layout principal (linhas 528-548)
-- Passar `member={null}` para que o sidebar mostre o CTA de visitante ("Entrar no Grupo")
-- Desktop: duas colunas (conteúdo + sidebar 340px)
-- Mobile: sidebar aparece acima ou abaixo do conteúdo (coluna única)
+### 1. Usar `CommunitySwitcher` no header de visitante (`CircleLayout.tsx`)
+- Substituir o header hardcoded (ícone + nome) pelo componente `CommunitySwitcher` passando `currentCommunity={community}`
+- Manter o botão "LOG IN" à direita
 
-### 2. Mesmo tratamento para usuário logado mas não-membro
-- O bloco que rende about page para não-membros logados (linhas 398-403) já cai no layout principal que inclui sidebar — OK, nenhuma mudança necessária aqui.
+### 2. Ajustar `CommunitySwitcher` para funcionar sem auth (`CommunitySwitcher.tsx`)
+- Quando `!user`: ocultar "Voltar para o workspace", ocultar lista de comunidades, ocultar botão de Settings
+- Manter visíveis: campo de busca (desabilitado ou removido), "Criar comunidade" e "Descobrir comunidades"
+- "Criar comunidade" sem login → redirecionar para `/onboarding` (signup + assinatura Kivo)
+- "Descobrir comunidades" → `/circles/explore` (funciona sem auth)
+
+### 3. Manter botão "Entrar" (LOG IN) no header
+- Exibido à direita do header, igual ao atual, com redirect para login
 
 ### Arquivos alterados
-- `src/components/circle/CircleLayout.tsx` — adicionar `CircleRightSidebarSkool` ao layout de visitante não-logado
+1. `src/components/circle/CircleLayout.tsx` — trocar header hardcoded pelo `CommunitySwitcher`
+2. `src/components/circle/CommunitySwitcher.tsx` — suportar modo não-autenticado (ocultar itens irrelevantes)
 
 ### Sem regressão
-- O sidebar já funciona com `member={null}` (linha 261-291 do sidebar mostra CTA de visitante)
-- Nenhuma mudança em rotas, queries, ou lógica de autenticação
+- Usuários logados não são afetados (o CommunitySwitcher já funciona normalmente para eles)
+- Nenhuma mudança em rotas, queries ou lógica de autenticação
 
