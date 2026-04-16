@@ -88,21 +88,44 @@ export function mediaHeight(emphasis: MediaEmphasis): string {
   }
 }
 
-/** Card border + shadow style based on cardStyle */
+/** Card border + shadow style based on cardStyle + dark awareness */
 export function cardStyleCSS(
   style: CardStyle,
   borderColor: string,
   surfaceColor: string,
+  bgColor?: string,
 ): React.CSSProperties {
+  // Detect dark theme for better card separation
+  const isDark = bgColor ? isDarkBg(bgColor) : false;
+
   switch (style) {
     case 'flat':
-      return { border: 'none', backgroundColor: surfaceColor, boxShadow: 'none' };
+      return {
+        backgroundColor: surfaceColor,
+        border: isDark ? `1px solid ${borderColor}` : 'none',
+        boxShadow: 'none',
+      };
     case 'elevated':
-      return { border: 'none', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)' };
+      return {
+        border: isDark ? `1px solid ${borderColor}` : 'none',
+        boxShadow: isDark
+          ? '0 4px 16px -4px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)'
+          : '0 4px 16px -4px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)',
+        backgroundColor: isDark ? surfaceColor : undefined,
+      };
     case 'outlined':
     default:
       return { border: `1px solid ${borderColor}`, boxShadow: 'none' };
   }
+}
+
+function isDarkBg(hex: string): boolean {
+  try {
+    const h = hex.replace('#', '');
+    const [r, g, b] = [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)]
+      .map(c => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 0.2;
+  } catch { return false; }
 }
 
 /** CTA button style — with contrast-safe text for subtle/outline */
