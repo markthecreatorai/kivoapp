@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { formatCurrency, cn } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveProductDisplay } from "@/lib/productDisplayRules";
 import {
   DndContext,
   closestCenter,
@@ -228,11 +229,12 @@ function SortableProductItem({
   const typeInfo = TYPE_LABELS[product.type] ?? TYPE_LABELS.DIGITAL;
   const TypeIcon = typeInfo.icon;
   const price = product.prices?.find((p: any) => p.is_default && p.is_active);
-  const priceDisplay = getDisplayPrice({
-    amount: price?.amount,
-    currency: price?.currency,
+  const { price: priceDisplay, ctaText: _ctaText, rules } = resolveProductDisplay({
     productType: product.type,
     formatId: (product.metadata as any)?.format_id,
+    amount: price?.amount,
+    currency: price?.currency,
+    customCTA: product.listing_button_text,
   });
 
   return (
@@ -565,11 +567,12 @@ function AbaLandingPages({
             const typeInfo = TYPE_LABELS[product.type] ?? TYPE_LABELS.DIGITAL;
             const TypeIcon = typeInfo.icon;
             const price = product.prices?.find((p: any) => p.is_default && p.is_active);
-            const priceDisplay = getDisplayPrice({
-              amount: price?.amount,
-              currency: price?.currency,
+            const { price: priceDisplay } = resolveProductDisplay({
               productType: product.type,
               formatId: (product.metadata as any)?.format_id,
+              amount: price?.amount,
+              currency: price?.currency,
+              customCTA: product.listing_button_text,
             });
 
             return (

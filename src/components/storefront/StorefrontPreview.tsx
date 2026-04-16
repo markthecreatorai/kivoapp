@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES, type StorefrontDesignTokens } from "@/lib/storefront-tokens";
 import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveProductDisplay } from "@/lib/productDisplayRules";
 import {
   getPreset,
   blockGap,
@@ -112,7 +113,16 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
   const socialLinks: Record<string, string> = (typeof storefront.social_links === 'object' && storefront.social_links !== null) ? storefront.social_links as Record<string, string> : {};
 
   // ─── Product Card (reused for blocks + extra products) ───────────────────
-  const renderProductCard = (product: any, priceDisplay?: { label: string; isFree: boolean }) => (
+  const renderProductCard = (product: any, overrideDisplay?: ReturnType<typeof resolveProductDisplay>) => {
+    const display = overrideDisplay || resolveProductDisplay({
+      productType: product.type,
+      formatId: (product.metadata as any)?.format_id,
+      amount: null,
+      currency: null,
+      customCTA: product.listing_button_text,
+    });
+
+    return (
     <div 
       className="w-full overflow-hidden"
       style={{ 
@@ -135,7 +145,6 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
           </div>
         )
       ) : (
-        /* minimal: small inline thumbnail */
         product.thumbnail_url ? (
           <div style={{ padding: `${pad} ${pad} 0` }}>
             <img 
@@ -149,20 +158,20 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       )}
       <div style={{ padding: pad }}>
         <p className="font-semibold" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
-          {product.name}
+          {product.name || 'Produto'}
         </p>
-        {product.short_description && (
+        {display.rules.showDescription && product.short_description && (
           <p className="mt-1 line-clamp-2" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
             {product.short_description}
           </p>
         )}
-        {priceDisplay?.label && (
+        {display.price.label && (
           <p className="mt-0.5" style={{ 
-            color: priceDisplay.isFree ? tokens.primaryColor : tokens.textSecondaryColor, 
+            color: display.price.isFree ? tokens.primaryColor : tokens.textSecondaryColor, 
             fontSize: TYPOGRAPHY.size.xs,
-            fontWeight: priceDisplay.isFree ? TYPOGRAPHY.weight.semibold : TYPOGRAPHY.weight.normal,
+            fontWeight: display.price.isFree ? TYPOGRAPHY.weight.semibold : TYPOGRAPHY.weight.normal,
           }}>
-            {priceDisplay.label}
+            {display.price.label}
           </p>
         )}
         <button
@@ -178,11 +187,12 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             ...ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor),
           }}
         >
-          {product.listing_button_text || 'Ver produto'}
+          {display.ctaText}
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   // ─── Block Renderer ──────────────────────────────────────────────────────
   const renderBlock = (block: StorefrontBlock) => {
@@ -460,15 +470,16 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             <div className="flex flex-col w-full relative z-20" style={{ gap, padding: `${gap} ${SPACING.lg} 0` }}>
               {filtered.map((product: any) => {
                 const price = product.prices?.find((p: any) => p.is_default && p.is_active);
-                const priceDisplay = getDisplayPrice({
-                  amount: price?.amount,
-                  currency: price?.currency,
+                const display = resolveProductDisplay({
                   productType: product.type,
                   formatId: (product.metadata as any)?.format_id,
+                  amount: price?.amount,
+                  currency: price?.currency,
+                  customCTA: product.listing_button_text,
                 });
                 return (
                   <div key={product.id} className="w-full">
-                    {renderProductCard(product, priceDisplay)}
+                    {renderProductCard(product, display)}
                   </div>
                 );
               })}

@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveProductDisplay } from "@/lib/productDisplayRules";
 import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
 import {
   getPreset,
@@ -426,8 +427,8 @@ export default function PublicStorefront() {
   const visibleSocials = socialPlatforms.filter(p => socialLinks[p.key]);
 
   // ─── Product card renderer (shared for blocks + extra) ───
-  const renderProductCard = (product: ProductInfo, priceDisplay: { label: string; isFree: boolean }) => {
-    const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
+  const renderProductCard = (product: ProductInfo, display: ReturnType<typeof resolveProductDisplay>) => {
+    const ctaLabel = display.ctaText;
     const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
     const isExternal = product.delivery_url?.startsWith("http");
     const isCalloutStyle = product.thumbnail_style === "callout";
@@ -498,15 +499,15 @@ export default function PublicStorefront() {
           <p className="font-semibold" style={{ color: tokens.textColor }}>
             {product.name}
           </p>
-          {product.short_description && (
+          {display.rules.showDescription && product.short_description && (
             <p className="text-sm mt-1 opacity-70" style={{ color: tokens.textColor }}>
               {product.short_description}
             </p>
           )}
           <div className="flex items-center justify-between mt-3">
-            {priceDisplay.label && (
-              <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: tokens.primaryColor }}>
-                {priceDisplay.label}
+            {display.price.label && (
+              <span className={`font-bold ${display.price.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: tokens.primaryColor }}>
+                {display.price.label}
               </span>
             )}
             <span
@@ -551,13 +552,12 @@ export default function PublicStorefront() {
         const product = products.find((p) => p.id === config.product_id);
         if (!product) return null;
         const price = prices.find((p) => p.product_id === product.id);
-        const priceDisplay = getDisplayPrice({
+        const display = resolveProductDisplay({
           amount: price?.amount,
           currency: price?.currency,
-          productType: undefined,
           formatId: (product.metadata as any)?.format_id,
         });
-        return renderProductCard(product, priceDisplay);
+        return renderProductCard(product, display);
       }
 
       case "lead_form":
@@ -721,12 +721,13 @@ export default function PublicStorefront() {
               <div className="flex flex-col mt-3" style={{ gap }}>
                 {extraProducts.map((product) => {
                   const price = prices.find((p) => p.product_id === product.id);
-                  const priceDisplay = getDisplayPrice({
+                  const display = resolveProductDisplay({
                     amount: price?.amount,
                     currency: price?.currency,
                     formatId: (product.metadata as any)?.format_id,
+                    customCTA: product.listing_button_text,
                   });
-                  return <div key={product.id}>{renderProductCard(product, priceDisplay)}</div>;
+                  return <div key={product.id}>{renderProductCard(product, display)}</div>;
                 })}
               </div>
             );
