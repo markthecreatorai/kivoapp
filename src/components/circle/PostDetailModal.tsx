@@ -649,7 +649,23 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
                       })}
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">{allowMultiple ? totalPollParticipants : totalPollVotes} participante{(allowMultiple ? totalPollParticipants : totalPollVotes) !== 1 ? "s" : ""}</p>
-                        {isPollExpired && <span className="text-xs text-destructive font-medium">Encerrada</span>}
+                        {isPollExpired && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-destructive font-medium">Encerrada</span>
+                            {(isAdmin || isAuthor) && (
+                              <button
+                                onClick={async () => {
+                                  await supabase.from("community_posts").update({ poll_ends_at: null }).eq("id", postId);
+                                  queryClient.invalidateQueries({ queryKey: ["circle-post", postId] });
+                                  toast.success("Enquete reaberta para votação");
+                                }}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                Reabrir
+                              </button>
+                            )}
+                          </div>
+                        )}
                         {pollEndsAt && !isPollExpired && (
                           <span className="text-xs text-muted-foreground">
                             Encerra em {pollEndsAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
