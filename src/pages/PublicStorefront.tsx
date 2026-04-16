@@ -455,7 +455,7 @@ export default function PublicStorefront() {
           <div style={{ padding: pad }}>
             <div className="flex items-center gap-3">
               <img
-                src={product.thumbnail_url || kivoReferralLogo}
+                src={resolveThumb(product.thumbnail_url)}
                 alt={product.name}
                 className="w-12 h-12 rounded-2xl object-cover shrink-0"
                 loading="lazy"

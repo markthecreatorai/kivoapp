@@ -149,7 +149,7 @@ export function StoreProductPreviewRenderer({
               >
                 <div className="flex items-center gap-3">
                   <img
-                    src={product.thumbnailUrl || kivoReferralLogo}
+                    src={resolveThumb(product.thumbnailUrl)}
                     alt=""
                     className="w-12 h-12 rounded-2xl object-cover shrink-0"
                   />
