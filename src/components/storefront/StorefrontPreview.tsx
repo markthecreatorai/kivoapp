@@ -520,7 +520,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
                           <p className="font-medium text-sm" style={{ color: currentTheme.text_color }}>
                             {product.name}
                           </p>
-                          {price && (product.metadata as any)?.format_id !== "affiliate" && (
+                          {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
                             <p className="text-xs mt-0.5 opacity-70" style={{ color: currentTheme.text_color }}>
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price.amount)}
                             </p>
