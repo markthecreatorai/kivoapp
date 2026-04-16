@@ -427,8 +427,8 @@ export default function PublicStorefront() {
   const visibleSocials = socialPlatforms.filter(p => socialLinks[p.key]);
 
   // ─── Product card renderer (shared for blocks + extra) ───
-  const renderProductCard = (product: ProductInfo, priceDisplay: { label: string; isFree: boolean }) => {
-    const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
+  const renderProductCard = (product: ProductInfo, display: ReturnType<typeof resolveProductDisplay>) => {
+    const ctaLabel = display.ctaText;
     const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
     const isExternal = product.delivery_url?.startsWith("http");
     const isCalloutStyle = product.thumbnail_style === "callout";
@@ -499,15 +499,15 @@ export default function PublicStorefront() {
           <p className="font-semibold" style={{ color: tokens.textColor }}>
             {product.name}
           </p>
-          {product.short_description && (
+          {display.rules.showDescription && product.short_description && (
             <p className="text-sm mt-1 opacity-70" style={{ color: tokens.textColor }}>
               {product.short_description}
             </p>
           )}
           <div className="flex items-center justify-between mt-3">
-            {priceDisplay.label && (
-              <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: tokens.primaryColor }}>
-                {priceDisplay.label}
+            {display.price.label && (
+              <span className={`font-bold ${display.price.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: tokens.primaryColor }}>
+                {display.price.label}
               </span>
             )}
             <span
