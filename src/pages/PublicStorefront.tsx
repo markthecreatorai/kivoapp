@@ -537,6 +537,7 @@ export default function PublicStorefront() {
             primaryColor={t.primary}
             textColor={t.text}
             buttonClass={buttonClass}
+            ctaText={tokens.ctaTextColor}
           />
         );
 
