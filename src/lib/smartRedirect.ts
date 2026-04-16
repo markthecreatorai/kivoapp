@@ -27,8 +27,9 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
     }
   } catch {}
 
-  // 2. Has workspace → creator
-  if (await queryIds("workspaces", { owner_id: userId })) return "/dashboard";
+  // 2. Has workspace membership → creator
+  // NOTE: workspaces no longer has owner_id; ownership is in workspace_members.role
+  if (await queryIds("workspace_members", { user_id: userId })) return "/dashboard";
 
   // 3. Has community membership → consumer hub
   if (await queryIds("community_members", { user_id: userId, status: "ACTIVE" })) return "/circles";
@@ -44,7 +45,7 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
  * Checks whether a user is a consumer (has memberships or entitlements but no workspace).
  */
 export async function isConsumerOnly(userId: string): Promise<boolean> {
-  if (await queryIds("workspaces", { owner_id: userId })) return false;
+  if (await queryIds("workspace_members", { user_id: userId })) return false;
   if (await queryIds("community_members", { user_id: userId, status: "ACTIVE" })) return true;
   if (await queryIds("user_asset_entitlements", { user_id: userId })) return true;
   return false;
