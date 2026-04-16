@@ -98,7 +98,9 @@ Campos obrigatórios:
 ## Dependências de ambiente
 
 - `RESEND_API_KEY`
-- `EMAIL_FROM` (opcional, default: `Kivo <noreply@kivohub.com.br>`)
+- `EMAIL_FROM_DEFAULT` (recomendado)
+- `EMAIL_FROM_NOTIFY` (fallback)
+- `EMAIL_FROM` (fallback legado)
 
 ## Exemplo de chamada (curl)
 

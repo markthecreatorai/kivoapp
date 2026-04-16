@@ -194,7 +194,11 @@ Deno.serve(async (req) => {
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || "Kivo <noreply@kivohub.com.br>";
+    const EMAIL_FROM =
+      Deno.env.get("EMAIL_FROM_DEFAULT") ||
+      Deno.env.get("EMAIL_FROM_NOTIFY") ||
+      Deno.env.get("EMAIL_FROM") ||
+      "Kivo <notify@mail.kivohub.com.br>";
 
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY não configurada" }), {
