@@ -116,6 +116,20 @@ export default function PostDetailModal({ postId, open, onClose }: PostDetailMod
     enabled: !!community && !!user,
   });
 
+  // Load initial notification subscription state
+  useEffect(() => {
+    if (!member || !postId) return;
+    (supabase as any)
+      .from("community_post_subscriptions")
+      .select("id")
+      .eq("post_id", postId)
+      .eq("member_id", member.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data) setIsNotified(true);
+      });
+  }, [member, postId]);
+
   const { data: post, isLoading } = useQuery({
     queryKey: ["circle-post", postId],
     queryFn: async () => {
