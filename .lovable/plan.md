@@ -1,99 +1,84 @@
 
 
-# Fluxo de Autenticação Inline para Comunidades — Popup Skool-like
+# Separação Clara: Consumidor vs Creator (Owner)
 
-## Resumo
-Criar um modal de autenticação (signup/login) integrado na landing da comunidade, com roteamento inteligente pós-login baseado no contexto de navegação do usuário (membro vs owner, comunidade vs workspace).
+## Problema Atual
+1. **`/signup`** sempre cria um **owner** (`is_creator: true`) e redireciona para `/onboarding` (criação de workspace)
+2. **`/login`** sempre redireciona para `/dashboard` (workspace do creator)
+3. Usuários que são **apenas consumidores** (membros de comunidades, compradores de cursos) caem no fluxo de creator e ficam confusos
+4. O `CommunityAuthModal` resolve isso parcialmente — mas apenas dentro da landing de comunidade. Se o consumidor faz login por `/login`, vai pro dashboard vazio
 
-## Problemas Atuais
-1. O botão "Entrar no Grupo" no sidebar faz `<Link to={/circles/${slug}}>` — redireciona ao invés de abrir um modal
-2. O botão "Entrar" no header redireciona para `/login?redirect=...` — sai do contexto da comunidade
-3. Após login, o `Login.tsx` sempre redireciona para `/dashboard` — ignora a intenção do usuário
-4. Não existe tracking de "intenção de navegação" para distinguir owner entrando numa comunidade vs. owner acessando o workspace
+## Solução
 
-## Plano de Implementação
+### 1. Roteamento inteligente pós-login baseado em perfil real
 
-### 1. Criar componente `CommunityAuthModal` (novo arquivo)
-**`src/components/circle/CommunityAuthModal.tsx`**
-
-Modal com 3 estados internos: `signup`, `login`, `forgot-password`
-
-**Signup (estado padrão quando vem de "Entrar no Grupo")**:
-- Campos: Nome, Sobrenome, Email, Senha
-- Botão "CRIAR CONTA"
-- Link "Já tem conta? Fazer login" (troca estado para `login`)
-- Usa `useJoinCommunity.signupAndJoin()` com `is_creator: false`
-- Após signup: redireciona para `/circles/${slug}/feed` (ou verify-email com redirect)
-
-**Login**:
-- Campos: Email, Senha
-- Link "Esqueceu a senha?" (troca estado para `forgot-password`)
-- Link "Não tem conta? Criar conta grátis" (troca estado para `signup`)
-- Usa `supabase.auth.signInWithPassword()`
-- Após login: executa lógica de roteamento inteligente (ver item 3)
-
-**Forgot Password**:
-- Campo: Email
-- Usa `supabase.auth.resetPasswordForEmail()`
-- Mostra confirmação de email enviado
-
-Design: estilo clean Skool (logo da comunidade ou Kivo no topo, fundo branco, inputs grandes com bordas sutis, botão CTA em cinza escuro, links em azul)
-
-### 2. Integrar o modal no `CircleLayout` e `CircleRightSidebarSkool`
-
-**`CircleLayout.tsx`**:
-- Adicionar estado `showAuthModal` e `authModalView` ("signup" | "login")
-- Botão "Entrar" no header → abre modal com `initialView="login"` ao invés de redirecionar
-- Passar `onJoinClick` callback para `CircleRightSidebarSkool`
-
-**`CircleRightSidebarSkool.tsx`**:
-- Receber prop `onJoinClick?: () => void`
-- Quando `!member` e `!user`: botão "Entrar no Grupo" chama `onJoinClick()` ao invés de `<Link>`
-
-### 3. Roteamento inteligente pós-login com tracking de intenção
-
-**Lógica no `CommunityAuthModal` após login bem-sucedido:**
+Atualizar a lógica de redirect no `Login.tsx` e `AuthProvider.tsx`:
 
 ```text
-1. Verificar se é membro da comunidade atual
-   → SIM: redirecionar para /circles/{slug}/feed
-   → NÃO: verificar se a comunidade é aberta
-     → SIM: auto-join via joinAsExistingUser() e ir para /circles/{slug}/feed
-     → NÃO: mostrar CTA de assinatura/aprovação
-
-2. Se o login veio do modal da comunidade:
-   → Sempre priorizar a comunidade (não mandar pro /dashboard)
+Após login:
+  1. Se há nav_intent de comunidade → ir para a comunidade (já existe)
+  2. Se o usuário tem workspace (é creator) → /dashboard
+  3. Se o usuário tem community_members (é consumidor) → /circles (hub de comunidades)
+  4. Se tem user_asset_entitlements (comprou curso/produto) → /member
+  5. Fallback → /circles/explore
 ```
 
-**Lógica no `AuthProvider.tsx` / `Login.tsx` para rotas tradicionais:**
-- Salvar `sessionStorage.setItem("kivo_nav_intent", JSON.stringify({...}))` com:
-  - `origin`: "community" | "landing" | "direct"
-  - `community_slug`: slug da comunidade (se aplicável)
-  - `timestamp`: Date.now()
+Isso elimina o consumidor caindo num dashboard vazio.
 
-**Lógica de redirect no `Login.tsx` (quando não é modal)**:
-- Se `nav_intent.origin === "community"` → redirecionar para `/circles/{slug}/feed`
-- Se o usuário tem workspaces → `/dashboard`
-- Se o usuário só tem comunidades → `/circles/{lastSlug}/feed` (salvar última comunidade acessada em localStorage como `kivo_last_community`)
+### 2. Separar `/signup` de `/signup` para consumidores
 
-### 4. Tracking de última comunidade acessada
-- Em `CircleLayout.tsx`, quando o layout monta com um slug válido e o usuário está logado, salvar `localStorage.setItem("kivo_last_community", slug)`
-- Usado pelo Login.tsx e AuthProvider para redirecionar membros-only
+Criar **duas variantes de signup**:
+- **`/signup`** — permanece como está (creator, `is_creator: true`, vai para onboarding)
+- O `CommunityAuthModal` continua sendo a porta de entrada para consumidores (já funciona com `is_creator: false`)
+- Adicionar no `/login` um link contextual: se o usuário não tem workspace após login, oferecer "Explorar comunidades" ao invés de forçar onboarding
 
-### 5. Ajustar `Login.tsx` para respeitar intent
-- Remover o redirect hardcoded para `/dashboard`
-- Implementar lógica: verificar `?redirect=` param → `sessionStorage nav_intent` → verificar workspaces → fallback `/dashboard`
+### 3. Guard inteligente no `ProtectedRoute`
 
-## Arquivos Alterados/Criados
-1. **`src/components/circle/CommunityAuthModal.tsx`** — NOVO — modal de signup/login/forgot
-2. **`src/components/circle/CircleLayout.tsx`** — estado do modal, substituir redirect por modal
-3. **`src/components/circle/CircleRightSidebarSkool.tsx`** — prop `onJoinClick`, remover `<Link>`
-4. **`src/pages/Login.tsx`** — roteamento inteligente pós-login baseado em intent
-5. **`src/contexts/AuthProvider.tsx`** — respeitar intent no `onAuthStateChange` SIGNED_IN
+Atualizar `ProtectedRoute` para não forçar `/onboarding` quando o usuário é apenas consumidor:
+
+```text
+Atual: se não tem workspace → redireciona para /onboarding
+Novo:  se não tem workspace → verificar se tem community_members ou entitlements
+       → SIM: deixar passar (é consumidor, não precisa de workspace)
+       → NÃO: redirecionar para /onboarding (é creator novo)
+```
+
+### 4. Hub do consumidor (`/circles` como home alternativa)
+
+A página `/circles` (MyCommunities) já existe e lista comunidades do usuário. Torná-la a **home padrão para consumidores**:
+- Adicionar card de "Meus Cursos" se tem entitlements de cursos
+- Adicionar link para `/member` (área do aluno)
+- Mostrar "Explorar comunidades" se não é membro de nenhuma
+
+### 5. Navbar contextual
+
+No `AppSidebar` (dashboard do creator), já mostrar apenas itens de creator. Para consumidores que acessam `/circles`, o `CircleLayout` já tem sua própria navegação.
+
+Não misturar: consumidor nunca vê o sidebar de creator (já é assim).
+
+## Arquivos a Alterar
+
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/Login.tsx` | Roteamento inteligente: checar workspaces → community_members → entitlements → fallback |
+| `src/contexts/AuthProvider.tsx` | Mesma lógica no `SIGNED_IN` handler |
+| `src/components/ProtectedRoute.tsx` | Não forçar onboarding para consumidores (checar memberships) |
+| `src/pages/circle/MyCommunities.tsx` | Adicionar seção de cursos/produtos comprados, tornar home completa para consumidores |
+| `src/pages/CommunityDiscovery.tsx` | Já tem o auth modal — sem mudança |
+
+## Regra de Roteamento (resumo)
+
+```text
+Login/Signup → detectar perfil:
+  ┌─ Tem workspace?        → /dashboard (creator)
+  ├─ Tem community_member? → /circles (hub de comunidades)
+  ├─ Tem entitlements?     → /member (área do aluno)
+  └─ Nenhum?               → /circles/explore (descobrir)
+```
 
 ## Sem Regressão
-- `useJoinCommunity` já existe e funciona — reutilizado no modal
-- O fluxo de signup com `is_creator: false` já está implementado
+- Creator existente continua indo para `/dashboard` normalmente
+- O `CommunityAuthModal` continua funcionando como está
 - Nenhuma mudança em tabelas ou RLS
-- Owner que faz login pelo `/login` diretamente continua indo para `/dashboard`
+- O fluxo de `/signup` (creator) permanece intacto
 
