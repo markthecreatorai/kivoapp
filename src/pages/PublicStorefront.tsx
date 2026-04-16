@@ -633,80 +633,59 @@ export default function PublicStorefront() {
       )}
       <div
         className="min-h-screen"
-        style={{ backgroundColor: t.bg, fontFamily: `'${t.font}', sans-serif` }}
+        style={{ backgroundColor: tokens.backgroundColor, fontFamily: tokens.fontFamily }}
       >
         <div className="max-w-[480px] mx-auto px-5 py-8 pb-16">
-          {/* Profile Header */}
+          {/* Unified Profile Header — same structure as preview */}
           <div className="flex flex-col items-center text-center mb-8">
             {storefront.avatar_url ? (
               <img
                 src={storefront.avatar_url}
                 alt={storefront.title || "Avatar"}
-                className="w-24 h-24 rounded-full object-cover mb-4 ring-4 shadow-lg"
-                style={{ boxShadow: `0 0 0 4px ${t.primary}30` }}
+                className="w-20 h-20 rounded-full object-cover mb-3 ring-4 ring-white/80 shadow-lg"
               />
             ) : (
               <div
-                className="w-24 h-24 rounded-full mb-4 flex items-center justify-center text-3xl font-bold text-white shadow-lg"
-                style={{ backgroundColor: t.primary }}
+                className="w-20 h-20 rounded-full mb-3 flex items-center justify-center text-2xl font-bold shadow-lg"
+                style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}
               >
                 {storefront.title?.charAt(0)?.toUpperCase() || "K"}
               </div>
             )}
-            <h1 className="text-2xl font-bold" style={{ color: t.text }}>
+            <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold, lineHeight: TYPOGRAPHY.lineHeight.tight }}>
               {storefront.title || ""}
             </h1>
             {storefront.bio && (
-              <p className="text-sm mt-2 opacity-80 max-w-[320px]" style={{ color: t.text }}>
+              <p className="mt-1.5 max-w-[320px] leading-relaxed" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
                 {storefront.bio}
               </p>
             )}
 
             {/* Social Links */}
             {Object.values(socialLinks).some(Boolean) && (
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-2.5 mt-3">
                 {socialLinks.instagram && (
-                  <a
-                    href={socialLinks.instagram.startsWith("http") ? socialLinks.instagram : `https://${socialLinks.instagram}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <Instagram className="h-5 w-5" style={{ color: t.text }} />
+                  <a href={socialLinks.instagram.startsWith("http") ? socialLinks.instagram : `https://${socialLinks.instagram}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <Instagram className="h-4 w-4" style={{ color: tokens.textColor }} />
                   </a>
                 )}
                 {socialLinks.tiktok && (
-                  <a
-                    href={socialLinks.tiktok.startsWith("http") ? socialLinks.tiktok : `https://${socialLinks.tiktok}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <TikTokIcon className="h-5 w-5" />
+                  <a href={socialLinks.tiktok.startsWith("http") ? socialLinks.tiktok : `https://${socialLinks.tiktok}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <TikTokIcon className="h-4 w-4" />
                   </a>
                 )}
                 {socialLinks.youtube && (
-                  <a
-                    href={socialLinks.youtube.startsWith("http") ? socialLinks.youtube : `https://${socialLinks.youtube}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <Youtube className="h-5 w-5" style={{ color: t.text }} />
+                  <a href={socialLinks.youtube.startsWith("http") ? socialLinks.youtube : `https://${socialLinks.youtube}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <Youtube className="h-4 w-4" style={{ color: tokens.textColor }} />
                   </a>
                 )}
                 {socialLinks.twitter && (
-                  <a
-                    href={socialLinks.twitter.startsWith("http") ? socialLinks.twitter : `https://${socialLinks.twitter}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <Twitter className="h-5 w-5" style={{ color: t.text }} />
+                  <a href={socialLinks.twitter.startsWith("http") ? socialLinks.twitter : `https://${socialLinks.twitter}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <Twitter className="h-4 w-4" style={{ color: tokens.textColor }} />
                   </a>
                 )}
               </div>
