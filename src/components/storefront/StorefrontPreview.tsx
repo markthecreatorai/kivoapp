@@ -1,9 +1,20 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES, type StorefrontDesignTokens } from "@/lib/storefront-tokens";
 import { getDisplayPrice } from "@/lib/formatPrice";
+import {
+  getPreset,
+  blockGap,
+  cardPadding,
+  mediaHeight,
+  cardStyleCSS,
+  ctaStyleCSS,
+  headerClasses,
+  socialAlignment,
+} from "@/lib/storefront-layout-presets";
 import { 
   Instagram, 
   Youtube, 
@@ -54,7 +65,7 @@ function SocialIcons({ links, tokens, className }: { links: Record<string, strin
   const visible = platforms.filter(p => links[p.key]);
   if (visible.length === 0) return null;
   return (
-    <div className={cn("flex gap-2.5 justify-center", className)}>
+    <div className={cn("flex gap-2.5", className)}>
       {visible.map(p => (
         <SocialLink key={p.key} href={links[p.key]} icon={p.icon} tokens={tokens} />
       ))}
@@ -63,12 +74,7 @@ function SocialIcons({ links, tokens, className }: { links: Record<string, strin
 }
 
 // ─── Main Preview Component ──────────────────────────────────────────────────
-// ALL templates share the same structural layout contract:
-// 1. Header (avatar + name + bio + social)
-// 2. Blocks (links, products, forms, videos, etc.)
-// 3. Extra products (not in blocks)
-// 4. Footer
-// Templates only vary in colors/fonts/radius/shadow — never layout.
+// Layout Contract v2: same semantic block order, varied presentation via presets.
 export function StorefrontPreview({ storefront, theme, blocks, products: externalProducts }: StorefrontPreviewProps) {
   const tokens = resolveTokens({
     primary_color: theme?.primary_color,
@@ -77,6 +83,11 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
     font_body: theme?.font_body,
     button_style: theme?.button_style,
   });
+
+  const preset = useMemo(() => getPreset(theme?.template_key), [theme?.template_key]);
+  const gap = blockGap(preset.contentDensity);
+  const pad = cardPadding(preset.contentDensity);
+  const imgH = mediaHeight(preset.mediaEmphasis);
 
   // Fetch products for product blocks
   const productIds = blocks
@@ -100,6 +111,79 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
   const visibleBlocks = blocks.filter(b => b.is_visible).sort((a, b) => a.position - b.position);
   const socialLinks: Record<string, string> = (typeof storefront.social_links === 'object' && storefront.social_links !== null) ? storefront.social_links as Record<string, string> : {};
 
+  // ─── Product Card (reused for blocks + extra products) ───────────────────
+  const renderProductCard = (product: any, priceDisplay?: { label: string; isFree: boolean }) => (
+    <div 
+      className="w-full overflow-hidden"
+      style={{ 
+        borderRadius: tokens.cardRadius,
+        ...cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor),
+      }}
+    >
+      {preset.mediaEmphasis !== 'minimal' ? (
+        product.thumbnail_url ? (
+          <img 
+            src={product.thumbnail_url} 
+            alt={product.name}
+            className="w-full object-cover"
+            style={{ height: imgH }}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full flex items-center justify-center" style={{ height: imgH, backgroundColor: tokens.surfaceColor }}>
+            <ImageIcon className="h-8 w-8" style={{ color: tokens.textSecondaryColor }} />
+          </div>
+        )
+      ) : (
+        /* minimal: small inline thumbnail */
+        product.thumbnail_url ? (
+          <div style={{ padding: `${pad} ${pad} 0` }}>
+            <img 
+              src={product.thumbnail_url} 
+              alt={product.name}
+              className="w-12 h-12 rounded-lg object-cover"
+              loading="lazy"
+            />
+          </div>
+        ) : null
+      )}
+      <div style={{ padding: pad }}>
+        <p className="font-semibold" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
+          {product.name}
+        </p>
+        {product.short_description && (
+          <p className="mt-1 line-clamp-2" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
+            {product.short_description}
+          </p>
+        )}
+        {priceDisplay?.label && (
+          <p className="mt-0.5" style={{ 
+            color: priceDisplay.isFree ? tokens.primaryColor : tokens.textSecondaryColor, 
+            fontSize: TYPOGRAPHY.size.xs,
+            fontWeight: priceDisplay.isFree ? TYPOGRAPHY.weight.semibold : TYPOGRAPHY.weight.normal,
+          }}>
+            {priceDisplay.label}
+          </p>
+        )}
+        <button
+          className={cn(
+            "w-full mt-3 py-2.5 font-medium transition-all min-h-[44px]",
+            STATE_CLASSES.hover,
+            STATE_CLASSES.active,
+            "focus-visible:ring-2 focus-visible:ring-offset-2"
+          )}
+          style={{ 
+            borderRadius: tokens.buttonRadius,
+            fontSize: TYPOGRAPHY.size.sm,
+            ...ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor),
+          }}
+        >
+          {product.listing_button_text || 'Ver produto'}
+        </button>
+      </div>
+    </div>
+  );
+
   // ─── Block Renderer ──────────────────────────────────────────────────────
   const renderBlock = (block: StorefrontBlock) => {
     const config = block.config as Record<string, unknown>;
@@ -113,15 +197,15 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              "block w-full py-3 px-4 border text-center font-medium transition-all",
+              "block w-full py-3 px-4 text-center font-medium transition-all",
               STATE_CLASSES.active,
               "focus-visible:ring-2 focus-visible:ring-offset-2"
             )}
             style={{ 
-              borderColor: tokens.primaryColor,
               color: tokens.textColor,
               borderRadius: tokens.buttonRadius,
               fontSize: TYPOGRAPHY.size.sm,
+              ...ctaStyleCSS('outline', tokens.primaryColor, tokens.ctaTextColor),
             }}
           >
             {config.title as string || 'Link'}
@@ -131,65 +215,17 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
       case 'product': {
         const product = products.find(p => p.id === config.product_id);
         if (!product) return null;
-        return (
-          <div 
-            className="w-full overflow-hidden border"
-            style={{ 
-              borderColor: tokens.borderColor, 
-              borderRadius: tokens.cardRadius,
-              boxShadow: tokens.cardShadow,
-            }}
-          >
-            {product.thumbnail_url ? (
-              <img 
-                src={product.thumbnail_url} 
-                alt={product.name}
-                className="w-full h-32 object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-32 flex items-center justify-center" style={{ backgroundColor: tokens.surfaceColor }}>
-                <ImageIcon className="h-8 w-8" style={{ color: tokens.textSecondaryColor }} />
-              </div>
-            )}
-            <div style={{ padding: SPACING.md }}>
-              <p className="font-semibold" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
-                {product.name}
-              </p>
-              {product.short_description && (
-                <p className="mt-1 line-clamp-2" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
-                  {product.short_description}
-                </p>
-              )}
-              <button
-                className={cn(
-                  "w-full mt-3 py-2.5 font-medium transition-all min-h-[44px]",
-                  STATE_CLASSES.hover,
-                  STATE_CLASSES.active,
-                  "focus-visible:ring-2 focus-visible:ring-offset-2"
-                )}
-                style={{ 
-                  backgroundColor: tokens.primaryColor, 
-                  color: tokens.ctaTextColor,
-                  borderRadius: tokens.buttonRadius,
-                  fontSize: TYPOGRAPHY.size.sm,
-                }}
-              >
-                {product.listing_button_text || 'Ver produto'}
-              </button>
-            </div>
-          </div>
-        );
+        return renderProductCard(product);
       }
 
       case 'lead_form':
         return (
           <div 
-            className="w-full border"
+            className="w-full"
             style={{ 
-              borderColor: tokens.borderColor, 
               borderRadius: tokens.cardRadius,
-              padding: SPACING.md,
+              padding: pad,
+              ...cardStyleCSS(preset.cardStyle, tokens.borderColor, tokens.surfaceColor),
             }}
           >
             <p className="font-semibold mb-3" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
@@ -201,7 +237,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               type="email"
               placeholder="Seu melhor email"
               aria-label="Seu melhor email"
-              className="w-full px-3 py-2.5 border mb-3 text-sm rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1 min-h-[44px]"
+              className="w-full px-3 py-2.5 border mb-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 min-h-[44px]"
               style={{ 
                 borderColor: tokens.borderColor, 
                 backgroundColor: 'transparent', 
@@ -212,10 +248,9 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             <button
               className={cn("w-full py-2.5 font-medium transition-all min-h-[44px]", STATE_CLASSES.hover, "focus-visible:ring-2 focus-visible:ring-offset-2")}
               style={{ 
-                backgroundColor: tokens.primaryColor, 
-                color: tokens.ctaTextColor,
                 borderRadius: tokens.buttonRadius,
                 fontSize: TYPOGRAPHY.size.sm,
+                ...ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor),
               }}
             >
               {config.button_text as string || 'Enviar'}
@@ -256,7 +291,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
         const isHeading = config.variant === 'heading';
         return (
           <p 
-            className="w-full text-center"
+            className={cn("w-full", preset.headerAlignment === 'left' ? 'text-left' : 'text-center')}
             style={{ 
               color: tokens.textColor,
               fontSize: isHeading ? TYPOGRAPHY.size.lg : TYPOGRAPHY.size.sm,
@@ -360,9 +395,8 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
         <style dangerouslySetInnerHTML={{ __html: `.no-scrollbars::-webkit-scrollbar { display: none; }` }} />
         <div className="no-scrollbars w-full h-full relative z-10">
 
-        {/* ─── UNIFIED HEADER (same structure for ALL templates) ─── */}
-        <div className="flex flex-col items-center text-center" style={{ padding: `${SPACING.xl} ${SPACING.lg} 0`, marginBottom: SPACING.lg }}>
-          {/* Avatar: real image OR initials fallback — never an empty hole */}
+        {/* ─── HEADER (alignment varies per preset) ─── */}
+        <div className={headerClasses(preset.headerAlignment)} style={{ padding: `${SPACING.xl} ${SPACING.lg} 0`, marginBottom: gap }}>
           {showAvatar ? (
             <Avatar className="h-20 w-20 mb-3 ring-4 ring-white/80 shadow-lg">
               <AvatarImage src={storefront.avatar_url!} />
@@ -395,13 +429,13 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               {storefront.bio}
             </p>
           )}
-          <SocialIcons links={socialLinks} tokens={tokens} className="mt-3" />
+          <SocialIcons links={socialLinks} tokens={tokens} className={cn("mt-3", socialAlignment(preset.headerAlignment))} />
         </div>
 
         {/* ─── Blocks ─── */}
-        <div className="flex flex-col items-center w-full relative z-20" style={{ gap: tokens.blockGap, padding: `0 ${SPACING.lg}` }}>
+        <div className="flex flex-col w-full relative z-20" style={{ gap, padding: `0 ${SPACING.lg}` }}>
           {visibleBlocks.length === 0 ? (
-            <p className="text-center py-8" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
+            <p className={cn("py-8", preset.headerAlignment === 'left' ? 'text-left' : 'text-center')} style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
               Adicione blocos para personalizar
             </p>
           ) : (
@@ -423,7 +457,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             (p: any) => p.status === 'PUBLISHED' && !blockProductIds.includes(p.id)
           );
           return filtered.length > 0 ? (
-            <div className="flex flex-col w-full relative z-20" style={{ gap: SPACING.sm, padding: `${SPACING.md} ${SPACING.lg} 0` }}>
+            <div className="flex flex-col w-full relative z-20" style={{ gap, padding: `${gap} ${SPACING.lg} 0` }}>
               {filtered.map((product: any) => {
                 const price = product.prices?.find((p: any) => p.is_default && p.is_active);
                 const priceDisplay = getDisplayPrice({
@@ -432,49 +466,9 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
                   productType: product.type,
                   formatId: (product.metadata as any)?.format_id,
                 });
-
                 return (
-                  <div
-                    key={product.id}
-                    className="w-full overflow-hidden border"
-                    style={{ 
-                      borderColor: tokens.borderColor,
-                      borderRadius: tokens.cardRadius,
-                      boxShadow: tokens.cardShadow,
-                    }}
-                  >
-                    {product.thumbnail_url ? (
-                      <img src={product.thumbnail_url} alt={product.name} className="w-full h-28 object-cover" loading="lazy" />
-                    ) : (
-                      <div className="w-full h-28 flex items-center justify-center" style={{ backgroundColor: tokens.surfaceColor }}>
-                        <ImageIcon className="h-6 w-6" style={{ color: tokens.textSecondaryColor }} />
-                      </div>
-                    )}
-                    <div style={{ padding: SPACING.md }}>
-                      <p className="font-semibold" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
-                        {product.name}
-                      </p>
-                      {priceDisplay.label && (
-                        <p className="mt-0.5" style={{ 
-                          color: priceDisplay.isFree ? tokens.primaryColor : tokens.textSecondaryColor, 
-                          fontSize: TYPOGRAPHY.size.xs,
-                          fontWeight: priceDisplay.isFree ? TYPOGRAPHY.weight.semibold : TYPOGRAPHY.weight.normal,
-                        }}>
-                          {priceDisplay.label}
-                        </p>
-                      )}
-                      <button
-                        className={cn("w-full mt-2.5 py-2.5 font-medium transition-all min-h-[44px]", STATE_CLASSES.hover, "focus-visible:ring-2 focus-visible:ring-offset-2")}
-                        style={{ 
-                          backgroundColor: tokens.primaryColor, 
-                          color: tokens.ctaTextColor,
-                          borderRadius: tokens.buttonRadius,
-                          fontSize: TYPOGRAPHY.size.sm,
-                        }}
-                      >
-                        {product.listing_button_text || 'Ver produto'}
-                      </button>
-                    </div>
+                  <div key={product.id} className="w-full">
+                    {renderProductCard(product, priceDisplay)}
                   </div>
                 );
               })}
@@ -483,7 +477,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
         })()}
 
         {/* ─── Footer ─── */}
-        <div className="text-center" style={{ margin: `${SPACING.xl} 0 ${SPACING.lg}`, paddingBottom: SPACING.md }}>
+        <div className={cn("mt-8 mb-4", preset.headerAlignment === 'left' ? 'text-left pl-6' : 'text-center')}>
           <p style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.xs, opacity: 0.5, fontWeight: TYPOGRAPHY.weight.medium }}>
             Feito com ❤️ na Kivo
           </p>

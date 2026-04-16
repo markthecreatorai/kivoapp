@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ctaTextColor } from "@/lib/storefront-tokens";
+import { TEMPLATE_PRESETS, type LayoutPreset } from "@/lib/storefront-layout-presets";
 import type { StorefrontTheme } from "@/pages/StorefrontEditor";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
@@ -62,24 +63,48 @@ const MOCK_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69dae
 // All templates share the exact same layout structure: avatar → name → bio → social → product card → link.
 // Only colors/fonts/radius change (skin).
 function ThemeCard({ template: t }: { template: Template }) {
-  const btnRadius = "6px"; // always rounded in mini preview
+  const preset: LayoutPreset = TEMPLATE_PRESETS[t.key] || TEMPLATE_PRESETS.noir;
   const ctaText = ctaTextColor(t.primary);
+  const isLeft = preset.headerAlignment === 'left';
+  const isCompact = preset.contentDensity === 'compact';
+  const isMinimalMedia = preset.mediaEmphasis === 'minimal';
+
+  // CTA mini style based on preset
+  const ctaBtnStyle: React.CSSProperties = (() => {
+    switch (preset.ctaStyle) {
+      case 'subtle': return { backgroundColor: t.primary + '20', color: t.primary };
+      case 'outline': return { backgroundColor: 'transparent', color: t.primary, border: `1.5px solid ${t.primary}` };
+      default: return { backgroundColor: t.primary, color: ctaText };
+    }
+  })();
+
+  // Card mini style
+  const cardBorder: React.CSSProperties = (() => {
+    switch (preset.cardStyle) {
+      case 'flat': return { backgroundColor: t.cardBg, border: 'none' };
+      case 'elevated': return { boxShadow: '0 2px 8px rgba(0,0,0,0.12)', border: 'none' };
+      default: return { borderColor: t.text + '15', border: `1px solid ${t.text}15` };
+    }
+  })();
+
+  const thumbH = isMinimalMedia ? '0px' : isCompact ? '28px' : '38px';
+  const innerPad = isCompact ? 'p-1' : 'p-1.5';
+  const blockGapCls = isCompact ? 'gap-1' : 'gap-1.5';
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden" style={{ backgroundColor: t.bg }}>
-      {/* Header: centered avatar + name + bio */}
-      <div className="flex flex-col items-center px-3 pt-5 shrink-0">
+      {/* Header */}
+      <div className={cn("px-3 pt-5 shrink-0 flex flex-col", isLeft ? "items-start text-left" : "items-center text-center")}>
         <div className="w-12 h-12 rounded-full mb-1.5 shrink-0 shadow-md ring-2 ring-white/80 overflow-hidden">
           <img src={MOCK_AVATAR} className="w-full h-full object-cover" alt="" />
         </div>
-        <div className="text-[10px] font-bold text-center leading-tight" style={{ color: t.text, fontFamily: t.font }}>
+        <div className="text-[10px] font-bold leading-tight" style={{ color: t.text, fontFamily: t.font }}>
           Lucas Carrijo
         </div>
-        <div className="text-[6.5px] mt-0.5 opacity-60 text-center" style={{ color: t.text }}>
+        <div className="text-[6.5px] mt-0.5 opacity-60" style={{ color: t.text }}>
           Creator & Entrepreneur
         </div>
-        {/* Social icons placeholder */}
-        <div className="flex gap-1 mt-1.5 mb-2.5">
+        <div className={cn("flex gap-1 mt-1.5 mb-2.5", isLeft ? "justify-start" : "justify-center")}>
           {[0, 1, 2].map(i => (
             <div key={i} className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: t.text + '12' }}>
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.text, opacity: 0.35 }} />
@@ -89,29 +114,37 @@ function ThemeCard({ template: t }: { template: Template }) {
       </div>
 
       {/* Product card */}
-      <div className="px-3 flex-1 overflow-hidden flex flex-col gap-1.5">
-        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.text + '15' }}>
-          <div className="w-full h-[38px]" style={{ backgroundColor: t.cardBg }} />
-          <div className="p-1.5">
+      <div className={cn("px-3 flex-1 overflow-hidden flex flex-col", blockGapCls)}>
+        <div className="w-full rounded-lg overflow-hidden" style={cardBorder}>
+          {!isMinimalMedia && (
+            <div className="w-full" style={{ height: thumbH, backgroundColor: t.cardBg }} />
+          )}
+          <div className={innerPad}>
+            {isMinimalMedia && (
+              <div className="w-6 h-6 rounded mb-1" style={{ backgroundColor: t.cardBg }} />
+            )}
             <div className="w-16 h-1 rounded-full mb-0.5" style={{ backgroundColor: t.text, opacity: 0.3 }} />
             <div className="w-10 h-0.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.15 }} />
             <div
               className="w-full h-[18px] rounded flex items-center justify-center"
-              style={{ backgroundColor: t.primary, borderRadius: btnRadius }}
+              style={{ borderRadius: '6px', ...ctaBtnStyle }}
             >
-              <span className="text-[5.5px] font-bold" style={{ color: ctaText }}>Ver produto</span>
+              <span className="text-[5.5px] font-bold" style={{ color: ctaBtnStyle.color }}>Ver produto</span>
             </div>
           </div>
         </div>
 
         {/* Link block */}
-        <div className="w-full rounded-lg py-1.5 border text-center" style={{ borderColor: t.primary }}>
-          <span className="text-[6px] font-medium" style={{ color: t.text }}>Link externo</span>
+        <div
+          className="w-full rounded-lg py-1.5 text-center"
+          style={{ border: `1px solid ${t.primary}`, color: t.text }}
+        >
+          <span className="text-[6px] font-medium">Link externo</span>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="text-center py-1.5">
+      <div className={cn("py-1.5 px-3", isLeft ? "text-left" : "text-center")}>
         <span className="text-[4.5px] opacity-30" style={{ color: t.text }}>Feito com ❤️ na Kivo</span>
       </div>
     </div>
