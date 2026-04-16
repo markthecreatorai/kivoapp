@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { ctaTextColor } from "@/lib/storefront-tokens";
 import type { StorefrontTheme } from "@/pages/StorefrontEditor";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
@@ -13,135 +14,24 @@ if (typeof document !== "undefined" && !document.getElementById("kivo-fonts-link
   document.head.appendChild(link);
 }
 
-// ─── Template definitions (no third-party brand names) ───────────────────────
-// layout: 'classic' | 'hero' | 'banner' | 'minimal'
+// ─── Template definitions ────────────────────────────────────────────────────
+// All templates share the SAME structural layout. Only skin varies.
 const TEMPLATES = [
-  {
-    key: "noir",
-    name: "Noir",
-    font: "Plus Jakarta Sans",
-    primary: "#1a1a1a",
-    secondary: "#ffffff",
-    bg: "#0d0d0d",
-    text: "#f5f5f5",
-    cardBg: "#1e1e1e",
-    layout: "minimal",
-  },
-  {
-    key: "terra",
-    name: "Terra",
-    font: "Noto Serif Display",
-    primary: "#A07850",
-    secondary: "#ffffff",
-    bg: "#fdf8f3",
-    text: "#2d1f0e",
-    cardBg: "#f0e8dc",
-    layout: "classic",
-  },
-  {
-    key: "petala",
-    name: "Pétala",
-    font: "Poppins",
-    primary: "#E8869A",
-    secondary: "#B8D4F0",
-    bg: "#fff0f4",
-    text: "#4a1530",
-    cardBg: "#ffe4ed",
-    layout: "hero",
-  },
-  {
-    key: "moderno",
-    name: "Moderno",
-    font: "Poppins",
-    primary: "#5C4EFF",
-    secondary: "#ffffff",
-    bg: "#ffffff",
-    text: "#111111",
-    cardBg: "#f4f2ff",
-    layout: "minimal",
-  },
-  {
-    key: "classic",
-    name: "Kivo Classic",
-    font: "Plus Jakarta Sans",
-    primary: "#1A9E5A",
-    secondary: "#ffffff",
-    bg: "#f8fffe",
-    text: "#0a2e1a",
-    cardBg: "#e6f7ef",
-    layout: "classic",
-  },
-  {
-    key: "coaching",
-    name: "Coaching",
-    font: "Libre Baskerville",
-    primary: "#FF2D6B",
-    secondary: "#FFD6E3",
-    bg: "#fff5f8",
-    text: "#1a0010",
-    cardBg: "#ffe0eb",
-    layout: "hero",
-  },
-  {
-    key: "eclipse",
-    name: "Eclipse",
-    font: "Urbanist",
-    primary: "#7B2FFF",
-    secondary: "#D4B0FF",
-    bg: "#12002e",
-    text: "#f0e8ff",
-    cardBg: "#1e0050",
-    layout: "minimal",
-  },
-  {
-    key: "spotlight",
-    name: "Spotlight",
-    font: "Fraunces",
-    primary: "#4A40FF",
-    secondary: "#FFF5E6",
-    bg: "#0a0820",
-    text: "#f5f0ff",
-    cardBg: "#161230",
-    layout: "banner",
-  },
-  {
-    key: "material",
-    name: "Material",
-    font: "Plus Jakarta Sans",
-    primary: "#FF3D8A",
-    secondary: "#FFB5D0",
-    bg: "#ffffff",
-    text: "#1a001a",
-    cardBg: "#ffe4f0",
-    layout: "classic",
-  },
-  {
-    key: "nightview",
-    name: "Nightview",
-    font: "Plus Jakarta Sans",
-    primary: "#00F5C3",
-    secondary: "#0D0D1A",
-    bg: "#0D0D1A",
-    text: "#e0fff8",
-    cardBg: "#131326",
-    layout: "minimal",
-  },
-  {
-    key: "minima",
-    name: "Minima",
-    font: "Inter",
-    primary: "#3B50FF",
-    secondary: "#ffffff",
-    bg: "#ffffff",
-    text: "#111111",
-    cardBg: "#f0f2ff",
-    layout: "banner",
-  },
+  { key: "noir",       name: "Noir",           font: "Plus Jakarta Sans", primary: "#1a1a1a", secondary: "#ffffff", bg: "#0d0d0d", text: "#f5f5f5", cardBg: "#1e1e1e" },
+  { key: "terra",      name: "Terra",          font: "Noto Serif Display", primary: "#A07850", secondary: "#ffffff", bg: "#fdf8f3", text: "#2d1f0e", cardBg: "#f0e8dc" },
+  { key: "petala",     name: "Pétala",         font: "Poppins",           primary: "#E8869A", secondary: "#B8D4F0", bg: "#fff0f4", text: "#4a1530", cardBg: "#ffe4ed" },
+  { key: "moderno",    name: "Moderno",        font: "Poppins",           primary: "#5C4EFF", secondary: "#ffffff", bg: "#ffffff", text: "#111111", cardBg: "#f4f2ff" },
+  { key: "classic",    name: "Kivo Classic",   font: "Plus Jakarta Sans", primary: "#1A9E5A", secondary: "#ffffff", bg: "#f8fffe", text: "#0a2e1a", cardBg: "#e6f7ef" },
+  { key: "coaching",   name: "Coaching",       font: "Libre Baskerville", primary: "#FF2D6B", secondary: "#FFD6E3", bg: "#fff5f8", text: "#1a0010", cardBg: "#ffe0eb" },
+  { key: "eclipse",    name: "Eclipse",        font: "Urbanist",          primary: "#7B2FFF", secondary: "#D4B0FF", bg: "#12002e", text: "#f0e8ff", cardBg: "#1e0050" },
+  { key: "spotlight",  name: "Spotlight",      font: "Fraunces",          primary: "#4A40FF", secondary: "#FFF5E6", bg: "#0a0820", text: "#f5f0ff", cardBg: "#161230" },
+  { key: "material",   name: "Material",       font: "Plus Jakarta Sans", primary: "#FF3D8A", secondary: "#FFB5D0", bg: "#ffffff", text: "#1a001a", cardBg: "#ffe4f0" },
+  { key: "nightview",  name: "Nightview",      font: "Plus Jakarta Sans", primary: "#00F5C3", secondary: "#0D0D1A", bg: "#0D0D1A", text: "#e0fff8", cardBg: "#131326" },
+  { key: "minima",     name: "Minima",         font: "Inter",             primary: "#3B50FF", secondary: "#ffffff", bg: "#ffffff", text: "#111111", cardBg: "#f0f2ff" },
 ] as const;
 
 type Template = typeof TEMPLATES[number];
 
-// ─── Fonts & button styles ────────────────────────────────────────────────────
 const FONTS = [
   { value: "Plus Jakarta Sans", label: "Plus Jakarta Sans" },
   { value: "Poppins", label: "Poppins" },
@@ -167,160 +57,65 @@ const COLOR_PRESETS = [
 ];
 
 const MOCK_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&h=128&q=80";
-const MOCK_BANNER = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80";
 
-// ─── LAYOUT A: Classic (centered avatar + social icons + product cards) ───────
-function ClassicCard({ t }: { t: Template }) {
+// ─── Unified Template Preview Card ───────────────────────────────────────────
+// All templates share the exact same layout structure: avatar → name → bio → social → product card → link.
+// Only colors/fonts/radius change (skin).
+function ThemeCard({ template: t }: { template: Template }) {
+  const btnRadius = "6px"; // always rounded in mini preview
+  const ctaText = ctaTextColor(t.primary);
+
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      <div className="flex flex-col items-center px-3 pt-6 flex-1 overflow-hidden">
-        {/* Avatar */}
-        <div className="w-14 h-14 rounded-full mb-2 shrink-0 shadow-lg ring-2 ring-white">
-          <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
+    <div className="w-full h-full flex flex-col overflow-hidden" style={{ backgroundColor: t.bg }}>
+      {/* Header: centered avatar + name + bio */}
+      <div className="flex flex-col items-center px-3 pt-5 shrink-0">
+        <div className="w-12 h-12 rounded-full mb-1.5 shrink-0 shadow-md ring-2 ring-white/80 overflow-hidden">
+          <img src={MOCK_AVATAR} className="w-full h-full object-cover" alt="" />
         </div>
-        <div className="text-[11px] font-bold mb-0.5 text-center" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
-        <div className="text-[7px] mb-2 opacity-70 text-center" style={{ color: t.text }}>Creator & Entrepreneur</div>
-        {/* Social icons */}
-        <div className="flex gap-1.5 mb-3">
+        <div className="text-[10px] font-bold text-center leading-tight" style={{ color: t.text, fontFamily: t.font }}>
+          Lucas Carrijo
+        </div>
+        <div className="text-[6.5px] mt-0.5 opacity-60 text-center" style={{ color: t.text }}>
+          Creator & Entrepreneur
+        </div>
+        {/* Social icons placeholder */}
+        <div className="flex gap-1 mt-1.5 mb-2.5">
           {[0, 1, 2].map(i => (
-            <div key={i} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: t.text + '15' }}>
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.text, opacity: 0.5 }} />
+            <div key={i} className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: t.text + '12' }}>
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.text, opacity: 0.35 }} />
             </div>
           ))}
         </div>
-        {/* Product card */}
-        <div className="w-full rounded-lg overflow-hidden mb-2 border" style={{ borderColor: t.primary + '40' }}>
-          <div className="w-full h-10 bg-black/5" />
-          <div className="p-2">
-            <div className="w-14 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.4 }} />
-            <div className="w-full h-5 rounded-lg flex items-center justify-center" style={{ backgroundColor: t.primary }}>
-              <span className="text-white text-[6px] font-bold">Ver produto</span>
+      </div>
+
+      {/* Product card */}
+      <div className="px-3 flex-1 overflow-hidden flex flex-col gap-1.5">
+        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.text + '15' }}>
+          <div className="w-full h-[38px]" style={{ backgroundColor: t.cardBg }} />
+          <div className="p-1.5">
+            <div className="w-16 h-1 rounded-full mb-0.5" style={{ backgroundColor: t.text, opacity: 0.3 }} />
+            <div className="w-10 h-0.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.15 }} />
+            <div
+              className="w-full h-[18px] rounded flex items-center justify-center"
+              style={{ backgroundColor: t.primary, borderRadius: btnRadius }}
+            >
+              <span className="text-[5.5px] font-bold" style={{ color: ctaText }}>Ver produto</span>
             </div>
           </div>
         </div>
+
         {/* Link block */}
-        <div className="w-full rounded-lg py-2 border text-center" style={{ borderColor: t.primary, }}>
-          <span className="text-[6.5px] font-medium" style={{ color: t.text }}>Link externo</span>
+        <div className="w-full rounded-lg py-1.5 border text-center" style={{ borderColor: t.primary }}>
+          <span className="text-[6px] font-medium" style={{ color: t.text }}>Link externo</span>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center py-1.5">
+        <span className="text-[4.5px] opacity-30" style={{ color: t.text }}>Feito com ❤️ na Kivo</span>
       </div>
     </div>
   );
-}
-
-// ─── LAYOUT B: Hero (gradient top + centered avatar + bio) ───────────────────
-function HeroCard({ t }: { t: Template }) {
-  return (
-    <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      {/* Gradient */}
-      <div className="absolute top-0 left-0 right-0 h-24" style={{ background: `linear-gradient(to bottom, ${t.primary}dd, ${t.bg})` }} />
-      <div className="flex flex-col items-center px-3 pt-6 flex-1 overflow-hidden relative z-10">
-        {/* Avatar */}
-        <div className="w-14 h-14 rounded-full mb-2 shrink-0 shadow-lg ring-2 ring-white">
-          <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
-        </div>
-        <div className="text-[11px] font-bold mb-0.5 text-center" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
-        <div className="text-[7px] mb-3 opacity-70 text-center leading-relaxed max-w-[85%]" style={{ color: t.text }}>I help you build your dream store 🚀</div>
-        {/* Social icons */}
-        <div className="flex gap-1.5 mb-3">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: t.text + '15' }}>
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.text, opacity: 0.5 }} />
-            </div>
-          ))}
-        </div>
-        {/* Product card */}
-        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.primary + '40' }}>
-          <div className="w-full h-10 bg-black/5" />
-          <div className="p-2">
-            <div className="w-14 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.4 }} />
-            <div className="w-full h-5 rounded-lg flex items-center justify-center" style={{ backgroundColor: t.primary }}>
-              <span className="text-white text-[6px] font-bold">Ver produto</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── LAYOUT C: Banner (cover image + avatar overlay at bottom) ───────────────
-function BannerCard({ t }: { t: Template }) {
-  return (
-    <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      {/* Banner with gradient overlay */}
-      <div className="relative w-full h-[80px] shrink-0">
-        <img src={MOCK_BANNER} className="w-full h-full object-cover" alt="banner" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-        {/* Avatar + name over banner */}
-        <div className="absolute bottom-2 left-2.5 flex items-end gap-2">
-          <div className="w-9 h-9 rounded-full shrink-0 ring-1 ring-white shadow-lg">
-            <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
-          </div>
-          <div className="pb-0.5">
-            <div className="text-[9px] font-bold text-white leading-tight" style={{ fontFamily: t.font }}>Lucas Carrijo</div>
-          </div>
-        </div>
-      </div>
-      {/* Bio */}
-      <div className="px-3 pt-2 pb-1">
-        <div className="text-[7px] opacity-70" style={{ color: t.text }}>Creator & Entrepreneur</div>
-      </div>
-      {/* Content blocks */}
-      <div className="flex flex-col gap-1.5 px-3 flex-1 overflow-hidden">
-        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.primary + '40' }}>
-          <div className="w-full h-9 bg-black/5" />
-          <div className="p-2">
-            <div className="w-14 h-1.5 rounded-full mb-1.5" style={{ backgroundColor: t.text, opacity: 0.4 }} />
-            <div className="w-full h-5 rounded-lg flex items-center justify-center" style={{ backgroundColor: t.primary }}>
-              <span className="text-white text-[6px] font-bold">Ver produto</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── LAYOUT D: Minimal (horizontal avatar + name, clean) ─────────────────────
-function MinimalCard({ t }: { t: Template }) {
-  return (
-    <div className="w-full h-full flex flex-col overflow-hidden relative" style={{ backgroundColor: t.bg }}>
-      {/* Horizontal header */}
-      <div className="flex items-center gap-2.5 px-3 pt-6">
-        <div className="w-10 h-10 rounded-full shrink-0 shadow-sm border" style={{ borderColor: t.text + '20' }}>
-          <img src={MOCK_AVATAR} className="w-full h-full object-cover rounded-full" alt="avatar" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold truncate" style={{ color: t.text, fontFamily: t.font }}>Lucas Carrijo</div>
-          <div className="text-[7px] opacity-60 truncate" style={{ color: t.text }}>Creator & Entrepreneur</div>
-        </div>
-      </div>
-      {/* Content blocks */}
-      <div className="flex flex-col gap-1.5 px-3 pt-4 flex-1 overflow-hidden">
-        {/* Link block */}
-        <div className="w-full rounded-lg py-2 border text-center" style={{ borderColor: t.primary }}>
-          <span className="text-[6.5px] font-medium" style={{ color: t.text }}>Meus Serviços</span>
-        </div>
-        {/* Product card */}
-        <div className="w-full rounded-lg overflow-hidden border" style={{ borderColor: t.primary + '40' }}>
-          <div className="w-full h-[36px] bg-black/5 flex items-center justify-center">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={t.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity={0.3}><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4Z"/></svg>
-          </div>
-          <div className="px-2 py-1.5 flex items-center justify-between">
-            <div className="w-14 h-1.5 rounded-full" style={{ backgroundColor: t.text, opacity: 0.4 }} />
-            <div className="px-1.5 py-0.5 rounded-sm text-[5px] font-bold text-white" style={{ backgroundColor: t.primary }}>Assistir</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ThemeCard({ template }: { template: Template }) {
-  if (template.layout === "hero") return <HeroCard t={template} />;
-  if (template.layout === "banner") return <BannerCard t={template} />;
-  if (template.layout === "minimal") return <MinimalCard t={template} />;
-  return <ClassicCard t={template} />;
 }
 
 // ─── Color Swatch Picker ──────────────────────────────────────────────────────
@@ -348,39 +143,39 @@ function ColorSwatchPicker({ label, value, onChange }: { label: string; value: s
 
   return (
     <div className="flex flex-col gap-1.5 relative">
-      <span className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider">{label}</span>
+      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       <button
         ref={btnRef}
         onClick={() => setOpen(v => !v)}
         className={cn(
-          "w-11 h-11 rounded-[12px] border-2 transition-all shadow-sm hover:scale-105 active:scale-95 focus:outline-none",
-          open ? "border-primary ring-2 ring-primary/20" : "border-[#e5e7eb]"
+          "w-11 h-11 rounded-xl border-2 transition-all shadow-sm hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2",
+          open ? "border-primary ring-2 ring-primary/20" : "border-border"
         )}
         style={{ backgroundColor: value }}
         aria-label={label}
       />
       {open && (
-        <div ref={popRef} className="absolute top-[calc(100%+8px)] left-0 z-50 w-[232px] bg-white border border-[#e5e7eb] shadow-2xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
+        <div ref={popRef} className="absolute top-[calc(100%+8px)] left-0 z-50 w-[232px] bg-popover border border-border shadow-2xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[12px] font-bold text-[#111827]">{label}</span>
-            <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-[#f3f4f6] text-[#9ca3af] hover:text-[#111827] transition-colors">
+            <span className="text-xs font-bold text-foreground">{label}</span>
+            <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <label className="block w-full h-24 rounded-xl overflow-hidden cursor-pointer border border-[#ececec] mb-3 relative shadow-sm">
+          <label className="block w-full h-24 rounded-xl overflow-hidden cursor-pointer border border-border mb-3 relative shadow-sm">
             <input type="color" value={value} onChange={e => commit(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
             <div className="w-full h-full" style={{ backgroundColor: value }} />
             <div className="absolute bottom-2 right-2 bg-black/30 backdrop-blur-sm text-white text-[10px] font-mono px-2 py-0.5 rounded-md pointer-events-none">{value.toUpperCase()}</div>
           </label>
           <div className="grid grid-cols-6 gap-1.5 mb-3">
             {COLOR_PRESETS.map(c => (
-              <button key={c} onClick={() => commit(c)} className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none shadow-sm", value.toLowerCase() === c.toLowerCase() ? "border-primary ring-2 ring-primary/40 scale-110" : "border-white/80")} style={{ backgroundColor: c }} />
+              <button key={c} onClick={() => commit(c)} className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary/40 shadow-sm", value.toLowerCase() === c.toLowerCase() ? "border-primary ring-2 ring-primary/40 scale-110" : "border-white/80")} style={{ backgroundColor: c }} />
             ))}
           </div>
-          <div className="flex items-center gap-2 bg-[#f3f4f6] rounded-xl px-3 py-2">
-            <div className="w-4 h-4 rounded-md border border-[#e5e7eb] shrink-0" style={{ backgroundColor: value }} />
-            <span className="text-[#9ca3af] text-[12px] font-mono">#</span>
-            <input type="text" value={hex.replace("#", "").toUpperCase()} onChange={e => { const raw = `#${e.target.value}`; setHex(raw); if (/^#[0-9A-Fa-f]{6}$/.test(raw)) onChange(raw); }} maxLength={6} className="flex-1 bg-transparent text-[12px] font-mono text-[#111827] focus:outline-none uppercase" placeholder="000000" spellCheck={false} />
+          <div className="flex items-center gap-2 bg-muted rounded-xl px-3 py-2">
+            <div className="w-4 h-4 rounded-md border border-border shrink-0" style={{ backgroundColor: value }} />
+            <span className="text-muted-foreground text-xs font-mono">#</span>
+            <input type="text" value={hex.replace("#", "").toUpperCase()} onChange={e => { const raw = `#${e.target.value}`; setHex(raw); if (/^#[0-9A-Fa-f]{6}$/.test(raw)) onChange(raw); }} maxLength={6} className="flex-1 bg-transparent text-xs font-mono text-foreground focus:outline-none uppercase" placeholder="000000" spellCheck={false} />
           </div>
         </div>
       )}
@@ -402,19 +197,18 @@ function FontDropdown({ value, onChange }: { value: string; onChange: (f: string
 
   return (
     <div className="flex flex-col gap-1.5 relative flex-1" ref={ref}>
-      <span className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider">Font</span>
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center justify-between px-3 py-0 rounded-[12px] border border-[#e5e7eb] bg-white hover:bg-[#fafafa] transition-all focus:outline-none shadow-sm text-left h-11"
+        className="flex items-center justify-between px-3 py-0 rounded-xl border border-border bg-background hover:bg-muted/50 transition-all focus-visible:ring-2 focus-visible:ring-primary/30 shadow-sm text-left h-11"
       >
-        <span className="text-[13px] font-semibold text-[#111827] truncate" style={{ fontFamily: value }}>{value}</span>
-        <ChevronRight className={cn("w-4 h-4 text-[#9ca3af] shrink-0 transition-transform", open && "rotate-90")} />
+        <span className="text-[13px] font-semibold text-foreground truncate" style={{ fontFamily: value }}>{value}</span>
+        <ChevronRight className={cn("w-4 h-4 text-muted-foreground shrink-0 transition-transform", open && "rotate-90")} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#e5e7eb] shadow-2xl rounded-[16px] z-50 p-1.5 animate-in fade-in slide-in-from-top-2 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-popover border border-border shadow-2xl rounded-2xl z-50 p-1.5 animate-in fade-in slide-in-from-top-2 max-h-60 overflow-y-auto">
           {FONTS.map(font => (
-            <button key={font.value} onClick={() => { onChange(font.value); setOpen(false); }} className={cn("w-full flex items-center justify-between px-3 py-2 rounded-[10px] text-left transition-colors hover:bg-[#f3f4f6]", value === font.value && "bg-primary/5")}>
-              <span className="text-[15px] font-semibold text-[#111827]" style={{ fontFamily: font.value }}>{font.label}</span>
+            <button key={font.value} onClick={() => { onChange(font.value); setOpen(false); }} className={cn("w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors hover:bg-muted", value === font.value && "bg-primary/5")}>
+              <span className="text-sm font-semibold text-foreground" style={{ fontFamily: font.value }}>{font.label}</span>
               {value === font.value && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2" />}
             </button>
           ))}
@@ -424,7 +218,7 @@ function FontDropdown({ value, onChange }: { value: string; onChange: (f: string
   );
 }
 
-// ─── Flat Coverflow Slider (no rotateY, no perspective — scale + opacity only) ─
+// ─── Flat Coverflow Slider ────────────────────────────────────────────────────
 function CoverflowSlider({ selectedKey, onSelect }: { selectedKey: string; onSelect: (key: string) => void }) {
   const currentIndex = Math.max(0, TEMPLATES.findIndex(t => t.key === selectedKey));
   const isNavigating = useRef(false);
@@ -435,16 +229,13 @@ function CoverflowSlider({ selectedKey, onSelect }: { selectedKey: string; onSel
     const n = TEMPLATES.length;
     const bounded = ((index % n) + n) % n;
     onSelect(TEMPLATES[bounded].key);
-    // Lock for transition duration
     setTimeout(() => { isNavigating.current = false; }, 420);
   }, [onSelect]);
 
-  // Card spacing in px (center-to-center)
-  const SPACING = 152;
+  const CARD_SPACING = 152;
 
   return (
     <div className="flex flex-col items-center select-none" style={{ overflow: "visible" }}>
-      {/* Stage — flat, no perspective, overflow hidden to clip far cards */}
       <div
         className="relative w-full"
         style={{
@@ -477,14 +268,13 @@ function CoverflowSlider({ selectedKey, onSelect }: { selectedKey: string; onSel
                 position: "absolute",
                 left: "50%",
                 top: "50%",
-                // Pure 2D: only translateX + scale, no rotateY, no perspective
-                transform: `translate(calc(-50% + ${offset * SPACING}px), -50%) scale(${scale})`,
+                transform: `translate(calc(-50% + ${offset * CARD_SPACING}px), -50%) scale(${scale})`,
                 opacity,
                 zIndex,
                 transition: "transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease",
               }}
               className={cn(
-                "rounded-[22px] overflow-hidden focus:outline-none border-0",
+                "rounded-[22px] overflow-hidden focus-visible:ring-2 focus-visible:ring-primary/40 border-0",
                 isCenter
                   ? "cursor-default shadow-[0_24px_60px_rgba(0,0,0,0.22)]"
                   : "cursor-pointer shadow-[0_10px_30px_rgba(0,0,0,0.10)] hover:opacity-90"
@@ -498,21 +288,20 @@ function CoverflowSlider({ selectedKey, onSelect }: { selectedKey: string; onSel
         })}
       </div>
 
-      {/* Theme name + navigation arrows */}
       <div className="flex items-center gap-5 mt-3">
         <button
           onClick={() => goTo(currentIndex - 1)}
-          className="p-1.5 text-[#9ca3af] hover:text-[#374151] transition-colors focus:outline-none"
+          className="p-1.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary/30 rounded-lg"
           aria-label="Tema anterior"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <span className="text-[17px] font-semibold text-[#111827] min-w-[150px] text-center">
+        <span className="text-base font-semibold text-foreground min-w-[150px] text-center">
           {TEMPLATES[currentIndex].name}
         </span>
         <button
           onClick={() => goTo(currentIndex + 1)}
-          className="p-1.5 text-[#9ca3af] hover:text-[#374151] transition-colors focus:outline-none"
+          className="p-1.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary/30 rounded-lg"
           aria-label="Próximo tema"
         >
           <ChevronRight className="w-5 h-5" />
@@ -554,7 +343,6 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
         font_body: theme.font_body || "Plus Jakarta Sans",
         button_style: theme.button_style || "rounded",
       };
-      // Only update if values actually changed — prevents render loops
       const keys = Object.keys(next) as (keyof typeof next)[];
       const changed = keys.some(k => prev[k] !== next[k]);
       return changed ? next : prev;
@@ -567,7 +355,6 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
     onUpdate(updated);
   };
 
-  // Selecting a template instantly applies its defaults (sync — no timeout)
   const handleTemplateSelect = useCallback((templateKey: string) => {
     const tpl = TEMPLATES.find(t => t.key === templateKey);
     if (tpl) {
@@ -594,7 +381,7 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
   return (
     <div className="pb-20">
 
-      {/* 1. Flat Coverflow Slider */}
+      {/* 1. Template Slider */}
       <div className="mb-10">
         <CoverflowSlider
           selectedKey={currentTheme.template_key || "noir"}
@@ -602,23 +389,23 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
         />
       </div>
 
-      {/* 2. Colors + Font — same horizontal row */}
+      {/* 2. Cores + Fonte */}
       <div className="flex items-start gap-6 px-1">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-semibold text-[#111827]">Colors</span>
+          <span className="text-[13px] font-semibold text-foreground">Cores</span>
           <div className="flex flex-wrap items-center gap-3">
             <ColorSwatchPicker
-              label="Primary"
+              label="Primária"
               value={currentTheme.primary_color || "#1a1a1a"}
               onChange={c => handleChange("primary_color", c)}
             />
             <ColorSwatchPicker
-              label="Background"
+              label="Fundo"
               value={currentTheme.background_color || "#0d0d0d"}
               onChange={c => handleChange("background_color", c)}
             />
             <ColorSwatchPicker
-              label="Text"
+              label="Texto"
               value={currentTheme.text_color || "#1a1a1a"}
               onChange={c => handleChange("text_color", c)}
             />
@@ -626,7 +413,7 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
         </div>
 
         <div className="flex flex-col gap-1.5 flex-1">
-          <span className="text-[13px] font-semibold text-[#111827]">Font</span>
+          <span className="text-[13px] font-semibold text-foreground">Fonte</span>
           <FontDropdown
             value={currentTheme.font_body || "Plus Jakarta Sans"}
             onChange={handleFontChange}
@@ -634,28 +421,29 @@ export function ThemeSection({ theme, storefrontId, onUpdate }: ThemeSectionProp
         </div>
       </div>
 
-      {/* 3. Button Styles */}
+      {/* 3. Estilo de Botão */}
       <div className="mt-8 px-1">
-        <span className="text-[13px] font-semibold text-[#111827] block mb-3">Button Style</span>
+        <span className="text-[13px] font-semibold text-foreground block mb-3">Estilo do Botão</span>
         <div className="grid grid-cols-3 gap-3">
           {BUTTON_STYLES.map(style => {
             const sel = currentTheme.button_style === style.value;
+            const btnTextColor = ctaTextColor(currentTheme.primary_color || "#1a1a1a");
             return (
-                <button
+              <button
                 key={style.value}
                 onClick={() => handleChange("button_style", style.value)}
                 className={cn(
-                  "py-4 rounded-[14px] border-2 bg-white flex flex-col items-center gap-3 transition-all focus:outline-none",
-                  sel ? "border-primary shadow-[0_0_0_3px_rgba(249,66,58,0.09)]" : "border-[#e5e7eb] hover:border-[#d1d5db] hover:bg-[#fafafa]"
+                  "py-4 rounded-xl border-2 bg-card flex flex-col items-center gap-3 transition-all focus-visible:ring-2 focus-visible:ring-primary/30",
+                  sel ? "border-primary shadow-[0_0_0_3px_rgba(249,66,58,0.09)]" : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
                 )}
               >
                 <div
-                  className="w-[calc(100%-20px)] h-7 flex items-center justify-center text-[11px] font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
-                  style={{ backgroundColor: currentTheme.primary_color || "#1a1a1a", borderRadius: style.radius }}
+                  className="w-[calc(100%-20px)] h-8 flex items-center justify-center text-[11px] font-bold shadow-sm transition-all min-h-[32px]"
+                  style={{ backgroundColor: currentTheme.primary_color || "#1a1a1a", borderRadius: style.radius, color: btnTextColor }}
                 >
                   Comprar
                 </div>
-                <span className={cn("text-[11px] font-semibold", sel ? "text-primary" : "text-[#6b7280]")}>{style.label}</span>
+                <span className={cn("text-[11px] font-semibold", sel ? "text-primary" : "text-muted-foreground")}>{style.label}</span>
               </button>
             );
           })}

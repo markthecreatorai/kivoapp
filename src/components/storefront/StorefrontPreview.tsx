@@ -8,10 +8,9 @@ import {
   Instagram, 
   Youtube, 
   Twitter,
-  Link2,
-  ShoppingBag,
-  MessageCircle,
   Play,
+  MessageCircle,
+  ImageIcon,
 } from "lucide-react";
 import type { StorefrontData, StorefrontTheme, StorefrontBlock } from "@/pages/StorefrontEditor";
 
@@ -26,25 +25,6 @@ interface StorefrontPreviewProps {
   theme: StorefrontTheme | null | undefined;
   blocks: StorefrontBlock[];
   products?: any[];
-}
-
-// ─── Layout detection ────────────────────────────────────────────────────────
-function getLayoutType(key: string) {
-  switch (key) {
-    case 'petala':
-    case 'coaching':
-      return 'hero';
-    case 'spotlight':
-    case 'minima':
-      return 'banner';
-    case 'noir':
-    case 'moderno':
-    case 'eclipse':
-    case 'nightview':
-      return 'minimal';
-    default:
-      return 'classic';
-  }
 }
 
 // ─── Social Link Button ──────────────────────────────────────────────────────
@@ -64,7 +44,6 @@ function SocialLink({ href, icon: Icon, tokens }: { href: string; icon: React.El
   );
 }
 
-// ─── Social Icons Row ────────────────────────────────────────────────────────
 function SocialIcons({ links, tokens, className }: { links: Record<string, string>; tokens: StorefrontDesignTokens; className?: string }) {
   const platforms: { key: string; icon: React.ElementType }[] = [
     { key: 'instagram', icon: Instagram },
@@ -75,7 +54,7 @@ function SocialIcons({ links, tokens, className }: { links: Record<string, strin
   const visible = platforms.filter(p => links[p.key]);
   if (visible.length === 0) return null;
   return (
-    <div className={cn("flex gap-2.5", className)}>
+    <div className={cn("flex gap-2.5 justify-center", className)}>
       {visible.map(p => (
         <SocialLink key={p.key} href={links[p.key]} icon={p.icon} tokens={tokens} />
       ))}
@@ -84,6 +63,12 @@ function SocialIcons({ links, tokens, className }: { links: Record<string, strin
 }
 
 // ─── Main Preview Component ──────────────────────────────────────────────────
+// ALL templates share the same structural layout contract:
+// 1. Header (avatar + name + bio + social)
+// 2. Blocks (links, products, forms, videos, etc.)
+// 3. Extra products (not in blocks)
+// 4. Footer
+// Templates only vary in colors/fonts/radius/shadow — never layout.
 export function StorefrontPreview({ storefront, theme, blocks, products: externalProducts }: StorefrontPreviewProps) {
   const tokens = resolveTokens({
     primary_color: theme?.primary_color,
@@ -92,8 +77,6 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
     font_body: theme?.font_body,
     button_style: theme?.button_style,
   });
-
-  const layout = getLayoutType(theme?.template_key || 'noir');
 
   // Fetch products for product blocks
   const productIds = blocks
@@ -138,6 +121,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               borderColor: tokens.primaryColor,
               color: tokens.textColor,
               borderRadius: tokens.buttonRadius,
+              fontSize: TYPOGRAPHY.size.sm,
             }}
           >
             {config.title as string || 'Link'}
@@ -156,13 +140,17 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               boxShadow: tokens.cardShadow,
             }}
           >
-            {product.thumbnail_url && (
+            {product.thumbnail_url ? (
               <img 
                 src={product.thumbnail_url} 
                 alt={product.name}
                 className="w-full h-32 object-cover"
                 loading="lazy"
               />
+            ) : (
+              <div className="w-full h-32 flex items-center justify-center" style={{ backgroundColor: tokens.surfaceColor }}>
+                <ImageIcon className="h-8 w-8" style={{ color: tokens.textSecondaryColor }} />
+              </div>
             )}
             <div style={{ padding: SPACING.md }}>
               <p className="font-semibold" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
@@ -175,7 +163,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               )}
               <button
                 className={cn(
-                  "w-full mt-3 py-2 font-medium transition-all",
+                  "w-full mt-3 py-2.5 font-medium transition-all min-h-[44px]",
                   STATE_CLASSES.hover,
                   STATE_CLASSES.active,
                   "focus-visible:ring-2 focus-visible:ring-offset-2"
@@ -213,7 +201,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               type="email"
               placeholder="Seu melhor email"
               aria-label="Seu melhor email"
-              className="w-full px-3 py-2 border mb-3 text-sm rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
+              className="w-full px-3 py-2.5 border mb-3 text-sm rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1 min-h-[44px]"
               style={{ 
                 borderColor: tokens.borderColor, 
                 backgroundColor: 'transparent', 
@@ -222,7 +210,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               }}
             />
             <button
-              className={cn("w-full py-2.5 font-medium transition-all", STATE_CLASSES.hover, "focus-visible:ring-2 focus-visible:ring-offset-2")}
+              className={cn("w-full py-2.5 font-medium transition-all min-h-[44px]", STATE_CLASSES.hover, "focus-visible:ring-2 focus-visible:ring-offset-2")}
               style={{ 
                 backgroundColor: tokens.primaryColor, 
                 color: tokens.ctaTextColor,
@@ -273,6 +261,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               color: tokens.textColor,
               fontSize: isHeading ? TYPOGRAPHY.size.lg : TYPOGRAPHY.size.sm,
               fontWeight: isHeading ? TYPOGRAPHY.weight.bold : TYPOGRAPHY.weight.normal,
+              lineHeight: TYPOGRAPHY.lineHeight.normal,
               opacity: isHeading ? 1 : 0.8,
             }}
           >
@@ -290,7 +279,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              "w-full py-3 px-4 flex items-center justify-center gap-2 font-medium text-white",
+              "w-full py-3 px-4 flex items-center justify-center gap-2 font-medium text-white min-h-[44px]",
               STATE_CLASSES.active,
               "focus-visible:ring-2 focus-visible:ring-offset-2"
             )}
@@ -366,113 +355,33 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
         <style dangerouslySetInnerHTML={{ __html: `.no-scrollbars::-webkit-scrollbar { display: none; }` }} />
         <div className="no-scrollbars w-full h-full relative z-10">
 
-        {/* ─── LAYOUT: BANNER ─── */}
-        {layout === 'banner' && (
-          <div style={{ marginBottom: SPACING.lg }}>
-            <div className="relative w-full h-32 md:h-40 shrink-0">
-              {storefront.banner_url ? (
-                <img src={storefront.banner_url} className="w-full h-full object-cover" alt="Banner" />
-              ) : (
-                <div className="w-full h-full" style={{ backgroundColor: tokens.primaryColor }} />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 flex items-end gap-4">
-                {storefront.avatar_url && (
-                  <Avatar className="h-16 w-16 ring-2 ring-white shadow-lg shrink-0">
-                    <AvatarImage src={storefront.avatar_url} />
-                    <AvatarFallback style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}>
-                      {storefront.title?.charAt(0)?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <div className="pb-1">
-                  <h1 className="text-xl font-bold text-white leading-tight" style={{ fontFamily: tokens.fontFamily }}>
-                    {storefront.title || 'Seu Nome'}
-                  </h1>
-                </div>
-              </div>
-            </div>
-            {storefront.bio && (
-              <div style={{ padding: `${SPACING.md} ${SPACING.lg} 0` }}>
-                <p style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
-                  {storefront.bio}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── LAYOUT: HERO ─── */}
-        {layout === 'hero' && (
-          <div className="relative" style={{ marginBottom: SPACING.lg }}>
-            <div className="absolute top-0 left-0 right-0 h-36 z-0" style={{ background: `linear-gradient(to bottom, ${tokens.primaryColor}dd, ${tokens.backgroundColor})` }} />
-            <div className="relative z-10 flex flex-col items-center text-center" style={{ padding: `${SPACING.xl} ${SPACING.lg} 0` }}>
-              <Avatar className="h-20 w-20 mb-3 ring-4 ring-white shadow-lg relative">
-                <AvatarImage src={storefront.avatar_url || ''} />
-                <AvatarFallback className="text-2xl" style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}>
-                  {storefront.title?.charAt(0)?.toUpperCase() || 'K'}
-                </AvatarFallback>
-              </Avatar>
-              <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold }}>
-                {storefront.title || 'Seu Nome'}
-              </h1>
-              {storefront.bio && (
-                <p className="mt-1.5 leading-relaxed max-w-[85%]" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
-                  {storefront.bio}
-                </p>
-              )}
-              <SocialIcons links={socialLinks} tokens={tokens} className="mt-3" />
-            </div>
-          </div>
-        )}
-
-        {/* ─── LAYOUT: MINIMAL ─── */}
-        {layout === 'minimal' && (
-          <div className="flex items-center gap-4" style={{ marginBottom: SPACING.lg, padding: `${SPACING.xl} ${SPACING.lg} 0` }}>
-            <Avatar className="h-16 w-16 ring-1 ring-white/10 shadow-sm shrink-0">
-              <AvatarImage src={storefront.avatar_url || ''} />
-              <AvatarFallback className="text-xl" style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}>
-                {storefront.title?.charAt(0)?.toUpperCase() || 'K'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <h1 className="truncate" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold }}>
-                {storefront.title || 'Seu Nome'}
-              </h1>
-              {storefront.bio && (
-                <p className="truncate" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
-                  {storefront.bio}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ─── LAYOUT: CLASSIC ─── */}
-        {layout === 'classic' && (
-          <div className="flex flex-col items-center text-center" style={{ marginBottom: SPACING.lg, padding: `${SPACING.xl} ${SPACING.lg} 0` }}>
-            <Avatar className="h-24 w-24 mb-4 ring-4 ring-white shadow-lg">
-              <AvatarImage src={storefront.avatar_url || ''} />
-              <AvatarFallback className="text-2xl" style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}>
-                {storefront.title?.charAt(0)?.toUpperCase() || 'K'}
-              </AvatarFallback>
-            </Avatar>
-            <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold }}>
-              {storefront.title || 'Seu Nome'}
-            </h1>
-            {storefront.bio && (
-              <p className="mt-1" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.base }}>
-                {storefront.bio}
-              </p>
-            )}
-            <SocialIcons links={socialLinks} tokens={tokens} className="justify-center mt-4 w-full px-5" />
-          </div>
-        )}
-
-        {/* Social icons for minimal layout */}
-        {layout === 'minimal' && (
-          <SocialIcons links={socialLinks} tokens={tokens} className="mb-6 px-5 w-full" />
-        )}
+        {/* ─── UNIFIED HEADER (same structure for ALL templates) ─── */}
+        <div className="flex flex-col items-center text-center" style={{ padding: `${SPACING.xl} ${SPACING.lg} 0`, marginBottom: SPACING.lg }}>
+          <Avatar className="h-20 w-20 mb-3 ring-4 ring-white/80 shadow-lg">
+            <AvatarImage src={storefront.avatar_url || ''} />
+            <AvatarFallback className="text-2xl" style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}>
+              {storefront.title?.charAt(0)?.toUpperCase() || 'K'}
+            </AvatarFallback>
+          </Avatar>
+          <h1 style={{ 
+            color: tokens.textColor, 
+            fontSize: TYPOGRAPHY.size.xl, 
+            fontWeight: TYPOGRAPHY.weight.bold,
+            lineHeight: TYPOGRAPHY.lineHeight.tight,
+          }}>
+            {storefront.title || 'Seu Nome'}
+          </h1>
+          {storefront.bio && (
+            <p className="mt-1.5 leading-relaxed max-w-[85%]" style={{ 
+              color: tokens.textSecondaryColor, 
+              fontSize: TYPOGRAPHY.size.sm,
+              lineHeight: TYPOGRAPHY.lineHeight.relaxed,
+            }}>
+              {storefront.bio}
+            </p>
+          )}
+          <SocialIcons links={socialLinks} tokens={tokens} className="mt-3" />
+        </div>
 
         {/* ─── Blocks ─── */}
         <div className="flex flex-col items-center w-full relative z-20" style={{ gap: tokens.blockGap, padding: `0 ${SPACING.lg}` }}>
@@ -519,8 +428,12 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
                       boxShadow: tokens.cardShadow,
                     }}
                   >
-                    {product.thumbnail_url && (
+                    {product.thumbnail_url ? (
                       <img src={product.thumbnail_url} alt={product.name} className="w-full h-28 object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-28 flex items-center justify-center" style={{ backgroundColor: tokens.surfaceColor }}>
+                        <ImageIcon className="h-6 w-6" style={{ color: tokens.textSecondaryColor }} />
+                      </div>
                     )}
                     <div style={{ padding: SPACING.md }}>
                       <p className="font-semibold" style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.base }}>
@@ -536,12 +449,12 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
                         </p>
                       )}
                       <button
-                        className={cn("w-full mt-2.5 py-2 font-medium transition-all", STATE_CLASSES.hover, "focus-visible:ring-2 focus-visible:ring-offset-2")}
+                        className={cn("w-full mt-2.5 py-2.5 font-medium transition-all min-h-[44px]", STATE_CLASSES.hover, "focus-visible:ring-2 focus-visible:ring-offset-2")}
                         style={{ 
                           backgroundColor: tokens.primaryColor, 
                           color: tokens.ctaTextColor,
                           borderRadius: tokens.buttonRadius,
-                          fontSize: TYPOGRAPHY.size.xs,
+                          fontSize: TYPOGRAPHY.size.sm,
                         }}
                       >
                         {product.listing_button_text || 'Ver produto'}

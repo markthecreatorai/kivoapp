@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { formatCurrency } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/formatPrice";
-import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
+import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES, ctaTextColor as getCTATextColor, getButtonRadius, getCardRadius } from "@/lib/storefront-tokens";
 import {
   Instagram,
   Youtube,
@@ -129,6 +129,7 @@ function LeadFormBlock({
   primaryColor,
   textColor,
   buttonClass,
+  ctaText,
 }: {
   config: Record<string, unknown>;
   workspaceId: string;
@@ -136,6 +137,7 @@ function LeadFormBlock({
   primaryColor: string;
   textColor: string;
   buttonClass: string;
+  ctaText: string;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -201,8 +203,8 @@ function LeadFormBlock({
       <button
         type="submit"
         disabled={loading}
-        className={`w-full py-2.5 text-sm font-medium text-white ${buttonClass}`}
-        style={{ backgroundColor: primaryColor }}
+        className={`w-full py-2.5 text-sm font-medium min-h-[44px] ${buttonClass}`}
+        style={{ backgroundColor: primaryColor, color: ctaText }}
       >
         {loading ? "Enviando..." : (config.button_text as string) || "Enviar"}
       </button>
@@ -224,11 +226,20 @@ export default function PublicStorefront() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  // Theme defaults
+  // Resolve design tokens from theme (single source of truth)
+  const tokens = useMemo(() => resolveTokens({
+    primary_color: theme?.primary_color,
+    background_color: theme?.background_color,
+    text_color: theme?.text_color,
+    font_body: theme?.font_body,
+    button_style: theme?.button_style,
+  }), [theme]);
+
+  // Legacy shorthand for backward compat in block renderers
   const t = {
-    primary: theme?.primary_color || "#F9423A",
-    bg: theme?.background_color || "#ffffff",
-    text: theme?.text_color || "#1a1a1a",
+    primary: tokens.primaryColor,
+    bg: tokens.backgroundColor,
+    text: tokens.textColor,
     font: theme?.font_body || "Inter",
     btn: theme?.button_style || "rounded",
   };
@@ -236,7 +247,6 @@ export default function PublicStorefront() {
   const buttonClass =
     t.btn === "pill" ? "rounded-full" : t.btn === "square" ? "rounded-none" : "rounded-xl";
 
-  // Card wrapper uses rounded-2xl for pill to avoid clipping buttons
   const cardClass =
     t.btn === "pill" ? "rounded-2xl" : t.btn === "square" ? "rounded-none" : "rounded-xl";
 
@@ -462,8 +472,8 @@ export default function PublicStorefront() {
                 </div>
                 {!isButtonStyle && (
                   <div
-                    className={`mt-4 py-3 text-sm font-medium text-center text-white ${buttonClass}`}
-                    style={{ backgroundColor: t.primary }}
+                    className={`mt-4 py-3 text-sm font-medium text-center min-h-[44px] ${buttonClass}`}
+                    style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                   >
                     {ctaLabel}
                   </div>
@@ -507,8 +517,8 @@ export default function PublicStorefront() {
                   </span>
                 )}
                 <span
-                  className={`px-4 py-2 text-sm font-medium text-white ${buttonClass}`}
-                  style={{ backgroundColor: t.primary }}
+                  className={`px-4 py-2 text-sm font-medium min-h-[44px] flex items-center ${buttonClass}`}
+                  style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                 >
                   {ctaLabel}
                 </span>
@@ -527,6 +537,7 @@ export default function PublicStorefront() {
             primaryColor={t.primary}
             textColor={t.text}
             buttonClass={buttonClass}
+            ctaText={tokens.ctaTextColor}
           />
         );
 
@@ -622,80 +633,59 @@ export default function PublicStorefront() {
       )}
       <div
         className="min-h-screen"
-        style={{ backgroundColor: t.bg, fontFamily: `'${t.font}', sans-serif` }}
+        style={{ backgroundColor: tokens.backgroundColor, fontFamily: tokens.fontFamily }}
       >
         <div className="max-w-[480px] mx-auto px-5 py-8 pb-16">
-          {/* Profile Header */}
+          {/* Unified Profile Header — same structure as preview */}
           <div className="flex flex-col items-center text-center mb-8">
             {storefront.avatar_url ? (
               <img
                 src={storefront.avatar_url}
                 alt={storefront.title || "Avatar"}
-                className="w-24 h-24 rounded-full object-cover mb-4 ring-4 shadow-lg"
-                style={{ boxShadow: `0 0 0 4px ${t.primary}30` }}
+                className="w-20 h-20 rounded-full object-cover mb-3 ring-4 ring-white/80 shadow-lg"
               />
             ) : (
               <div
-                className="w-24 h-24 rounded-full mb-4 flex items-center justify-center text-3xl font-bold text-white shadow-lg"
-                style={{ backgroundColor: t.primary }}
+                className="w-20 h-20 rounded-full mb-3 flex items-center justify-center text-2xl font-bold shadow-lg"
+                style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}
               >
                 {storefront.title?.charAt(0)?.toUpperCase() || "K"}
               </div>
             )}
-            <h1 className="text-2xl font-bold" style={{ color: t.text }}>
+            <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold, lineHeight: TYPOGRAPHY.lineHeight.tight }}>
               {storefront.title || ""}
             </h1>
             {storefront.bio && (
-              <p className="text-sm mt-2 opacity-80 max-w-[320px]" style={{ color: t.text }}>
+              <p className="mt-1.5 max-w-[320px] leading-relaxed" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
                 {storefront.bio}
               </p>
             )}
 
             {/* Social Links */}
             {Object.values(socialLinks).some(Boolean) && (
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-2.5 mt-3">
                 {socialLinks.instagram && (
-                  <a
-                    href={socialLinks.instagram.startsWith("http") ? socialLinks.instagram : `https://${socialLinks.instagram}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <Instagram className="h-5 w-5" style={{ color: t.text }} />
+                  <a href={socialLinks.instagram.startsWith("http") ? socialLinks.instagram : `https://${socialLinks.instagram}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <Instagram className="h-4 w-4" style={{ color: tokens.textColor }} />
                   </a>
                 )}
                 {socialLinks.tiktok && (
-                  <a
-                    href={socialLinks.tiktok.startsWith("http") ? socialLinks.tiktok : `https://${socialLinks.tiktok}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <TikTokIcon className="h-5 w-5" />
+                  <a href={socialLinks.tiktok.startsWith("http") ? socialLinks.tiktok : `https://${socialLinks.tiktok}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <TikTokIcon className="h-4 w-4" />
                   </a>
                 )}
                 {socialLinks.youtube && (
-                  <a
-                    href={socialLinks.youtube.startsWith("http") ? socialLinks.youtube : `https://${socialLinks.youtube}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <Youtube className="h-5 w-5" style={{ color: t.text }} />
+                  <a href={socialLinks.youtube.startsWith("http") ? socialLinks.youtube : `https://${socialLinks.youtube}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <Youtube className="h-4 w-4" style={{ color: tokens.textColor }} />
                   </a>
                 )}
                 {socialLinks.twitter && (
-                  <a
-                    href={socialLinks.twitter.startsWith("http") ? socialLinks.twitter : `https://${socialLinks.twitter}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-full transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: t.text + "10" }}
-                  >
-                    <Twitter className="h-5 w-5" style={{ color: t.text }} />
+                  <a href={socialLinks.twitter.startsWith("http") ? socialLinks.twitter : `https://${socialLinks.twitter}`} target="_blank" rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                    <Twitter className="h-4 w-4" style={{ color: tokens.textColor }} />
                   </a>
                 )}
               </div>
@@ -759,8 +749,8 @@ export default function PublicStorefront() {
                           </div>
                           {!isButtonStyle && (
                             <div
-                              className={`mt-4 py-3 text-sm font-medium text-center text-white ${buttonClass}`}
-                              style={{ backgroundColor: t.primary }}
+                              className={`mt-4 py-3 text-sm font-medium text-center min-h-[44px] ${buttonClass}`}
+                              style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                             >
                               {ctaLabel}
                             </div>
@@ -804,8 +794,8 @@ export default function PublicStorefront() {
                             </span>
                           )}
                           <span
-                            className={`px-4 py-2 text-sm font-medium text-white ${buttonClass}`}
-                            style={{ backgroundColor: t.primary }}
+                            className={`px-4 py-2 text-sm font-medium min-h-[44px] flex items-center ${buttonClass}`}
+                            style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                           >
                             {ctaLabel}
                           </span>
