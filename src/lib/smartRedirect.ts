@@ -24,11 +24,11 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
   } catch {}
 
   // 2. Check workspace (creator)
-  const { data: ws } = await supabase
+  const { data: ws } = await (supabase
     .from("workspaces")
     .select("id")
     .eq("owner_id", userId)
-    .limit(1) as { data: any[] | null };
+    .limit(1) as any);
   if (ws && ws.length > 0) return "/dashboard";
 
   // 3. Check community membership (consumer)
@@ -37,15 +37,15 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
     .select("id")
     .eq("user_id", userId)
     .eq("status", "ACTIVE")
-    .limit(1) as any) as { data: any[] | null };
+    .limit(1) as any);
   if (memberships && memberships.length > 0) return "/circles";
 
   // 4. Check entitlements (buyer)
-  const { data: entitlements } = await supabase
+  const { data: entitlements } = await (supabase
     .from("user_asset_entitlements")
     .select("id")
     .eq("user_id", userId)
-    .limit(1) as { data: any[] | null };
+    .limit(1) as any);
   if (entitlements && entitlements.length > 0) return "/member";
 
   // 5. Fallback
