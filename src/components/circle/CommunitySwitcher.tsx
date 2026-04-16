@@ -31,6 +31,8 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
   const { user } = useAuth();
   const { currentWorkspace, userWorkspaces } = useWorkspace();
 
+  const isGuest = !user;
+
   const { data: communities = [] } = useQuery({
     queryKey: ["user-communities-switcher", user?.id],
     queryFn: async () => {
@@ -69,6 +71,10 @@ export default function CommunitySwitcher({ currentCommunity, onCreateCommunity 
   const handleCreate = () => {
     setOpen(false);
     setSearch("");
+    if (isGuest) {
+      navigate("/onboarding");
+      return;
+    }
     if (onCreateCommunity) {
       onCreateCommunity();
     } else if (currentWorkspace) {
