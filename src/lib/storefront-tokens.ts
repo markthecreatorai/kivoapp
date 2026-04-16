@@ -157,6 +157,8 @@ export interface StorefrontDesignTokens {
   borderColor: string;
   surfaceColor: string;
   ctaTextColor: string;
+  /** Contrast-safe color for price labels on background */
+  priceLabelColor: string;
   // Typography
   fontFamily: string;
   // Radius
@@ -188,6 +190,9 @@ export function resolveTokens(raw: {
   const font = raw.font_body || 'Inter';
   const btnStyle = raw.button_style || 'rounded';
 
+  // Price label: primary on bg, ensure AA (4.5:1)
+  const priceLbl = ensureContrast(primary, bg, 4.5);
+
   return {
     primaryColor: primary,
     backgroundColor: bg,
@@ -196,6 +201,7 @@ export function resolveTokens(raw: {
     borderColor: text + '1A', // 10% opacity
     surfaceColor: text + '08', // ~3% opacity
     ctaTextColor: ctaTextColor(primary),
+    priceLabelColor: priceLbl,
     fontFamily: `'${font}', ${TYPOGRAPHY.fontFamily.fallback}`,
     buttonRadius: getButtonRadius(btnStyle),
     cardRadius: getCardRadius(btnStyle),
