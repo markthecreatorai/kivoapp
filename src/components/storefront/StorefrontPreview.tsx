@@ -167,7 +167,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
         )}
         {display.price.label && (
           <p className="mt-0.5" style={{ 
-            color: display.price.isFree ? tokens.primaryColor : tokens.textSecondaryColor, 
+            color: display.price.isFree ? tokens.priceLabelColor : tokens.textSecondaryColor, 
             fontSize: TYPOGRAPHY.size.xs,
             fontWeight: display.price.isFree ? TYPOGRAPHY.weight.semibold : TYPOGRAPHY.weight.normal,
           }}>
@@ -184,7 +184,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
           style={{ 
             borderRadius: tokens.buttonRadius,
             fontSize: TYPOGRAPHY.size.sm,
-            ...ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor),
+            ...ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor, tokens.backgroundColor),
           }}
         >
           {display.ctaText}
@@ -215,7 +215,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               color: tokens.textColor,
               borderRadius: tokens.buttonRadius,
               fontSize: TYPOGRAPHY.size.sm,
-              ...ctaStyleCSS('outline', tokens.primaryColor, tokens.ctaTextColor),
+              ...ctaStyleCSS('outline', tokens.primaryColor, tokens.ctaTextColor, tokens.backgroundColor),
             }}
           >
             {config.title as string || 'Link'}
@@ -260,7 +260,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
               style={{ 
                 borderRadius: tokens.buttonRadius,
                 fontSize: TYPOGRAPHY.size.sm,
-                ...ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor),
+                ...ctaStyleCSS(preset.ctaStyle, tokens.primaryColor, tokens.ctaTextColor, tokens.backgroundColor),
               }}
             >
               {config.button_text as string || 'Enviar'}
