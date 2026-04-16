@@ -7,9 +7,11 @@ Base visual e estrutural dos e-mails transacionais da Kivo.
 - `tokens.ts` → design tokens centralizados
 - `components.ts` → componentes reutilizáveis
 - `layout.ts` → layout base responsivo
-- `templates/phase0-preview.ts` → template de exemplo
-- `preview.ts` → gera preview HTML local
-- `previews/phase0-preview.html` → saída gerada
+- `templates/phase0-preview.ts` → template base de exemplo
+- `templates/auth-reset-preview.ts` → exemplo auth/reset
+- `preview.ts` → gera previews HTML locais
+- `previews/phase0-preview.html` → saída gerada (exemplo 1)
+- `previews/auth-reset-preview.html` → saída gerada (exemplo 2)
 
 ## Como gerar preview local
 
