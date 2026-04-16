@@ -1,5 +1,6 @@
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import MessagesPopover from "@/components/circle/MessagesPopover";
+import CommunityAuthModal from "@/components/circle/CommunityAuthModal";
 import CircleRightSidebarSkool from "@/components/circle/CircleRightSidebarSkool";
 import CircleAdminModal from "@/components/circle/admin/CircleAdminModal";
 import { Link, Navigate, Outlet, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -107,6 +108,15 @@ export default function CircleLayout() {
   const queryClient = useQueryClient();
 
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalView, setAuthModalView] = useState<"signup" | "login">("signup");
+
+  // Track last community accessed
+  useEffect(() => {
+    if (slug && user) {
+      localStorage.setItem("kivo_last_community", slug);
+    }
+  }, [slug, user]);
 
   // tabItems defined below after community query
 
@@ -311,14 +321,17 @@ export default function CircleLayout() {
   // Not logged in — allow about page, redirect others
   if (!user) {
     if (isAboutPage) {
-      // Render layout with Outlet for about page (no member needed)
+      const openAuthModal = (view: "signup" | "login") => {
+        setAuthModalView(view);
+        setShowAuthModal(true);
+      };
       return (
         <div className="min-h-screen bg-muted/40 flex flex-col">
           <header className="sticky top-0 z-30 bg-card border-b border-border">
             <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
               <CommunitySwitcher currentCommunity={community} />
               <div className="flex-1" />
-              <Button size="sm" onClick={() => navigate(`/login?redirect=/circles/${slug}/about`)}>
+              <Button size="sm" onClick={() => openAuthModal("login")}>
                 <LogIn className="h-4 w-4 mr-1.5" /> Entrar
               </Button>
             </div>
@@ -334,10 +347,17 @@ export default function CircleLayout() {
                 <CircleRightSidebarSkool
                   community={community}
                   member={null}
+                  onJoinClick={() => openAuthModal("signup")}
                 />
               </div>
             </div>
           </main>
+          <CommunityAuthModal
+            open={showAuthModal}
+            onOpenChange={setShowAuthModal}
+            community={community}
+            initialView={authModalView}
+          />
         </div>
       );
     }

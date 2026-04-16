@@ -30,12 +30,39 @@ export default function Login() {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaVerifying, setMfaVerifying] = useState(false);
 
-  // Redirect authenticated users away from login
+  // Redirect authenticated users away from login — smart routing
   useEffect(() => {
     if (!authLoading && user) {
+      const redirect = searchParams.get("redirect");
+      if (redirect) {
+        navigate(redirect, { replace: true });
+        return;
+      }
+
+      // Check nav intent from community modal flow
+      try {
+        const raw = sessionStorage.getItem("kivo_nav_intent");
+        if (raw) {
+          const intent = JSON.parse(raw);
+          sessionStorage.removeItem("kivo_nav_intent");
+          if (intent.origin === "community" && intent.community_slug) {
+            navigate(`/circles/${intent.community_slug}/feed`, { replace: true });
+            return;
+          }
+        }
+      } catch {}
+
+      // Check last community for member-only users
+      const lastCommunity = localStorage.getItem("kivo_last_community");
+      if (lastCommunity) {
+        // Still default to dashboard for owners; last community is a fallback
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
       navigate("/dashboard", { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, searchParams]);
 
   // Handle OAuth error callback
   useEffect(() => {
@@ -75,13 +102,12 @@ export default function Login() {
       const verifiedFactors = factorsData?.totp?.filter(f => f.status === "verified") || [];
 
       if (verifiedFactors.length > 0) {
-        // MFA is enabled — show challenge step
         setMfaFactorId(verifiedFactors[0].id);
         setLoginStep("mfa");
         setIsLoading(false);
       } else {
-        // No MFA — proceed to dashboard
-        navigate("/dashboard");
+        const redirect = searchParams.get("redirect");
+        navigate(redirect || "/dashboard");
       }
     } catch (error) {
       toast({
@@ -112,7 +138,8 @@ export default function Login() {
 
       if (verifyError) throw verifyError;
 
-      navigate("/dashboard");
+      const redirect = searchParams.get("redirect");
+      navigate(redirect || "/dashboard");
     } catch (err: any) {
       toast({
         title: "Código inválido",

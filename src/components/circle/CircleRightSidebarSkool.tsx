@@ -12,9 +12,10 @@ interface Props {
   community: any;
   member: any;
   onOpenAdmin?: () => void;
+  onJoinClick?: () => void;
 }
 
-export default function CircleRightSidebarSkool({ community, member, onOpenAdmin }: Props) {
+export default function CircleRightSidebarSkool({ community, member, onOpenAdmin, onJoinClick }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
@@ -282,12 +283,12 @@ export default function CircleRightSidebarSkool({ community, member, onOpenAdmin
             </div>
           ) : (
             /* Visitor / preview visitor: join */
-            <Link
-              to={`/circles/${slug}`}
+            <button
+              onClick={() => onJoinClick ? onJoinClick() : navigate(`/circles/${slug}`)}
               className="flex items-center justify-center w-full rounded-lg py-3 px-4 font-bold text-[15px] uppercase tracking-wide transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
             >
               {visitorCta}
-            </Link>
+            </button>
           )}
         </div>
       </div>
