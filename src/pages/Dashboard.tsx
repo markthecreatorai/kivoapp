@@ -60,6 +60,7 @@ interface SourceBreakdown {
 
 export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<number | "custom">(30);
+  const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const [metrics, setMetrics] = useState<Metrics>({
     totalRevenue: 0,
     totalSales: 0,
@@ -83,16 +84,23 @@ export default function Dashboard() {
     const fetchMetrics = async () => {
       setLoading(true);
       try {
-        const periodDays = selectedPeriod === "custom" ? 30 : selectedPeriod;
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - periodDays);
+        let startDate: Date;
+        let endDate = new Date();
+        let periodDays: number;
 
-        const prevStartDate = new Date();
-        prevStartDate.setDate(prevStartDate.getDate() - periodDays * 2);
-        const prevEndDate = new Date();
-        prevEndDate.setDate(prevEndDate.getDate() - periodDays);
+        if (selectedPeriod === "custom" && customRange) {
+          startDate = customRange.from;
+          endDate = customRange.to;
+          periodDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        } else {
+          periodDays = selectedPeriod === "custom" ? 30 : selectedPeriod;
+          startDate = new Date();
+          startDate.setDate(startDate.getDate() - periodDays);
+        }
 
-        const endDate = new Date();
+        const prevStartDate = new Date(startDate);
+        prevStartDate.setDate(prevStartDate.getDate() - periodDays);
+        const prevEndDate = new Date(startDate);
 
         // Fetch orders + source breakdown + top communities + tier analytics in parallel
         const [ordersRes, prevRes, sourceRes, communitiesRes, tiersRes, entitlementRes] = await Promise.all([
@@ -174,7 +182,7 @@ export default function Dashboard() {
     };
 
     fetchMetrics();
-  }, [currentWorkspace, selectedPeriod]);
+  }, [currentWorkspace, selectedPeriod, customRange]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -194,7 +202,12 @@ export default function Dashboard() {
       {/* Page title + filters */}
       <div className="space-y-2">
         <h1 className="text-lg md:text-xl font-semibold text-foreground">Dashboard</h1>
-        <PeriodFilter selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
+        <PeriodFilter
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={setSelectedPeriod}
+          customRange={customRange}
+          onCustomRangeChange={setCustomRange}
+        />
       </div>
 
       {/* 3 KPI cards — total */}
