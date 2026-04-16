@@ -593,13 +593,9 @@ export default function CircleAbout() {
       </div>
 
       {/* ── JOIN CTA for non-members ── */}
-      {!isMember && community && (
+      {!isMember && community && user && (
         <div className="pt-1">
-          {!user ? (
-            <Button size="lg" onClick={() => navigate(`/login?redirect=/circles/${slug}/about`)} className="w-full md:w-auto">
-              <LogIn className="h-5 w-5 mr-2" /> Entrar para participar
-            </Button>
-          ) : community.access_type === "OPEN" ? (
+          {community.access_type === "OPEN" ? (
             <Button size="lg" onClick={() => joinCommunity.mutate()} disabled={joinCommunity.isPending} className="w-full md:w-auto">
               <UserPlus className="h-5 w-5 mr-2" />
               {community.require_approval ? "Solicitar Entrada" : "Entrar na Comunidade"}
