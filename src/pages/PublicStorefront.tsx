@@ -5,6 +5,7 @@ import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { formatCurrency } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/formatPrice";
 import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
+import {
   Instagram,
   Youtube,
   Twitter,
