@@ -24,6 +24,9 @@ import {
   ShoppingCart,
   Users,
   MessageSquare,
+  Palette,
+  Type,
+  Settings,
 } from "lucide-react";
 import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
 import { ReviewsBuilder } from "@/components/ReviewsBuilder";
