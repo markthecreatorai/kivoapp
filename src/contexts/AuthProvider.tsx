@@ -34,6 +34,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (_event === 'SIGNED_OUT') {
           navigate('/login');
         }
+
+        // On sign-in, check for community nav intent (set by CommunityAuthModal)
+        if (_event === 'SIGNED_IN') {
+          try {
+            const raw = sessionStorage.getItem("kivo_nav_intent");
+            if (raw) {
+              const intent = JSON.parse(raw);
+              sessionStorage.removeItem("kivo_nav_intent");
+              if (intent.origin === "community" && intent.community_slug) {
+                // Use setTimeout to avoid navigating during auth state change
+                setTimeout(() => navigate(`/circles/${intent.community_slug}/feed`), 0);
+              }
+            }
+          } catch {}
+        }
       }
     );
 
