@@ -424,18 +424,38 @@ function AbaLoja({
 
   const productIds = useMemo(() => products.map((p: any) => p.id), [products]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+
     const oldIndex = products.findIndex((p: any) => p.id === active.id);
     const newIndex = products.findIndex((p: any) => p.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
-    const reordered = arrayMove(products, oldIndex, newIndex);
+
+    const previous = products;
+    const reordered = arrayMove(products, oldIndex, newIndex).map((p: any, index: number) => ({
+      ...p,
+      storefront_order: index,
+    }));
+
+    // Optimistic local update
     onReorder(reordered);
-    // Persist new order to database
-    reordered.forEach((p: any, index: number) => {
-      supabase.from("products").update({ storefront_order: index }).eq("id", p.id).then();
-    });
+
+    // Persist order (best effort but with rollback on failure)
+    const results = await Promise.allSettled(
+      reordered.map((p: any, index: number) =>
+        supabase.from("products").update({ storefront_order: index }).eq("id", p.id)
+      )
+    );
+
+    const failed = results.some((r: any) => r.status === "rejected" || r.value?.error);
+    if (failed) {
+      onReorder(previous);
+      toast.error("Erro ao reordenar produtos. Tente novamente.");
+      return;
+    }
+
+    toast.success("Ordem dos produtos atualizada.");
   };
 
   return (
