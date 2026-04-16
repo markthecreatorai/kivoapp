@@ -142,6 +142,7 @@ export function PaymentTabs({
   };
 
   const brand = detectCardBrand(card.number);
+  const cvcMax = expectedCvcLength(brand);
   const selectedOption = installmentOptions.find(o => o.number === card.installments) || installmentOptions[0];
   const cardTotal = selectedOption?.total || total;
 
@@ -222,39 +223,53 @@ export function PaymentTabs({
 
         <TabsContent value="card" className="mt-4 space-y-3">
           <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
-            <Input
-              value={card.holder_name}
-              onChange={(e) => setCard({ ...card, holder_name: e.target.value.toUpperCase() })}
-              placeholder="Nome no cartão"
-              className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11"
-            />
-            <div className="relative">
+            <div>
               <Input
-                value={card.number}
-                onChange={(e) => setCard({ ...card, number: formatCardNumber(e.target.value) })}
-                placeholder="Número do cartão"
-                inputMode="numeric"
-                className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 pr-16"
+                value={card.holder_name}
+                onChange={(e) => { setCard({ ...card, holder_name: e.target.value.toUpperCase() }); setCardErrors(prev => ({ ...prev, holder_name: undefined })); }}
+                placeholder="Nome no cartão"
+                className={`border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 ${cardErrors.holder_name ? 'bg-red-50' : ''}`}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground uppercase">
-                {brand !== 'generic' ? brand : ''}
-              </span>
+              {cardErrors.holder_name && <p className="text-xs text-destructive px-3 pb-1">{cardErrors.holder_name}</p>}
             </div>
-            <div className="flex divide-x divide-border">
-              <Input
-                value={card.expiry}
-                onChange={(e) => setCard({ ...card, expiry: formatExpiry(e.target.value) })}
-                placeholder="MM/AA"
-                inputMode="numeric"
-                className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 flex-1"
-              />
-              <Input
-                value={card.cvv}
-                onChange={(e) => setCard({ ...card, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                placeholder="CVC"
-                inputMode="numeric"
-                className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 w-24"
-              />
+            <div>
+              <div className="relative">
+                <Input
+                  value={card.number}
+                  onChange={(e) => { setCard({ ...card, number: formatCardNumber(e.target.value) }); setCardErrors(prev => ({ ...prev, number: undefined })); }}
+                  placeholder="Número do cartão"
+                  inputMode="numeric"
+                  className={`border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 pr-16 ${cardErrors.number ? 'bg-red-50' : ''}`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground uppercase">
+                  {brand !== 'generic' ? brand : ''}
+                </span>
+              </div>
+              {cardErrors.number && <p className="text-xs text-destructive px-3 pb-1">{cardErrors.number}</p>}
+            </div>
+            <div>
+              <div className="flex divide-x divide-border">
+                <Input
+                  value={card.expiry}
+                  onChange={(e) => { setCard({ ...card, expiry: formatExpiry(e.target.value) }); setCardErrors(prev => ({ ...prev, expiry: undefined })); }}
+                  placeholder="MM/AA"
+                  inputMode="numeric"
+                  className={`border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 flex-1 ${cardErrors.expiry ? 'bg-red-50' : ''}`}
+                />
+                <Input
+                  value={card.cvv}
+                  onChange={(e) => { setCard({ ...card, cvv: e.target.value.replace(/\D/g, '').slice(0, cvcMax) }); setCardErrors(prev => ({ ...prev, cvv: undefined })); }}
+                  placeholder="CVC"
+                  inputMode="numeric"
+                  className={`border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 w-24 ${cardErrors.cvv ? 'bg-red-50' : ''}`}
+                />
+              </div>
+              {(cardErrors.expiry || cardErrors.cvv) && (
+                <div className="flex px-3 pb-1 gap-4">
+                  {cardErrors.expiry && <p className="text-xs text-destructive flex-1">{cardErrors.expiry}</p>}
+                  {cardErrors.cvv && <p className="text-xs text-destructive w-24">{cardErrors.cvv}</p>}
+                </div>
+              )}
             </div>
           </div>
 
@@ -292,7 +307,12 @@ export function PaymentTabs({
           )}
 
           <Button
-            onClick={() => onPayCard(card)}
+            onClick={() => {
+              const errs = validateCardFields(card);
+              setCardErrors(errs);
+              if (Object.keys(errs).length > 0) return;
+              onPayCard(card);
+            }}
             disabled={paymentLoading || loadingInstallments}
             className="w-full bg-green-500 hover:bg-green-600 text-white rounded-full h-12 text-base font-bold"
           >
