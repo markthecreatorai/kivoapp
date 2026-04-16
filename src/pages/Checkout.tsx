@@ -9,6 +9,7 @@ import { PaymentTabs, type CardData } from "@/components/checkout/PaymentTabs";
 import { OrderTotal } from "@/components/checkout/OrderTotal";
 import { OrderBumpCard, type OrderBump } from "@/components/checkout/OrderBumpCard";
 import { validateCPF } from "@/lib/cpf";
+import { mapPaymentError } from "@/lib/cpf";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { trackEvent } from "@/lib/tracking";
 
@@ -373,6 +374,8 @@ export default function Checkout() {
     if (!validate() || !product || !price) return;
     setPaymentLoading(true);
     setPaymentError(null);
+    const requestId = crypto.randomUUID();
+    console.info("[Checkout:card] request", { requestId, slug: productSlug, method: "credit_card", installments: cardData.installments });
     try {
       const res = await supabase.functions.invoke("create-payment", {
         body: {
@@ -388,8 +391,8 @@ export default function Checkout() {
           card: {
             number: cardData.number.replace(/\s/g, ""),
             exp_month: cardData.expiry.split("/")[0],
-            exp_year: "20" + cardData.expiry.split("/")[1],
-            cvv: cardData.cvv,
+            exp_year: "20" + (cardData.expiry.split("/")[1] || "00"),
+            cvv: cardData.cvv.replace(/\D/g, ""),
             holder_name: cardData.holder_name,
           },
           installments: cardData.installments,
@@ -400,9 +403,16 @@ export default function Checkout() {
           bump_product_ids: selectedBumpIds,
         },
       });
-      if (res.error) throw new Error(res.error.message);
+      if (res.error) {
+        console.error("[Checkout:card] edge error", { requestId, error: res.error.message });
+        throw new Error(res.error.message);
+      }
       const data = res.data;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        console.error("[Checkout:card] API error", { requestId, error: data.error, status: data.status });
+        throw new Error(data.error);
+      }
+      console.info("[Checkout:card] response", { requestId, status: data?.status, orderId: data?.order_id });
       if (data?.status === "paid" || data?.status === "authorized") {
         trackEvent("payment_succeeded", { method: "credit_card", order_id: data.order_id }, product.workspace_id);
         if (isRecovery && sessionId) {
@@ -412,12 +422,15 @@ export default function Checkout() {
         await supabase.functions.invoke("post-purchase", { body: { order_id: data.order_id } });
         navigate(`/order/success/${data.order_id}`);
       } else {
-        trackEvent("payment_failed", { method: "credit_card", reason: data?.message }, product.workspace_id);
-        setPaymentError(data?.message || "Pagamento recusado. Tente outro cartão.");
+        const rawMsg = data?.message || data?.error || "unknown";
+        console.warn("[Checkout:card] payment not approved", { requestId, rawMsg });
+        trackEvent("payment_failed", { method: "credit_card", reason: rawMsg }, product.workspace_id);
+        setPaymentError(mapPaymentError(rawMsg));
       }
     } catch (e: any) {
+      console.error("[Checkout:card] exception", { requestId, message: e.message });
       trackEvent("payment_failed", { method: "credit_card", reason: e.message }, product.workspace_id);
-      setPaymentError(e.message || "Erro ao processar pagamento.");
+      setPaymentError(mapPaymentError(e.message || ""));
     } finally {
       setPaymentLoading(false);
     }
