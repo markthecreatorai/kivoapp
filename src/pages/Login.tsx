@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useAuth } from "@/contexts/AuthProvider";
+import { resolveSmartRedirect } from "@/lib/smartRedirect";
 
 type LoginStep = "credentials" | "mfa";
 
@@ -39,28 +40,10 @@ export default function Login() {
         return;
       }
 
-      // Check nav intent from community modal flow
-      try {
-        const raw = sessionStorage.getItem("kivo_nav_intent");
-        if (raw) {
-          const intent = JSON.parse(raw);
-          sessionStorage.removeItem("kivo_nav_intent");
-          if (intent.origin === "community" && intent.community_slug) {
-            navigate(`/circles/${intent.community_slug}/feed`, { replace: true });
-            return;
-          }
-        }
-      } catch {}
-
-      // Check last community for member-only users
-      const lastCommunity = localStorage.getItem("kivo_last_community");
-      if (lastCommunity) {
-        // Still default to dashboard for owners; last community is a fallback
-        navigate("/dashboard", { replace: true });
-        return;
-      }
-
-      navigate("/dashboard", { replace: true });
+      // Smart redirect based on user profile
+      resolveSmartRedirect(user.id).then((dest) => {
+        navigate(dest, { replace: true });
+      });
     }
   }, [user, authLoading, navigate, searchParams]);
 
@@ -107,7 +90,11 @@ export default function Login() {
         setIsLoading(false);
       } else {
         const redirect = searchParams.get("redirect");
-        navigate(redirect || "/dashboard");
+        if (redirect) {
+          navigate(redirect);
+        } else {
+          resolveSmartRedirect(data.user!.id).then((dest) => navigate(dest));
+        }
       }
     } catch (error) {
       toast({
@@ -139,7 +126,13 @@ export default function Login() {
       if (verifyError) throw verifyError;
 
       const redirect = searchParams.get("redirect");
-      navigate(redirect || "/dashboard");
+      if (redirect) {
+        navigate(redirect);
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        const dest = session?.user ? await resolveSmartRedirect(session.user.id) : "/dashboard";
+        navigate(dest);
+      }
     } catch (err: any) {
       toast({
         title: "Código inválido",

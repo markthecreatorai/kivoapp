@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { resolveSmartRedirect } from "@/lib/smartRedirect";
 
 interface AuthContextType {
   user: User | null;
@@ -35,16 +36,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           navigate('/login');
         }
 
-        // On sign-in, check for community nav intent (set by CommunityAuthModal)
-        if (_event === 'SIGNED_IN') {
+        if (_event === 'SIGNED_IN' && session?.user) {
+          // Check for community nav intent first (set by CommunityAuthModal)
           try {
             const raw = sessionStorage.getItem("kivo_nav_intent");
             if (raw) {
               const intent = JSON.parse(raw);
               sessionStorage.removeItem("kivo_nav_intent");
               if (intent.origin === "community" && intent.community_slug) {
-                // Use setTimeout to avoid navigating during auth state change
                 setTimeout(() => navigate(`/circles/${intent.community_slug}/feed`), 0);
+                return;
               }
             }
           } catch {}

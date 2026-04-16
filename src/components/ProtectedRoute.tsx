@@ -1,7 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
+import { isConsumerOnly } from "@/lib/smartRedirect";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -17,6 +18,28 @@ export default function ProtectedRoute({
   const { user, loading: authLoading } = useAuth();
   const { currentWorkspace, loading: workspaceLoading, fetchError } = useWorkspace();
   const location = useLocation();
+
+  // Track whether we've checked consumer status
+  const [consumerCheck, setConsumerCheck] = useState<{ checked: boolean; isConsumer: boolean }>({
+    checked: false,
+    isConsumer: false,
+  });
+
+  // When workspace is missing and user is loaded, check if user is a consumer
+  useEffect(() => {
+    if (
+      user &&
+      requireWorkspace &&
+      !workspaceLoading &&
+      !fetchError &&
+      !currentWorkspace &&
+      !consumerCheck.checked
+    ) {
+      isConsumerOnly(user.id).then((result) => {
+        setConsumerCheck({ checked: true, isConsumer: result });
+      });
+    }
+  }, [user, requireWorkspace, workspaceLoading, fetchError, currentWorkspace, consumerCheck.checked]);
 
   // Show a minimal loading skeleton while auth/workspace resolves
   if (authLoading || (user && workspaceLoading)) {
@@ -53,7 +76,24 @@ export default function ProtectedRoute({
   // 2. Workspace finished loading (not still fetching)
   // 3. No fetch error occurred (avoid false redirect when RLS blocks the query)
   // 4. There's genuinely no workspace
+  // 5. Consumer check is done AND user is NOT a consumer
   if (requireWorkspace && !workspaceLoading && !fetchError && !currentWorkspace) {
+    // Still checking consumer status — show loading
+    if (!consumerCheck.checked) {
+      return (
+        <div className="p-6 space-y-6 animate-in fade-in-0 duration-200">
+          <div className="space-y-2">
+            <div className="h-7 w-48 rounded bg-muted animate-pulse" />
+            <div className="h-4 w-72 rounded bg-muted animate-pulse" />
+          </div>
+        </div>
+      );
+    }
+    // Consumer → let them through (they don't need a workspace)
+    if (consumerCheck.isConsumer) {
+      return <>{children}</>;
+    }
+    // Not a consumer, no workspace → onboarding
     return <Navigate to="/onboarding" replace />;
   }
 
