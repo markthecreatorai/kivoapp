@@ -16,6 +16,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import CommunitySwitcher from "@/components/circle/CommunitySwitcher";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import CommunityAuthModal from "@/components/circle/CommunityAuthModal";
 
 function CommunityCard({ community }: { community: any }) {
   const navigate = useNavigate();
