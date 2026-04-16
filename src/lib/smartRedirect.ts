@@ -1,14 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 
+type QR = { data: any[] | null };
+
+async function queryIds(table: string, filters: Record<string, string>): Promise<boolean> {
+  let q = (supabase as any).from(table).select("id").limit(1);
+  for (const [k, v] of Object.entries(filters)) {
+    q = q.eq(k, v);
+  }
+  const { data } = (await q) as QR;
+  return !!(data && data.length > 0);
+}
+
 /**
  * Determines the best landing page for the current user based on their profile.
- * 
- * Priority:
- * 1. Nav intent from community modal → community feed
- * 2. Has workspace (creator) → /dashboard
- * 3. Has community membership (consumer) → /circles
- * 4. Has entitlements (buyer) → /member
- * 5. Fallback → /circles/explore
  */
 export async function resolveSmartRedirect(userId: string): Promise<string> {
   // 1. Check nav intent (community auth flow)
@@ -23,30 +27,14 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
     }
   } catch {}
 
-  // 2. Check workspace (creator)
-  const { data: ws } = await (supabase
-    .from("workspaces")
-    .select("id")
-    .eq("owner_id", userId)
-    .limit(1) as any);
-  if (ws && ws.length > 0) return "/dashboard";
+  // 2. Has workspace → creator
+  if (await queryIds("workspaces", { owner_id: userId })) return "/dashboard";
 
-  // 3. Check community membership (consumer)
-  const { data: memberships } = await (supabase
-    .from("community_members")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "ACTIVE")
-    .limit(1) as any);
-  if (memberships && memberships.length > 0) return "/circles";
+  // 3. Has community membership → consumer hub
+  if (await queryIds("community_members", { user_id: userId, status: "ACTIVE" })) return "/circles";
 
-  // 4. Check entitlements (buyer)
-  const { data: entitlements } = await (supabase
-    .from("user_asset_entitlements")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1) as any);
-  if (entitlements && entitlements.length > 0) return "/member";
+  // 4. Has entitlements → buyer area
+  if (await queryIds("user_asset_entitlements", { user_id: userId })) return "/member";
 
   // 5. Fallback
   return "/circles/explore";
@@ -54,30 +42,10 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
 
 /**
  * Checks whether a user is a consumer (has memberships or entitlements but no workspace).
- * Used by ProtectedRoute to avoid forcing onboarding for consumers.
  */
 export async function isConsumerOnly(userId: string): Promise<boolean> {
-  const { data: ws } = await supabase
-    .from("workspaces")
-    .select("id")
-    .eq("owner_id", userId)
-    .limit(1);
-  if (ws && ws.length > 0) return false; // Has workspace = creator
-
-  const { data: memberships } = await supabase
-    .from("community_members")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "ACTIVE")
-    .limit(1);
-  if (memberships && memberships.length > 0) return true;
-
-  const { data: entitlements } = await supabase
-    .from("user_asset_entitlements")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1);
-  if (entitlements && entitlements.length > 0) return true;
-
+  if (await queryIds("workspaces", { owner_id: userId })) return false;
+  if (await queryIds("community_members", { user_id: userId, status: "ACTIVE" })) return true;
+  if (await queryIds("user_asset_entitlements", { user_id: userId })) return true;
   return false;
 }
