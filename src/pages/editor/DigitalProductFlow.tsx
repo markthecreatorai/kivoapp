@@ -291,16 +291,15 @@ export default function DigitalProductFlow({
                </TabsTrigger>
              </TabsList>
 
-            {/* ABA: THUMBNAIL */}
+            {/* ─── ABA: VISUAL ─── */}
             <TabsContent value="visual" className="space-y-8 animate-in fade-in">
               <div className="space-y-2">
                 <h2 className="text-xl font-bold">Visual da Vitrine</h2>
-                <p className="text-sm text-muted-foreground">Escolha como o produto vai aparecer na sua loja.</p>
+                <p className="text-sm text-muted-foreground">Escolha como o produto vai aparecer. A imagem é opcional.</p>
               </div>
 
-              {/* Seletor de Estilo */}
               <div className="space-y-3">
-                <Label className="text-sm font-semibold">Qual estilo de card combina mais?</Label>
+                <Label className="text-sm font-semibold">Estilo do card</Label>
                 <div className="flex gap-3">
                   {CARD_STYLES.map(({ key, label, desc }) => (
                     <button
@@ -320,52 +319,17 @@ export default function DigitalProductFlow({
                 </div>
               </div>
 
-              {/* Imagem */}
               {form.cardStyle !== "button" && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">Imagem de Capa (URL)</Label>
-                  <Input 
-                    placeholder="https://..." 
-                    value={form.thumbnailUrl} onChange={e => updateForm({thumbnailUrl: e.target.value})}
-                  />
-                  <p className="text-[11px] text-muted-foreground">Use 16:9 ou imagens quadradas (1:1) de alta qualidade.</p>
+                  <Input placeholder="https://..." value={form.thumbnailUrl} onChange={e => updateForm({thumbnailUrl: e.target.value})} />
+                  <p className="text-[11px] text-muted-foreground">Recomendado: 16:9 ou 1:1. Se não enviar, um fallback elegante será exibido.</p>
                 </div>
               )}
 
-              {/* Textos */}
-              <div className="space-y-4 border-t border-border/40 pt-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Nome do Produto *</Label>
-                  <Input 
-                    placeholder="Ex: Template de Automação Notion" 
-                    maxLength={80}
-                    value={form.name} onChange={e => updateForm({name: e.target.value})}
-                  />
-                  <p className="text-right text-[10px] text-muted-foreground">{form.name.length}/80</p>
-                </div>
-
-                {form.cardStyle !== "button" && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Subtítulo (Headline)</Label>
-                    <Textarea 
-                      placeholder="Aquela frase que captura a atenção do cliente na vitrine." 
-                      maxLength={120}
-                      value={form.shortDescription} onChange={e => updateForm({shortDescription: e.target.value})}
-                      rows={2}
-                      className="resize-none"
-                    />
-                    <p className="text-right text-[10px] text-muted-foreground">{form.shortDescription.length}/120</p>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Texto do Botão na Vitrine</Label>
-                  <Input 
-                    placeholder="Comprar Produto" 
-                    maxLength={30}
-                    value={form.ctaText} onChange={e => updateForm({ctaText: e.target.value})}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Imagem de Fundo do Checkout (Hero)</Label>
+                <Input placeholder="https://..." value={form.checkoutImage} onChange={e => updateForm({checkoutImage: e.target.value})} />
               </div>
             </TabsContent>
 
