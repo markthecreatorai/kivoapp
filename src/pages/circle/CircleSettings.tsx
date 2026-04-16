@@ -171,7 +171,7 @@ export default function CircleSettings() {
     setSearchParams({ section: id }, { replace: true });
   }, [setSearchParams]);
 
-  const { data: community } = useQuery({
+  const { data: community, isLoading: communityLoading } = useQuery({
     queryKey: ["community-slug", slug],
     queryFn: async () => {
       if (!slug) return null;
@@ -182,7 +182,7 @@ export default function CircleSettings() {
     staleTime: 60_000,
   });
 
-  const { data: member, refetch: refetchMember } = useQuery({
+  const { data: member, isLoading: memberLoading, refetch: refetchMember } = useQuery({
     queryKey: ["circle-member-settings", community?.id, user?.id],
     queryFn: async () => {
       if (!community || !user) return null;
@@ -447,6 +447,25 @@ export default function CircleSettings() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Unified loading state — show skeleton while any data is loading
+  if (communityLoading || (community && memberLoading) || (member && !form)) {
+    return (
+      <div className="py-6 w-full">
+        <div className="flex gap-8">
+          <div className="hidden md:block w-52 shrink-0 space-y-1">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full rounded-md" />
+            ))}
+          </div>
+          <div className="flex-1 min-w-0 max-w-2xl space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!community) {
     return (
       <div className="py-6 w-full">
@@ -471,24 +490,6 @@ export default function CircleSettings() {
             Recarregar página
           </Button>
         </Card>
-      </div>
-    );
-  }
-
-  if (!form) {
-    return (
-      <div className="py-6 w-full">
-        <div className="flex gap-8">
-          <div className="hidden md:block w-52 shrink-0 space-y-1">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full rounded-md" />
-            ))}
-          </div>
-          <div className="flex-1 min-w-0 max-w-2xl space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-40 w-full" />
-          </div>
-        </div>
       </div>
     );
   }
