@@ -2942,6 +2942,42 @@ export type Database = {
           },
         ]
       }
+      community_post_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          member_id: string
+          post_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_id: string
+          post_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_post_subscriptions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_post_subscriptions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_posts: {
         Row: {
           author_id: string
