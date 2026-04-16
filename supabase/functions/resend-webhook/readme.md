@@ -19,8 +19,9 @@
 
 ## Migração
 
-Arquivo:
+Arquivos:
 - `supabase/migrations/20260416173000_transactional_email_observability.sql`
+- `supabase/migrations/20260416175000_email_observability_hardening.sql`
 
 ## Deploy das funções
 
@@ -32,8 +33,9 @@ supabase functions deploy resend-webhook
 ## Secrets necessários
 
 - `RESEND_API_KEY` (envio)
-- `EMAIL_FROM` (opcional)
-- `RESEND_WEBHOOK_SECRET` (opcional, para proteção simples via header)
+- `EMAIL_FROM_DEFAULT` / `EMAIL_FROM_NOTIFY`
+- `RESEND_WEBHOOK_SECRET` (obrigatório para validação de assinatura)
+- `SUPABASE_SERVICE_ROLE_KEY`
 
 ## Configuração do webhook no Resend
 
@@ -47,8 +49,8 @@ Eventos:
 - email.bounced
 - email.failed
 
-Se usar segredo simples nesta fase, envie no header:
-- `x-webhook-secret: <RESEND_WEBHOOK_SECRET>`
+A validação usa o header `resend-signature` e o **corpo bruto** da requisição com HMAC SHA-256.
+Sem assinatura válida, o endpoint retorna `401`.
 
 ## Teste ponta a ponta
 
@@ -63,4 +65,5 @@ limit 20;
 ```
 
 3. Dispare evento de webhook (via painel do Resend / teste).
-4. Confirme mudança de status para `delivered`, `bounced` ou `failed`.
+4. Confirme mudança de status para `sent`/`delivered`/`bounced`/`failed`.
+5. Reenvie o mesmo evento de webhook e confirme retorno `duplicate: true` (idempotência básica).
