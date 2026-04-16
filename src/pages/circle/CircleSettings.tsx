@@ -171,7 +171,7 @@ export default function CircleSettings() {
     setSearchParams({ section: id }, { replace: true });
   }, [setSearchParams]);
 
-  const { data: community } = useQuery({
+  const { data: community, isLoading: communityLoading } = useQuery({
     queryKey: ["community-slug", slug],
     queryFn: async () => {
       if (!slug) return null;
@@ -182,7 +182,7 @@ export default function CircleSettings() {
     staleTime: 60_000,
   });
 
-  const { data: member, refetch: refetchMember } = useQuery({
+  const { data: member, isLoading: memberLoading, refetch: refetchMember } = useQuery({
     queryKey: ["circle-member-settings", community?.id, user?.id],
     queryFn: async () => {
       if (!community || !user) return null;
