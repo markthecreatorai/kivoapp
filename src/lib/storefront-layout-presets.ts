@@ -152,13 +152,13 @@ export function ctaStyleCSS(
   }
 }
 
-/** Ensure CTA text meets AA for large text (3:1) against bg */
+/** Ensure CTA text meets AA normal text (4.5:1) against bg */
 function ensureContrastForCta(color: string, bg: string): string {
   const ratio = contrastRatioSimple(color, bg);
-  if (ratio >= 3) return color;
+  if (ratio >= 4.5) return color;
   // Darken or lighten the color
   const bgLum = relativeLuminance(bg);
-  return bgLum > 0.5 ? darkenUntilContrast(color, bg, 3) : lightenUntilContrast(color, bg, 3);
+  return bgLum > 0.5 ? darkenUntilContrast(color, bg, 4.5) : lightenUntilContrast(color, bg, 4.5);
 }
 
 function hexToRgb(hex: string): [number, number, number] {
