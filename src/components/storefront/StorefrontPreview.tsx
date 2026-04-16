@@ -193,7 +193,6 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
     </div>
     );
   };
-  );
 
   // ─── Block Renderer ──────────────────────────────────────────────────────
   const renderBlock = (block: StorefrontBlock) => {
