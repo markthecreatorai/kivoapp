@@ -470,15 +470,16 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
             <div className="flex flex-col w-full relative z-20" style={{ gap, padding: `${gap} ${SPACING.lg} 0` }}>
               {filtered.map((product: any) => {
                 const price = product.prices?.find((p: any) => p.is_default && p.is_active);
-                const priceDisplay = getDisplayPrice({
-                  amount: price?.amount,
-                  currency: price?.currency,
+                const display = resolveProductDisplay({
                   productType: product.type,
                   formatId: (product.metadata as any)?.format_id,
+                  amount: price?.amount,
+                  currency: price?.currency,
+                  customCTA: product.listing_button_text,
                 });
                 return (
                   <div key={product.id} className="w-full">
-                    {renderProductCard(product, priceDisplay)}
+                    {renderProductCard(product, display)}
                   </div>
                 );
               })}
