@@ -552,13 +552,12 @@ export default function PublicStorefront() {
         const product = products.find((p) => p.id === config.product_id);
         if (!product) return null;
         const price = prices.find((p) => p.product_id === product.id);
-        const priceDisplay = getDisplayPrice({
+        const display = resolveProductDisplay({
           amount: price?.amount,
           currency: price?.currency,
-          productType: undefined,
           formatId: (product.metadata as any)?.format_id,
         });
-        return renderProductCard(product, priceDisplay);
+        return renderProductCard(product, display);
       }
 
       case "lead_form":
@@ -722,12 +721,13 @@ export default function PublicStorefront() {
               <div className="flex flex-col mt-3" style={{ gap }}>
                 {extraProducts.map((product) => {
                   const price = prices.find((p) => p.product_id === product.id);
-                  const priceDisplay = getDisplayPrice({
+                  const display = resolveProductDisplay({
                     amount: price?.amount,
                     currency: price?.currency,
                     formatId: (product.metadata as any)?.format_id,
+                    customCTA: product.listing_button_text,
                   });
-                  return <div key={product.id}>{renderProductCard(product, priceDisplay)}</div>;
+                  return <div key={product.id}>{renderProductCard(product, display)}</div>;
                 })}
               </div>
             );
