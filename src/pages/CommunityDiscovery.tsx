@@ -232,6 +232,15 @@ export default function CommunityDiscovery() {
           </div>
         )}
       </div>
+
+      {!user && (
+        <CommunityAuthModal
+          open={showAuthModal}
+          onOpenChange={setShowAuthModal}
+          community={dummyCommunity}
+          initialView={authModalView}
+        />
+      )}
     </div>
   );
 }
