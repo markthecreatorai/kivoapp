@@ -652,17 +652,15 @@ export default function PublicStorefront() {
   const showBio = !!storefront.bio?.trim();
   const initials = storefront.title?.charAt(0)?.toUpperCase() || "K";
 
+  const fontName = theme?.font_body || 'Inter';
+  const googleFontUrl = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;500;600;700&display=swap`;
+
   return (
     <>
-      {/* Load Google Font */}
-      {tokens.fontFamily.includes("Inter") ? null : (
-        <link
-          rel="stylesheet"
-          href={`https://fonts.googleapis.com/css2?family=${(theme?.font_body || "Inter").replace(/ /g, "+")}:wght@400;500;600;700&display=swap`}
-        />
-      )}
+      {/* Always load the selected Google Font */}
+      <link rel="stylesheet" href={googleFontUrl} />
       <div
-        className="min-h-screen"
+        className="min-h-screen [&_*]:!font-[inherit]"
         style={{ backgroundColor: tokens.backgroundColor, fontFamily: tokens.fontFamily }}
       >
         <div className="max-w-[480px] mx-auto px-5 py-8 pb-16">
