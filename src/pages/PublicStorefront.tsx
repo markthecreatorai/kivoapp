@@ -637,60 +637,67 @@ export default function PublicStorefront() {
       >
         <div className="max-w-[480px] mx-auto px-5 py-8 pb-16">
           {/* Unified Profile Header — same structure as preview */}
-          <div className="flex flex-col items-center text-center mb-8">
-            {storefront.avatar_url ? (
-              <img
-                src={storefront.avatar_url}
-                alt={storefront.title || "Avatar"}
-                className="w-20 h-20 rounded-full object-cover mb-3 ring-4 ring-white/80 shadow-lg"
-              />
-            ) : (
-              <div
-                className="w-20 h-20 rounded-full mb-3 flex items-center justify-center text-2xl font-bold shadow-lg"
-                style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}
-              >
-                {storefront.title?.charAt(0)?.toUpperCase() || "K"}
-              </div>
-            )}
-            <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold, lineHeight: TYPOGRAPHY.lineHeight.tight }}>
-              {storefront.title || ""}
-            </h1>
-            {storefront.bio && (
-              <p className="mt-1.5 max-w-[320px] leading-relaxed" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
-                {storefront.bio}
-              </p>
-            )}
+          {(() => {
+            const showAvatar = !!storefront.avatar_url;
+            const showBio = !!storefront.bio?.trim();
+            const initials = storefront.title?.charAt(0)?.toUpperCase() || "K";
+            return (
+              <div className="flex flex-col items-center text-center mb-8">
+                {showAvatar ? (
+                  <img
+                    src={storefront.avatar_url!}
+                    alt={storefront.title || "Avatar"}
+                    className="w-20 h-20 rounded-full object-cover mb-3 ring-4 ring-white/80 shadow-lg"
+                  />
+                ) : (
+                  <div
+                    className="w-16 h-16 rounded-full mb-3 flex items-center justify-center text-xl font-bold shadow-md"
+                    style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}
+                  >
+                    {initials}
+                  </div>
+                )}
+                <h1 style={{ color: tokens.textColor, fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.bold, lineHeight: TYPOGRAPHY.lineHeight.tight }}>
+                  {storefront.title || ""}
+                </h1>
+                {showBio && (
+                  <p className="mt-1.5 max-w-[320px] leading-relaxed" style={{ color: tokens.textSecondaryColor, fontSize: TYPOGRAPHY.size.sm }}>
+                    {storefront.bio}
+                  </p>
+                )}
 
-            {/* Social Links */}
-            {Object.values(socialLinks).some(Boolean) && (
-              <div className="flex gap-2.5 mt-3">
-                {socialLinks.instagram && (
-                  <a href={socialLinks.instagram.startsWith("http") ? socialLinks.instagram : `https://${socialLinks.instagram}`} target="_blank" rel="noopener noreferrer"
-                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                    <Instagram className="h-4 w-4" style={{ color: tokens.textColor }} />
-                  </a>
-                )}
-                {socialLinks.tiktok && (
-                  <a href={socialLinks.tiktok.startsWith("http") ? socialLinks.tiktok : `https://${socialLinks.tiktok}`} target="_blank" rel="noopener noreferrer"
-                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                    <TikTokIcon className="h-4 w-4" />
-                  </a>
-                )}
-                {socialLinks.youtube && (
-                  <a href={socialLinks.youtube.startsWith("http") ? socialLinks.youtube : `https://${socialLinks.youtube}`} target="_blank" rel="noopener noreferrer"
-                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                    <Youtube className="h-4 w-4" style={{ color: tokens.textColor }} />
-                  </a>
-                )}
-                {socialLinks.twitter && (
-                  <a href={socialLinks.twitter.startsWith("http") ? socialLinks.twitter : `https://${socialLinks.twitter}`} target="_blank" rel="noopener noreferrer"
-                    className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
-                    <Twitter className="h-4 w-4" style={{ color: tokens.textColor }} />
-                  </a>
+                {/* Social Links */}
+                {Object.values(socialLinks).some(Boolean) && (
+                  <div className="flex gap-2.5 mt-3">
+                    {socialLinks.instagram && (
+                      <a href={socialLinks.instagram.startsWith("http") ? socialLinks.instagram : `https://${socialLinks.instagram}`} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                        <Instagram className="h-4 w-4" style={{ color: tokens.textColor }} />
+                      </a>
+                    )}
+                    {socialLinks.tiktok && (
+                      <a href={socialLinks.tiktok.startsWith("http") ? socialLinks.tiktok : `https://${socialLinks.tiktok}`} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                        <TikTokIcon className="h-4 w-4" />
+                      </a>
+                    )}
+                    {socialLinks.youtube && (
+                      <a href={socialLinks.youtube.startsWith("http") ? socialLinks.youtube : `https://${socialLinks.youtube}`} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                        <Youtube className="h-4 w-4" style={{ color: tokens.textColor }} />
+                      </a>
+                    )}
+                    {socialLinks.twitter && (
+                      <a href={socialLinks.twitter.startsWith("http") ? socialLinks.twitter : `https://${socialLinks.twitter}`} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-full transition-opacity hover:opacity-70" style={{ backgroundColor: tokens.surfaceColor }}>
+                        <Twitter className="h-4 w-4" style={{ color: tokens.textColor }} />
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Blocks */}
           <div className="space-y-3">

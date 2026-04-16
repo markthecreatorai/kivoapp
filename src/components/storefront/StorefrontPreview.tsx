@@ -343,6 +343,11 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
     }
   };
 
+  // ─── Visibility flags (consistent in preview + public) ───
+  const showAvatar = !!storefront.avatar_url;
+  const showBio = !!storefront.bio?.trim();
+  const initials = storefront.title?.charAt(0)?.toUpperCase() || 'K';
+
   return (
     <div 
       className="w-full h-full relative"
@@ -357,12 +362,22 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
 
         {/* ─── UNIFIED HEADER (same structure for ALL templates) ─── */}
         <div className="flex flex-col items-center text-center" style={{ padding: `${SPACING.xl} ${SPACING.lg} 0`, marginBottom: SPACING.lg }}>
-          <Avatar className="h-20 w-20 mb-3 ring-4 ring-white/80 shadow-lg">
-            <AvatarImage src={storefront.avatar_url || ''} />
-            <AvatarFallback className="text-2xl" style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}>
-              {storefront.title?.charAt(0)?.toUpperCase() || 'K'}
-            </AvatarFallback>
-          </Avatar>
+          {/* Avatar: real image OR initials fallback — never an empty hole */}
+          {showAvatar ? (
+            <Avatar className="h-20 w-20 mb-3 ring-4 ring-white/80 shadow-lg">
+              <AvatarImage src={storefront.avatar_url!} />
+              <AvatarFallback className="text-2xl" style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}>
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div
+              className="h-16 w-16 rounded-full mb-3 flex items-center justify-center text-xl font-bold shadow-md"
+              style={{ backgroundColor: tokens.primaryColor, color: tokens.ctaTextColor }}
+            >
+              {initials}
+            </div>
+          )}
           <h1 style={{ 
             color: tokens.textColor, 
             fontSize: TYPOGRAPHY.size.xl, 
@@ -371,7 +386,7 @@ export function StorefrontPreview({ storefront, theme, blocks, products: externa
           }}>
             {storefront.title || 'Seu Nome'}
           </h1>
-          {storefront.bio && (
+          {showBio && (
             <p className="mt-1.5 leading-relaxed max-w-[85%]" style={{ 
               color: tokens.textSecondaryColor, 
               fontSize: TYPOGRAPHY.size.sm,
