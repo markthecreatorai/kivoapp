@@ -472,8 +472,8 @@ export default function PublicStorefront() {
                 </div>
                 {!isButtonStyle && (
                   <div
-                    className={`mt-4 py-3 text-sm font-medium text-center text-white ${buttonClass}`}
-                    style={{ backgroundColor: t.primary }}
+                    className={`mt-4 py-3 text-sm font-medium text-center min-h-[44px] ${buttonClass}`}
+                    style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                   >
                     {ctaLabel}
                   </div>
@@ -517,8 +517,8 @@ export default function PublicStorefront() {
                   </span>
                 )}
                 <span
-                  className={`px-4 py-2 text-sm font-medium text-white ${buttonClass}`}
-                  style={{ backgroundColor: t.primary }}
+                  className={`px-4 py-2 text-sm font-medium min-h-[44px] flex items-center ${buttonClass}`}
+                  style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                 >
                   {ctaLabel}
                 </span>
@@ -770,8 +770,8 @@ export default function PublicStorefront() {
                           </div>
                           {!isButtonStyle && (
                             <div
-                              className={`mt-4 py-3 text-sm font-medium text-center text-white ${buttonClass}`}
-                              style={{ backgroundColor: t.primary }}
+                              className={`mt-4 py-3 text-sm font-medium text-center min-h-[44px] ${buttonClass}`}
+                              style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                             >
                               {ctaLabel}
                             </div>
@@ -815,8 +815,8 @@ export default function PublicStorefront() {
                             </span>
                           )}
                           <span
-                            className={`px-4 py-2 text-sm font-medium text-white ${buttonClass}`}
-                            style={{ backgroundColor: t.primary }}
+                            className={`px-4 py-2 text-sm font-medium min-h-[44px] flex items-center ${buttonClass}`}
+                            style={{ backgroundColor: t.primary, color: tokens.ctaTextColor }}
                           >
                             {ctaLabel}
                           </span>
