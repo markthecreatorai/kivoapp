@@ -3,6 +3,8 @@ import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { formatCurrency } from "@/lib/utils";
+import { getDisplayPrice } from "@/lib/formatPrice";
+import { resolveTokens, SPACING, TYPOGRAPHY, STATE_CLASSES } from "@/lib/storefront-tokens";
 import {
   Instagram,
   Youtube,
@@ -423,9 +425,15 @@ export default function PublicStorefront() {
         const product = products.find((p) => p.id === config.product_id);
         if (!product) return null;
         const price = prices.find((p) => p.product_id === product.id);
+        const priceDisplay = getDisplayPrice({
+          amount: price?.amount,
+          currency: price?.currency,
+          productType: undefined,
+          formatId: (product.metadata as any)?.format_id,
+        });
         const isCalloutStyle = product.thumbnail_style === "callout";
         const isButtonStyle = product.thumbnail_style === "button";
-        const ctaLabel = product.listing_button_text || "Comprar";
+        const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
         const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
         const isExternal = product.delivery_url?.startsWith("http");
 
@@ -493,9 +501,9 @@ export default function PublicStorefront() {
                 </p>
               )}
               <div className="flex items-center justify-between mt-3">
-                {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
-                  <span className="font-bold text-lg" style={{ color: t.primary }}>
-                    {formatCurrency(price.amount, price.currency || "BRL")}
+                {priceDisplay.label && (
+                  <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: t.primary }}>
+                    {priceDisplay.label}
                   </span>
                 )}
                 <span
@@ -715,7 +723,12 @@ export default function PublicStorefront() {
               <div className="space-y-3 mt-3">
                 {extraProducts.map((product) => {
                   const price = prices.find((p) => p.product_id === product.id);
-                  const ctaLabel = product.listing_button_text || "Comprar";
+                  const priceDisplay = getDisplayPrice({
+                    amount: price?.amount,
+                    currency: price?.currency,
+                    formatId: (product.metadata as any)?.format_id,
+                  });
+                  const ctaLabel = product.listing_button_text || (priceDisplay.isFree ? "Baixar grátis" : "Comprar");
                   const linkTarget = product.delivery_url || `/checkout/${product.slug}`;
                   const isExternal = product.delivery_url?.startsWith("http");
                   const isCalloutStyle = product.thumbnail_style === "callout";
@@ -785,9 +798,9 @@ export default function PublicStorefront() {
                           </p>
                         )}
                         <div className="flex items-center justify-between mt-3">
-                          {price && price.amount > 0 && (product.metadata as any)?.format_id !== "affiliate" && (
-                            <span className="font-bold text-lg" style={{ color: t.primary }}>
-                              {formatCurrency(price.amount, price.currency || "BRL")}
+                          {priceDisplay.label && (
+                            <span className={`font-bold ${priceDisplay.isFree ? 'text-sm' : 'text-lg'}`} style={{ color: t.primary }}>
+                              {priceDisplay.label}
                             </span>
                           )}
                           <span

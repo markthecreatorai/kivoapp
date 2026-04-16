@@ -113,6 +113,18 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+
+  /* WCAG AA: Consistent focus ring on all interactive elements */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Ensure minimum touch target on mobile */
+  @media (pointer: coarse) {
+    button, a, input, select, textarea, [role="button"] {
+      min-height: 44px;
+    }
+  }
 }
 
 @layer components {
