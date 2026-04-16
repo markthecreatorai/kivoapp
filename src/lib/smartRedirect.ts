@@ -32,12 +32,12 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
   if (ws && ws.length > 0) return "/dashboard";
 
   // 3. Check community membership (consumer)
-  const { data: memberships } = await supabase
+  const { data: memberships } = await (supabase
     .from("community_members")
     .select("id")
     .eq("user_id", userId)
     .eq("status", "ACTIVE")
-    .limit(1) as { data: any[] | null };
+    .limit(1) as any) as { data: any[] | null };
   if (memberships && memberships.length > 0) return "/circles";
 
   // 4. Check entitlements (buyer)
