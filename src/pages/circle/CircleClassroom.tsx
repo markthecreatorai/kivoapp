@@ -4,11 +4,12 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   BookOpen, Play, Crown, Plus,
   FileText, Circle, Loader2, CheckCircle2,
   MoreHorizontal, ChevronDown, ChevronRight, FolderOpen, Folder,
-  Lock, Copy, Trash2, GripVertical, Award, Download,
+  Lock, Copy, Trash2, GripVertical, Award, Download, ArrowLeft, PanelLeft,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,10 @@ import { useCertificate, generateCertificatePDF } from "@/hooks/useCertificate";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import CourseFormModal from "@/components/circle/CourseFormModal";
@@ -104,6 +109,36 @@ interface CircleLesson {
   resources?: any[] | null;
 }
 
+// ─── Confirm Dialog Hook ─────────────────────────────────────
+function useConfirmDialog() {
+  const [state, setState] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({
+    open: false, title: "", description: "", onConfirm: () => {},
+  });
+
+  const confirm = (title: string, description: string, onConfirm: () => void) => {
+    setState({ open: true, title, description, onConfirm });
+  };
+
+  const dialog = (
+    <AlertDialog open={state.open} onOpenChange={(open) => setState(prev => ({ ...prev, open }))}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{state.title}</AlertDialogTitle>
+          <AlertDialogDescription>{state.description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { state.onConfirm(); setState(prev => ({ ...prev, open: false })); }}>
+            Confirmar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  return { confirm, dialog };
+}
+
 // ─── Certificate Button (shown at 100% progress) ────────────
 function CertificateButton({ memberId, courseId, communityId, courseName, communityName, studentName }: {
   memberId: string | null; courseId: string; communityId: string;
@@ -176,6 +211,7 @@ export default function CircleClassroom() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -183,6 +219,10 @@ export default function CircleClassroom() {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [renamingModuleId, setRenamingModuleId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  // Mobile: show sidebar vs editor panel
+  const [mobileShowEditor, setMobileShowEditor] = useState(false);
+
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   // ─── Community & member queries ───────────────────────
   const { data: community } = useQuery({
@@ -369,6 +409,7 @@ export default function CircleClassroom() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-lessons", selectedCourseId] });
       setSelectedLessonId(null);
+      if (isMobile) setMobileShowEditor(false);
       toast.success("Item excluído!");
     },
   });
@@ -391,7 +432,6 @@ export default function CircleClassroom() {
       const module = allItems.find(i => i.id === moduleId);
       if (!module || !selectedCourseId) throw new Error("Módulo não encontrado");
 
-      // Create module copy
       const { data: newModule, error: modErr } = await supabase
         .from("circle_lessons")
         .insert({
@@ -405,7 +445,6 @@ export default function CircleClassroom() {
         .single();
       if (modErr) throw modErr;
 
-      // Copy child pages
       const children = getChildPages(moduleId);
       if (children.length > 0) {
         const copies = children.map((child, i) => ({
@@ -452,7 +491,6 @@ export default function CircleClassroom() {
     const newIndex = courses.findIndex((c) => c.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
     const reordered = arrayMove([...courses], oldIndex, newIndex);
-    // optimistic update
     queryClient.setQueryData(["circle-courses", community?.id], reordered);
     reorderCoursesMutation.mutate(reordered);
   };
@@ -487,12 +525,24 @@ export default function CircleClassroom() {
     }
   }, [modules]);
 
+  // Reset mobile editor view when course changes
+  useEffect(() => {
+    setMobileShowEditor(false);
+  }, [selectedCourseId]);
+
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev => {
       const next = new Set(prev);
       next.has(moduleId) ? next.delete(moduleId) : next.add(moduleId);
       return next;
     });
+  };
+
+  // Helper: select lesson (with mobile transition)
+  const handleSelectLesson = (lessonId: string) => {
+    setSelectedLessonId(lessonId);
+    markStarted.mutate(lessonId);
+    if (isMobile) setMobileShowEditor(true);
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -503,26 +553,327 @@ export default function CircleClassroom() {
     const percent = getCourseProgress(totalPages);
     const completedPages = Object.values(progressMap).filter((p) => p.completed).length;
 
-    return (
-      <div className="flex flex-col h-[calc(100vh-120px)]">
-        <div className="flex-1 flex overflow-hidden">
-          {/* ── Left Sidebar ── */}
-          <ScrollArea className="w-72 lg:w-80 shrink-0 border-r border-border bg-card">
-            <div className="p-4">
-              {/* Course title + progress + ⋯ menu */}
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="flex-1 min-w-0">
-                  <button
-                    onClick={() => { setSelectedCourseId(null); setSelectedLessonId(null); }}
-                    className="text-sm font-bold text-foreground hover:text-primary transition-colors text-left truncate block w-full"
-                  >
-                    {selectedCourse.name}
-                  </button>
+    // ── Sidebar content (shared between mobile & desktop) ──
+    const sidebarContent = (
+      <div className="p-4 pb-24 md:pb-4">
+        {/* Course title + progress + ⋯ menu */}
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="flex-1 min-w-0">
+            <button
+              onClick={() => { setSelectedCourseId(null); setSelectedLessonId(null); }}
+              className="text-sm font-bold text-foreground hover:text-primary transition-colors text-left truncate block w-full"
+            >
+              {selectedCourse.name}
+            </button>
+          </div>
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => addPageMutation.mutate(null)}>
+                  <FileText className="h-4 w-4 mr-2" /> Adicionar página
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addModuleMutation.mutate()}>
+                  <FolderOpen className="h-4 w-4 mr-2" /> Adicionar pasta
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* Progress bar */}
+        <div className="mb-4 rounded-lg border bg-muted/30 p-2.5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-medium text-foreground">Seu progresso</span>
+            <span className="text-[11px] text-muted-foreground font-medium">{percent}%</span>
+          </div>
+          <Progress value={percent} className="h-1.5 flex-1 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
+          <p className="text-[10px] text-muted-foreground mt-1">{completedPages}/{totalPages} aulas concluídas</p>
+        </div>
+
+        {/* Certificate button when 100% */}
+        {percent === 100 && <CertificateButton memberId={member?.id || null} courseId={selectedCourseId} communityId={community?.id || ""} courseName={selectedCourse.name} communityName={community?.name || "Kivo"} studentName={member?.display_name || user?.email || "Aluno"} />}
+
+        {/* Items tree */}
+        <div className="space-y-0.5">
+          {orderedItems.map(({ type, item, children }) => {
+            if (type === "module") {
+              const isExpanded = expandedModules.has(item.id);
+              const childPages = children || [];
+              return (
+                <div key={item.id}>
+                  {/* Module header */}
+                  <div className="flex items-center group/mod">
+                    {renamingModuleId === item.id ? (
+                      <div className="flex items-center gap-2 px-3 py-1.5 flex-1 min-w-0">
+                        <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onBlur={() => commitRename(item.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitRename(item.id);
+                            if (e.key === "Escape") setRenamingModuleId(null);
+                          }}
+                          className="text-[13px] font-semibold bg-transparent border-b border-primary outline-none flex-1 min-w-0 text-foreground"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => toggleModule(item.id)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 min-w-0 hover:bg-muted/50 transition-colors"
+                      >
+                        {isExpanded
+                          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        }
+                        {isExpanded
+                          ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                          : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                        }
+                        <span className="text-[13px] font-semibold text-foreground truncate">
+                          {item.title}
+                        </span>
+                      </button>
+                    )}
+                    {isAdmin && renamingModuleId !== item.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-8 w-8 md:h-6 md:w-6 flex items-center justify-center rounded hover:bg-muted md:opacity-0 group-hover/mod:opacity-100 transition-opacity mr-1 shrink-0">
+                            <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => startRenaming(item)}>
+                            <FileText className="h-4 w-4 mr-2" /> Editar pasta
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addPageMutation.mutate(item.id)}>
+                            <Plus className="h-4 w-4 mr-2" /> Adicionar página na pasta
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => duplicateModuleMutation.mutate(item.id)}>
+                            <Copy className="h-4 w-4 mr-2" /> Duplicar pasta
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              confirm("Excluir pasta", "Excluir este módulo e todas as suas páginas?", () => deleteItemMutation.mutate(item.id));
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Excluir pasta
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+
+                  {/* Child pages */}
+                  {isExpanded && childPages.map((page) => {
+                    const isActive = page.id === selectedLessonId;
+                    const prog = progressMap[page.id];
+                    return (
+                      <div
+                        key={page.id}
+                        onClick={() => handleSelectLesson(page.id)}
+                        className={cn(
+                          "flex items-center gap-2 pl-11 pr-3 py-2.5 md:py-2 rounded-lg cursor-pointer transition-colors group/page ml-1 min-h-[44px] md:min-h-0",
+                          isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
+                        )}
+                      >
+                        {prog?.completed ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                        )}
+                        <span className={cn(
+                          "text-[13px] flex-1 truncate",
+                          isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                        )}>
+                          {page.title}
+                        </span>
+                        {!page.is_published && (
+                          <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirm("Excluir página", "Tem certeza que deseja excluir esta página?", () => deleteItemMutation.mutate(page.id));
+                            }}
+                            className="md:opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0 h-8 w-8 md:h-auto md:w-auto flex items-center justify-center"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {isExpanded && childPages.length === 0 && (
+                    <div className="pl-11 pr-3 py-2 text-[12px] text-muted-foreground/60 italic">
+                      Pasta vazia
+                    </div>
+                  )}
                 </div>
+              );
+            }
+
+            // Root page
+            const isActive = item.id === selectedLessonId;
+            const prog = progressMap[item.id];
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleSelectLesson(item.id)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group/page min-h-[44px] md:min-h-0",
+                  isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
+                )}
+              >
+                {prog?.completed ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                ) : (
+                  <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                )}
+                <span className={cn(
+                  "text-[13px] flex-1 truncate",
+                  isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                )}>
+                  {item.title}
+                </span>
+                {!item.is_published && (
+                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      confirm("Excluir página", "Tem certeza que deseja excluir esta página?", () => deleteItemMutation.mutate(item.id));
+                    }}
+                    className="md:opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0 h-8 w-8 md:h-auto md:w-auto flex items-center justify-center"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {allItems.length === 0 && (
+          <div className="text-center py-8">
+            <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground mb-1">Nenhum conteúdo ainda</p>
+            <p className="text-xs text-muted-foreground/80 mb-3">
+              {isAdmin ? "Comece criando uma página ou pasta para organizar o curso." : "Esse curso ainda não recebeu aulas. Volte em breve."}
+            </p>
+            {isAdmin && (
+              <div className="space-y-2">
+                <Button variant="outline" size="sm" className="w-full" onClick={() => addPageMutation.mutate(null)}>
+                  <Plus className="h-4 w-4 mr-1.5" /> Adicionar página
+                </Button>
+                <Button variant="outline" size="sm" className="w-full" onClick={() => addModuleMutation.mutate()}>
+                  <FolderOpen className="h-4 w-4 mr-1.5" /> Adicionar pasta
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quiz Editor for admins */}
+        {isAdmin && (
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <QuizEditor courseId={selectedCourseId} />
+          </div>
+        )}
+      </div>
+    );
+
+    // ── Editor content (shared between mobile & desktop) ──
+    const editorContent = (
+      <div className="max-w-3xl mx-auto px-4 md:px-8 py-6">
+        {activeLesson ? (
+          <div className="space-y-3">
+            <LessonEditor
+              lesson={activeLesson}
+              isAdmin={isAdmin}
+              courseId={selectedCourseId}
+              memberId={member?.id}
+              onMarkCompleted={(lessonId) =>
+                markCompleted.mutate({ lessonId })
+              }
+              isCompleted={!!progressMap[activeLesson.id]?.completed}
+              nextLessonTitle={nextLesson?.title || null}
+              onGoToNextLesson={nextLesson ? () => {
+                setSelectedLessonId(nextLesson.id);
+                markStarted.mutate(nextLesson.id);
+                // Stay on editor in mobile
+              } : undefined}
+            />
+            {member?.id && percent === 100 && <div className="mt-6"><QuizPlayer courseId={selectedCourseId} memberId={member.id} /></div>}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center justify-center h-40 text-muted-foreground">
+              <div className="text-center">
+                <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-sm">Selecione uma aula para começar</p>
+              </div>
+            </div>
+            {member?.id && <QuizPlayer courseId={selectedCourseId} memberId={member.id} />}
+          </div>
+        )}
+      </div>
+    );
+
+    // ── MOBILE LAYOUT ──
+    if (isMobile) {
+      return (
+        <div className="flex flex-col h-[calc(100vh-128px)]">
+          {confirmDialog}
+          {mobileShowEditor ? (
+            <>
+              {/* Mobile editor header */}
+              <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-card shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => setMobileShowEditor(false)}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground truncate">{selectedCourse.name}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{activeLesson?.title || "Selecione uma aula"}</p>
+                </div>
+              </div>
+              <ScrollArea className="flex-1 bg-muted/30">
+                {editorContent}
+              </ScrollArea>
+            </>
+          ) : (
+            <>
+              {/* Mobile sidebar header */}
+              <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-card shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => { setSelectedCourseId(null); setSelectedLessonId(null); }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <p className="text-sm font-medium text-foreground truncate flex-1">{selectedCourse.name}</p>
                 {isAdmin && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -537,246 +888,28 @@ export default function CircleClassroom() {
                   </DropdownMenu>
                 )}
               </div>
+              <ScrollArea className="flex-1 bg-card">
+                {sidebarContent}
+              </ScrollArea>
+            </>
+          )}
+        </div>
+      );
+    }
 
-              {/* Progress bar */}
-              <div className="mb-4 rounded-lg border bg-muted/30 p-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-medium text-foreground">Seu progresso</span>
-                  <span className="text-[11px] text-muted-foreground font-medium">{percent}%</span>
-                </div>
-                <Progress value={percent} className="h-1.5 flex-1 rounded-full [&>div]:bg-primary [&>div]:rounded-full" />
-                <p className="text-[10px] text-muted-foreground mt-1">{completedPages}/{totalPages} aulas concluídas</p>
-              </div>
-
-              {/* Certificate button when 100% */}
-              {percent === 100 && <CertificateButton memberId={member?.id || null} courseId={selectedCourseId} communityId={community?.id || ""} courseName={selectedCourse.name} communityName={community?.name || "Kivo"} studentName={member?.display_name || user?.email || "Aluno"} />}
-
-              {/* Items tree */}
-              <div className="space-y-0.5">
-                {orderedItems.map(({ type, item, children }) => {
-                  if (type === "module") {
-                    const isExpanded = expandedModules.has(item.id);
-                    const childPages = children || [];
-                    return (
-                      <div key={item.id}>
-                        {/* Module header */}
-                        <div className="flex items-center group/mod">
-                          {renamingModuleId === item.id ? (
-                            <div className="flex items-center gap-2 px-3 py-1.5 flex-1 min-w-0">
-                              <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <input
-                                autoFocus
-                                value={renameValue}
-                                onChange={(e) => setRenameValue(e.target.value)}
-                                onBlur={() => commitRename(item.id)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") commitRename(item.id);
-                                  if (e.key === "Escape") setRenamingModuleId(null);
-                                }}
-                                className="text-[13px] font-semibold bg-transparent border-b border-primary outline-none flex-1 min-w-0 text-foreground"
-                              />
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => toggleModule(item.id)}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 min-w-0 hover:bg-muted/50 transition-colors"
-                            >
-                              {isExpanded
-                                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              }
-                              {isExpanded
-                                ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
-                              }
-                              <span className="text-[13px] font-semibold text-foreground truncate">
-                                {item.title}
-                              </span>
-                            </button>
-                          )}
-                          {isAdmin && renamingModuleId !== item.id && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted opacity-0 group-hover/mod:opacity-100 transition-opacity mr-1 shrink-0">
-                                  <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => startRenaming(item)}>
-                                  <FileText className="h-4 w-4 mr-2" /> Editar pasta
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => addPageMutation.mutate(item.id)}>
-                                  <Plus className="h-4 w-4 mr-2" /> Adicionar página na pasta
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => duplicateModuleMutation.mutate(item.id)}>
-                                  <Copy className="h-4 w-4 mr-2" /> Duplicar pasta
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => {
-                                    if (confirm("Excluir este módulo e suas páginas?")) deleteItemMutation.mutate(item.id);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" /> Excluir pasta
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-
-                        {/* Child pages */}
-                        {isExpanded && childPages.map((page) => {
-                          const isActive = page.id === selectedLessonId;
-                          const prog = progressMap[page.id];
-                          return (
-                            <div
-                              key={page.id}
-                              onClick={() => { setSelectedLessonId(page.id); markStarted.mutate(page.id); }}
-                              className={cn(
-                                "flex items-center gap-2 pl-11 pr-3 py-2 rounded-lg cursor-pointer transition-colors group/page ml-1",
-                                isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
-                              )}
-                            >
-                              {prog?.completed ? (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                              ) : (
-                                <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                              )}
-                              <span className={cn(
-                                "text-[13px] flex-1 truncate",
-                                isActive ? "font-medium text-foreground" : "text-muted-foreground"
-                              )}>
-                                {page.title}
-                              </span>
-                              {!page.is_published && (
-                                <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
-                              )}
-                              {isAdmin && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(page.id); }}
-                                  className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {isExpanded && childPages.length === 0 && (
-                          <div className="pl-11 pr-3 py-2 text-[12px] text-muted-foreground/60 italic">
-                            Pasta vazia
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  // Root page
-                  const isActive = item.id === selectedLessonId;
-                  const prog = progressMap[item.id];
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => { setSelectedLessonId(item.id); markStarted.mutate(item.id); }}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group/page",
-                        isActive ? "bg-accent/60 border border-border" : "hover:bg-muted/50"
-                      )}
-                    >
-                      {prog?.completed ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      ) : (
-                        <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                      )}
-                      <span className={cn(
-                        "text-[13px] flex-1 truncate",
-                        isActive ? "font-medium text-foreground" : "text-muted-foreground"
-                      )}>
-                        {item.title}
-                      </span>
-                      {!item.is_published && (
-                        <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">RASCUNHO</span>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) deleteItemMutation.mutate(item.id); }}
-                          className="opacity-0 group-hover/page:opacity-100 transition-opacity shrink-0"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {allItems.length === 0 && (
-                <div className="text-center py-8">
-                  <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                  <p className="text-sm text-muted-foreground mb-1">Nenhum conteúdo ainda</p>
-                  <p className="text-xs text-muted-foreground/80 mb-3">
-                    {isAdmin ? "Comece criando uma página ou pasta para organizar o curso." : "Esse curso ainda não recebeu aulas. Volte em breve."}
-                  </p>
-                  {isAdmin && (
-                    <div className="space-y-2">
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => addPageMutation.mutate(null)}>
-                        <Plus className="h-4 w-4 mr-1.5" /> Adicionar página
-                      </Button>
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => addModuleMutation.mutate()}>
-                        <FolderOpen className="h-4 w-4 mr-1.5" /> Adicionar pasta
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Quiz Editor for admins */}
-            {isAdmin && (
-              <div className="mt-4 pt-4 border-t border-border/50">
-                <QuizEditor courseId={selectedCourseId} />
-              </div>
-            )}
+    // ── DESKTOP LAYOUT ──
+    return (
+      <div className="flex flex-col h-[calc(100vh-120px)]">
+        {confirmDialog}
+        <div className="flex-1 flex overflow-hidden">
+          {/* ── Left Sidebar ── */}
+          <ScrollArea className="w-72 lg:w-80 shrink-0 border-r border-border bg-card">
+            {sidebarContent}
           </ScrollArea>
 
           {/* ── Right: Lesson Editor / Content ── */}
           <ScrollArea className="flex-1 bg-muted/30">
-            <div className="max-w-3xl mx-auto px-4 md:px-8 py-6">
-              {activeLesson ? (
-                <div className="space-y-3">
-                  <LessonEditor
-                    lesson={activeLesson}
-                    isAdmin={isAdmin}
-                    courseId={selectedCourseId}
-                    memberId={member?.id}
-                    onMarkCompleted={(lessonId) =>
-                      markCompleted.mutate({ lessonId })
-                    }
-                    isCompleted={!!progressMap[activeLesson.id]?.completed}
-                    nextLessonTitle={nextLesson?.title || null}
-                    onGoToNextLesson={nextLesson ? () => {
-                      setSelectedLessonId(nextLesson.id);
-                      markStarted.mutate(nextLesson.id);
-                    } : undefined}
-                  />
-                  {/* Show quiz player below lesson when course is complete */}
-                  {member?.id && percent === 100 && <div className="mt-6"><QuizPlayer courseId={selectedCourseId} memberId={member.id} /></div>}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-center h-40 text-muted-foreground">
-                    <div className="text-center">
-                      <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                      <p className="text-sm">Selecione uma aula para começar</p>
-                    </div>
-                  </div>
-                  {/* Quiz player when no lesson selected */}
-                  {member?.id && <QuizPlayer courseId={selectedCourseId} memberId={member.id} />}
-                </div>
-              )}
-            </div>
+            {editorContent}
           </ScrollArea>
         </div>
       </div>
@@ -839,6 +972,7 @@ export default function CircleClassroom() {
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto w-full">
+      {confirmDialog}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground">Sala de aula</h1>

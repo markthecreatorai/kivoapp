@@ -411,7 +411,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
         />
 
         {/* Toolbar */}
-        <div className="flex items-center gap-0.5 py-2 border-y border-border/50 mb-4 flex-wrap">
+        <div className="flex items-center gap-0.5 py-2 border-y border-border/50 mb-4 flex-wrap overflow-x-auto scrollbar-none">
           <ToolbarButton editor={editor} icon={Heading1} label="Heading 1" action={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} isActive={editor?.isActive("heading", { level: 1 })} />
           <ToolbarButton editor={editor} icon={Heading2} label="Heading 2" action={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} isActive={editor?.isActive("heading", { level: 2 })} />
           <ToolbarButton editor={editor} icon={Heading3} label="Heading 3" action={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} isActive={editor?.isActive("heading", { level: 3 })} />
@@ -501,7 +501,7 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
       </div>
 
       {/* Bottom controls */}
-      <div className="bg-card rounded-lg shadow-sm p-4 flex items-center justify-between">
+      <div className="bg-card rounded-lg shadow-sm p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div className="flex items-center gap-3">
           <Switch id="lesson-published" checked={isPublished} onCheckedChange={(v) => { setIsPublished(v); setHasChanges(true); }} />
           <Label htmlFor="lesson-published" className="text-sm">{isPublished ? "Publicado" : "Rascunho"}</Label>
