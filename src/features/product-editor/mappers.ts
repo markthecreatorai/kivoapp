@@ -1,8 +1,16 @@
 // =============================================================
 // Mappers: API ⇄ ProductEditorState
 // Conversão pura, sem efeitos colaterais.
+//
+// Compatibilidade:
+//   • Leitura roda `migrateApiRowToCurrent` ANTES de hidratar,
+//     promovendo produtos antigos (v0/v1) para v2 em memória.
+//   • Escrita SEMPRE carimba `metadata.leadMagnetConfigVersion`
+//     com a versão atual — nunca regride.
 // =============================================================
 
+import { migrateApiRowToCurrent } from "./migrations";
+import { LEAD_MAGNET_CONFIG_VERSION } from "./schemaVersion";
 import type {
   ApiProductRow,
   ApiProductUpdatePayload,
