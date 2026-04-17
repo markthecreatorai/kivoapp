@@ -8,4 +8,15 @@ export * from "./useAutosave";
 export * from "./useUnsavedChangesGuard";
 export { supabaseSaveAdapter } from "./supabaseAdapter";
 export { SaveStatusIndicator } from "./SaveStatusIndicator";
+export { CoverSourceField } from "./CoverSourceField";
+export {
+  supabaseUploadAdapter,
+  validateImageFile,
+  validateImageUrl,
+  ACCEPTED_IMAGE_TYPES,
+  MAX_IMAGE_BYTES,
+  type UploadAdapter,
+  type UploadResult,
+  type ValidationResult,
+} from "./uploadAdapter";
 
