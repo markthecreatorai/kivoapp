@@ -1,47 +1,110 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// =============================================================
+// FormFieldsBuilder — CRUD de campos adicionais (sprint 1).
+// Usa modelo canônico de `formFieldsSchema`. Persiste em
+// `product_form_fields` (custom only). Sistema fields (Nome,
+// Email) sempre garantidos no topo, não removíveis/editáveis.
+// =============================================================
+
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, GripVertical, Settings2, Trash2, X, AlertCircle } from "lucide-react";
+import {
+  AlertCircle,
+  GripVertical,
+  Plus,
+  Settings2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+  ADDITIONAL_FIELD_TYPES,
+  FIELD_TYPE_LABELS,
+  REQUIRES_OPTIONS,
+  addField as addFieldOp,
+  buildSystemFields,
+  ensureSystemFields,
+  removeField as removeFieldOp,
+  setRequired as setRequiredOp,
+  slugifyKey,
+  updateField as updateFieldOp,
+  validateFieldDraft,
+  type FieldDraftInput,
+  type FormField,
+  type FormFieldType,
+} from "@/features/product-editor/formFieldsSchema";
 
-export interface FormField {
-  id?: string;
+interface DbRow {
+  id: string;
   product_id: string;
-  field_type: "text" | "email" | "phone" | "textarea" | "select" | "checkbox" | "radio";
+  field_key: string;
+  field_type: FormFieldType;
   label: string;
-  placeholder?: string | null;
+  placeholder: string | null;
   is_required: boolean;
   is_system: boolean;
-  options?: string[] | null;
+  options: string[] | null;
   sort_order: number;
 }
 
-export function FormFieldsBuilder({ productId }: { productId: string }) {
-  const queryClient = useQueryClient();
-  const [fields, setFields] = useState<FormField[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+function rowToField(r: DbRow): FormField {
+  return {
+    id: r.id,
+    field_key: r.field_key,
+    field_type: r.field_type,
+    label: r.label,
+    placeholder: r.placeholder ?? undefined,
+    is_required: r.is_required,
+    is_system: r.is_system,
+    options: r.options ?? undefined,
+    order: r.sort_order,
+  };
+}
 
-  // Field Edit Form State
-  const [editForm, setEditForm] = useState<Partial<FormField>>({
-    field_type: "text",
+export interface FormFieldsBuilderProps {
+  productId: string;
+  /** Notifica o pai a cada mudança — usado para refletir no preview. */
+  onChange?: (fields: FormField[]) => void;
+}
+
+export function FormFieldsBuilder({
+  productId,
+  onChange,
+}: FormFieldsBuilderProps) {
+  const queryClient = useQueryClient();
+  const [fields, setFields] = useState<FormField[]>(() => buildSystemFields());
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<FieldDraftInput>({
     label: "",
+    field_type: "text",
     placeholder: "",
     is_required: false,
     options: [],
   });
-
   const [optionInput, setOptionInput] = useState("");
 
-  const { data: dbFields, isLoading } = useQuery({
+  const { data: dbFields } = useQuery({
     queryKey: ["productFormFields", productId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -49,344 +112,382 @@ export function FormFieldsBuilder({ productId }: { productId: string }) {
         .select("*")
         .eq("product_id", productId)
         .order("sort_order", { ascending: true });
-      
       if (error) {
         console.error("Error fetching form fields:", error);
         return [];
       }
-      return data as FormField[];
+      return (data as DbRow[]) ?? [];
     },
     enabled: !!productId,
   });
 
   useEffect(() => {
-    if (dbFields) {
-      // Garantir que Nome e Email sempre existam visualmente caso não voltem do banco.
-      const hasName = dbFields.some(f => f.is_system && f.field_type === "text" && f.label === "Nome completo");
-      const hasEmail = dbFields.some(f => f.is_system && f.field_type === "email" && f.label === "E-mail");
-      
-      let initialFields = [...dbFields];
-      
-      if (!hasName || !hasEmail) {
-        // Se para produtos antigos não há o system field guardado, renderizamos client-only por seguranca
-        const defaultSystemFields: FormField[] = [
-           { product_id: productId, field_type: "text", label: "Nome completo", is_system: true, is_required: true, sort_order: -2 },
-           { product_id: productId, field_type: "email", label: "E-mail", is_system: true, is_required: true, sort_order: -1 },
-        ];
-        initialFields = [...defaultSystemFields, ...initialFields.filter(f => !f.is_system)];
-      }
+    if (!dbFields) return;
+    const customs = dbFields.filter((r) => !r.is_system).map(rowToField);
+    setFields(ensureSystemFields(customs));
+  }, [dbFields]);
 
-      setFields(initialFields);
-    } else if (!isLoading) {
-      setFields([
-        { product_id: productId, field_type: "text", label: "Nome completo", is_system: true, is_required: true, sort_order: -2 },
-        { product_id: productId, field_type: "email", label: "E-mail", is_system: true, is_required: true, sort_order: -1 },
-      ]);
-    }
-  }, [dbFields, isLoading, productId]);
+  // Notifica preview/parent
+  useEffect(() => {
+    onChange?.(fields);
+  }, [fields, onChange]);
 
-  const saveMutation = useMutation({
-    mutationFn: async (updatedFields: FormField[]) => {
-      const customFields = updatedFields.filter(f => !f.is_system);
-      
-      // Upsert
-      const upsertData = customFields.map((f, i) => ({
-        ...f,
-        sort_order: i, // Remarcar a ordem baseada na lista filtrada
-        product_id: productId,
-        id: f.id?.includes("-") ? f.id : undefined // Ignorar IDs client-side temporary se houver
-      }));
-
-      // Delete all existing custom fields for this product to prevent orphans? 
-      // Better strategy is just upsert, but we need to delete removed ones.
-      // So let's do: Delete All -> Insert All. It's safer for this simple editor.
-      
-      const { error: deleteError } = await (supabase as any)
+  const persist = useMutation({
+    mutationFn: async (next: FormField[]) => {
+      const customs = next.filter((f) => !f.is_system);
+      const { error: delErr } = await (supabase as any)
         .from("product_form_fields")
         .delete()
         .eq("product_id", productId)
         .eq("is_system", false);
-        
-      if (deleteError) throw deleteError;
+      if (delErr) throw delErr;
 
-      if (upsertData.length > 0) {
-        const { error: insertError } = await (supabase as any)
+      if (customs.length > 0) {
+        const insertRows = customs.map((f, i) => ({
+          product_id: productId,
+          field_key: f.field_key || slugifyKey(f.label),
+          field_type: f.field_type,
+          label: f.label,
+          placeholder: f.placeholder ?? null,
+          is_required: f.is_required,
+          is_system: false,
+          options: f.options ?? null,
+          sort_order: i + 2,
+        }));
+        const { error: insErr } = await (supabase as any)
           .from("product_form_fields")
-          .insert(upsertData.map(d => {
-             // Removing undefined/mock ids for insert
-             const { id, ...rest } = d;
-             return rest;
-          }));
-        if (insertError) throw insertError;
+          .insert(insertRows);
+        if (insErr) throw insErr;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["productFormFields", productId] });
-      toast.success("Campos do checkout validados via Lovable DB!");
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["productFormFields", productId],
+      }),
     onError: (err: any) => {
-       // toast.error("Por favor, rode o script SQL do FormFields na sua base de dados antes de salvar.");
-       console.error(err);
-    }
+      toast.error("Erro ao salvar campos: " + (err.message ?? "desconhecido"));
+    },
   });
 
-  const applyChangesToDatabase = (newFields: FormField[]) => {
-    saveMutation.mutate(newFields);
+  const apply = (next: FormField[]) => {
+    setFields(next);
+    persist.mutate(next);
   };
 
-  const openAddModal = () => {
-    setEditForm({
-      field_type: "text",
+  // ── Dialog handlers ────────────────────────────────────
+  const openAdd = () => {
+    setEditingId(null);
+    setDraft({
       label: "",
+      field_type: "text",
       placeholder: "",
       is_required: false,
       options: [],
     });
     setOptionInput("");
-    setEditingIndex(null);
-    setIsAdding(true);
+    setDialogOpen(true);
   };
 
-  const openEditModal = (index: number) => {
-    const f = fields[index];
+  const openEdit = (f: FormField) => {
     if (f.is_system) return;
-    setEditForm({ ...f });
+    setEditingId(f.id);
+    setDraft({
+      label: f.label,
+      field_type: f.field_type as Exclude<FormFieldType, "email">,
+      placeholder: f.placeholder ?? "",
+      is_required: f.is_required,
+      options: f.options ?? [],
+    });
     setOptionInput("");
-    setEditingIndex(index);
-    setIsAdding(true);
+    setDialogOpen(true);
   };
 
-  const handleSaveModal = () => {
-    if (!editForm.label?.trim()) {
-      toast.error("O rótulo do campo é obrigatório");
+  const validation = validateFieldDraft(draft);
+
+  const handleSubmitDraft = () => {
+    if (!validation.isValid) {
+      toast.error(
+        validation.errors.label ??
+          validation.errors.options ??
+          "Verifique o formulário.",
+      );
       return;
     }
-
-    if (["select", "radio", "checkbox"].includes(editForm.field_type as string) && (!editForm.options || editForm.options.length === 0)) {
-      toast.error("Adicione pelo menos uma opção");
-      return;
-    }
-
-    const newField: FormField = {
-      product_id: productId,
-      field_type: editForm.field_type as any,
-      label: editForm.label.trim(),
-      placeholder: editForm.placeholder,
-      is_required: editForm.is_required || false,
-      is_system: false,
-      options: editForm.options,
-      sort_order: fields.length,
-    };
-
-    let newFields = [...fields];
-
-    if (editingIndex !== null) {
-      newField.id = fields[editingIndex].id;
-      newFields[editingIndex] = newField;
+    let next: FormField[];
+    if (editingId) {
+      next = updateFieldOp(fields, editingId, {
+        label: draft.label.trim(),
+        field_type: draft.field_type,
+        placeholder: draft.placeholder?.trim() || undefined,
+        is_required: draft.is_required,
+        options: REQUIRES_OPTIONS.includes(draft.field_type)
+          ? draft.options ?? []
+          : undefined,
+        field_key: slugifyKey(draft.label),
+      });
     } else {
-      newFields.push(newField);
+      next = addFieldOp(fields, {
+        label: draft.label.trim(),
+        field_type: draft.field_type,
+        placeholder: draft.placeholder?.trim() || undefined,
+        is_required: draft.is_required,
+        options: draft.options ?? [],
+      });
     }
-
-    setFields(newFields);
-    setIsAdding(false);
-    applyChangesToDatabase(newFields);
+    apply(next);
+    setDialogOpen(false);
   };
 
-  const handleRemoveField = (index: number) => {
-    if (fields[index].is_system) return;
-    const newFields = fields.filter((_, i) => i !== index);
-    setFields(newFields);
-    applyChangesToDatabase(newFields);
-  };
+  const handleRemove = (id: string) => apply(removeFieldOp(fields, id));
+  const handleToggleRequired = (id: string, val: boolean) =>
+    apply(setRequiredOp(fields, id, val));
 
+  // Options inside dialog
   const addOption = () => {
-    if (!optionInput.trim()) return;
-    setEditForm(p => ({
-      ...p,
-      options: [...(p.options || []), optionInput.trim()]
-    }));
+    const v = optionInput.trim();
+    if (!v) return;
+    setDraft((p) => ({ ...p, options: [...(p.options ?? []), v] }));
     setOptionInput("");
   };
-
-  const removeOption = (idx: number) => {
-    setEditForm(p => ({
+  const removeOption = (idx: number) =>
+    setDraft((p) => ({
       ...p,
-      options: (p.options || []).filter((_, i) => i !== idx)
+      options: (p.options ?? []).filter((_, i) => i !== idx),
     }));
-  };
 
-  const moveUp = (index: number) => {
-    if (index === 0 || fields[index].is_system || fields[index - 1].is_system) return;
-    const newFields = [...fields];
-    [newFields[index - 1], newFields[index]] = [newFields[index], newFields[index - 1]];
-    setFields(newFields);
-    applyChangesToDatabase(newFields);
-  };
-
-  const moveDown = (index: number) => {
-    if (index === fields.length - 1 || fields[index].is_system) return;
-    const newFields = [...fields];
-    [newFields[index + 1], newFields[index]] = [newFields[index], newFields[index + 1]];
-    setFields(newFields);
-    applyChangesToDatabase(newFields);
-  };
-
-  const getTypeLabel = (type: string) => {
-    const map: Record<string, string> = {
-      text: "Texto (linha única)",
-      email: "E-mail",
-      phone: "Telefone / WhatsApp",
-      textarea: "Texto (múltiplas linhas)",
-      select: "Lista (Dropdown)",
-      checkbox: "Caixas de Seleção",
-      radio: "Opção Única (Radio)"
-    };
-    return map[type] || type;
-  };
+  const showOptions = useMemo(
+    () => REQUIRES_OPTIONS.includes(draft.field_type),
+    [draft.field_type],
+  );
 
   return (
     <div className="space-y-4">
-      {/* Lista de Campos */}
+      {/* Lista */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        {fields.map((field, idx) => (
-          <div 
-            key={field.id || `field-${idx}`} 
+        {fields.map((field) => (
+          <div
+            key={field.id}
+            data-testid={`field-row-${field.field_key}`}
             className={cn(
               "flex items-center gap-3 p-3 border-b border-border/50 last:border-0",
-              field.is_system ? "bg-muted/30" : "bg-card hover:bg-muted/20"
+              field.is_system ? "bg-muted/30" : "bg-card hover:bg-muted/20",
             )}
           >
-            <div className="flex flex-col items-center justify-center opacity-40">
-              <GripVertical className="w-4 h-4 mb-0.5" />
+            <div className="opacity-40">
+              <GripVertical className="w-4 h-4" />
             </div>
 
             <div className="flex-1 flex flex-col md:flex-row md:items-center gap-2 md:gap-4 min-w-0">
-               <div className="flex items-center gap-2 truncate">
-                  <span className="font-medium text-sm text-foreground truncate">{field.label}</span>
-                  {field.is_required && <span className="text-red-500 text-xs font-bold shrink-0">*</span>}
-                  {field.is_system && (
-                    <Badge variant="secondary" className="px-1.5 py-0 h-5 text-[10px] shrink-0">Padrão</Badge>
-                  )}
-               </div>
-               <div className="text-xs text-muted-foreground ml-auto hidden md:block">
-                  {getTypeLabel(field.field_type)}
-               </div>
+              <div className="flex items-center gap-2 truncate">
+                <span className="font-medium text-sm text-foreground truncate">
+                  {field.label}
+                </span>
+                {field.is_required && (
+                  <span className="text-destructive text-xs font-bold shrink-0">
+                    *
+                  </span>
+                )}
+                {field.is_system && (
+                  <Badge
+                    variant="secondary"
+                    className="px-1.5 py-0 h-5 text-[10px] shrink-0"
+                  >
+                    Travado
+                  </Badge>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground ml-auto hidden md:block">
+                {FIELD_TYPE_LABELS[field.field_type]}
+              </div>
             </div>
 
-            {/* Ações */}
-            <div className="flex items-center gap-1 shrink-0">
-               {!field.is_system && (
-                 <>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditModal(idx)}>
+            <div className="flex items-center gap-2 shrink-0">
+              {!field.is_system && (
+                <>
+                  <div className="hidden sm:flex items-center gap-1.5">
+                    <Label className="text-[10px] text-muted-foreground">
+                      Obrigatório
+                    </Label>
+                    <Switch
+                      checked={field.is_required}
+                      onCheckedChange={(v) => handleToggleRequired(field.id, v)}
+                      aria-label={`Tornar ${field.label} obrigatório`}
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => openEdit(field)}
+                    aria-label={`Editar ${field.label}`}
+                  >
                     <Settings2 className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveField(idx)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleRemove(field.id)}
+                    aria-label={`Remover ${field.label}`}
+                  >
                     <Trash2 className="w-4 h-4" />
                   </Button>
-                 </>
-               )}
+                </>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="w-full gap-2 border-dashed h-12" onClick={openAddModal}>
-            <Plus className="w-4 h-4" /> Adicionar campo extra
-          </Button>
-        </DialogTrigger>
+      <Button
+        variant="outline"
+        className="w-full gap-2 border-dashed h-12"
+        onClick={openAdd}
+      >
+        <Plus className="w-4 h-4" /> Adicionar campo
+      </Button>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>{editingIndex !== null ? "Editar Campo Extra" : "Novo Campo de Checkout"}</DialogTitle>
+            <DialogTitle>
+              {editingId ? "Editar campo" : "Novo campo"}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-             <div className="space-y-2">
-                <Label>Tipo de Campo</Label>
-                <Select 
-                  value={editForm.field_type} 
-                  onValueChange={(val: any) => setEditForm(p => ({ ...p, field_type: val }))}
-                >
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Texto (linha única)</SelectItem>
-                    <SelectItem value="textarea">Texto Longo (parágrafo)</SelectItem>
-                    <SelectItem value="phone">WhatsApp / Telefone</SelectItem>
-                    <SelectItem value="select">Lista Dropdown</SelectItem>
-                    <SelectItem value="checkbox">Multipla Escolha (Caixas)</SelectItem>
-                    <SelectItem value="radio">Opção Única (Bolinhas)</SelectItem>
-                  </SelectContent>
-                </Select>
-             </div>
+            <div className="space-y-2">
+              <Label htmlFor="ff-type">Tipo de campo</Label>
+              <Select
+                value={draft.field_type}
+                onValueChange={(v) =>
+                  setDraft((p) => ({ ...p, field_type: v as FormFieldType }))
+                }
+              >
+                <SelectTrigger id="ff-type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ADDITIONAL_FIELD_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {FIELD_TYPE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-             <div className="space-y-2">
-                <Label>Nome (Label) *</Label>
-                <Input 
-                   placeholder="Ex: Qual o seu link do Instagram?"
-                   value={editForm.label}
-                   onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))}
+            <div className="space-y-2">
+              <Label htmlFor="ff-label">Nome do campo *</Label>
+              <Input
+                id="ff-label"
+                placeholder="Ex: Telefone, Empresa, Cargo..."
+                value={draft.label}
+                maxLength={60}
+                aria-invalid={!!validation.errors.label}
+                onChange={(e) =>
+                  setDraft((p) => ({ ...p, label: e.target.value }))
+                }
+              />
+              {validation.errors.label && (
+                <p role="alert" className="text-xs text-destructive">
+                  {validation.errors.label}
+                </p>
+              )}
+            </div>
+
+            {(["text", "phone"] as FormFieldType[]).includes(
+              draft.field_type,
+            ) && (
+              <div className="space-y-2">
+                <Label htmlFor="ff-placeholder">Placeholder (opcional)</Label>
+                <Input
+                  id="ff-placeholder"
+                  placeholder="Ex: (00) 00000-0000"
+                  value={draft.placeholder ?? ""}
+                  maxLength={80}
+                  onChange={(e) =>
+                    setDraft((p) => ({ ...p, placeholder: e.target.value }))
+                  }
                 />
-             </div>
+              </div>
+            )}
 
-             {["text", "textarea", "phone"].includes(editForm.field_type || "") && (
-               <div className="space-y-2">
-                  <Label>Texo de Ajuda (Placeholder)</Label>
-                  <Input 
-                     placeholder="Ex: @seuperfil"
-                     value={editForm.placeholder || ""}
-                     onChange={e => setEditForm(p => ({ ...p, placeholder: e.target.value }))}
+            {showOptions && (
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg border border-border">
+                <Label>Opções *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    aria-label="Nova opção"
+                    placeholder="Adicionar opção..."
+                    className="h-8 text-sm"
+                    value={optionInput}
+                    onChange={(e) => setOptionInput(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" &&
+                      (e.preventDefault(), addOption())
+                    }
                   />
-               </div>
-             )}
-
-             {["select", "radio", "checkbox"].includes(editForm.field_type || "") && (
-               <div className="space-y-3 p-3 bg-muted/30 rounded-lg border border-border">
-                  <Label className="text-sm">Opções disponíveis</Label>
-                  <div className="flex gap-2">
-                     <Input 
-                       placeholder="Nova opção..." 
-                       className="h-8 text-sm"
-                       value={optionInput}
-                       onChange={e => setOptionInput(e.target.value)}
-                       onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addOption())}
-                     />
-                     <Button type="button" size="sm" onClick={addOption}>Adicionar</Button>
-                  </div>
-                  {editForm.options && editForm.options.length > 0 && (
-                     <div className="flex flex-wrap gap-2 mt-2">
-                        {editForm.options.map((opt, i) => (
-                           <div key={i} className="flex items-center gap-1 bg-background border px-2 py-1 rounded-md text-sm shadow-sm text-foreground">
-                              {opt}
-                              <Trash2 
-                                className="w-3 h-3 ml-1 text-muted-foreground cursor-pointer hover:text-destructive" 
-                                onClick={() => removeOption(i)}
-                              />
-                           </div>
-                        ))}
-                     </div>
-                  )}
-                  {(!editForm.options || editForm.options.length === 0) && (
-                     <p className="text-xs text-muted-foreground"><AlertCircle className="inline w-3 h-3 mr-1"/>Você precisa adicionar as opções para o cliente escolher.</p>
-                  )}
-               </div>
-             )}
-
-             <div className="flex items-center justify-between pt-2">
-                <div className="space-y-0.5">
-                   <Label>Preenchimento Obrigatório</Label>
-                   <p className="text-xs text-muted-foreground text-left">O cliente não pode pular o campo.</p>
+                  <Button type="button" size="sm" onClick={addOption}>
+                    Adicionar
+                  </Button>
                 </div>
-                <Switch 
-                   checked={editForm.is_required}
-                   onCheckedChange={v => setEditForm(p => ({ ...p, is_required: v }))}
-                />
-             </div>
+                {(draft.options?.length ?? 0) > 0 ? (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {draft.options!.map((opt, i) => (
+                      <div
+                        key={`${opt}-${i}`}
+                        className="flex items-center gap-1 bg-background border px-2 py-1 rounded-md text-sm shadow-sm text-foreground"
+                      >
+                        {opt}
+                        <button
+                          type="button"
+                          aria-label={`Remover opção ${opt}`}
+                          onClick={() => removeOption(i)}
+                          className="ml-1 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Adicione pelo menos uma opção.
+                  </p>
+                )}
+                {validation.errors.options && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {validation.errors.options}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2">
+              <div>
+                <Label>Obrigatório</Label>
+                <p className="text-xs text-muted-foreground">
+                  O cliente não pode pular este campo.
+                </p>
+              </div>
+              <Switch
+                checked={draft.is_required}
+                onCheckedChange={(v) =>
+                  setDraft((p) => ({ ...p, is_required: v }))
+                }
+              />
+            </div>
           </div>
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancelar</Button>
-            <Button onClick={handleSaveModal}>Salvar Campo</Button>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmitDraft} disabled={!validation.isValid}>
+              {editingId ? "Salvar alterações" : "Adicionar campo"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
