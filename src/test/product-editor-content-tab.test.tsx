@@ -213,40 +213,50 @@ function renderFlow(initialRow: ApiProductRow = baseRow) {
 }
 
 describe("CollectEmailsFlow — aba Conteúdo (UI + bloqueio)", () => {
-  const titleInput = (c: HTMLElement) =>
-    c.querySelector("#lm-title") as HTMLInputElement;
-  const subInput = (c: HTMLElement) =>
-    c.querySelector("#lm-subtitle") as HTMLTextAreaElement;
-  const ctaInput = (c: HTMLElement) => c.querySelector("#lm-cta") as HTMLInputElement;
+  // Radix Tabs em jsdom requer pointerdown para alternar
+  const goToTab = (name: RegExp) => {
+    const tab = screen.getByRole("tab", { name });
+    fireEvent.pointerDown(tab, { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(tab);
+    fireEvent.click(tab);
+  };
+
+  const titleInput = () => document.getElementById("lm-title") as HTMLInputElement;
+  const subInput = () => document.getElementById("lm-subtitle") as HTMLTextAreaElement;
+  const ctaInput = () => document.getElementById("lm-cta") as HTMLInputElement;
 
   it("renderiza contadores e mensagens de validação inline ao limpar título", () => {
-    const { container } = renderFlow();
-    fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    fireEvent.change(titleInput(container), { target: { value: "" } });
+    renderFlow();
+    goToTab(/Conteúdo/i);
+    const t = titleInput();
+    expect(t).not.toBeNull();
+    fireEvent.change(t, { target: { value: "" } });
     expect(screen.getByText(CONTENT_MESSAGES.name.required)).toBeTruthy();
     expect(screen.getByText(`0/${CONTENT_LIMITS.name}`)).toBeTruthy();
   });
 
   it("CTA vazio mostra erro inline e desabilita Avançar", () => {
-    const { container } = renderFlow();
-    fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    fireEvent.change(ctaInput(container), { target: { value: "" } });
+    renderFlow();
+    goToTab(/Conteúdo/i);
+    const c = ctaInput();
+    expect(c).not.toBeNull();
+    fireEvent.change(c, { target: { value: "" } });
     expect(screen.getByText(CONTENT_MESSAGES.ctaText.required)).toBeTruthy();
     const next = screen.getByRole("button", { name: /Avançar/i });
     expect(next).toBeDisabled();
   });
 
   it("placeholders da Kivo são preservados quando campos vazios", () => {
-    const { container } = renderFlow({
+    renderFlow({
       ...baseRow,
       name: "",
       short_description: "",
       listing_button_text: "",
     });
-    fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    expect(titleInput(container).placeholder).toMatch(/Guia Rápido/i);
-    expect(subInput(container).placeholder).toMatch(/recompensa/i);
-    expect(ctaInput(container).placeholder).toMatch(/Inscrever/i);
+    goToTab(/Conteúdo/i);
+    expect(titleInput().placeholder).toMatch(/Guia Rápido/i);
+    expect(subInput().placeholder).toMatch(/recompensa/i);
+    expect(ctaInput().placeholder).toMatch(/Inscrever/i);
   });
 
   it("publicar é bloqueado quando título inválido (sem chamar adapter)", async () => {
@@ -266,7 +276,7 @@ describe("CollectEmailsFlow — aba Conteúdo (UI + bloqueio)", () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: /Configuração/i }));
+    goToTab(/Configuração/i);
     const publish = screen.getByRole("button", { name: /Publicar/i });
     expect(publish).toBeDisabled();
 
@@ -277,10 +287,10 @@ describe("CollectEmailsFlow — aba Conteúdo (UI + bloqueio)", () => {
   });
 
   it("inputs aplicam maxLength via atributo HTML", () => {
-    const { container } = renderFlow();
-    fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    expect(titleInput(container).maxLength).toBe(CONTENT_LIMITS.name);
-    expect(subInput(container).maxLength).toBe(CONTENT_LIMITS.shortDescription);
-    expect(ctaInput(container).maxLength).toBe(CONTENT_LIMITS.ctaText);
+    renderFlow();
+    goToTab(/Conteúdo/i);
+    expect(titleInput().maxLength).toBe(CONTENT_LIMITS.name);
+    expect(subInput().maxLength).toBe(CONTENT_LIMITS.shortDescription);
+    expect(ctaInput().maxLength).toBe(CONTENT_LIMITS.ctaText);
   });
 });
