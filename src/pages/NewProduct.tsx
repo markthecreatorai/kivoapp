@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,12 +18,18 @@ import {
   Box,
   Users,
   Link2,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { trackEvent } from "@/lib/tracking";
 import type { Database } from "@/integrations/supabase/types";
 import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
+import {
+  createProductDraft,
+  type DraftFormat,
+} from "@/features/product-editor";
 
 type ProductType = Database["public"]["Enums"]["product_type"];
 
@@ -135,107 +141,136 @@ export default function NewProduct() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const [creatingId, setCreatingId] = useState<string | null>(null);
-  
+  const [errorByFormat, setErrorByFormat] = useState<Record<string, string>>({});
+
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState("");
   const planInfo = usePlanLimits();
 
-  const handleSelectFormat = async (format: ProductFormatConfig) => {
+  const clearError = useCallback((id: string) => {
+    setErrorByFormat((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
 
-    if (!currentWorkspace?.id) {
-      toast.error("Nenhum workspace ativo encontrado.");
-      return;
-    }
-    
-    // Validar limites de plano localmente
-    if (!planInfo.canCreateProduct) {
-      setUpgradeFeature("criar mais produtos");
-      setUpgradeOpen(true);
-      return;
-    }
-    if (format.dbType === "COURSE" && !planInfo.canCreateCourse) {
-      setUpgradeFeature("criar cursos");
-      setUpgradeOpen(true);
-      return;
-    }
+  const handleSelectFormat = useCallback(
+    async (format: ProductFormatConfig) => {
+      // Idempotência client-side: enquanto há criação em andamento,
+      // ignora cliques (evita double-tap em qualquer card). O service
+      // ainda dedupa por (workspace, format) caso essa barreira falhe.
+      if (creatingId !== null) return;
 
-    setCreatingId(format.id);
-
-    // For affiliate, auto-ensure referral profile exists and pre-fill product
-    let referralLink = "";
-    if (format.id === "affiliate" && user) {
-      const { data: refProfile } = await supabase
-        .from("referral_profiles")
-        .select("referral_code, referral_link")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (refProfile?.referral_code) {
-        referralLink = `${window.location.origin}/?ref=${refProfile.referral_code}`;
-      } else {
-        const baseName =
-          user.user_metadata?.full_name?.split(" ")[0]?.toLowerCase() ||
-          user.email?.split("@")[0]?.toLowerCase() ||
-          "creator";
-        const code = `${baseName}${Math.floor(Math.random() * 1000)}`.replace(/[^a-z0-9-]/g, "");
-        referralLink = `${window.location.origin}/?ref=${code}`;
-        await supabase.from("referral_profiles").insert({
-          user_id: user.id,
-          referral_code: code,
-          referral_link: referralLink,
-        });
+      if (!currentWorkspace?.id) {
+        toast.error("Nenhum workspace ativo encontrado.");
+        return;
       }
-    }
-    
-    try {
-      const isAffiliate = format.id === "affiliate";
-      // Cria o draft (rascunho) na tabela 'products' seguindo a especificação
-      const insertData: any = {
-          workspace_id: currentWorkspace.id,
-          type: format.dbType,
-          status: isAffiliate ? "PUBLISHED" : "DRAFT",
-          name: isAffiliate ? "Link de Afiliado Kivo" : "Novo Produto", 
-          slug: isAffiliate ? `kivo-afiliado-${Date.now().toString(36)}` : `novo-produto-${Date.now().toString(36)}`,
-          metadata: { format_id: format.id, ...(isAffiliate && referralLink ? { referral_link: referralLink } : {}) },
-        };
-      const { data: product, error } = await supabase
-        .from("products")
-        .insert(insertData)
-        .select("id")
-        .single();
 
-      if (error) throw error;
-      
-      trackEvent("product_draft_created", { type: format.dbType, format: format.id }, currentWorkspace.id);
-      
-      // Criar precos zero por padrao (ajuda no upsert futuro)
-      await supabase.from("prices").insert({
-        product_id: product.id,
-        amount: 0,
-        type: "ONE_TIME",
-      });
-      
-      // Redireciona pro Editor
-      navigate(`/products/${product.id}/edit`);
-    } catch (err: any) {
-      toast.error("Erro ao iniciar produto: " + err.message);
-      setCreatingId(null);
-    }
-  };
+      if (!planInfo.canCreateProduct) {
+        setUpgradeFeature("criar mais produtos");
+        setUpgradeOpen(true);
+        return;
+      }
+      if (format.dbType === "COURSE" && !planInfo.canCreateCourse) {
+        setUpgradeFeature("criar cursos");
+        setUpgradeOpen(true);
+        return;
+      }
+
+      clearError(format.id);
+      setCreatingId(format.id);
+
+      // Caso especial afiliado: garantir referral profile antes
+      let referralLink = "";
+      if (format.id === "affiliate" && user) {
+        try {
+          const { data: refProfile } = await supabase
+            .from("referral_profiles")
+            .select("referral_code, referral_link")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (refProfile?.referral_code) {
+            referralLink = `${window.location.origin}/?ref=${refProfile.referral_code}`;
+          } else {
+            const baseName =
+              user.user_metadata?.full_name?.split(" ")[0]?.toLowerCase() ||
+              user.email?.split("@")[0]?.toLowerCase() ||
+              "creator";
+            const code = `${baseName}${Math.floor(Math.random() * 1000)}`.replace(
+              /[^a-z0-9-]/g,
+              "",
+            );
+            referralLink = `${window.location.origin}/?ref=${code}`;
+            await supabase.from("referral_profiles").insert({
+              user_id: user.id,
+              referral_code: code,
+              referral_link: referralLink,
+            });
+          }
+        } catch {
+          /* não bloqueia: produto ainda pode ser criado sem o link */
+        }
+      }
+
+      const isAffiliate = format.id === "affiliate";
+      const draftFormat: DraftFormat = {
+        id: format.id,
+        dbType: format.dbType,
+        defaultName: isAffiliate ? "Link de Afiliado Kivo" : "Novo Produto",
+        publishImmediately: isAffiliate,
+        extraMetadata:
+          isAffiliate && referralLink ? { referral_link: referralLink } : {},
+      };
+
+      try {
+        const { productId, reused } = await createProductDraft({
+          workspaceId: currentWorkspace.id,
+          format: draftFormat,
+        });
+
+        trackEvent(
+          "product_draft_created",
+          { type: format.dbType, format: format.id, reused },
+          currentWorkspace.id,
+        );
+
+        navigate(`/products/${productId}/edit`);
+      } catch (err: any) {
+        const message =
+          err?.message ?? "Não foi possível criar o rascunho. Tente novamente.";
+        setErrorByFormat((prev) => ({ ...prev, [format.id]: message }));
+        toast.error("Erro ao iniciar produto: " + message);
+        setCreatingId(null);
+      }
+    },
+    [creatingId, currentWorkspace?.id, planInfo, user, navigate, clearError],
+  );
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-background">
-      {/* Top bar simplificada */}
+      {/* Top bar com breadcrumb consistente */}
       <div className="bg-background/80 backdrop-blur border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
           <button
             onClick={() => navigate("/store?tab=loja")}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="np-breadcrumb-back"
+            aria-label="Voltar para a Loja"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar à Loja
           </button>
-          <div className="flex-1" />
-          <p className="text-sm font-medium text-foreground">Novo Produto</p>
+          <nav
+            className="flex-1 flex items-center text-sm text-muted-foreground"
+            aria-label="Trilha de navegação"
+          >
+            <span className="hidden md:inline">Loja</span>
+            <span className="hidden md:inline mx-2">/</span>
+            <span className="hidden md:inline text-foreground">Novo Produto</span>
+          </nav>
+          <p className="text-sm font-medium text-foreground md:hidden">Novo Produto</p>
         </div>
       </div>
 
@@ -250,36 +285,93 @@ export default function NewProduct() {
         </div>
 
         {/* Formats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {PRODUCT_FORMATS.map((format) => (
-            <button
-              key={format.id}
-              disabled={creatingId !== null}
-              onClick={() => handleSelectFormat(format)}
-              className={cn(
-                "group flex items-start gap-5 p-5 bg-card border border-border/60 rounded-2xl text-left transition-all",
-                creatingId === format.id ? "opacity-60 scale-[0.98] border-primary" : "hover:border-primary/40 hover:shadow-sm"
-              )}
-            >
-              {format.id === "affiliate" ? (
-                <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 overflow-hidden">
-                  <img src={kivoReferralLogo} alt="Kivo" className="h-12 w-12 object-contain" />
-                </div>
-              ) : (
-                <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", format.iconBg, format.iconColor)}>
-                  <format.icon className={cn("h-6 w-6", creatingId === format.id ? "animate-pulse" : "")} />
-                </div>
-              )}
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {format.title}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {format.description}
-                </p>
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          aria-busy={creatingId !== null}
+        >
+          {PRODUCT_FORMATS.map((format) => {
+            const isCreating = creatingId === format.id;
+            const error = errorByFormat[format.id];
+            const disabled = creatingId !== null;
+            return (
+              <div key={format.id} className="space-y-2">
+                <button
+                  type="button"
+                  data-testid={`np-format-${format.id}`}
+                  disabled={disabled}
+                  aria-disabled={disabled}
+                  aria-busy={isCreating}
+                  onClick={() => handleSelectFormat(format)}
+                  className={cn(
+                    "w-full group flex items-start gap-5 p-5 bg-card border border-border/60 rounded-2xl text-left transition-all",
+                    isCreating
+                      ? "opacity-90 scale-[0.99] border-primary"
+                      : "hover:border-primary/40 hover:shadow-sm",
+                    disabled && !isCreating && "opacity-60 cursor-not-allowed",
+                  )}
+                >
+                  {format.id === "affiliate" ? (
+                    <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 overflow-hidden">
+                      <img src={kivoReferralLogo} alt="Kivo" className="h-12 w-12 object-contain" />
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        "relative h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                        format.iconBg,
+                        format.iconColor,
+                      )}
+                    >
+                      <format.icon className={cn("h-6 w-6", isCreating && "opacity-0")} />
+                      {isCreating && (
+                        <Loader2
+                          className="absolute h-5 w-5 animate-spin"
+                          data-testid={`np-loading-${format.id}`}
+                        />
+                      )}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                      {format.title}
+                      {isCreating && (
+                        <span className="text-xs font-normal text-primary inline-flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Criando rascunho…
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {format.description}
+                    </p>
+                  </div>
+                </button>
+
+                {/* Fallback de erro com retry */}
+                {error && (
+                  <div
+                    role="alert"
+                    data-testid={`np-error-${format.id}`}
+                    className="flex items-start gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive"
+                  >
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium">Não foi possível criar o rascunho</p>
+                      <p className="text-xs opacity-80 mt-0.5">{error}</p>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid={`np-retry-${format.id}`}
+                      onClick={() => handleSelectFormat(format)}
+                      className="text-xs font-medium underline underline-offset-2 hover:no-underline"
+                    >
+                      Tentar novamente
+                    </button>
+                  </div>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
