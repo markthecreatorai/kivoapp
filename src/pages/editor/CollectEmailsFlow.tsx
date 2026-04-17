@@ -27,6 +27,7 @@ import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import {
   CoverSourceField,
+  CONTENT_LIMITS,
   SaveStatusIndicator,
   selectConfigTab,
   selectContentTab,
@@ -36,6 +37,7 @@ import {
   useAutosave,
   useProductEditor,
   useUnsavedChangesGuard,
+  validateContentTab,
 } from "@/features/product-editor";
 
 export default function CollectEmailsFlow({
@@ -64,6 +66,15 @@ export default function CollectEmailsFlow({
   const config = selectConfigTab(state);
   const preview = selectPreview(state);
 
+  // Validação central da aba Conteúdo (Zod)
+  const contentValidation = validateContentTab({
+    name: content.name,
+    shortDescription: content.shortDescription,
+    ctaText: content.ctaText,
+  });
+  const contentErrors = contentValidation.errors;
+  const contentValid = contentValidation.isValid;
+
   const handleSaveDraft = async () => {
     try {
       await saveDraft();
@@ -74,8 +85,10 @@ export default function CollectEmailsFlow({
   };
 
   const handlePublish = async () => {
-    if (!content.name.trim()) {
-      toast.error("Informe o título antes de publicar");
+    if (!contentValid) {
+      const firstError =
+        contentErrors.name ?? contentErrors.ctaText ?? contentErrors.shortDescription;
+      toast.error(firstError ?? "Revise os campos obrigatórios antes de publicar.");
       setTab("conteudo");
       return;
     }
@@ -90,7 +103,12 @@ export default function CollectEmailsFlow({
   const handleNext = () => {
     if (tab === "visual") setTab("conteudo");
     else if (tab === "conteudo") {
-      if (!content.name.trim()) { toast.error("Informe título"); return; }
+      if (!contentValid) {
+        const firstError =
+          contentErrors.name ?? contentErrors.ctaText ?? contentErrors.shortDescription;
+        toast.error(firstError ?? "Revise os campos obrigatórios.");
+        return;
+      }
       setTab("config");
     }
   };
@@ -240,38 +258,108 @@ export default function CollectEmailsFlow({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Título Principal *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lm-title" className="text-sm font-semibold">
+                    Título Principal <span className="text-destructive">*</span>
+                  </Label>
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      content.name.length > CONTENT_LIMITS.name
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {content.name.length}/{CONTENT_LIMITS.name}
+                  </span>
+                </div>
                 <Input
+                  id="lm-title"
                   placeholder="Ex: Guia Rápido de Vendas"
-                  maxLength={50}
+                  maxLength={CONTENT_LIMITS.name}
                   value={content.name}
-                  onChange={e => patch({ name: e.target.value })}
+                  onChange={(e) => patch({ name: e.target.value })}
+                  aria-invalid={!!contentErrors.name}
+                  aria-describedby={contentErrors.name ? "lm-title-error" : undefined}
+                  className={cn(contentErrors.name && "border-destructive focus-visible:ring-destructive")}
                 />
-                <p className="text-right text-[10px] text-muted-foreground">{content.name.length}/50</p>
+                {contentErrors.name && (
+                  <p id="lm-title-error" role="alert" className="text-xs text-destructive">
+                    {contentErrors.name}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Subtítulo (Opcional)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lm-subtitle" className="text-sm font-semibold">
+                    Subtítulo <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      content.shortDescription.length > CONTENT_LIMITS.shortDescription
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {content.shortDescription.length}/{CONTENT_LIMITS.shortDescription}
+                  </span>
+                </div>
                 <Textarea
+                  id="lm-subtitle"
                   placeholder="Descreva sobre o que é ou a recompensa (Lead Magnet)..."
-                  maxLength={100}
+                  maxLength={CONTENT_LIMITS.shortDescription}
                   value={content.shortDescription}
-                  onChange={e => patch({ shortDescription: e.target.value })}
+                  onChange={(e) => patch({ shortDescription: e.target.value })}
                   rows={2}
-                  className="resize-none"
+                  className={cn(
+                    "resize-none",
+                    contentErrors.shortDescription && "border-destructive focus-visible:ring-destructive",
+                  )}
+                  aria-invalid={!!contentErrors.shortDescription}
+                  aria-describedby={
+                    contentErrors.shortDescription ? "lm-subtitle-error" : undefined
+                  }
                 />
-                <p className="text-right text-[10px] text-muted-foreground">{content.shortDescription.length}/100</p>
+                {contentErrors.shortDescription && (
+                  <p id="lm-subtitle-error" role="alert" className="text-xs text-destructive">
+                    {contentErrors.shortDescription}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Texto do Botão</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lm-cta" className="text-sm font-semibold">
+                    Texto do Botão <span className="text-destructive">*</span>
+                  </Label>
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      content.ctaText.length > CONTENT_LIMITS.ctaText
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {content.ctaText.length}/{CONTENT_LIMITS.ctaText}
+                  </span>
+                </div>
                 <Input
+                  id="lm-cta"
                   placeholder="Inscrever-se agora"
-                  maxLength={30}
+                  maxLength={CONTENT_LIMITS.ctaText}
                   value={content.ctaText}
-                  onChange={e => patch({ ctaText: e.target.value })}
+                  onChange={(e) => patch({ ctaText: e.target.value })}
+                  aria-invalid={!!contentErrors.ctaText}
+                  aria-describedby={contentErrors.ctaText ? "lm-cta-error" : undefined}
+                  className={cn(contentErrors.ctaText && "border-destructive focus-visible:ring-destructive")}
                 />
-                <p className="text-right text-[10px] text-muted-foreground">{content.ctaText.length}/30</p>
+                {contentErrors.ctaText && (
+                  <p id="lm-cta-error" role="alert" className="text-xs text-destructive">
+                    {contentErrors.ctaText}
+                  </p>
+                )}
               </div>
             </TabsContent>
 
@@ -415,11 +503,20 @@ export default function CollectEmailsFlow({
             </Button>
 
             {tab !== "config" ? (
-              <Button onClick={handleNext}>
+              <Button
+                onClick={handleNext}
+                disabled={tab === "conteudo" && !contentValid}
+                aria-disabled={tab === "conteudo" && !contentValid}
+              >
                 Avançar <span className="ml-2">→</span>
               </Button>
             ) : (
-              <Button className="gap-2" onClick={handlePublish} disabled={state.meta.saveStatus === "saving"}>
+              <Button
+                className="gap-2"
+                onClick={handlePublish}
+                disabled={state.meta.saveStatus === "saving" || !contentValid}
+                aria-disabled={state.meta.saveStatus === "saving" || !contentValid}
+              >
                 <Rocket className="h-4 w-4" /> Publicar Lead Magnet
               </Button>
             )}
