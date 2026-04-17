@@ -7,4 +7,5 @@ export * from "./store";
 export * from "./useAutosave";
 export * from "./useUnsavedChangesGuard";
 export { supabaseSaveAdapter } from "./supabaseAdapter";
+export { SaveStatusIndicator } from "./SaveStatusIndicator";
 
