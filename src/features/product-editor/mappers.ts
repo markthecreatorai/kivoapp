@@ -101,11 +101,16 @@ export function mapApiToEditorState(row: ApiProductRow): ProductEditorState {
 
 /**
  * EditorState → API payload. Inclui apenas campos editáveis.
- * O delivery_url é resolvido a partir do deliveryType ativo.
+ *
+ * Backward-compat:
+ *   • Aceita `prevMetadata` para preservar chaves desconhecidas
+ *     (ex.: `format_id`, `referral_link`, snapshots futuros).
+ *   • SEMPRE carimba `leadMagnetConfigVersion = LEAD_MAGNET_CONFIG_VERSION`
+ *     — nunca regride a versão.
  */
 export function mapEditorStateToApi(
   state: ProductEditorState,
-  opts: { status?: ProductStatus } = {},
+  opts: { status?: ProductStatus; prevMetadata?: Record<string, any> } = {},
 ): ApiProductUpdatePayload {
   const deliveryUrl =
     state.deliveryType === "file" ? state.deliveryFileUrl : state.deliveryUrl;
@@ -113,6 +118,9 @@ export function mapEditorStateToApi(
   // Resolve a thumbnail efetiva a partir do modo ativo
   const effectiveThumb =
     state.coverSource === "upload" ? state.thumbnailUploadUrl : state.thumbnailExternalUrl;
+
+  // Preserva chaves desconhecidas da metadata (forward-compat)
+  const prevMeta = opts.prevMetadata ?? {};
 
   return {
     name: state.name,
@@ -124,9 +132,12 @@ export function mapEditorStateToApi(
     confirmation_email_subject: state.confirmationSubject || DEFAULT_SUBJECT,
     confirmation_email_body: state.confirmationBody || DEFAULT_BODY,
     metadata: {
+      ...prevMeta,
+      format_id: prevMeta.format_id ?? state.formatId,
       cover_source: state.coverSource,
       thumbnail_upload_url: state.thumbnailUploadUrl,
       thumbnail_external_url: state.thumbnailExternalUrl,
+      leadMagnetConfigVersion: LEAD_MAGNET_CONFIG_VERSION,
     },
     ...(opts.status ? { status: opts.status } : {}),
   };
