@@ -213,53 +213,50 @@ function renderFlow(initialRow: ApiProductRow = baseRow) {
 }
 
 describe("CollectEmailsFlow — aba Conteúdo (UI + bloqueio)", () => {
-  it("renderiza contadores e mensagens de validação inline ao limpar título", () => {
-    renderFlow();
-    fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    const titleInput = screen.getByLabelText(/Título Principal/i) as HTMLInputElement;
+  const titleInput = (c: HTMLElement) =>
+    c.querySelector("#lm-title") as HTMLInputElement;
+  const subInput = (c: HTMLElement) =>
+    c.querySelector("#lm-subtitle") as HTMLTextAreaElement;
+  const ctaInput = (c: HTMLElement) => c.querySelector("#lm-cta") as HTMLInputElement;
 
-    fireEvent.change(titleInput, { target: { value: "" } });
+  it("renderiza contadores e mensagens de validação inline ao limpar título", () => {
+    const { container } = renderFlow();
+    fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
+    fireEvent.change(titleInput(container), { target: { value: "" } });
     expect(screen.getByText(CONTENT_MESSAGES.name.required)).toBeTruthy();
-    // Contador 0/50 presente
     expect(screen.getByText(`0/${CONTENT_LIMITS.name}`)).toBeTruthy();
   });
 
   it("CTA vazio mostra erro inline e desabilita Avançar", () => {
-    renderFlow();
+    const { container } = renderFlow();
     fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    const cta = screen.getByLabelText(/Texto do Botão/i) as HTMLInputElement;
-    fireEvent.change(cta, { target: { value: "" } });
-
+    fireEvent.change(ctaInput(container), { target: { value: "" } });
     expect(screen.getByText(CONTENT_MESSAGES.ctaText.required)).toBeTruthy();
     const next = screen.getByRole("button", { name: /Avançar/i });
     expect(next).toBeDisabled();
   });
 
   it("placeholders da Kivo são preservados quando campos vazios", () => {
-    renderFlow({ ...baseRow, name: "", short_description: "", listing_button_text: "" });
+    const { container } = renderFlow({
+      ...baseRow,
+      name: "",
+      short_description: "",
+      listing_button_text: "",
+    });
     fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    expect(
-      (screen.getByLabelText(/Título Principal/i) as HTMLInputElement).placeholder,
-    ).toMatch(/Guia Rápido/i);
-    expect((screen.getByLabelText(/Subtítulo/i) as HTMLTextAreaElement).placeholder).toMatch(
-      /recompensa/i,
-    );
-    expect((screen.getByLabelText(/Texto do Botão/i) as HTMLInputElement).placeholder).toMatch(
-      /Inscrever/i,
-    );
+    expect(titleInput(container).placeholder).toMatch(/Guia Rápido/i);
+    expect(subInput(container).placeholder).toMatch(/recompensa/i);
+    expect(ctaInput(container).placeholder).toMatch(/Inscrever/i);
   });
 
-  it("publicar é bloqueado quando título inválido (toast + sem chamar adapter)", async () => {
+  it("publicar é bloqueado quando título inválido (sem chamar adapter)", async () => {
     const adapter: SaveAdapter = { save: vi.fn(async () => {}) };
     const setSaving = vi.fn();
     const qc = new QueryClient();
     render(
       <QueryClientProvider client={qc}>
         <MemoryRouter>
-          <ProductEditorProvider
-            initialRow={{ ...baseRow, name: "" }}
-            adapter={adapter}
-          >
+          <ProductEditorProvider initialRow={{ ...baseRow, name: "" }} adapter={adapter}>
             <CollectEmailsFlow
               initialProduct={{ id: "p1", type: "LEAD_MAGNET" }}
               setSaving={setSaving}
@@ -269,7 +266,6 @@ describe("CollectEmailsFlow — aba Conteúdo (UI + bloqueio)", () => {
       </QueryClientProvider>,
     );
 
-    // Avança até Configuração
     fireEvent.click(screen.getByRole("tab", { name: /Configuração/i }));
     const publish = screen.getByRole("button", { name: /Publicar/i });
     expect(publish).toBeDisabled();
@@ -280,14 +276,11 @@ describe("CollectEmailsFlow — aba Conteúdo (UI + bloqueio)", () => {
     expect(adapter.save).not.toHaveBeenCalled();
   });
 
-  it("input enforce maxLength via atributo HTML (não permite digitar além)", () => {
-    renderFlow();
+  it("inputs aplicam maxLength via atributo HTML", () => {
+    const { container } = renderFlow();
     fireEvent.click(screen.getByRole("tab", { name: /Conteúdo/i }));
-    const cta = screen.getByLabelText(/Texto do Botão/i) as HTMLInputElement;
-    expect(cta.maxLength).toBe(CONTENT_LIMITS.ctaText);
-    const title = screen.getByLabelText(/Título Principal/i) as HTMLInputElement;
-    expect(title.maxLength).toBe(CONTENT_LIMITS.name);
-    const sub = screen.getByLabelText(/Subtítulo/i) as HTMLTextAreaElement;
-    expect(sub.maxLength).toBe(CONTENT_LIMITS.shortDescription);
+    expect(titleInput(container).maxLength).toBe(CONTENT_LIMITS.name);
+    expect(subInput(container).maxLength).toBe(CONTENT_LIMITS.shortDescription);
+    expect(ctaInput(container).maxLength).toBe(CONTENT_LIMITS.ctaText);
   });
 });
