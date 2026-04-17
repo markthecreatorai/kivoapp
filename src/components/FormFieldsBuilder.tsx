@@ -361,7 +361,10 @@ export function FormFieldsBuilder({
               <Select
                 value={draft.field_type}
                 onValueChange={(v) =>
-                  setDraft((p) => ({ ...p, field_type: v as FormFieldType }))
+                  setDraft((p) => ({
+                    ...p,
+                    field_type: v as FieldDraftInput["field_type"],
+                  }))
                 }
               >
                 <SelectTrigger id="ff-type" className="w-full">
