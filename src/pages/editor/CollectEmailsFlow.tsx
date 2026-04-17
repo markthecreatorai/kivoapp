@@ -567,8 +567,8 @@ export default function CollectEmailsFlow({
               <Button
                 className="gap-2"
                 onClick={handlePublish}
-                disabled={state.meta.saveStatus === "saving" || !contentValid}
-                aria-disabled={state.meta.saveStatus === "saving" || !contentValid}
+                disabled={state.meta.saveStatus === "saving" || !contentValid || !configValid}
+                aria-disabled={state.meta.saveStatus === "saving" || !contentValid || !configValid}
               >
                 <Rocket className="h-4 w-4" /> Publicar Lead Magnet
               </Button>
