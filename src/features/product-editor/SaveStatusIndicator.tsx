@@ -32,7 +32,7 @@ export function SaveStatusIndicator() {
   }
   if (saveStatus === "saved") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600">
+      <span className="inline-flex items-center gap-1.5 text-xs text-primary">
         <Check className="h-3.5 w-3.5" /> Salvo
       </span>
     );
