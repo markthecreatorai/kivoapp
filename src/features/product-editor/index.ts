@@ -65,4 +65,18 @@ export {
   type CreateDraftResult,
   type DraftFormat,
 } from "./productDraftService";
+export {
+  LEAD_MAGNET_CONFIG_VERSION,
+  readConfigVersion,
+  type LeadMagnetConfigVersion,
+} from "./schemaVersion";
+export {
+  migrateApiRowToCurrent,
+  type MigrationResult,
+} from "./migrations";
+export {
+  validateLeadMagnetIntegrity,
+  type IntegrityIssue,
+  type IntegrityReport,
+} from "./publishValidation";
 
