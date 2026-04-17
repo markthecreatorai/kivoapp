@@ -8,6 +8,10 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import CollectEmailsFlow from "./editor/CollectEmailsFlow";
+import {
+  ProductEditorProvider,
+  supabaseSaveAdapter,
+} from "@/features/product-editor";
 import DigitalProductFlow from "./editor/DigitalProductFlow";
 import CustomProductFlow from "./editor/CustomProductFlow";
 import UrlMediaFlow from "./editor/UrlMediaFlow";
@@ -69,7 +73,11 @@ export default function ProductEditor() {
     switch (formatId) {
       case "collect_emails":
       case "lead_magnet":
-        return <CollectEmailsFlow initialProduct={product} setSaving={setSaving} />;
+        return (
+          <ProductEditorProvider initialRow={product as any} adapter={supabaseSaveAdapter}>
+            <CollectEmailsFlow initialProduct={product} setSaving={setSaving} />
+          </ProductEditorProvider>
+        );
       case "digital_product":
       case "digital":
         return <DigitalProductFlow initialProduct={product} setSaving={setSaving} />;
