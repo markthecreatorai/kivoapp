@@ -29,6 +29,7 @@ import {
   CoverSourceField,
   CONTENT_LIMITS,
   SaveStatusIndicator,
+  buildSystemFields,
   selectConfigTab,
   selectContentTab,
   selectPreview,
@@ -38,6 +39,8 @@ import {
   useProductEditor,
   useUnsavedChangesGuard,
   validateContentTab,
+  validateDeliveryUrl,
+  type FormField,
 } from "@/features/product-editor";
 
 export default function CollectEmailsFlow({
