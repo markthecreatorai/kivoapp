@@ -26,14 +26,14 @@ export default function CollectEmailsFlowLegacy({
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div
         role="alert"
-        className="flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/60 p-4"
+        className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/10 p-4"
       >
-        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+        <AlertTriangle className="h-5 w-5 text-warning mt-0.5 shrink-0" />
         <div className="space-y-1 text-sm">
-          <p className="font-semibold text-amber-900 dark:text-amber-100">
+          <p className="font-semibold text-foreground">
             Editor v2 desativado
           </p>
-          <p className="text-amber-800/90 dark:text-amber-200/80">
+          <p className="text-muted-foreground">
             A nova experiência do editor de Lead Magnet está temporariamente desligada
             (flag <code className="font-mono text-xs">lm_v2_state</code>). Suas alterações
             anteriores estão preservadas — entre em contato com o suporte para editar este
