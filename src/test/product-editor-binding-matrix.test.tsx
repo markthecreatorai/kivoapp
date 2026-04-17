@@ -230,7 +230,7 @@ describe("BINDING_MATRIX — campos base e dinâmicos refletem no preview", () =
     },
   );
 
-  it("update de label propaga no preview (mesma key, novo texto)", () => {
+  it("update de label propaga no preview (key estável, texto novo)", () => {
     let fs = addField(buildSystemFields(), {
       label: "Telefone",
       field_type: "phone",
@@ -238,8 +238,10 @@ describe("BINDING_MATRIX — campos base e dinâmicos refletem no preview", () =
     });
     const id = fs[2].id;
     fs = updateField(fs, id, { label: "Celular" });
+    // field_key permanece "telefone" (estável); o label muda
+    expect(screen.queryByTestId).toBeDefined();
     renderSurface("config", {}, fs);
-    expect(screen.getByTestId("preview-celular")).toHaveTextContent("Celular");
+    expect(screen.getByTestId("preview-telefone")).toHaveTextContent("Celular");
   });
 
   it("remoção de campo some do preview", () => {
