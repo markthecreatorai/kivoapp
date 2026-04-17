@@ -27,6 +27,7 @@ import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import {
   CoverSourceField,
+  CONTENT_LIMITS,
   SaveStatusIndicator,
   selectConfigTab,
   selectContentTab,
@@ -36,6 +37,7 @@ import {
   useAutosave,
   useProductEditor,
   useUnsavedChangesGuard,
+  validateContentTab,
 } from "@/features/product-editor";
 
 export default function CollectEmailsFlow({

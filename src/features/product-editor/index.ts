@@ -10,6 +10,15 @@ export { supabaseSaveAdapter } from "./supabaseAdapter";
 export { SaveStatusIndicator } from "./SaveStatusIndicator";
 export { CoverSourceField } from "./CoverSourceField";
 export {
+  contentTabSchema,
+  validateContentTab,
+  CONTENT_LIMITS,
+  CONTENT_MESSAGES,
+  type ContentTabInput,
+  type ContentTabValues,
+  type ContentFieldErrors,
+} from "./contentSchema";
+export {
   supabaseUploadAdapter,
   validateImageFile,
   validateImageUrl,
