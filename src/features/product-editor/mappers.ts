@@ -6,6 +6,7 @@
 import type {
   ApiProductRow,
   ApiProductUpdatePayload,
+  CoverSource,
   DeliveryType,
   ProductEditorState,
   ProductStatus,
@@ -18,6 +19,10 @@ const DEFAULT_BODY =
 
 function normalizeDeliveryType(value: unknown): DeliveryType {
   return value === "file" ? "file" : "url";
+}
+
+function normalizeCoverSource(value: unknown): CoverSource {
+  return value === "url" ? "url" : "upload";
 }
 
 function normalizeStatus(value: unknown): ProductStatus {
@@ -36,13 +41,33 @@ function resolveFormatId(row: ApiProductRow): string {
  * Resultado é sempre renderizável.
  */
 export function mapApiToEditorState(row: ApiProductRow): ProductEditorState {
+  const meta = row.metadata ?? {};
+  const coverSource = normalizeCoverSource(meta.cover_source);
+  const persistedThumb = row.thumbnail_url ?? "";
+  // Mantém os "buckets" upload e url separados para preservar valores ao alternar
+  const thumbnailUploadUrl =
+    typeof meta.thumbnail_upload_url === "string"
+      ? meta.thumbnail_upload_url
+      : coverSource === "upload"
+        ? persistedThumb
+        : "";
+  const thumbnailExternalUrl =
+    typeof meta.thumbnail_external_url === "string"
+      ? meta.thumbnail_external_url
+      : coverSource === "url"
+        ? persistedThumb
+        : "";
+
   return {
     id: row.id,
     workspaceId: row.workspace_id,
     formatId: resolveFormatId(row),
     status: normalizeStatus(row.status),
 
-    thumbnailUrl: row.thumbnail_url ?? "",
+    thumbnailUrl: persistedThumb,
+    coverSource,
+    thumbnailUploadUrl,
+    thumbnailExternalUrl,
     name: row.name ?? "",
     shortDescription: row.short_description ?? "",
     ctaText: row.listing_button_text ?? DEFAULT_CTA,
@@ -74,15 +99,24 @@ export function mapEditorStateToApi(
   const deliveryUrl =
     state.deliveryType === "file" ? state.deliveryFileUrl : state.deliveryUrl;
 
+  // Resolve a thumbnail efetiva a partir do modo ativo
+  const effectiveThumb =
+    state.coverSource === "upload" ? state.thumbnailUploadUrl : state.thumbnailExternalUrl;
+
   return {
     name: state.name,
     short_description: state.shortDescription,
-    thumbnail_url: state.thumbnailUrl,
+    thumbnail_url: effectiveThumb || state.thumbnailUrl || "",
     listing_button_text: state.ctaText || DEFAULT_CTA,
     delivery_mode: state.deliveryType,
     delivery_url: deliveryUrl,
     confirmation_email_subject: state.confirmationSubject || DEFAULT_SUBJECT,
     confirmation_email_body: state.confirmationBody || DEFAULT_BODY,
+    metadata: {
+      cover_source: state.coverSource,
+      thumbnail_upload_url: state.thumbnailUploadUrl,
+      thumbnail_external_url: state.thumbnailExternalUrl,
+    },
     ...(opts.status ? { status: opts.status } : {}),
   };
 }
