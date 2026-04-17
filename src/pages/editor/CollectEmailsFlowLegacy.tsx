@@ -26,9 +26,9 @@ export default function CollectEmailsFlowLegacy({
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div
         role="alert"
-        className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/10 p-4"
+        className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4"
       >
-        <AlertTriangle className="h-5 w-5 text-warning mt-0.5 shrink-0" />
+        <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
         <div className="space-y-1 text-sm">
           <p className="font-semibold text-foreground">
             Editor v2 desativado
