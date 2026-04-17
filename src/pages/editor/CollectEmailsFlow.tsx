@@ -66,6 +66,15 @@ export default function CollectEmailsFlow({
   const config = selectConfigTab(state);
   const preview = selectPreview(state);
 
+  // Validação central da aba Conteúdo (Zod)
+  const contentValidation = validateContentTab({
+    name: content.name,
+    shortDescription: content.shortDescription,
+    ctaText: content.ctaText,
+  });
+  const contentErrors = contentValidation.errors;
+  const contentValid = contentValidation.isValid;
+
   const handleSaveDraft = async () => {
     try {
       await saveDraft();
@@ -76,8 +85,10 @@ export default function CollectEmailsFlow({
   };
 
   const handlePublish = async () => {
-    if (!content.name.trim()) {
-      toast.error("Informe o título antes de publicar");
+    if (!contentValid) {
+      const firstError =
+        contentErrors.name ?? contentErrors.ctaText ?? contentErrors.shortDescription;
+      toast.error(firstError ?? "Revise os campos obrigatórios antes de publicar.");
       setTab("conteudo");
       return;
     }
@@ -92,7 +103,12 @@ export default function CollectEmailsFlow({
   const handleNext = () => {
     if (tab === "visual") setTab("conteudo");
     else if (tab === "conteudo") {
-      if (!content.name.trim()) { toast.error("Informe título"); return; }
+      if (!contentValid) {
+        const firstError =
+          contentErrors.name ?? contentErrors.ctaText ?? contentErrors.shortDescription;
+        toast.error(firstError ?? "Revise os campos obrigatórios.");
+        return;
+      }
       setTab("config");
     }
   };
