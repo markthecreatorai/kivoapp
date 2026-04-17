@@ -452,10 +452,13 @@ describe("[parity:8] Preview reflete o estado em cada aba", () => {
     expect(c.queryByTestId("preview-subtitle")?.textContent).toContain("Curto e prático");
     c.unmount();
 
-    // Surface "config" — campos base aparecem
+    // Surface "config" — campos base + badge "Grátis" aparecem
     const cfg = render(<PreviewSurface surface="config" {...baseProps} />);
-    expect(cfg.queryByTestId("preview-field-name")).toBeInTheDocument();
-    expect(cfg.queryByTestId("preview-field-email")).toBeInTheDocument();
+    expect(cfg.queryByTestId("preview-name")).toBeInTheDocument();
+    expect(cfg.queryByTestId("preview-email")).toBeInTheDocument();
+    expect(cfg.queryByTestId("preview-free-badge")?.textContent).toContain(
+      "Grátis",
+    );
     cfg.unmount();
 
     record({
@@ -464,7 +467,15 @@ describe("[parity:8] Preview reflete o estado em cada aba", () => {
       status: "pass",
       evidence: {
         surfaces: ["visual", "conteudo", "config"],
-        rendered: ["preview-thumb", "preview-title", "preview-subtitle", "preview-cta", "preview-field-name", "preview-field-email"],
+        rendered: [
+          "preview-thumb",
+          "preview-title",
+          "preview-subtitle",
+          "preview-cta",
+          "preview-name",
+          "preview-email",
+          "preview-free-badge",
+        ],
       },
     });
   });
