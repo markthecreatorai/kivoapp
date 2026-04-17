@@ -250,18 +250,27 @@ export default function NewProduct() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-background">
-      {/* Top bar simplificada */}
+      {/* Top bar com breadcrumb consistente */}
       <div className="bg-background/80 backdrop-blur border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
           <button
             onClick={() => navigate("/store?tab=loja")}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="np-breadcrumb-back"
+            aria-label="Voltar para a Loja"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar à Loja
           </button>
-          <div className="flex-1" />
-          <p className="text-sm font-medium text-foreground">Novo Produto</p>
+          <nav
+            className="flex-1 flex items-center text-sm text-muted-foreground"
+            aria-label="Trilha de navegação"
+          >
+            <span className="hidden md:inline">Loja</span>
+            <span className="hidden md:inline mx-2">/</span>
+            <span className="hidden md:inline text-foreground">Novo Produto</span>
+          </nav>
+          <p className="text-sm font-medium text-foreground md:hidden">Novo Produto</p>
         </div>
       </div>
 
@@ -276,36 +285,93 @@ export default function NewProduct() {
         </div>
 
         {/* Formats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {PRODUCT_FORMATS.map((format) => (
-            <button
-              key={format.id}
-              disabled={creatingId !== null}
-              onClick={() => handleSelectFormat(format)}
-              className={cn(
-                "group flex items-start gap-5 p-5 bg-card border border-border/60 rounded-2xl text-left transition-all",
-                creatingId === format.id ? "opacity-60 scale-[0.98] border-primary" : "hover:border-primary/40 hover:shadow-sm"
-              )}
-            >
-              {format.id === "affiliate" ? (
-                <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 overflow-hidden">
-                  <img src={kivoReferralLogo} alt="Kivo" className="h-12 w-12 object-contain" />
-                </div>
-              ) : (
-                <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", format.iconBg, format.iconColor)}>
-                  <format.icon className={cn("h-6 w-6", creatingId === format.id ? "animate-pulse" : "")} />
-                </div>
-              )}
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {format.title}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {format.description}
-                </p>
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          aria-busy={creatingId !== null}
+        >
+          {PRODUCT_FORMATS.map((format) => {
+            const isCreating = creatingId === format.id;
+            const error = errorByFormat[format.id];
+            const disabled = creatingId !== null;
+            return (
+              <div key={format.id} className="space-y-2">
+                <button
+                  type="button"
+                  data-testid={`np-format-${format.id}`}
+                  disabled={disabled}
+                  aria-disabled={disabled}
+                  aria-busy={isCreating}
+                  onClick={() => handleSelectFormat(format)}
+                  className={cn(
+                    "w-full group flex items-start gap-5 p-5 bg-card border border-border/60 rounded-2xl text-left transition-all",
+                    isCreating
+                      ? "opacity-90 scale-[0.99] border-primary"
+                      : "hover:border-primary/40 hover:shadow-sm",
+                    disabled && !isCreating && "opacity-60 cursor-not-allowed",
+                  )}
+                >
+                  {format.id === "affiliate" ? (
+                    <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 overflow-hidden">
+                      <img src={kivoReferralLogo} alt="Kivo" className="h-12 w-12 object-contain" />
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                        format.iconBg,
+                        format.iconColor,
+                      )}
+                    >
+                      <format.icon className={cn("h-6 w-6", isCreating && "opacity-0")} />
+                      {isCreating && (
+                        <Loader2
+                          className="absolute h-5 w-5 animate-spin"
+                          data-testid={`np-loading-${format.id}`}
+                        />
+                      )}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                      {format.title}
+                      {isCreating && (
+                        <span className="text-xs font-normal text-primary inline-flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Criando rascunho…
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {format.description}
+                    </p>
+                  </div>
+                </button>
+
+                {/* Fallback de erro com retry */}
+                {error && (
+                  <div
+                    role="alert"
+                    data-testid={`np-error-${format.id}`}
+                    className="flex items-start gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive"
+                  >
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium">Não foi possível criar o rascunho</p>
+                      <p className="text-xs opacity-80 mt-0.5">{error}</p>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid={`np-retry-${format.id}`}
+                      onClick={() => handleSelectFormat(format)}
+                      className="text-xs font-medium underline underline-offset-2 hover:no-underline"
+                    >
+                      Tentar novamente
+                    </button>
+                  </div>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
