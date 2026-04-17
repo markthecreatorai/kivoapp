@@ -38,6 +38,15 @@ export {
   type FormField,
   type FormFieldType,
 } from "./formFieldsSchema";
+export { PreviewSurface } from "./PreviewSurface";
+export type { PreviewSurfaceProps } from "./PreviewSurface";
+export {
+  BINDING_MATRIX,
+  EDITABLE_STATE_PATHS_WITH_PREVIEW,
+  STATIC_PREVIEW_TEST_IDS,
+  type BindingEntry,
+  type PreviewSurface as PreviewSurfaceName,
+} from "./bindingMatrix";
 export {
   supabaseUploadAdapter,
   validateImageFile,
