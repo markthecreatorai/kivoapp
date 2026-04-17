@@ -54,6 +54,10 @@ export default function CollectEmailsFlow({
   const themeTokens = useStorefrontTheme();
   const [tab, setTab] = useState("visual");
   const [openEmail, setOpenEmail] = useState(false);
+  // Espelho local dos campos do formulário — alimenta o preview em tempo real
+  const [formFields, setFormFields] = useState<FormField[]>(() =>
+    buildSystemFields(),
+  );
 
   // Autosave + guard contra perda de alterações
   useAutosave({ delayMs: 1500 });
