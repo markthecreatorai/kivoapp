@@ -82,6 +82,13 @@ export default function CollectEmailsFlow({
   const contentErrors = contentValidation.errors;
   const contentValid = contentValidation.isValid;
 
+  // Validação da URL de delivery (apenas modo redirect)
+  const deliveryUrlValidation =
+    config.deliveryType === "url"
+      ? validateDeliveryUrl(config.deliveryUrl)
+      : { isValid: true as const };
+  const configValid = deliveryUrlValidation.isValid;
+
   const handleSaveDraft = async () => {
     try {
       await saveDraft();
@@ -97,6 +104,14 @@ export default function CollectEmailsFlow({
         contentErrors.name ?? contentErrors.ctaText ?? contentErrors.shortDescription;
       toast.error(firstError ?? "Revise os campos obrigatórios antes de publicar.");
       setTab("conteudo");
+      return;
+    }
+    if (!configValid) {
+      toast.error(
+        ("error" in deliveryUrlValidation && deliveryUrlValidation.error) ||
+          "Revise a configuração de entrega.",
+      );
+      setTab("config");
       return;
     }
     try {
