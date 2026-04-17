@@ -57,4 +57,12 @@ export {
   type UploadResult,
   type ValidationResult,
 } from "./uploadAdapter";
+export {
+  __resetDraftServiceLocks,
+  clearDraftRecovery,
+  createProductDraft,
+  type CreateDraftInput,
+  type CreateDraftResult,
+  type DraftFormat,
+} from "./productDraftService";
 
