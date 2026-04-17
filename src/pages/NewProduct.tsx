@@ -317,7 +317,7 @@ export default function NewProduct() {
                   ) : (
                     <div
                       className={cn(
-                        "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                        "relative h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
                         format.iconBg,
                         format.iconColor,
                       )}
