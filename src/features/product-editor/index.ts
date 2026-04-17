@@ -79,4 +79,16 @@ export {
   type IntegrityIssue,
   type IntegrityReport,
 } from "./publishValidation";
+export {
+  LM_FLAGS,
+  isLmMasterEnabled,
+  isLmV2StateEnabled,
+  isLmV2ContentValidationEnabled,
+  isLmV2DeliveryFileEnabled,
+  isLmV2CoverDualBucketEnabled,
+  snapshotLmFlags,
+  __setFlagForTest,
+  type LmFlagName,
+} from "./featureFlags";
+export { LegacyProductEditorProvider } from "./LegacyProductEditorProvider";
 

@@ -8,8 +8,11 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import CollectEmailsFlow from "./editor/CollectEmailsFlow";
+import CollectEmailsFlowLegacy from "./editor/CollectEmailsFlowLegacy";
 import {
+  LegacyProductEditorProvider,
   ProductEditorProvider,
+  isLmV2StateEnabled,
   supabaseSaveAdapter,
 } from "@/features/product-editor";
 import DigitalProductFlow from "./editor/DigitalProductFlow";
@@ -73,10 +76,14 @@ export default function ProductEditor() {
     switch (formatId) {
       case "collect_emails":
       case "lead_magnet":
-        return (
+        return isLmV2StateEnabled() ? (
           <ProductEditorProvider initialRow={product as any} adapter={supabaseSaveAdapter}>
             <CollectEmailsFlow initialProduct={product} setSaving={setSaving} />
           </ProductEditorProvider>
+        ) : (
+          <LegacyProductEditorProvider>
+            <CollectEmailsFlowLegacy initialProduct={product} setSaving={setSaving} />
+          </LegacyProductEditorProvider>
         );
       case "digital_product":
       case "digital":
