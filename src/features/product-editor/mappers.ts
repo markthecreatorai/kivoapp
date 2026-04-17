@@ -45,13 +45,14 @@ function resolveFormatId(row: ApiProductRow): string {
 }
 
 /**
- * API → EditorState. Aplica defaults seguros e nunca lança.
- * Resultado é sempre renderizável.
+ * API → EditorState. Aplica migração + defaults seguros.
+ * Nunca lança; o resultado é sempre renderizável.
  */
 export function mapApiToEditorState(row: ApiProductRow): ProductEditorState {
-  const meta = row.metadata ?? {};
+  const { row: migrated } = migrateApiRowToCurrent(row);
+  const meta = migrated.metadata ?? {};
   const coverSource = normalizeCoverSource(meta.cover_source);
-  const persistedThumb = row.thumbnail_url ?? "";
+  const persistedThumb = migrated.thumbnail_url ?? "";
   // Mantém os "buckets" upload e url separados para preservar valores ao alternar
   const thumbnailUploadUrl =
     typeof meta.thumbnail_upload_url === "string"
@@ -67,25 +68,27 @@ export function mapApiToEditorState(row: ApiProductRow): ProductEditorState {
         : "";
 
   return {
-    id: row.id,
-    workspaceId: row.workspace_id,
-    formatId: resolveFormatId(row),
-    status: normalizeStatus(row.status),
+    id: migrated.id,
+    workspaceId: migrated.workspace_id,
+    formatId: resolveFormatId(migrated),
+    status: normalizeStatus(migrated.status),
 
     thumbnailUrl: persistedThumb,
     coverSource,
     thumbnailUploadUrl,
     thumbnailExternalUrl,
-    name: row.name ?? "",
-    shortDescription: row.short_description ?? "",
-    ctaText: row.listing_button_text ?? DEFAULT_CTA,
+    name: migrated.name ?? "",
+    shortDescription: migrated.short_description ?? "",
+    ctaText: migrated.listing_button_text ?? DEFAULT_CTA,
 
-    deliveryType: normalizeDeliveryType(row.delivery_mode),
-    deliveryUrl: row.delivery_mode === "url" ? (row.delivery_url ?? "") : "",
-    deliveryFileUrl: row.delivery_mode === "file" ? (row.delivery_url ?? "") : "",
+    deliveryType: normalizeDeliveryType(migrated.delivery_mode),
+    deliveryUrl:
+      migrated.delivery_mode === "url" ? (migrated.delivery_url ?? "") : "",
+    deliveryFileUrl:
+      migrated.delivery_mode === "file" ? (migrated.delivery_url ?? "") : "",
 
-    confirmationSubject: row.confirmation_email_subject ?? DEFAULT_SUBJECT,
-    confirmationBody: row.confirmation_email_body ?? DEFAULT_BODY,
+    confirmationSubject: migrated.confirmation_email_subject ?? DEFAULT_SUBJECT,
+    confirmationBody: migrated.confirmation_email_body ?? DEFAULT_BODY,
 
     meta: {
       isDirty: false,
