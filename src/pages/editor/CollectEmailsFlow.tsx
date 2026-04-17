@@ -26,11 +26,13 @@ import { FormFieldsBuilder } from "@/components/FormFieldsBuilder";
 import { ReviewsBuilder } from "@/components/ReviewsBuilder";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import {
+  CoverSourceField,
   SaveStatusIndicator,
   selectConfigTab,
   selectContentTab,
   selectPreview,
   selectVisualTab,
+  supabaseUploadAdapter,
   useAutosave,
   useProductEditor,
   useUnsavedChangesGuard,
@@ -220,29 +222,14 @@ export default function CollectEmailsFlow({
 
             {/* ─── ABA: VISUAL ─── */}
             <TabsContent value="visual" className="space-y-6 animate-in fade-in">
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold">Imagem de Capa</h2>
-                <p className="text-sm text-muted-foreground">Opcional. Se não enviar, um fallback elegante será exibido automaticamente.</p>
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">Thumbnail</h2>
+                <p className="text-sm text-muted-foreground">
+                  A imagem aparece na sua loja, no checkout e nos compartilhamentos. Se não enviar, exibimos um fallback elegante automaticamente.
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">URL da Imagem</Label>
-                <Input
-                  placeholder="Cole o link da imagem (ex: https://...)"
-                  value={visual.thumbnailUrl}
-                  onChange={e => patch({ thumbnailUrl: e.target.value })}
-                />
-                <p className="text-[11px] text-muted-foreground">Recomendado: 16:9 ou 1:1, alta qualidade.</p>
-              </div>
-
-              {visual.thumbnailUrl && (
-                <div className="relative rounded-xl overflow-hidden border border-border/40">
-                  <img src={visual.thumbnailUrl} alt="Preview" className="w-full h-48 object-cover" />
-                  <Button variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => patch({ thumbnailUrl: "" })}>
-                    Remover
-                  </Button>
-                </div>
-              )}
+              <CoverSourceField uploadAdapter={supabaseUploadAdapter} folder={`product-covers/${initialProduct.id}`} />
             </TabsContent>
 
             {/* ─── ABA: CONTEÚDO ─── */}
