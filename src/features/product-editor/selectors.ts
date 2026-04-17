@@ -6,7 +6,12 @@
 import type { ProductEditorState } from "./types";
 
 export function selectVisualTab(s: ProductEditorState) {
-  return { thumbnailUrl: s.thumbnailUrl };
+  return {
+    thumbnailUrl: s.thumbnailUrl,
+    coverSource: s.coverSource,
+    thumbnailUploadUrl: s.thumbnailUploadUrl,
+    thumbnailExternalUrl: s.thumbnailExternalUrl,
+  };
 }
 
 export function selectContentTab(s: ProductEditorState) {
