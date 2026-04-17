@@ -29,6 +29,7 @@ import {
   CoverSourceField,
   CONTENT_LIMITS,
   SaveStatusIndicator,
+  buildSystemFields,
   selectConfigTab,
   selectContentTab,
   selectPreview,
@@ -38,6 +39,8 @@ import {
   useProductEditor,
   useUnsavedChangesGuard,
   validateContentTab,
+  validateDeliveryUrl,
+  type FormField,
 } from "@/features/product-editor";
 
 export default function CollectEmailsFlow({
@@ -51,6 +54,10 @@ export default function CollectEmailsFlow({
   const themeTokens = useStorefrontTheme();
   const [tab, setTab] = useState("visual");
   const [openEmail, setOpenEmail] = useState(false);
+  // Espelho local dos campos do formulário — alimenta o preview em tempo real
+  const [formFields, setFormFields] = useState<FormField[]>(() =>
+    buildSystemFields(),
+  );
 
   // Autosave + guard contra perda de alterações
   useAutosave({ delayMs: 1500 });
@@ -75,6 +82,13 @@ export default function CollectEmailsFlow({
   const contentErrors = contentValidation.errors;
   const contentValid = contentValidation.isValid;
 
+  // Validação da URL de delivery (apenas modo redirect)
+  const deliveryUrlValidation =
+    config.deliveryType === "url"
+      ? validateDeliveryUrl(config.deliveryUrl)
+      : { isValid: true as const };
+  const configValid = deliveryUrlValidation.isValid;
+
   const handleSaveDraft = async () => {
     try {
       await saveDraft();
@@ -90,6 +104,14 @@ export default function CollectEmailsFlow({
         contentErrors.name ?? contentErrors.ctaText ?? contentErrors.shortDescription;
       toast.error(firstError ?? "Revise os campos obrigatórios antes de publicar.");
       setTab("conteudo");
+      return;
+    }
+    if (!configValid) {
+      toast.error(
+        ("error" in deliveryUrlValidation && deliveryUrlValidation.error) ||
+          "Revise a configuração de entrega.",
+      );
+      setTab("config");
       return;
     }
     try {
@@ -193,14 +215,33 @@ export default function CollectEmailsFlow({
               </div>
 
               <div className={cn("space-y-3 mt-auto transition-all", "ring-2 ring-primary/40 ring-offset-2 rounded-xl p-3")}>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Nome *</p>
-                  <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Email *</p>
-                  <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800" />
-                </div>
+                {formFields.map((f) => (
+                  <div key={f.id} className="space-y-1" data-testid={`preview-${f.field_key}`}>
+                    <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      {f.label}
+                      {f.is_required && " *"}
+                    </p>
+                    {f.field_type === "dropdown" ? (
+                      <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 flex items-center px-2 text-[11px] text-zinc-400">
+                        {f.options?.[0] ?? "Selecione…"}
+                      </div>
+                    ) : f.field_type === "checkboxes" || f.field_type === "multiple_choice" ? (
+                      <div className="space-y-1">
+                        {(f.options ?? []).slice(0, 3).map((opt, i) => (
+                          <div key={i} className="flex items-center gap-1.5 text-[11px] text-zinc-600">
+                            <div className={cn(
+                              "h-3 w-3 border border-zinc-300",
+                              f.field_type === "multiple_choice" ? "rounded-full" : "rounded-sm",
+                            )} />
+                            <span>{opt}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-10 border rounded-lg bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800" />
+                    )}
+                  </div>
+                ))}
                 <div className="pt-2">
                   <div
                     className="w-full py-3 text-white font-medium text-center"
@@ -386,7 +427,10 @@ export default function CollectEmailsFlow({
                   <p className="text-base font-semibold text-foreground">Campos adicionais</p>
                   <p className="text-sm text-muted-foreground">Adicione campos extras para qualificar seus leads (ex: Telefone, Empresa).</p>
                 </div>
-                <FormFieldsBuilder productId={initialProduct.id} />
+                <FormFieldsBuilder
+                  productId={initialProduct.id}
+                  onChange={setFormFields}
+                />
               </div>
 
               {/* Delivery */}
@@ -411,12 +455,21 @@ export default function CollectEmailsFlow({
 
                 {config.deliveryType === "url" ? (
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Link de Redirecionamento</Label>
+                    <Label htmlFor="lm-delivery-url" className="text-sm font-semibold">Link de Redirecionamento</Label>
                     <Input
+                      id="lm-delivery-url"
                       placeholder="https://sua-pagina-oficial.com"
                       value={config.deliveryUrl}
                       onChange={e => patch({ deliveryUrl: e.target.value })}
+                      aria-invalid={!deliveryUrlValidation.isValid}
+                      aria-describedby={!deliveryUrlValidation.isValid ? "lm-delivery-url-error" : undefined}
+                      className={cn(!deliveryUrlValidation.isValid && "border-destructive focus-visible:ring-destructive")}
                     />
+                    {!deliveryUrlValidation.isValid && "error" in deliveryUrlValidation && (
+                      <p id="lm-delivery-url-error" role="alert" className="text-xs text-destructive">
+                        {deliveryUrlValidation.error}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">O usuário será redirecionado automaticamente após enviar os dados.</p>
                   </div>
                 ) : (
@@ -514,8 +567,8 @@ export default function CollectEmailsFlow({
               <Button
                 className="gap-2"
                 onClick={handlePublish}
-                disabled={state.meta.saveStatus === "saving" || !contentValid}
-                aria-disabled={state.meta.saveStatus === "saving" || !contentValid}
+                disabled={state.meta.saveStatus === "saving" || !contentValid || !configValid}
+                aria-disabled={state.meta.saveStatus === "saving" || !contentValid || !configValid}
               >
                 <Rocket className="h-4 w-4" /> Publicar Lead Magnet
               </Button>

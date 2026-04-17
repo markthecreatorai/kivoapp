@@ -19,6 +19,26 @@ export {
   type ContentFieldErrors,
 } from "./contentSchema";
 export {
+  ADDITIONAL_FIELD_TYPES,
+  FIELD_TYPE_LABELS,
+  REQUIRES_OPTIONS,
+  SYSTEM_FIELD_KEYS,
+  addField,
+  buildSystemFields,
+  ensureSystemFields,
+  fieldDraftSchema,
+  removeField,
+  setRequired,
+  slugifyKey,
+  tempFieldId,
+  updateField,
+  validateDeliveryUrl,
+  validateFieldDraft,
+  type FieldDraftInput,
+  type FormField,
+  type FormFieldType,
+} from "./formFieldsSchema";
+export {
   supabaseUploadAdapter,
   validateImageFile,
   validateImageUrl,
