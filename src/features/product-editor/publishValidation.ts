@@ -122,7 +122,7 @@ export function validateLeadMagnetIntegrity(
   }
   if (state.deliveryType === "url") {
     const v = validateDeliveryUrl(state.deliveryUrl);
-    if (!v.valid) {
+    if (!v.isValid) {
       errors.push(
         E(
           "deliveryUrl",
