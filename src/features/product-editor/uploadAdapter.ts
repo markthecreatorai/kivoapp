@@ -26,7 +26,9 @@ export const ACCEPTED_IMAGE_TYPES = [
   "image/gif",
 ];
 
-export function validateImageFile(file: File): { ok: true } | { ok: false; reason: string } {
+export type ValidationResult = { ok: true } | { ok: false; reason: string };
+
+export function validateImageFile(file: File): ValidationResult {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
     return { ok: false, reason: "Formato não suportado. Use JPG, PNG, WEBP ou GIF." };
   }
@@ -40,7 +42,7 @@ export function validateImageFile(file: File): { ok: true } | { ok: false; reaso
  * Valida URL de imagem (não faz fetch — apenas sintaxe).
  * Aceita http(s) e data URLs.
  */
-export function validateImageUrl(value: string): { ok: true } | { ok: false; reason: string } {
+export function validateImageUrl(value: string): ValidationResult {
   const v = value.trim();
   if (!v) return { ok: false, reason: "Informe uma URL." };
   if (v.startsWith("data:image/")) return { ok: true };

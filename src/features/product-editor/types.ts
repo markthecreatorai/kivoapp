@@ -6,6 +6,7 @@
 export type DeliveryType = "url" | "file";
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 export type ProductStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+export type CoverSource = "upload" | "url";
 
 /**
  * Estado normalizado e plano. NÃO duplicar por aba.
@@ -20,6 +21,12 @@ export interface ProductEditorState {
 
   // ── Aba Visual ─────────────────────────────────────────
   thumbnailUrl: string;
+  /** Origem ativa da capa. Ambos os modos preservam seu último valor. */
+  coverSource: CoverSource;
+  /** Último arquivo enviado por upload (URL pública). */
+  thumbnailUploadUrl: string;
+  /** Última URL informada manualmente. */
+  thumbnailExternalUrl: string;
 
   // ── Aba Conteúdo ───────────────────────────────────────
   name: string;
