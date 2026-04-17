@@ -60,7 +60,7 @@ export function validateImageUrl(value: string): ValidationResult {
 export const supabaseUploadAdapter: UploadAdapter = {
   async uploadImage(file, { folder }) {
     const check = validateImageFile(file);
-    if (!check.ok) throw new Error(check.reason);
+    if (check.ok === false) throw new Error(check.reason);
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage
