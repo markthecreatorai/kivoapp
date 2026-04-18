@@ -5,6 +5,7 @@
 // =============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { assertVerifiedFromDomain, maskEmailAddress, resolveDefaultFrom } from "../_shared/email-system/sender.ts";
 
 // ── CORS ─────────────────────────────────────────────────────
 const corsHeaders = {
@@ -146,11 +147,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    const EMAIL_FROM =
-      Deno.env.get("EMAIL_FROM") || "Equipe <noreply@kivohub.com.br>";
+    const EMAIL_FROM = resolveDefaultFrom({
+      EMAIL_FROM_DEFAULT: Deno.env.get("EMAIL_FROM_DEFAULT"),
+      EMAIL_FROM_AUTH: Deno.env.get("EMAIL_FROM_AUTH"),
+      EMAIL_FROM_NOTIFY: Deno.env.get("EMAIL_FROM_NOTIFY"),
+      EMAIL_FROM: Deno.env.get("EMAIL_FROM"),
+    });
+    try {
+      assertVerifiedFromDomain(EMAIL_FROM);
+    } catch (error: any) {
+      console.error("[send-lead-email]", JSON.stringify({
+        provider: "resend",
+        template: "lead_welcome",
+        from: EMAIL_FROM,
+        to: maskEmailAddress(email),
+        status: "failed",
+        error_code: error?.code || "EMAIL_FROM_DOMAIN_UNVERIFIED",
+        error_message: error?.message || "Domínio do remetente não verificado",
+      }));
+      return jsonResponse(
+        { success: false, code: error?.code || "EMAIL_FROM_DOMAIN_UNVERIFIED", message: "Domínio do remetente não verificado." },
+        error?.status || 422,
+      );
+    }
 
     // ── 4. Enviar e-mail via Resend ────────────────────────
-    console.log(`[send-lead-email] Enviando para ${email}…`);
+    console.log("[send-lead-email]", JSON.stringify({ provider: "resend", template: "lead_welcome", from: EMAIL_FROM, to: maskEmailAddress(email), status: "queued" }));
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -169,6 +191,15 @@ Deno.serve(async (req) => {
     const resendData = await resendRes.json();
 
     if (!resendRes.ok) {
+      console.error("[send-lead-email]", JSON.stringify({
+        provider: "resend",
+        template: "lead_welcome",
+        from: EMAIL_FROM,
+        to: maskEmailAddress(email),
+        status: "failed",
+        error_code: `HTTP_${resendRes.status}`,
+        error_message: JSON.stringify(resendData),
+      }));
       console.error(
         `[send-lead-email] Resend retornou ${resendRes.status}:`,
         JSON.stringify(resendData),
@@ -183,9 +214,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(
-      `[send-lead-email] E-mail enviado com sucesso. ID: ${resendData.id}`,
-    );
+    console.log("[send-lead-email]", JSON.stringify({
+      provider: "resend",
+      template: "lead_welcome",
+      from: EMAIL_FROM,
+      to: maskEmailAddress(email),
+      status: "sent",
+      error_code: null,
+      error_message: null,
+      message_id: resendData.id,
+    }));
 
     // ── 5. Atualizar lead no banco ─────────────────────────
     if (leadId) {

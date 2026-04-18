@@ -1,22 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { baseEmailLayout } from "../_shared/email-system/layout.ts";
 import { ctaPrimary, ctaSecondary, emailText, emailTitle, securityAlertBox } from "../_shared/email-system/components.ts";
-
-const VERIFIED_FROM_DOMAINS = new Set(["mail.kivohub.com.br"]);
-const DEFAULT_FROM = "Kivo <auth@mail.kivohub.com.br>";
-
-function maskEmailAddress(email: string) {
-  const [local = "", domain = ""] = email.trim().toLowerCase().split("@");
-  if (!local || !domain) return "invalid";
-  const visible = local.slice(0, 2);
-  return `${visible}${"*".repeat(Math.max(local.length - visible.length, 1))}@${domain}`;
-}
-
-function extractFromDomain(from: string) {
-  const match = from.match(/<([^>]+)>/);
-  const address = (match?.[1] || from).trim().toLowerCase();
-  return address.split("@")[1] || "";
-}
+import { assertVerifiedFromDomain, maskEmailAddress, resolveDefaultFrom } from "../_shared/email-system/sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -231,12 +216,12 @@ Deno.serve(async (req) => {
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const EMAIL_FROM =
-      Deno.env.get("EMAIL_FROM_DEFAULT") ||
-      Deno.env.get("EMAIL_FROM_AUTH") ||
-      Deno.env.get("EMAIL_FROM_NOTIFY") ||
-      Deno.env.get("EMAIL_FROM") ||
-      DEFAULT_FROM;
+    const EMAIL_FROM = resolveDefaultFrom({
+      EMAIL_FROM_DEFAULT: Deno.env.get("EMAIL_FROM_DEFAULT"),
+      EMAIL_FROM_AUTH: Deno.env.get("EMAIL_FROM_AUTH"),
+      EMAIL_FROM_NOTIFY: Deno.env.get("EMAIL_FROM_NOTIFY"),
+      EMAIL_FROM: Deno.env.get("EMAIL_FROM"),
+    });
 
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY não configurada" }), {
@@ -249,20 +234,21 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const fromDomain = extractFromDomain(EMAIL_FROM);
-    if (!VERIFIED_FROM_DOMAINS.has(fromDomain)) {
+    try {
+      assertVerifiedFromDomain(EMAIL_FROM);
+    } catch (error: any) {
       const logPayload = {
         provider: "resend",
         template: template_key,
         from: EMAIL_FROM,
         to: maskEmailAddress(recipient),
         status: "failed",
-        error_code: "EMAIL_FROM_DOMAIN_UNVERIFIED",
-        error_message: `Domain not verified: ${fromDomain}`,
+        error_code: error?.code || "EMAIL_FROM_DOMAIN_UNVERIFIED",
+        error_message: error?.message || "Domínio do remetente não verificado",
       };
       console.error("[send-transactional-email]", JSON.stringify(logPayload));
-      return new Response(JSON.stringify({ ok: false, error_code: "EMAIL_FROM_DOMAIN_UNVERIFIED", error: "Domínio do remetente não verificado" }), {
-        status: 422,
+      return new Response(JSON.stringify({ ok: false, error_code: logPayload.error_code, error: "Domínio do remetente não verificado" }), {
+        status: error?.status || 422,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
