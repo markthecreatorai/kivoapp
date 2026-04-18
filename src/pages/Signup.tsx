@@ -302,6 +302,54 @@ export default function Signup() {
               </div>
             </div>
 
+            {existingAccount && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2" role="alert">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  <div className="text-sm text-foreground space-y-1">
+                    <p className="font-medium">
+                      {existingAccount.kind === "confirmed"
+                        ? "Este email já está cadastrado."
+                        : "Este email já está cadastrado mas ainda não foi confirmado."}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {existingAccount.kind === "confirmed"
+                        ? "Faça login ou redefina sua senha para continuar."
+                        : "Reenvie o email de verificação para ativar sua conta."}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {existingAccount.kind === "confirmed" ? (
+                    <>
+                      <Button asChild size="sm" variant="default" className="h-8">
+                        <Link to={`/login?email=${encodeURIComponent(existingAccount.email)}`}>Entrar</Link>
+                      </Button>
+                      <Button asChild size="sm" variant="outline" className="h-8">
+                        <Link to="/forgot-password">Esqueci minha senha</Link>
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      className="h-8 gap-1.5"
+                      onClick={handleResendVerification}
+                      disabled={resending || resendCooldown > 0}
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} />
+                      {resendCooldown > 0
+                        ? `Reenviar em ${resendCooldown}s`
+                        : resending
+                        ? "Reenviando..."
+                        : "Reenviar verificação"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Nome completo</Label>
@@ -340,7 +388,7 @@ export default function Signup() {
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); if (existingAccount) setExistingAccount(null); }}
                   className="input-radius"
                   required
                 />
