@@ -317,7 +317,7 @@ export default function CommunityAuthModal({
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 Já tem conta?{" "}
-                <button type="button" onClick={() => switchView("login")} className="text-primary font-medium hover:underline">
+                <button type="button" onClick={() => { clearExistingSignupState(); switchView("login"); }} className="text-primary font-medium hover:underline">
                   Fazer login
                 </button>
               </p>

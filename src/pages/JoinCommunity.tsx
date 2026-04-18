@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
+import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
 
 export default function JoinCommunity() {
   const { slug } = useParams<{ slug: string }>();
@@ -25,11 +27,22 @@ export default function JoinCommunity() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { fetchCommunity, signupAndJoin, joinAsExistingUser, isLoading } = useJoinCommunity(
+  const {
+    fetchCommunity,
+    signupAndJoin,
+    joinAsExistingUser,
+    isLoading,
+    existingSignupState,
+    resendCommunityVerification,
+    resendCooldown,
+    resendingVerification,
+    clearExistingSignupState,
+  } = useJoinCommunity(
     slug || "",
     inviteCode,
     memberRefCode
   );
+  const { emailError, suggestion, guard, reset } = useAuthEmailGuard("join_community_page");
 
   const [showForm, setShowForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -85,9 +98,10 @@ export default function JoinCommunity() {
     e.preventDefault();
     if (!community) return;
     if (!formData.display_name.trim()) { toast.error("Informe seu nome"); return; }
-    if (!formData.email.trim()) { toast.error("Informe seu email"); return; }
+    const emailCheck = guard(formData.email);
+    if (!emailCheck.ok) { toast.error(emailCheck.error || "Informe seu email"); return; }
     if (formData.password.length < 6) { toast.error("Senha deve ter ao menos 6 caracteres"); return; }
-    await signupAndJoin(formData, community);
+    await signupAndJoin({ ...formData, email: emailCheck.email }, community);
   };
 
   const handleExistingUserJoin = async () => {
@@ -319,10 +333,46 @@ export default function JoinCommunity() {
               ) : !user && showForm ? (
                 /* Signup form */
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {existingSignupState && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2" role="alert">
+                      <p className="text-sm font-medium text-foreground">
+                        {existingSignupState.kind === "confirmed"
+                          ? "Este email já está cadastrado."
+                          : "Este email já está cadastrado mas ainda não foi confirmado."}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {existingSignupState.kind === "confirmed"
+                          ? "Faça login ou redefina sua senha para continuar."
+                          : "Reenvie o email de verificação para ativar sua conta."}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {existingSignupState.kind === "confirmed" ? (
+                          <>
+                            <Button type="button" size="sm" onClick={() => navigate(`/member/login?redirect=/join/${slug}${inviteCode ? `?invite=${inviteCode}` : ""}&email=${encodeURIComponent(existingSignupState.email)}`)}>
+                              Entrar
+                            </Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => navigate(`/forgot-password?email=${encodeURIComponent(existingSignupState.email)}`)}>
+                              Esqueci minha senha
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={resendCommunityVerification}
+                            disabled={resendingVerification || resendCooldown > 0}
+                          >
+                            {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : resendingVerification ? "Reenviando..." : "Reenviar verificação"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2 mb-2">
                     <button
                       type="button"
-                      onClick={() => setShowForm(false)}
+                      onClick={() => { setShowForm(false); clearExistingSignupState(); reset(); }}
                       className="text-muted-foreground hover:text-foreground transition-colors text-sm"
                     >
                       ← Voltar
@@ -348,9 +398,10 @@ export default function JoinCommunity() {
                       type="email"
                       placeholder="seu@email.com"
                       value={formData.email}
-                      onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                      onChange={(e) => { setFormData((p) => ({ ...p, email: e.target.value })); reset(); clearExistingSignupState(); }}
                       className="h-11"
                     />
+                    <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setFormData((p) => ({ ...p, email: corrected })); reset(); clearExistingSignupState(); }} />
                   </div>
 
                   <div className="space-y-1">
