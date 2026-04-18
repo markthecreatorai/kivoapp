@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/tracking";
 import { Progress } from "@/components/ui/progress";
 import { getReferralCode, clearReferralCode } from "@/hooks/useReferralTracking";
+import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
+import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
 
 /** After signup, create referral attribution linking referred user to referrer */
 async function createReferralAttribution(referralCode: string, referredUserId: string) {
@@ -79,6 +81,7 @@ export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { emailError, suggestion, guard, reset } = useAuthEmailGuard("signup");
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -90,14 +93,22 @@ export default function Signup() {
     if (!existingAccount || resendCooldown > 0) return;
     setResending(true);
     try {
+      const emailCheck = guard(existingAccount.email);
+      if (!emailCheck.ok) {
+        toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
+        return;
+      }
+      trackEvent("auth.resend_clicked", { surface: "signup", email: emailCheck.email });
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email: existingAccount.email,
+        email: emailCheck.email,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) {
+        trackEvent("auth.resend_failed", { surface: "signup", error_message: error.message });
         toast({ title: "Erro ao reenviar", description: error.message, variant: "destructive" });
       } else {
+        trackEvent("auth.resend_success", { surface: "signup" });
         toast({ title: "Email reenviado!", description: "Verifique sua caixa de entrada e spam." });
         setResendCooldown(60);
       }
@@ -142,6 +153,13 @@ export default function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const emailCheck = guard(email);
+    if (!emailCheck.ok) {
+      toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
+      return;
+    }
+    setEmail(emailCheck.email);
+
     if (!acceptedTerms) {
       toast({
         title: "Termos de uso",
@@ -169,7 +187,7 @@ export default function Signup() {
     try {
       const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
       const response = await supabase.auth.signUp({
-        email,
+        email: emailCheck.email,
         password,
         options: {
           data: {
@@ -190,11 +208,11 @@ export default function Signup() {
 
       switch (outcome.kind) {
         case "already_registered_confirmed":
-          setExistingAccount({ kind: "confirmed", email });
+          setExistingAccount({ kind: "confirmed", email: emailCheck.email });
           // NÃO redireciona para verify-email
           return;
         case "already_registered_unconfirmed":
-          setExistingAccount({ kind: "unconfirmed", email });
+          setExistingAccount({ kind: "unconfirmed", email: emailCheck.email });
           return;
         case "invalid_email":
           toast({ title: "Email inválido", description: outcome.message, variant: "destructive" });
@@ -214,7 +232,7 @@ export default function Signup() {
               ? "Verifique seu email para confirmar a conta e continue"
               : "Vamos começar!",
           });
-          navigate("/onboarding");
+          navigate(outcome.kind === "success_pending_verification" ? "/verify-email" : "/onboarding");
           return;
         }
       }
@@ -388,10 +406,11 @@ export default function Signup() {
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); if (existingAccount) setExistingAccount(null); }}
+                  onChange={(e) => { setEmail(e.target.value); reset(); if (existingAccount) setExistingAccount(null); }}
                   className="input-radius"
                   required
                 />
+                <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); }} />
               </div>
 
               <div className="space-y-2">

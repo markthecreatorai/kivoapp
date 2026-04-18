@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/tracking";
 import { completePendingCommunityJoin, savePendingCommunityJoin } from "@/lib/pendingCommunityJoin";
 import { resolveAuthSignupOutcome, SIGNUP_OUTCOME_TELEMETRY } from "@/lib/authSignupOutcome";
+import { validateAuthEmail } from "@/lib/authEmailGuard";
 
 interface JoinFormData {
   display_name: string;
@@ -17,6 +18,18 @@ type JoinAnswers = Array<{ question_id?: string; question: string; answer: strin
 export function useJoinCommunity(communitySlug: string, inviteCode?: string, memberRefCode?: string) {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [existingSignupState, setExistingSignupState] = useState<null | {
+    kind: "confirmed" | "unconfirmed";
+    email: string;
+  }>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendingVerification, setResendingVerification] = useState(false);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
 
   const fetchCommunity = async () => {
     const { data, error } = await supabase
@@ -154,8 +167,17 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
   const signupAndJoin = async (formData: JoinFormData, community: any, joinAnswers: JoinAnswers = []) => {
     setIsLoading(true);
     try {
+      const emailCheck = validateAuthEmail(formData.email);
+      if (!emailCheck.ok) {
+        toast.error(emailCheck.suggestion
+          ? `${emailCheck.error} Você quis dizer ${emailCheck.suggestion}?`
+          : emailCheck.error || "Email inválido");
+        throw new Error(emailCheck.error || "Email inválido");
+      }
+
+      setExistingSignupState(null);
       const response = await supabase.auth.signUp({
-        email: formData.email,
+        email: emailCheck.email,
         password: formData.password,
         options: {
           data: {
@@ -171,21 +193,13 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
 
       // Bloqueia caminhos de "já cadastrado" — NÃO redireciona para verify-email.
       if (outcome.kind === "already_registered_confirmed") {
-        toast.error("Este email já está cadastrado. Faça login para entrar.");
-        navigate(`/member/login?redirect=/circles/${communitySlug}&email=${encodeURIComponent(formData.email)}`);
+        setExistingSignupState({ kind: "confirmed", email: emailCheck.email });
+        toast.error("Este email já está cadastrado. Faça login ou redefina sua senha.");
         throw new Error(outcome.message);
       }
       if (outcome.kind === "already_registered_unconfirmed") {
+        setExistingSignupState({ kind: "unconfirmed", email: emailCheck.email });
         toast.error("Este email já está cadastrado mas ainda não foi confirmado. Reenvie o email de verificação.");
-        // Reenvia automaticamente para conveniência (cooldown do servidor protege).
-        try {
-          await supabase.auth.resend({
-            type: "signup",
-            email: formData.email,
-            options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-          });
-        } catch { /* tolerar */ }
-        navigate(`/verify-email?redirect=/circles/${communitySlug}/feed`);
         throw new Error(outcome.message);
       }
       if (outcome.kind === "invalid_email") {
@@ -260,6 +274,31 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
     }
   };
 
+  const resendCommunityVerification = async () => {
+    if (!existingSignupState || existingSignupState.kind !== "unconfirmed" || resendCooldown > 0) return;
+    setResendingVerification(true);
+    try {
+      trackEvent("auth.resend_clicked", { surface: "community_join", email: existingSignupState.email });
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: existingSignupState.email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+
+      if (error) {
+        trackEvent("auth.resend_failed", { surface: "community_join", error_message: error.message });
+        toast.error(error.message);
+        return;
+      }
+
+      trackEvent("auth.resend_success", { surface: "community_join" });
+      toast.success("Email reenviado! Verifique sua caixa de entrada e spam.");
+      setResendCooldown(60);
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
   const joinAsExistingUser = async (userId: string, community: any, joinAnswers: JoinAnswers = []) => {
     setIsLoading(true);
     try {
@@ -323,5 +362,15 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
     }
   };
 
-  return { fetchCommunity, signupAndJoin, joinAsExistingUser, isLoading };
+  return {
+    fetchCommunity,
+    signupAndJoin,
+    joinAsExistingUser,
+    isLoading,
+    existingSignupState,
+    resendCommunityVerification,
+    resendCooldown,
+    resendingVerification,
+    clearExistingSignupState: () => setExistingSignupState(null),
+  };
 }

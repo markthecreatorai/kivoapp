@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { baseEmailLayout } from "../_shared/email-system/layout.ts";
 import { ctaPrimary, ctaSecondary, emailText, emailTitle, securityAlertBox } from "../_shared/email-system/components.ts";
+import { assertVerifiedFromDomain, maskEmailAddress, resolveDefaultFrom } from "../_shared/email-system/sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -215,11 +216,12 @@ Deno.serve(async (req) => {
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const EMAIL_FROM =
-      Deno.env.get("EMAIL_FROM_DEFAULT") ||
-      Deno.env.get("EMAIL_FROM_NOTIFY") ||
-      Deno.env.get("EMAIL_FROM") ||
-      "Kivo <notify@mail.kivohub.com.br>";
+    const EMAIL_FROM = resolveDefaultFrom({
+      EMAIL_FROM_DEFAULT: Deno.env.get("EMAIL_FROM_DEFAULT"),
+      EMAIL_FROM_AUTH: Deno.env.get("EMAIL_FROM_AUTH"),
+      EMAIL_FROM_NOTIFY: Deno.env.get("EMAIL_FROM_NOTIFY"),
+      EMAIL_FROM: Deno.env.get("EMAIL_FROM"),
+    });
 
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY não configurada" }), {
@@ -231,6 +233,25 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    try {
+      assertVerifiedFromDomain(EMAIL_FROM);
+    } catch (error: any) {
+      const logPayload = {
+        provider: "resend",
+        template: template_key,
+        from: EMAIL_FROM,
+        to: maskEmailAddress(recipient),
+        status: "failed",
+        error_code: error?.code || "EMAIL_FROM_DOMAIN_UNVERIFIED",
+        error_message: error?.message || "Domínio do remetente não verificado",
+      };
+      console.error("[send-transactional-email]", JSON.stringify(logPayload));
+      return new Response(JSON.stringify({ ok: false, error_code: logPayload.error_code, error: "Domínio do remetente não verificado" }), {
+        status: error?.status || 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { subject, html } = renderTemplate(template_key, payload as any);
 
@@ -272,6 +293,15 @@ Deno.serve(async (req) => {
     });
 
     const resendData = await resendRes.json();
+    console.log("[send-transactional-email]", JSON.stringify({
+      provider: "resend",
+      template: template_key,
+      from: EMAIL_FROM,
+      to: maskEmailAddress(recipient),
+      status: resendRes.ok ? "sent" : "failed",
+      error_code: resendRes.ok ? null : `HTTP_${resendRes.status}`,
+      error_message: resendRes.ok ? null : JSON.stringify(resendData),
+    }));
 
     if (!resendRes.ok) {
       if (logRow?.id) {

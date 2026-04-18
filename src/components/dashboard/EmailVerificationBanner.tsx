@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Mail, RefreshCw, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/tracking";
+import { validateAuthEmail } from "@/lib/authEmailGuard";
 
 export function EmailVerificationBanner() {
   const { user } = useAuth();
@@ -26,17 +28,25 @@ export function EmailVerificationBanner() {
     setResending(true);
 
     try {
+      const emailCheck = validateAuthEmail(user.email);
+      if (!emailCheck.ok) {
+        toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
+        return;
+      }
+      trackEvent("auth.resend_clicked", { surface: "email_banner" });
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email: user.email,
+        email: emailCheck.email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (error) {
+        trackEvent("auth.resend_failed", { surface: "email_banner", error_message: error.message });
         toast({ title: "Erro ao reenviar", description: error.message, variant: "destructive" });
       } else {
+        trackEvent("auth.resend_success", { surface: "email_banner" });
         toast({ title: "Email reenviado!", description: "Verifique sua caixa de entrada." });
         setCooldown(60);
       }
