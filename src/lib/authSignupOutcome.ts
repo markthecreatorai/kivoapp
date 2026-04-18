@@ -46,6 +46,8 @@ interface SignUpResponseLike {
       identities?: Array<unknown> | null;
       email_confirmed_at?: string | null;
       confirmed_at?: string | null;
+      created_at?: string | null;
+      last_sign_in_at?: string | null;
     } | null;
     session?: { access_token?: string } | null;
   } | null;
@@ -56,6 +58,9 @@ interface SignUpResponseLike {
     name?: string;
   } | null;
 }
+
+/** Janela em ms para considerar o user "recém-criado" pelo signup atual. */
+const FRESH_USER_WINDOW_MS = 30_000;
 
 const ALREADY_REGISTERED_PATTERNS = [
   /user already registered/i,
