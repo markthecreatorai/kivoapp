@@ -44,6 +44,7 @@ interface SignUpResponseLike {
       id?: string;
       email?: string | null;
       identities?: Array<unknown> | null;
+      existing_state?: "confirmed" | "unconfirmed" | null;
       email_confirmed_at?: string | null;
       confirmed_at?: string | null;
       created_at?: string | null;
@@ -130,9 +131,13 @@ export function resolveAuthSignupOutcome(
   //      b) created_at antigo (>30s) — usuário já existia antes do request
   //      c) last_sign_in_at presente — só existe se user já se autenticou antes
   const identities = user.identities;
+  const existingStateHint = user.existing_state;
   const hasIdentities = Array.isArray(identities) && identities.length > 0;
   const alreadyConfirmed = Boolean(user.email_confirmed_at || user.confirmed_at);
   const hasLastSignIn = Boolean(user.last_sign_in_at);
+  const effectiveConfirmed = existingStateHint
+    ? existingStateHint === "confirmed"
+    : alreadyConfirmed || hasLastSignIn;
 
   let userIsStale = false;
   if (user.created_at) {
@@ -143,24 +148,25 @@ export function resolveAuthSignupOutcome(
   }
 
   const looksAlreadyRegistered =
-    (!hasIdentities && !session) || userIsStale || hasLastSignIn;
+    Boolean(existingStateHint) || ((!hasIdentities && !session) || userIsStale || hasLastSignIn);
 
   if (looksAlreadyRegistered) {
     if (typeof console !== "undefined") {
       console.info("[authSignupOutcome] already_registered detected", {
+        existingStateHint,
         hasIdentities,
         hasSession: Boolean(session),
         userIsStale,
         hasLastSignIn,
-        alreadyConfirmed,
+        alreadyConfirmed: effectiveConfirmed,
       });
     }
     return {
-      kind: alreadyConfirmed
+      kind: effectiveConfirmed
         ? "already_registered_confirmed"
         : "already_registered_unconfirmed",
       userId: user.id,
-      message: alreadyConfirmed
+      message: effectiveConfirmed
         ? "Este email já está cadastrado. Faça login ou redefina sua senha."
         : "Este email já está cadastrado mas ainda não foi confirmado. Reenvie o email de verificação.",
     };
