@@ -6,6 +6,7 @@ import { Mail, CheckCircle, RefreshCw, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
+import { resolveSmartRedirect } from "@/lib/smartRedirect";
 
 export default function VerifyEmail() {
   const { user, signOut } = useAuth();
@@ -14,21 +15,23 @@ export default function VerifyEmail() {
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
-  // Check if already verified
+  const redirectAfterVerification = async (userId: string) => {
+    const destination = await resolveSmartRedirect(userId);
+    navigate(destination, { replace: true });
+  };
+
   useEffect(() => {
     if (user?.email_confirmed_at) {
-      navigate("/dashboard", { replace: true });
+      void redirectAfterVerification(user.id);
     }
   }, [user, navigate]);
 
-  // Cooldown timer
   useEffect(() => {
     if (cooldown <= 0) return;
-    const timer = setInterval(() => setCooldown(c => c - 1), 1000);
+    const timer = setInterval(() => setCooldown((c) => c - 1), 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  // Poll for verification every 5s
   useEffect(() => {
     const interval = setInterval(async () => {
       const { data: { user: freshUser } } = await supabase.auth.getUser();
@@ -37,7 +40,7 @@ export default function VerifyEmail() {
           title: "Email verificado!",
           description: "Sua conta foi confirmada com sucesso.",
         });
-        navigate("/dashboard", { replace: true });
+        await redirectAfterVerification(freshUser.id);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -99,8 +102,7 @@ export default function VerifyEmail() {
             </div>
             <CardTitle className="text-2xl">Verifique seu email</CardTitle>
             <CardDescription>
-              Enviamos um link de confirmação para{" "}
-              <span className="font-medium text-foreground">{user?.email}</span>
+              Enviamos um link de confirmação para <span className="font-medium text-foreground">{user?.email}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -130,9 +132,8 @@ export default function VerifyEmail() {
                 {cooldown > 0
                   ? `Reenviar em ${cooldown}s`
                   : resending
-                  ? "Reenviando..."
-                  : "Reenviar email de verificação"
-                }
+                    ? "Reenviando..."
+                    : "Reenviar email de verificação"}
               </Button>
 
               <Button
