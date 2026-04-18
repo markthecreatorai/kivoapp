@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useAuth } from "@/contexts/AuthProvider";
 import { resolveSmartRedirect } from "@/lib/smartRedirect";
+import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
+import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
 
 type LoginStep = "credentials" | "mfa";
 
@@ -24,6 +26,7 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const { emailError, suggestion, guard, reset } = useAuthEmailGuard("login");
 
   // MFA state
   const [loginStep, setLoginStep] = useState<LoginStep>("credentials");
@@ -62,11 +65,17 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailCheck = guard(email);
+    if (!emailCheck.ok) {
+      toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
+      return;
+    }
+    setEmail(emailCheck.email);
     setIsLoading(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailCheck.email,
         password,
       });
 
@@ -206,10 +215,11 @@ export default function Login() {
                       type="email"
                       placeholder="seu@email.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => { setEmail(e.target.value); reset(); }}
                       className="input-radius"
                       required
                     />
+                    <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); }} />
                   </div>
 
                   <div className="space-y-2">

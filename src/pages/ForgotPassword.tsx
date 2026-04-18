@@ -8,19 +8,28 @@ import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import kivoLogo from "@/assets/kivo-logo.svg";
+import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
+import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
+  const { emailError, suggestion, guard, reset } = useAuthEmailGuard("forgot_password");
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailCheck = guard(email);
+    if (!emailCheck.ok) {
+      toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
+      return;
+    }
+    setEmail(emailCheck.email);
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(emailCheck.email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
@@ -114,10 +123,11 @@ export default function ForgotPassword() {
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); reset(); }}
                   className="input-radius"
                   required
                 />
+                <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); }} />
               </div>
 
               <Button
