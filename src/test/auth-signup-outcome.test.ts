@@ -97,4 +97,39 @@ describe("resolveAuthSignupOutcome", () => {
     const r = resolveAuthSignupOutcome({ data: { user: null, session: null }, error: null });
     expect(r.kind).toBe("generic_error");
   });
+
+  it("i) user com created_at antigo (>30s) → already_registered (sinal stale)", () => {
+    const oldDate = new Date(Date.now() - 60_000).toISOString();
+    const r = resolveAuthSignupOutcome({
+      data: {
+        user: {
+          id: "u-old",
+          email: "antigo@gmail.com",
+          identities: [{ id: "id-x" }],
+          email_confirmed_at: "2025-01-01T00:00:00Z",
+          created_at: oldDate,
+        },
+        session: null,
+      },
+      error: null,
+    });
+    expect(r.kind).toBe("already_registered_confirmed");
+  });
+
+  it("j) user com last_sign_in_at presente → already_registered (sinal forte)", () => {
+    const r = resolveAuthSignupOutcome({
+      data: {
+        user: {
+          id: "u-signed",
+          email: "logou@gmail.com",
+          identities: [],
+          email_confirmed_at: "2025-01-01T00:00:00Z",
+          last_sign_in_at: "2025-06-01T00:00:00Z",
+        },
+        session: null,
+      },
+      error: null,
+    });
+    expect(r.kind).toBe("already_registered_confirmed");
+  });
 });
