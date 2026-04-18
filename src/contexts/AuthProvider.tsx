@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { resolveSmartRedirect } from "@/lib/smartRedirect";
+import { completePendingCommunityJoin } from "@/lib/pendingCommunityJoin";
 
 interface AuthContextType {
   user: User | null;
@@ -24,37 +24,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. Set up auth state listener FIRST (before getSession)
+    const finalizeSignedIn = async (signedInUser: User) => {
+      try {
+        const completed = await completePendingCommunityJoin(signedInUser.id);
+        if (completed?.communitySlug) {
+          setTimeout(() => {
+            navigate(
+              completed.status === "PENDING"
+                ? "/circles"
+                : `/circles/${completed.communitySlug}/feed`,
+              { replace: true }
+            );
+          }, 0);
+          return;
+        }
+      } catch (error) {
+        console.error("Error completing pending community join:", error);
+      }
+
+      try {
+        const raw = sessionStorage.getItem("kivo_nav_intent");
+        if (raw) {
+          const intent = JSON.parse(raw);
+          sessionStorage.removeItem("kivo_nav_intent");
+          if (intent.origin === "community" && intent.community_slug) {
+            setTimeout(() => navigate(`/circles/${intent.community_slug}/feed`, { replace: true }), 0);
+          }
+        }
+      } catch {}
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Only navigate on explicit sign-out
-        if (_event === 'SIGNED_OUT') {
-          navigate('/login');
+        if (_event === "SIGNED_OUT") {
+          navigate("/login");
         }
 
-        if (_event === 'SIGNED_IN' && session?.user) {
-          // Check for community nav intent first (set by CommunityAuthModal)
-          try {
-            const raw = sessionStorage.getItem("kivo_nav_intent");
-            if (raw) {
-              const intent = JSON.parse(raw);
-              sessionStorage.removeItem("kivo_nav_intent");
-              if (intent.origin === "community" && intent.community_slug) {
-                setTimeout(() => navigate(`/circles/${intent.community_slug}/feed`), 0);
-                return;
-              }
-            }
-          } catch {}
+        if (_event === "SIGNED_IN" && session?.user) {
+          void finalizeSignedIn(session.user);
         }
       }
     );
 
-    // 2. Get initial session, then immediately refresh the JWT so it
-    // doesn't expire mid-operation (avoids "JWT expired" on first action)
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error("Error getting session:", error);
@@ -62,8 +77,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (session) {
         setSession(session);
         setUser(session.user);
-        // Silently refresh to keep token fresh
-        supabase.auth.refreshSession().catch(() => {/* ignore if offline */});
+        supabase.auth.refreshSession().catch(() => {});
+        void finalizeSignedIn(session.user);
       }
       setLoading(false);
     });
