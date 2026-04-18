@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/tracking";
 import { completePendingCommunityJoin, savePendingCommunityJoin } from "@/lib/pendingCommunityJoin";
+import { resolveAuthSignupOutcome, SIGNUP_OUTCOME_TELEMETRY } from "@/lib/authSignupOutcome";
 
 interface JoinFormData {
   display_name: string;
@@ -153,7 +154,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
   const signupAndJoin = async (formData: JoinFormData, community: any, joinAnswers: JoinAnswers = []) => {
     setIsLoading(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const response = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -165,14 +166,38 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
         },
       });
 
-      if (authError) {
-        if (authError.message?.includes("already registered") || authError.message?.includes("User already registered")) {
-          toast.error("Este email já está cadastrado. Faça login.");
-          navigate(`/member/login?redirect=/circles/${communitySlug}`);
-          return;
-        }
-        throw authError;
+      const outcome = resolveAuthSignupOutcome(response as any);
+      try { trackEvent(SIGNUP_OUTCOME_TELEMETRY[outcome.kind], { surface: "community_modal" }); } catch {}
+
+      // Bloqueia caminhos de "já cadastrado" — NÃO redireciona para verify-email.
+      if (outcome.kind === "already_registered_confirmed") {
+        toast.error("Este email já está cadastrado. Faça login para entrar.");
+        navigate(`/member/login?redirect=/circles/${communitySlug}&email=${encodeURIComponent(formData.email)}`);
+        throw new Error(outcome.message);
       }
+      if (outcome.kind === "already_registered_unconfirmed") {
+        toast.error("Este email já está cadastrado mas ainda não foi confirmado. Reenvie o email de verificação.");
+        // Reenvia automaticamente para conveniência (cooldown do servidor protege).
+        try {
+          await supabase.auth.resend({
+            type: "signup",
+            email: formData.email,
+            options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          });
+        } catch { /* tolerar */ }
+        navigate(`/verify-email?redirect=/circles/${communitySlug}/feed`);
+        throw new Error(outcome.message);
+      }
+      if (outcome.kind === "invalid_email") {
+        toast.error(outcome.message);
+        throw new Error(outcome.message);
+      }
+      if (outcome.kind === "generic_error") {
+        toast.error(outcome.message);
+        throw new Error(outcome.message);
+      }
+
+      const authData = response.data!;
       if (!authData.user) throw new Error("Falha ao criar conta");
 
       const status = community.require_approval && !inviteCode ? "PENDING" : "ACTIVE";
@@ -225,7 +250,11 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
       );
       navigate(`/verify-email?redirect=/circles/${communitySlug}/feed`);
     } catch (err: any) {
-      toast.error(err.message || "Erro ao criar conta. Tente novamente.");
+      // Toast já mostrado nos branches específicos; aqui evitamos duplicar.
+      if (!err?.message?.match(/já está cadastrado|erro de digitação|Este email/i)) {
+        toast.error(err.message || "Erro ao criar conta. Tente novamente.");
+      }
+      throw err;
     } finally {
       setIsLoading(false);
     }
