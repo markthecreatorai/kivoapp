@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useJoinCommunity } from "@/hooks/useJoinCommunity";
+import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
+import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
 
 type AuthView = "signup" | "login" | "forgot-password" | "forgot-success";
 
@@ -37,7 +39,15 @@ export default function CommunityAuthModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const { signupAndJoin } = useJoinCommunity(slug || "");
+  const {
+    signupAndJoin,
+    existingSignupState,
+    resendCommunityVerification,
+    resendCooldown,
+    resendingVerification,
+    clearExistingSignupState,
+  } = useJoinCommunity(slug || "");
+  const { emailError, suggestion, guard, reset } = useAuthEmailGuard("community_auth_modal");
 
   const resetFields = () => {
     setFirstName("");
@@ -45,6 +55,8 @@ export default function CommunityAuthModal({
     setEmail("");
     setPassword("");
     setShowPassword(false);
+    reset();
+    clearExistingSignupState();
   };
 
   const switchView = (v: AuthView) => {
@@ -85,10 +97,16 @@ export default function CommunityAuthModal({
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!community) return;
+    const emailCheck = guard(email);
+    if (!emailCheck.ok) {
+      toast.error(emailCheck.error || "Email inválido.");
+      return;
+    }
+    setEmail(emailCheck.email);
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: emailCheck.email, password });
       if (error) {
         toast.error(error.message === "Invalid login credentials"
           ? "Email ou senha incorretos."
@@ -153,9 +171,15 @@ export default function CommunityAuthModal({
   // ── FORGOT PASSWORD ──
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailCheck = guard(email);
+    if (!emailCheck.ok) {
+      toast.error(emailCheck.error || "Email inválido.");
+      return;
+    }
+    setEmail(emailCheck.email);
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(emailCheck.email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
@@ -196,6 +220,38 @@ export default function CommunityAuthModal({
         </div>
 
         <div className="px-6 pb-6">
+          {existingSignupState && view === "signup" && (
+            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2" role="alert">
+              <p className="text-sm font-medium text-foreground">
+                {existingSignupState.kind === "confirmed"
+                  ? "Este email já está cadastrado."
+                  : "Este email já está cadastrado mas ainda não foi confirmado."}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {existingSignupState.kind === "confirmed"
+                  ? "Faça login ou redefina sua senha para continuar."
+                  : "Reenvie o email de verificação para ativar sua conta."}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {existingSignupState.kind === "confirmed" ? (
+                  <>
+                    <Button type="button" size="sm" onClick={() => switchView("login")}>Entrar</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => switchView("forgot-password")}>Esqueci minha senha</Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={resendCommunityVerification}
+                    disabled={resendingVerification || resendCooldown > 0}
+                  >
+                    {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : resendingVerification ? "Reenviando..." : "Reenviar verificação"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── SIGNUP VIEW ── */}
           {view === "signup" && (
             <form onSubmit={handleSignup} className="space-y-4">
@@ -229,9 +285,10 @@ export default function CommunityAuthModal({
                   type="email"
                   placeholder="joao@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); reset(); clearExistingSignupState(); }}
                   required
                 />
+                  <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); clearExistingSignupState(); }} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="auth-pass" className="text-xs font-medium">Senha</Label>
@@ -277,10 +334,11 @@ export default function CommunityAuthModal({
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); reset(); }}
                   required
                   autoFocus
                 />
+                  <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); }} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="login-pass" className="text-xs font-medium">Senha</Label>
@@ -334,10 +392,11 @@ export default function CommunityAuthModal({
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); reset(); }}
                   required
                   autoFocus
                 />
+                  <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); }} />
               </div>
               <Button type="submit" className="w-full font-bold uppercase tracking-wide" disabled={isLoading}>
                 {isLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Enviando...</> : "Enviar Link"}
