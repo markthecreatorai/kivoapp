@@ -124,14 +124,37 @@ export function resolveAuthSignupOutcome(
     };
   }
 
-  // 3) Anti-enumeração do Supabase: user existe, identities vazio = já cadastrado
-  // Quando "Confirm email" está ON e o email já existe, identities=[] e não vem session.
+  // 3) Detecção robusta de "já cadastrado":
+  //    Sinais (qualquer um confirma):
+  //      a) identities=[] sem session (anti-enumeração padrão)
+  //      b) created_at antigo (>30s) — usuário já existia antes do request
+  //      c) last_sign_in_at presente — só existe se user já se autenticou antes
   const identities = user.identities;
   const hasIdentities = Array.isArray(identities) && identities.length > 0;
   const alreadyConfirmed = Boolean(user.email_confirmed_at || user.confirmed_at);
+  const hasLastSignIn = Boolean(user.last_sign_in_at);
 
-  if (!hasIdentities && !session) {
-    // Já cadastrado. Distinguimos confirmado vs não-confirmado pelo timestamp.
+  let userIsStale = false;
+  if (user.created_at) {
+    const createdMs = Date.parse(user.created_at);
+    if (!Number.isNaN(createdMs)) {
+      userIsStale = Date.now() - createdMs > FRESH_USER_WINDOW_MS;
+    }
+  }
+
+  const looksAlreadyRegistered =
+    (!hasIdentities && !session) || userIsStale || hasLastSignIn;
+
+  if (looksAlreadyRegistered) {
+    if (typeof console !== "undefined") {
+      console.info("[authSignupOutcome] already_registered detected", {
+        hasIdentities,
+        hasSession: Boolean(session),
+        userIsStale,
+        hasLastSignIn,
+        alreadyConfirmed,
+      });
+    }
     return {
       kind: alreadyConfirmed
         ? "already_registered_confirmed"
