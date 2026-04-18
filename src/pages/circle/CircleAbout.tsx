@@ -276,7 +276,7 @@ export default function CircleAbout() {
     mutationFn: async (payload: Record<string, any>) => {
       const { error } = await supabase
         .from("communities")
-        .update(payload)
+        .update(payload as any)
         .eq("id", community!.id);
       if (error) throw error;
     },

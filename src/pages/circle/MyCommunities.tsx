@@ -117,7 +117,7 @@ export default function MyCommunities() {
         const wsSlug = slugify(wsName) + "-" + Date.now().toString(36);
         const { data: ws, error: wsErr } = await supabase
           .from("workspaces")
-          .insert({ name: wsName, slug: wsSlug, owner_id: user.id })
+          .insert({ name: wsName, slug: wsSlug, owner_id: user.id } as any)
           .select()
           .single();
         if (wsErr) throw new Error("Erro ao preparar workspace: " + wsErr.message);

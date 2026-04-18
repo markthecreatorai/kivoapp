@@ -102,7 +102,7 @@ export default function CommunityFlow({
         delivery_mode: "community", // Identificador interno
         confirmation_email_subject: form.confirmationSubject,
         confirmation_email_body: form.confirmationBody,
-      }).eq("id", initialProduct.id);
+      } as any).eq("id", initialProduct.id);
 
       if (prodError) throw prodError;
 
@@ -116,9 +116,9 @@ export default function CommunityFlow({
       };
 
       if (initialPriceConfig.id) {
-         await supabase.from("prices").update(priceData).eq("id", initialPriceConfig.id);
+         await supabase.from("prices").update(priceData as any).eq("id", initialPriceConfig.id);
       } else {
-         await supabase.from("prices").insert(priceData);
+         await supabase.from("prices").insert(priceData as any);
       }
 
       return status;

@@ -81,7 +81,7 @@ export default function AdminGeneralTab({ community }: Props) {
     if (uploadError) { toast.error("Erro no upload"); return; }
     const { data: urlData } = supabase.storage.from("community").getPublicUrl(path);
     const field = type === "cover" ? "cover_image_url" : "icon_url";
-    await supabase.from("communities").update({ [field]: urlData.publicUrl }).eq("id", community.id);
+    await supabase.from("communities").update({ [field]: urlData.publicUrl } as any).eq("id", community.id);
     queryClient.invalidateQueries({ queryKey: ["community"] });
     toast.success(`${type === "cover" ? "Capa" : "Ícone"} atualizado!`);
   };
