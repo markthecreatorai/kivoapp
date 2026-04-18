@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { resolveSmartRedirect } from "@/lib/smartRedirect";
+import { trackEvent } from "@/lib/tracking";
+import { validateAuthEmail } from "@/lib/authEmailGuard";
 
 export default function VerifyEmail() {
   const { user, signOut } = useAuth();
@@ -51,21 +53,29 @@ export default function VerifyEmail() {
     setResending(true);
 
     try {
+      const emailCheck = validateAuthEmail(user.email);
+      if (!emailCheck.ok) {
+        toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
+        return;
+      }
+      trackEvent("auth.resend_clicked", { surface: "verify_email" });
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email: user.email,
+        email: emailCheck.email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (error) {
+        trackEvent("auth.resend_failed", { surface: "verify_email", error_message: error.message });
         toast({
           title: "Erro ao reenviar",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        trackEvent("auth.resend_success", { surface: "verify_email" });
         toast({
           title: "Email reenviado!",
           description: "Verifique sua caixa de entrada e spam.",

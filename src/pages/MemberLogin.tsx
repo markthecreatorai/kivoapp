@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Mail, Lock, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
+import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
 
 export default function MemberLogin() {
   const navigate = useNavigate();
@@ -14,12 +16,19 @@ export default function MemberLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const { emailError, suggestion, guard, reset } = useAuthEmailGuard("member_login");
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailCheck = guard(email);
+    if (!emailCheck.ok) {
+      setError(emailCheck.error || "Email inválido");
+      return;
+    }
+    setEmail(emailCheck.email);
     setLoading(true);
     setError("");
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: authError } = await supabase.auth.signInWithPassword({ email: emailCheck.email, password });
     if (authError) {
       setError(authError.message === "Invalid login credentials" 
         ? "Email ou senha incorretos" 
@@ -32,11 +41,13 @@ export default function MemberLogin() {
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) { setError("Digite seu email"); return; }
+    const emailCheck = guard(email);
+    if (!emailCheck.ok) { setError(emailCheck.error || "Digite seu email"); return; }
+    setEmail(emailCheck.email);
     setLoading(true);
     setError("");
     const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
+      email: emailCheck.email,
       options: { emailRedirectTo: `${window.location.origin}/member` },
     });
     if (authError) {
@@ -91,10 +102,11 @@ export default function MemberLogin() {
                   <Input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                     onChange={(e) => { setEmail(e.target.value); reset(); setError(""); }}
                     placeholder="seu@email.com"
                     className="h-12"
                   />
+                   <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); setError(""); }} />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full h-12 font-semibold">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
@@ -111,10 +123,11 @@ export default function MemberLogin() {
                   <Input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                     onChange={(e) => { setEmail(e.target.value); reset(); setError(""); }}
                     placeholder="seu@email.com"
                     className="h-12"
                   />
+                   <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => { setEmail(corrected); reset(); setError(""); }} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">Senha</Label>
