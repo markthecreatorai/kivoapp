@@ -102,7 +102,7 @@ export default function RecurringProductFlow({
            compare_at_amount: form.compareAtPrice,
            type: "RECURRING",
            interval: form.billingInterval
-         }).eq("id", initialPriceConfig.id);
+         } as any).eq("id", initialPriceConfig.id);
       } else {
          await supabase.from("prices").insert({
            product_id: initialProduct.id,
@@ -110,7 +110,7 @@ export default function RecurringProductFlow({
            compare_at_amount: form.compareAtPrice,
            type: "RECURRING",
            interval: form.billingInterval
-         });
+         } as any);
       }
 
       return status;

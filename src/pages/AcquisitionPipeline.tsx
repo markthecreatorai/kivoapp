@@ -83,7 +83,7 @@ export default function AcquisitionPipeline() {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const updates: Record<string, unknown> = { status };
       if (status === "won") updates.converted_at = new Date().toISOString();
-      const { error } = await supabase.from("acquisition_leads").update(updates).eq("id", id);
+      const { error } = await supabase.from("acquisition_leads").update(updates as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["acquisition-leads"] }),

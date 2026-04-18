@@ -80,7 +80,7 @@ export default function AdminChargebacks() {
         updateData.resolved_at = new Date().toISOString();
       }
 
-      const { error: updateErr } = await supabase.from("chargeback_cases").update(updateData).eq("id", caseId);
+      const { error: updateErr } = await supabase.from("chargeback_cases").update(updateData as any).eq("id", caseId);
       if (updateErr) throw updateErr;
 
       const { error: tlErr } = await supabase.from("chargeback_timeline").insert({
