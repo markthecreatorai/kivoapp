@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Mail, CheckCircle, RefreshCw, ArrowLeft } from "lucide-react";
@@ -13,10 +13,15 @@ import { validateAuthEmail } from "@/lib/authEmailGuard";
 export default function VerifyEmail() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+
+  // A tela precisa funcionar SEM sessão: o email chega via state (navigate) ou query param.
+  const stateEmail = (location.state as { email?: string } | null)?.email;
+  const pendingEmail = stateEmail || searchParams.get("email") || user?.email || "";
 
   const redirectAfterVerification = async (userId: string) => {
     const explicit = searchParams.get("redirect");
@@ -43,6 +48,8 @@ export default function VerifyEmail() {
 
   useEffect(() => {
     const interval = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // usuário deslogado: nada para verificar
       const { data: { user: freshUser } } = await supabase.auth.getUser();
       if (freshUser?.email_confirmed_at) {
         toast({
@@ -56,11 +63,11 @@ export default function VerifyEmail() {
   }, [navigate, toast]);
 
   const handleResend = async () => {
-    if (!user?.email || cooldown > 0) return;
+    if (!pendingEmail || cooldown > 0) return;
     setResending(true);
 
     try {
-      const emailCheck = validateAuthEmail(user.email);
+      const emailCheck = validateAuthEmail(pendingEmail);
       if (!emailCheck.ok) {
         toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
         return;
@@ -119,7 +126,7 @@ export default function VerifyEmail() {
             </div>
             <CardTitle className="text-2xl">Verifique seu email</CardTitle>
             <CardDescription>
-              Enviamos um link de confirmação para <span className="font-medium text-foreground">{user?.email}</span>
+              Enviamos um link de confirmação para <span className="font-medium text-foreground">{pendingEmail || "seu email"}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -143,7 +150,7 @@ export default function VerifyEmail() {
                 variant="outline"
                 className="w-full gap-2"
                 onClick={handleResend}
-                disabled={resending || cooldown > 0}
+                disabled={resending || cooldown > 0 || !pendingEmail}
               >
                 <RefreshCw className={`w-4 h-4 ${resending ? "animate-spin" : ""}`} />
                 {cooldown > 0
@@ -153,14 +160,23 @@ export default function VerifyEmail() {
                     : "Reenviar email de verificação"}
               </Button>
 
-              <Button
-                variant="ghost"
-                className="w-full gap-2 text-muted-foreground"
-                onClick={handleLogout}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar para o login
-              </Button>
+              {user ? (
+                <Button
+                  variant="ghost"
+                  className="w-full gap-2 text-muted-foreground"
+                  onClick={handleLogout}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Voltar para o login
+                </Button>
+              ) : (
+                <Button asChild variant="ghost" className="w-full gap-2 text-muted-foreground">
+                  <Link to="/login">
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar para o login
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
