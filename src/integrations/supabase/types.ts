@@ -4309,6 +4309,48 @@ export type Database = {
           },
         ]
       }
+      cron_runs: {
+        Row: {
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          job_name: string
+          metadata: Json
+          request_id: number | null
+          started_at: string
+          status: string
+          updated_at: string
+          window_key: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          metadata?: Json
+          request_id?: number | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          window_key: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          metadata?: Json
+          request_id?: number | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          window_key?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           cpf: string | null
@@ -7737,6 +7779,7 @@ export type Database = {
           gateway_payment_id: string | null
           gateway_status: string | null
           id: string
+          idempotency_key: string | null
           invoice_id: string | null
           is_retry: boolean
           next_retry_at: string | null
@@ -7754,6 +7797,7 @@ export type Database = {
           gateway_payment_id?: string | null
           gateway_status?: string | null
           id?: string
+          idempotency_key?: string | null
           invoice_id?: string | null
           is_retry?: boolean
           next_retry_at?: string | null
@@ -7771,6 +7815,7 @@ export type Database = {
           gateway_payment_id?: string | null
           gateway_status?: string | null
           id?: string
+          idempotency_key?: string | null
           invoice_id?: string | null
           is_retry?: boolean
           next_retry_at?: string | null
@@ -8999,6 +9044,26 @@ export type Database = {
         Args: { p_recovered?: boolean; p_session_id: string }
         Returns: undefined
       }
+      cron_invoke: {
+        Args: {
+          p_body?: Json
+          p_function: string
+          p_job_name: string
+          p_window_unit?: string
+        }
+        Returns: string
+      }
+      cron_run_finish: {
+        Args: {
+          p_error?: string
+          p_metadata?: Json
+          p_run_id: string
+          p_status: string
+        }
+        Returns: undefined
+      }
+      cron_runs_sweep: { Args: never; Returns: number }
+      cron_secret: { Args: never; Returns: string }
       ensure_producer_workspace: { Args: never; Returns: string }
       expire_overdue_workspace_plans: {
         Args: never
