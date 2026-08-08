@@ -197,13 +197,8 @@ Deno.serve(async (req) => {
             .is("revoked_at", null);
         }
 
-        await logAttempt({
-          subscription_id: sub.id,
-          workspace_id: sub.workspace_id,
+        await finalizeAttempt(idempotencyKey, {
           invoice_id: invoice?.id ?? null,
-          attempt_number: attemptNumber,
-          is_retry: isRetry,
-          amount: price.amount,
           gateway_payment_id: result.gatewayPaymentId,
           gateway_status: result.gatewayStatus,
           status: "PAID",
