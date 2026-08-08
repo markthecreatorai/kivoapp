@@ -57,15 +57,18 @@ Deno.serve(async (req) => {
 
   const eventType = payload?.event || "unknown";
   const paymentData = payload?.payment;
-  const externalEventId = paymentData?.id || payload?.id || crypto.randomUUID();
+  // A UNIQUE do banco é (provider, external_event_id) — a chave precisa carregar o
+  // tipo do evento, senão PAYMENT_CONFIRMED e PAYMENT_RECEIVED da mesma cobrança
+  // colidem e o webhook devolve 500 em loop.
+  const rawEventId = payload?.id || paymentData?.id || crypto.randomUUID();
+  const externalEventId = `${rawEventId}:${eventType}`;
 
   // Idempotency check
   const { data: existingEvent } = await supabase
     .from("webhook_events")
-    .select("id, status")
+    .select("id, status, attempts")
     .eq("provider", "ASAAS")
     .eq("external_event_id", String(externalEventId))
-    .eq("event_type", eventType)
     .maybeSingle();
 
   if (existingEvent?.status === "PROCESSED") {
@@ -106,7 +109,7 @@ Deno.serve(async (req) => {
     workspace_id: paymentRecord?.workspace_id || null,
     order_id: paymentRecord?.order_id || null,
     status_before: statusBefore,
-    attempts: existingEvent ? (existingEvent as any).attempts + 1 : 1,
+    attempts: (existingEvent?.attempts ?? 0) + 1,
   };
 
   let webhookEventId: string;
@@ -118,19 +121,29 @@ Deno.serve(async (req) => {
     }).eq("id", existingEvent.id);
     webhookEventId = existingEvent.id;
   } else {
-    const { data: we } = await supabase
+    const { data: we, error: weErr } = await supabase
       .from("webhook_events")
       .insert(webhookInsert)
       .select("id")
       .single();
-    if (!we) {
-      console.error("Failed to persist webhook_event");
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (weErr || !we) {
+      // Corrida entre duas entregas do mesmo evento: recupera a linha existente
+      const { data: raced } = await supabase
+        .from("webhook_events")
+        .select("id")
+        .eq("provider", "ASAAS")
+        .eq("external_event_id", String(externalEventId))
+        .maybeSingle();
+      if (!raced) {
+        console.error("Failed to persist webhook_event:", weErr);
+        return new Response(JSON.stringify({ ok: false }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      webhookEventId = raced.id;
+    } else {
+      webhookEventId = we.id;
     }
-
-    webhookEventId = we.id;
   }
 
   try {
@@ -389,11 +402,15 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
   }
 
   // Wallet ledger + split + reserve
+  // ATENÇÃO: wallet_ledger, split_entries, reserve_entries e security_reserves
+  // armazenam valores em CENTAVOS (integer). orders.total_amount é em reais (numeric).
   if (order) {
     const HOLD_DAYS = 14;
     const availableAt = new Date(Date.now() + HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const totalAmount = Number(order.total_amount || 0);
-    const netFee = paymentData?.netValue ? totalAmount - Number(paymentData.netValue) : 0;
+    const totalAmount = Math.round(Number(order.total_amount || 0) * 100); // centavos
+    const netFee = paymentData?.netValue
+      ? Math.max(0, totalAmount - Math.round(Number(paymentData.netValue) * 100))
+      : 0;
     const netAmount = totalAmount - netFee;
 
     const { data: existingLedger } = await supabase
