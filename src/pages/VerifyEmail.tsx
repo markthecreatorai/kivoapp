@@ -13,14 +13,21 @@ import { validateAuthEmail } from "@/lib/authEmailGuard";
 export default function VerifyEmail() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   const redirectAfterVerification = async (userId: string) => {
+    const explicit = searchParams.get("redirect");
+    if (explicit && explicit.startsWith("/") && !explicit.startsWith("//")) {
+      navigate(explicit, { replace: true });
+      return;
+    }
     const destination = await resolveSmartRedirect(userId);
     navigate(destination, { replace: true });
   };
+
 
   useEffect(() => {
     if (user?.email_confirmed_at) {
