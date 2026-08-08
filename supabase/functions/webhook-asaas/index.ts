@@ -892,17 +892,27 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     status: "disputed",
   }).eq("order_id", paymentRecord.order_id);
 
-  // 6. Ledger reversal
+  // 6. Ledger reversal — wallet_ledger em CENTAVOS, paymentData.value em REAIS.
+  const chargebackCents = Math.round(Number(chargebackAmount || 0) * 100);
   await supabase.from("wallet_ledger").update({ status: "canceled" })
     .eq("order_id", paymentRecord.order_id).eq("type", "sale");
-  await supabase.from("wallet_ledger").insert({
-    workspace_id: paymentRecord.workspace_id,
-    order_id: paymentRecord.order_id,
-    type: "chargeback",
-    amount: -chargebackAmount,
-    status: "settled",
-    description: `Chargeback #${paymentRecord.order_id.slice(0, 8)}`,
-  });
+  const { data: existingCbLedger } = await supabase
+    .from("wallet_ledger")
+    .select("id")
+    .eq("order_id", paymentRecord.order_id)
+    .eq("type", "chargeback")
+    .maybeSingle();
+  if (!existingCbLedger) {
+    const { error: cbLedgerErr } = await supabase.from("wallet_ledger").insert({
+      workspace_id: paymentRecord.workspace_id,
+      order_id: paymentRecord.order_id,
+      type: "chargeback",
+      amount: -chargebackCents,
+      status: "settled",
+      description: `Chargeback #${paymentRecord.order_id.slice(0, 8)}`,
+    });
+    if (cbLedgerErr) console.error("[webhook-asaas] falha ao lançar chargeback no ledger:", cbLedgerErr);
+  }
 
   // 7. Check if creator balance went negative → block payouts
   const { data: balanceData } = await supabase.rpc("get_creator_balance", {
