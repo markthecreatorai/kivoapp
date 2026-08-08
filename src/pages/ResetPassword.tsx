@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getPasswordStrength } from "@/lib/password-strength";
 import kivoLogo from "@/assets/kivo-logo.svg";
 
 export default function ResetPassword() {
@@ -18,25 +19,13 @@ export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidRecovery, setIsValidRecovery] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [zxcvbnFn, setZxcvbnFn] = useState<null | ((password: string) => any)>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    let mounted = true;
-    import("zxcvbn")
-      .then((mod) => {
-        if (mounted) setZxcvbnFn(() => mod.default);
-      })
-      .catch(() => {});
-    return () => { mounted = false; };
-  }, []);
-
   const passwordStrength = useMemo(() => {
-    if (!password || !zxcvbnFn) return null;
-    return zxcvbnFn(password);
-  }, [password, zxcvbnFn]);
-  const strengthLabels = ["Muito fraca", "Fraca", "Regular", "Boa", "Muito forte"];
+    if (!password) return null;
+    return getPasswordStrength(password);
+  }, [password]);
 
   useEffect(() => {
     // Supabase sends recovery tokens in the hash fragment: #type=recovery&access_token=...
@@ -205,14 +194,9 @@ export default function ResetPassword() {
                         className="flex-1 h-2"
                       />
                       <span className="text-xs text-muted-foreground">
-                        {strengthLabels[passwordStrength.score]}
+                        {passwordStrength.label}
                       </span>
                     </div>
-                    {passwordStrength.feedback.suggestions.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {passwordStrength.feedback.suggestions[0]}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>

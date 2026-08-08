@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPasswordStrength } from "@/lib/password-strength";
 import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/tracking";
 import { Progress } from "@/components/ui/progress";
@@ -71,7 +72,7 @@ export default function Signup() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [creatorType, setCreatorType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [zxcvbnFn, setZxcvbnFn] = useState<null | ((password: string) => any)>(null);
+  
   const [existingAccount, setExistingAccount] = useState<null | {
     kind: "confirmed" | "unconfirmed";
     email: string;
@@ -130,25 +131,11 @@ export default function Signup() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    let mounted = true;
-    import("zxcvbn")
-      .then((mod) => {
-        if (mounted) setZxcvbnFn(() => mod.default);
-      })
-      .catch(() => {});
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   // Password strength analysis
   const passwordStrength = useMemo(() => {
-    if (!password || !zxcvbnFn) return null;
-    return zxcvbnFn(password);
-  }, [password, zxcvbnFn]);
-  const strengthLabels = ["Muito fraca", "Fraca", "Regular", "Boa", "Muito forte"];
+    if (!password) return null;
+    return getPasswordStrength(password);
+  }, [password]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -442,14 +429,9 @@ export default function Signup() {
                     <div className="flex items-center space-x-2">
                       <Progress value={(passwordStrength.score + 1) * 20} className="flex-1 h-2" />
                       <span className="text-xs text-muted-foreground">
-                        {strengthLabels[passwordStrength.score]}
+                        {passwordStrength.label}
                       </span>
                     </div>
-                    {passwordStrength.feedback.suggestions.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {passwordStrength.feedback.suggestions[0]}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
