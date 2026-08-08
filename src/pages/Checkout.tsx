@@ -328,6 +328,7 @@ export default function Checkout() {
         body: {
           code,
           workspace_id: product.workspace_id,
+          product_id: product.id,
           customer_email: customer.email || undefined,
           order_amount: orderAmount,
         },
