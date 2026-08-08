@@ -651,6 +651,9 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
   await supabase.from("orders").update({ status: "REFUNDED" }).eq("id", paymentRecord.order_id);
   await supabase.from("entitlements").update({ revoked_at: new Date().toISOString() }).eq("order_id", paymentRecord.order_id);
 
+  // Cancela comissões de afiliado (não entram no saldo a pagar)
+  await cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado");
+
   // Ledger
   await supabase.from("wallet_ledger").update({ status: "canceled" })
     .eq("order_id", paymentRecord.order_id).eq("type", "sale");
