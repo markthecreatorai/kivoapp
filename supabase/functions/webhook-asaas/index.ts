@@ -616,6 +616,25 @@ async function handleFailed(supabase: any, paymentRecord: any, paymentData: any)
   return "FAILED";
 }
 
+// Cancela comissões de afiliado do pedido (refund/chargeback) para não entrar no saldo a pagar
+async function cancelOrderCommissions(supabase: any, orderId: string, reason: string) {
+  try {
+    const { error } = await supabase
+      .from("commissions")
+      .update({
+        status: "CANCELLED",
+        cancelled_at: new Date().toISOString(),
+        cancel_reason: reason,
+      })
+      .eq("order_id", orderId)
+      .in("status", ["PENDING", "APPROVED"]);
+    if (error) console.error("[Affiliate] Falha ao cancelar comissão:", error);
+    else console.log(`[Affiliate] Comissões canceladas para pedido ${orderId} (${reason})`);
+  } catch (e) {
+    console.error("[Affiliate] Erro ao cancelar comissão (non-fatal):", e);
+  }
+}
+
 async function handleRefunded(supabase: any, paymentRecord: any, paymentData: any): Promise<string> {
   if (!paymentRecord) return "NOT_FOUND";
 
