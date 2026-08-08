@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import { clearReferralCode } from "@/hooks/useReferralTracking";
+import { resolveSmartRedirect } from "@/lib/smartRedirect";
+
 
 type Status = "loading" | "success" | "error";
 
@@ -60,8 +62,10 @@ async function processPendingReferral(userId: string) {
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [destination, setDestination] = useState<string>("/dashboard");
 
   useEffect(() => {
     const hash = window.location.hash.substring(1);
@@ -78,17 +82,33 @@ export default function AuthCallback() {
       return;
     }
 
+    /** Destino: ?redirect interno tem prioridade; senão resolve pelo tipo de conta. */
+    const resolveDestination = async (userId: string) => {
+      const explicit = searchParams.get("redirect");
+      if (explicit && explicit.startsWith("/") && !explicit.startsWith("//")) {
+        setDestination(explicit);
+        return;
+      }
+      try {
+        setDestination(await resolveSmartRedirect(userId));
+      } catch {
+        setDestination("/dashboard");
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         processPendingReferral(session.user.id);
       }
       if (session?.user?.email_confirmed_at) {
+        void resolveDestination(session.user.id);
         setStatus("success");
       } else {
         setTimeout(async () => {
           const { data } = await supabase.auth.getUser();
           if (data.user) {
             processPendingReferral(data.user.id);
+            await resolveDestination(data.user.id);
           }
           setStatus("success");
         }, 1500);
@@ -97,7 +117,8 @@ export default function AuthCallback() {
       setStatus("error");
       setErrorMessage("Não foi possível verificar sua sessão.");
     });
-  }, []);
+  }, [searchParams]);
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -129,7 +150,7 @@ export default function AuthCallback() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={() => navigate("/dashboard", { replace: true })}>
+                <Button className="w-full" onClick={() => navigate(destination, { replace: true })}>
                   Acessar minha conta
                 </Button>
               </CardContent>

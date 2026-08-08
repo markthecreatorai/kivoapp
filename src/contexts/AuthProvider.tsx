@@ -17,17 +17,36 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+/**
+ * Rotas que são donas do próprio fluxo pós-login: aqui o SIGNED_IN não dispara
+ * navegação automática, para não competir com o destino escolhido pela página
+ * (ex: entrar em comunidade via convite).
+ */
+const skipRedirectPaths = ["/join", "/member/login", "/auth/callback"];
+
+function shouldSkipAutoRedirect(pathname: string): boolean {
+  if (skipRedirectPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
+  // /circles/:slug/about — página de entrada da comunidade
+  if (/^\/circles\/[^/]+\/about$/.test(pathname)) return true;
+  return false;
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+
   useEffect(() => {
     const finalizeSignedIn = async (signedInUser: User) => {
+      const skipRedirect = shouldSkipAutoRedirect(window.location.pathname);
       try {
+        // A entrada pendente na comunidade sempre é concluída (é escrita no banco);
+        // só a navegação automática é suprimida nas rotas donas do fluxo.
         const completed = await completePendingCommunityJoin(signedInUser.id);
         if (completed?.communitySlug) {
+          if (skipRedirect) return;
           setTimeout(() => {
             navigate(
               completed.status === "PENDING"
@@ -42,6 +61,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error("Error completing pending community join:", error);
       }
 
+      if (skipRedirect) return;
+
       try {
         const raw = sessionStorage.getItem("kivo_nav_intent");
         if (raw) {
@@ -53,6 +74,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } catch {}
     };
+
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
