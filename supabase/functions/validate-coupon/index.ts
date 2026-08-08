@@ -1,6 +1,12 @@
 import { corsHeadersFor } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
 
+// Anti-enumeration limits
+const IP_LIMIT = 20; // attempts per IP
+const IP_WINDOW_SECONDS = 60;
+const WORKSPACE_LIMIT = 60; // attempts per workspace
+const WORKSPACE_WINDOW_SECONDS = 60;
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -22,6 +28,30 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // 0. Rate limit (IP + workspace) to block coupon brute force
+    const ip = getClientIp(req);
+    const ipCheck = await checkRateLimit(
+      supabase, "validate-coupon:ip", ip, IP_LIMIT, IP_WINDOW_SECONDS,
+    );
+    const wsCheck = ipCheck.allowed
+      ? await checkRateLimit(
+          supabase, "validate-coupon:workspace", workspace_id,
+          WORKSPACE_LIMIT, WORKSPACE_WINDOW_SECONDS,
+        )
+      : { allowed: false };
+
+    if (!ipCheck.allowed || !wsCheck.allowed) {
+      console.warn("validate-coupon rate limited", { ip, workspace_id });
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          error: "Muitas tentativas. Aguarde um minuto e tente novamente.",
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } }
+      );
+    }
+
 
     // 1. Find coupon
     const { data: coupon, error: couponErr } = await supabase
