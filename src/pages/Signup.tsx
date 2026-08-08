@@ -130,25 +130,11 @@ export default function Signup() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    let mounted = true;
-    import("zxcvbn")
-      .then((mod) => {
-        if (mounted) setZxcvbnFn(() => mod.default);
-      })
-      .catch(() => {});
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   // Password strength analysis
   const passwordStrength = useMemo(() => {
-    if (!password || !zxcvbnFn) return null;
-    return zxcvbnFn(password);
-  }, [password, zxcvbnFn]);
-  const strengthLabels = ["Muito fraca", "Fraca", "Regular", "Boa", "Muito forte"];
+    if (!password) return null;
+    return getPasswordStrength(password);
+  }, [password]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
