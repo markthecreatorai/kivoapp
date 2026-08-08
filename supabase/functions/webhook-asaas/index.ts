@@ -948,7 +948,7 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     const telegramKey = Deno.env.get("TELEGRAM_API_KEY");
     const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
     if (telegramKey && chatId) {
-      const msg = `🚨 CHARGEBACK\nWorkspace: ${paymentRecord.workspace_id.slice(0, 8)}\nOrder: ${paymentRecord.order_id.slice(0, 8)}\nValor: R$ ${(chargebackAmount / 100).toFixed(2)}\nRisk Score: ${riskScore}`;
+      const msg = `🚨 CHARGEBACK\nWorkspace: ${paymentRecord.workspace_id.slice(0, 8)}\nOrder: ${paymentRecord.order_id.slice(0, 8)}\nValor: R$ ${Number(chargebackAmount).toFixed(2)}\nRisk Score: ${riskScore}`;
       await fetch(`https://api.telegram.org/bot${telegramKey}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
