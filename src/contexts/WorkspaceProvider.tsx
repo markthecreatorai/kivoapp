@@ -163,14 +163,13 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
 
   useEffect(() => {
-    if (session) {
+    // Depende apenas do id do usuário: o objeto `session` muda a cada refresh
+    // de token (~55min) e causaria refetch desnecessário dos workspaces.
+    if (user?.id) {
       setLoading(true);
       fetchUserWorkspaces();
-    } else if (!session && !loading) {
-      // Only clear when we're sure auth has finished loading (session is definitively null)
-      // Don't clear during initial mount when auth is still resolving
     }
-  }, [session]);
+  }, [user?.id]);
 
   // Separate effect: only clear workspace state when user is definitively logged out
   useEffect(() => {
