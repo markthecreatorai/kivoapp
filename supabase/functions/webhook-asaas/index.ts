@@ -439,8 +439,9 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
   // Affiliate commissions
   try {
     if (order) {
-      let affiliateLinkId: string | null = null;
-      if (order.checkout_session_id) {
+      // 1. affiliate_link_id do pedido é a fonte primária; sessão de checkout é fallback
+      let affiliateLinkId: string | null = order.affiliate_link_id || null;
+      if (!affiliateLinkId && order.checkout_session_id) {
         const { data: session } = await supabase
           .from("checkout_sessions")
           .select("affiliate_link_id")
@@ -450,48 +451,78 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       }
 
       if (affiliateLinkId) {
+        // 2. Resolve affiliate_id + taxa de comissão
         const { data: affLink } = await supabase
           .from("affiliate_links")
           .select("id, affiliate_id, product_id")
           .eq("id", affiliateLinkId)
           .maybeSingle();
 
-        if (affLink) {
-          const { data: existingComm } = await supabase
-            .from("commissions")
-            .select("id")
-            .eq("order_id", paymentRecord.order_id)
-            .eq("affiliate_id", affLink.affiliate_id)
+        if (affLink?.affiliate_id) {
+          const { data: prog } = await supabase
+            .from("affiliate_programs")
+            .select("is_enabled, default_commission_percent, hold_days")
+            .eq("workspace_id", order.workspace_id)
             .maybeSingle();
 
-          if (!existingComm) {
-            let commissionPercent = 20;
-            for (const item of (orderItems || [])) {
+          if (prog?.is_enabled === false) {
+            console.log(`[Affiliate] Programa desabilitado para workspace ${order.workspace_id} — comissão ignorada`);
+          } else {
+            // Regra por produto tem prioridade sobre o percentual padrão do programa
+            let commissionPercent: number | null = null;
+            let fixedAmount: number | null = null;
+            const ruleProductIds = [
+              ...(affLink.product_id ? [affLink.product_id] : []),
+              ...(orderItems || []).map((i: any) => i.product_id),
+            ];
+            for (const productId of ruleProductIds) {
               const { data: rule } = await supabase
                 .from("commission_rules")
-                .select("percent")
-                .eq("product_id", item.product_id)
+                .select("percent, fixed_amount")
+                .eq("product_id", productId)
                 .eq("is_active", true)
                 .maybeSingle();
-              if (rule) { commissionPercent = rule.percent; break; }
+              if (rule) {
+                commissionPercent = rule.percent !== null ? Number(rule.percent) : null;
+                fixedAmount = rule.fixed_amount !== null ? Number(rule.fixed_amount) : null;
+                break;
+              }
+            }
+            if (commissionPercent === null && fixedAmount === null) {
+              commissionPercent = prog?.default_commission_percent !== undefined && prog?.default_commission_percent !== null
+                ? Number(prog.default_commission_percent)
+                : 20;
             }
 
-            const { data: prog } = await supabase
-              .from("affiliate_programs")
-              .select("default_commission_percent, hold_days")
-              .eq("workspace_id", order.workspace_id)
-              .maybeSingle();
-            if (prog && commissionPercent === 20) commissionPercent = prog.default_commission_percent;
-            const holdDays = prog?.hold_days || 14;
-            const commissionAmount = Math.round(Number(order.total_amount) * (commissionPercent / 100));
+            // 3. Comissão sobre o valor líquido (total menos descontos)
+            const gross = Number(order.total_amount || 0);
+            const discount = Number(order.discount_amount || 0);
+            const netAmount = Math.max(gross - discount, 0);
+            const rawCommission = fixedAmount !== null
+              ? fixedAmount
+              : netAmount * ((commissionPercent ?? 0) / 100);
+            const commissionAmount = Math.max(Math.round(rawCommission * 100) / 100, 0);
 
-            await supabase.from("commissions").insert({
-              affiliate_id: affLink.affiliate_id,
-              order_id: paymentRecord.order_id,
-              amount: commissionAmount,
-              status: "PENDING",
-              hold_until: new Date(Date.now() + holdDays * 86400000).toISOString(),
-            });
+            // Prazo de garantia antes de liberar o pagamento da comissão
+            const holdDays = prog?.hold_days ?? 14;
+            const holdUntil = new Date(Date.now() + holdDays * 86400000).toISOString();
+
+            if (commissionAmount > 0) {
+              // 5. Idempotente via UNIQUE (order_id, affiliate_id)
+              const { error: commErr } = await supabase.from("commissions").upsert({
+                affiliate_id: affLink.affiliate_id,
+                order_id: paymentRecord.order_id,
+                amount: commissionAmount,
+                status: "PENDING",
+                hold_until: holdUntil,
+              }, { onConflict: "order_id,affiliate_id", ignoreDuplicates: true });
+
+              if (commErr) {
+                console.error("[Affiliate] Falha ao inserir comissão:", commErr);
+              } else {
+                console.log(`[Affiliate] Comissão de ${commissionAmount} (líquido ${netAmount}) para afiliado ${affLink.affiliate_id} no pedido ${paymentRecord.order_id}`);
+              }
+            }
 
             await supabase.from("affiliate_attributions")
               .update({ converted_at: new Date().toISOString() })
@@ -504,6 +535,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
   } catch (affErr) {
     console.error("Affiliate commission error (non-fatal):", affErr);
   }
+
 
   // Transactional emails
   try {
