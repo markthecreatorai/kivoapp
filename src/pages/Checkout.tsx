@@ -12,6 +12,8 @@ import { validateCPF } from "@/lib/cpf";
 import { mapPaymentError } from "@/lib/cpf";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { trackEvent } from "@/lib/tracking";
+import { computeCheckoutTotals, type AppliedCoupon } from "@/lib/checkout-totals";
+
 
 interface Product {
   id: string;
@@ -55,7 +57,9 @@ export default function Checkout() {
 
   const [customer, setCustomer] = useState({ name: "", email: "", cpf: "", phone: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [pendingCouponCode, setPendingCouponCode] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<string>("pix");
 
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -90,8 +94,10 @@ export default function Checkout() {
             setCustomer((prev) => ({ ...prev, email: session.email! }));
           }
           if (session.coupon_code) {
-            setAppliedCoupon({ code: session.coupon_code, discount: 0 });
+            // Re-validated against the server once product/price are loaded
+            setPendingCouponCode(session.coupon_code);
           }
+
           trackEvent("cart_recovery_started", { session_id: recoverySessionId }, session.workspace_id);
 
           // Load product from line items
@@ -260,18 +266,24 @@ export default function Checkout() {
     });
   }, [product]);
 
-  // Price calculations
+  // Price calculations — same order as the backend: coupon over subtotal, then PIX %
   const bumpAmount = useMemo(
     () => orderBumps.filter((b) => selectedBumps.has(b.bump_product_id)).reduce((sum, b) => sum + b.bump_price, 0),
     [orderBumps, selectedBumps]
   );
-  const subtotal = (price?.amount ?? 0) + bumpAmount;
-  const couponDiscount = appliedCoupon?.discount ?? 0;
-  const pixDiscountAmount = price?.pix_discount_percent ? (price.amount) * (price.pix_discount_percent / 100) : null;
-  const pixTotal = pixDiscountAmount ? subtotal - couponDiscount - pixDiscountAmount : null;
-  const cardTotal = subtotal - couponDiscount;
-  const currentTotal = activeTab === "pix" && pixTotal ? pixTotal : cardTotal;
+  const totals = useMemo(
+    () => computeCheckoutTotals({
+      priceAmount: price?.amount ?? 0,
+      bumpAmount,
+      coupon: appliedCoupon,
+      pixDiscountPercent: price?.pix_discount_percent,
+    }),
+    [price?.amount, price?.pix_discount_percent, bumpAmount, appliedCoupon]
+  );
+  const { subtotal, couponDiscount, pixDiscount: pixDiscountAmount, cardTotal, pixTotal } = totals;
+  const currentTotal = activeTab === "pix" && pixTotal !== null ? pixTotal : cardTotal;
   const selectedBumpIds = useMemo(() => Array.from(selectedBumps), [selectedBumps]);
+
 
   // Save email on blur for checkout recovery
   const handleEmailBlur = useCallback(async () => {
@@ -305,30 +317,54 @@ export default function Checkout() {
     return Object.keys(errs).length === 0;
   }, [customer]);
 
-  // Coupon validation via edge function
-  const handleApplyCoupon = async (code: string): Promise<boolean> => {
-    if (!product || !price) return false;
+  // Coupon validation via edge function (server is the source of truth)
+  const handleApplyCoupon = useCallback(async (
+    code: string,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!product || !price) return { ok: false, error: "Produto indisponível" };
+    const orderAmount = (price.amount ?? 0) + bumpAmount;
     try {
       const res = await supabase.functions.invoke("validate-coupon", {
         body: {
           code,
           workspace_id: product.workspace_id,
           customer_email: customer.email || undefined,
-          order_amount: price.amount,
+          order_amount: orderAmount,
         },
       });
-      if (res.error) return false;
-      const data = res.data;
-      if (data?.valid) {
-        setAppliedCoupon({ code: data.code, discount: data.discount });
+      const data = res.data as
+        | { valid: boolean; code?: string; type?: string; value?: number; discount?: number; error?: string }
+        | null;
+
+      if (data?.valid && data.code) {
+        setAppliedCoupon({
+          code: data.code,
+          type: data.type || "FIXED",
+          value: Number(data.value ?? 0),
+          discount: Number(data.discount ?? 0),
+        });
         trackEvent("coupon_applied", { code: data.code, discount: data.discount }, product.workspace_id);
-        return true;
+        return { ok: true };
       }
-      return false;
+
+      return {
+        ok: false,
+        error: data?.error || (res.error ? "Não foi possível validar o cupom agora" : "Cupom inválido ou expirado"),
+      };
     } catch {
-      return false;
+      return { ok: false, error: "Não foi possível validar o cupom agora" };
     }
-  };
+  }, [product, price, bumpAmount, customer.email]);
+
+  // Re-apply a coupon restored from an abandoned checkout session
+  useEffect(() => {
+    if (!pendingCouponCode || !product || !price) return;
+    const code = pendingCouponCode;
+    setPendingCouponCode(null);
+    void handleApplyCoupon(code);
+  }, [pendingCouponCode, product, price, handleApplyCoupon]);
+
+
 
   // Payment handlers
   const handlePayPix = async () => {

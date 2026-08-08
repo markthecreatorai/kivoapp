@@ -9217,6 +9217,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      redeem_coupon: {
+        Args: {
+          p_coupon_id: string
+          p_customer_email: string
+          p_discount: number
+          p_order_id: string
+        }
+        Returns: boolean
+      }
+      release_coupon: {
+        Args: { p_coupon_id: string; p_order_id: string }
+        Returns: boolean
+      }
       resolve_member_tiers: {
         Args: { p_community_id: string; p_user_id: string }
         Returns: {

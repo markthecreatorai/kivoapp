@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { computePixDiscount, resolveCoupon, round2 } from "../_shared/coupon.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -200,58 +202,9 @@ Deno.serve(async (req) => {
     }
 
 
-    // Calculate totals
-    let subtotal = price.amount;
-    let discountAmount = 0;
-    if (method === "pix" && price.pix_discount_percent) {
-      discountAmount += subtotal * (price.pix_discount_percent / 100);
-    }
+    // Subtotal starts with the main price; order bumps are added below
+    let subtotal = Number(price.amount);
 
-    // Apply coupon discount
-    let couponDiscount = 0;
-    if (coupon_code) {
-      const { data: coupon } = await supabase
-        .from("coupons")
-        .select("*")
-        .eq("workspace_id", workspace_id)
-        .eq("code", coupon_code.toUpperCase())
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (coupon) {
-        const now = new Date();
-        const validFrom = new Date(coupon.valid_from);
-        const validUntil = coupon.valid_until ? new Date(coupon.valid_until) : null;
-        const withinDates = validFrom <= now && (!validUntil || validUntil >= now);
-        const withinUses = coupon.max_uses === null || coupon.current_uses < coupon.max_uses;
-
-        if (withinDates && withinUses) {
-          if (coupon.type === "PERCENT") {
-            couponDiscount = Math.round(subtotal * (coupon.value / 100) * 100) / 100;
-          } else {
-            couponDiscount = Math.min(coupon.value, subtotal);
-          }
-          discountAmount += couponDiscount;
-
-          // Increment usage
-          await supabase.from("coupons").update({
-            current_uses: (coupon.current_uses || 0) + 1,
-          }).eq("id", coupon.id);
-
-          // Record usage
-          if (customer.email) {
-            const { error: usageErr } = await supabase.from("coupon_usages").insert({
-              coupon_id: coupon.id,
-              customer_email: customer.email.toLowerCase(),
-              order_amount: subtotal,
-              discount_amount: couponDiscount,
-            });
-            if (usageErr) console.error("Erro ao registrar uso de cupom:", JSON.stringify(usageErr));
-          }
-
-        }
-      }
-    }
 
     const bumpItems: { product_id: string; price_id: string; amount: number }[] = [];
     if (bump_product_ids && Array.isArray(bump_product_ids)) {
@@ -302,12 +255,43 @@ Deno.serve(async (req) => {
           });
         }
         bumpItems.push({ product_id: bumpPrice.product_id, price_id: bumpPrice.id, amount: bumpPrice.amount });
-        subtotal += bumpPrice.amount;
+        subtotal += Number(bumpPrice.amount);
       }
     }
 
-    const totalAmount = Math.max(0, subtotal - discountAmount);
+    subtotal = round2(subtotal);
+
+    // ── Discounts (server-side source of truth) ─────────────────────────────
+    // Order: coupon over the subtotal, then the PIX percentage over the result.
+    // The frontend (src/lib/checkout-totals.ts) applies the exact same order.
+    let couponDiscount = 0;
+    let appliedCoupon: { id: string } | null = null;
+    if (coupon_code) {
+      const couponResult = await resolveCoupon(supabase, {
+        code: String(coupon_code),
+        workspaceId: workspace_id,
+        customerEmail: customer.email,
+        orderAmount: subtotal,
+      });
+      if (!couponResult.valid || !couponResult.coupon) {
+        console.warn("Cupom rejeitado no create-payment:", coupon_code, couponResult.error);
+        return new Response(JSON.stringify({ error: couponResult.error || "Cupom inválido" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      couponDiscount = couponResult.discount;
+      appliedCoupon = { id: couponResult.coupon.id };
+    }
+
+    const amountAfterCoupon = round2(Math.max(0, subtotal - couponDiscount));
+    const pixDiscount = method === "pix"
+      ? computePixDiscount(amountAfterCoupon, price.pix_discount_percent)
+      : 0;
+
+    const discountAmount = round2(couponDiscount + pixDiscount);
+    const totalAmount = round2(Math.max(0, amountAfterCoupon - pixDiscount));
     const selectedInstallments = requestedInstallments;
+
 
     // Upsert customer
     const { data: existingCustomer } = await supabase
@@ -380,6 +364,26 @@ Deno.serve(async (req) => {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Redeem the coupon atomically (locks the row, re-checks total and per-customer
+    // limits, records coupon_usages and increments current_uses in one transaction).
+    if (appliedCoupon) {
+      const { data: redeemed, error: redeemErr } = await supabase.rpc("redeem_coupon", {
+        p_coupon_id: appliedCoupon.id,
+        p_order_id: order.id,
+        p_customer_email: customer.email,
+        p_discount: couponDiscount,
+      });
+      if (redeemErr || redeemed !== true) {
+        console.error("Falha ao resgatar cupom:", coupon_code, JSON.stringify(redeemErr));
+        await supabase.from("orders").update({ status: "FAILED" }).eq("id", order.id);
+        return new Response(JSON.stringify({ error: "Cupom atingiu o limite de usos" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+
 
 
     if (checkout_session_id) {
@@ -516,9 +520,18 @@ Deno.serve(async (req) => {
       // Mark order as FAILED when gateway rejects
       console.error("Gateway error, marking order FAILED:", (gatewayErr as Error).message);
       await supabase.from("orders").update({ status: "FAILED" }).eq("id", order.id);
+      // Give the coupon use back — the order never became payable
+      if (appliedCoupon) {
+        const { error: releaseErr } = await supabase.rpc("release_coupon", {
+          p_coupon_id: appliedCoupon.id,
+          p_order_id: order.id,
+        });
+        if (releaseErr) console.error("Erro ao liberar cupom:", JSON.stringify(releaseErr));
+      }
       if (checkout_session_id) {
         await supabase.from("checkout_sessions").update({ status: "FAILED" }).eq("id", checkout_session_id);
       }
+
       return new Response(JSON.stringify({
         error: (gatewayErr as Error).message || "Erro no gateway de pagamento",
         order_id: order.id,

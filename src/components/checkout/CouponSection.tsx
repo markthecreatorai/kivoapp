@@ -6,7 +6,7 @@ import { formatCurrency } from "@/lib/utils";
 
 interface CouponSectionProps {
   appliedCoupon: { code: string; discount: number } | null;
-  onApply: (code: string) => Promise<boolean>;
+  onApply: (code: string) => Promise<{ ok: boolean; error?: string }>;
   onRemove: () => void;
 }
 
@@ -20,10 +20,11 @@ export function CouponSection({ appliedCoupon, onApply, onRemove }: CouponSectio
     if (!code.trim()) return;
     setLoading(true);
     setError("");
-    const success = await onApply(code.trim().toUpperCase());
-    if (!success) setError("Cupom inválido ou expirado");
+    const result = await onApply(code.trim().toUpperCase());
+    if (!result.ok) setError(result.error || "Cupom inválido ou expirado");
     setLoading(false);
   };
+
 
   if (appliedCoupon) {
     return (
