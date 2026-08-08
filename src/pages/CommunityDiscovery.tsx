@@ -86,16 +86,18 @@ export default function CommunityDiscovery() {
 
   // Dummy community for auth modal context (discovery page, no specific community)
   const dummyCommunity = { name: "Kivo", slug: "", icon_url: null, id: "", access_type: "OPEN", require_approval: false };
-  const { data: communities = [], isLoading } = useQuery({
+  const { data: communities = [], isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["public-communities"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("communities")
         .select("*")
         .eq("is_active", true)
         .order("member_count", { ascending: false });
+      if (error) throw error;
       return (data || []) as any[];
     },
+    retry: 1,
   });
 
   const filtered = communities.filter((c: any) => {
