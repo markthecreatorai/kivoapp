@@ -3,6 +3,8 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { isConsumerOnly } from "@/lib/smartRedirect";
+import ProducerUpgradePrompt from "@/components/auth/ProducerUpgradePrompt";
+
 
 interface ProtectedRouteProps {
   children: ReactNode;
