@@ -250,7 +250,40 @@ Deno.serve(async (req) => {
 
     const bumpItems: { product_id: string; price_id: string; amount: number }[] = [];
     if (bump_product_ids && Array.isArray(bump_product_ids)) {
+      // Only products explicitly configured as active order bumps of the main product are accepted
+      const { data: allowedBumps, error: bumpsErr } = await supabase
+        .from("order_bumps")
+        .select("bump_product_id")
+        .eq("main_product_id", product.id)
+        .eq("is_active", true);
+      if (bumpsErr) {
+        console.error("Erro ao carregar order bumps:", JSON.stringify(bumpsErr));
+        return new Response(JSON.stringify({ error: "Erro ao validar ofertas adicionais" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const allowedIds = new Set((allowedBumps || []).map((b: any) => b.bump_product_id));
+
       for (const bumpId of bump_product_ids) {
+        if (!allowedIds.has(bumpId)) {
+          console.error("Order bump não configurado para este produto:", bumpId, product.id);
+          return new Response(JSON.stringify({ error: "Oferta adicional inválida para este produto" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Bump product must also be published, not deleted and in the same workspace
+        const { data: bumpProduct } = await supabase
+          .from("products")
+          .select("id, status, deleted_at, workspace_id")
+          .eq("id", bumpId)
+          .maybeSingle();
+        if (!bumpProduct || bumpProduct.deleted_at || bumpProduct.status !== "PUBLISHED" || bumpProduct.workspace_id !== workspace_id) {
+          return new Response(JSON.stringify({ error: "Oferta adicional indisponível" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         const { data: bumpPrice } = await supabase
           .from("prices")
           .select("id, amount, product_id")
@@ -258,15 +291,18 @@ Deno.serve(async (req) => {
           .eq("is_default", true)
           .eq("is_active", true)
           .maybeSingle();
-        if (bumpPrice) {
-          bumpItems.push({ product_id: bumpPrice.product_id, price_id: bumpPrice.id, amount: bumpPrice.amount });
-          subtotal += bumpPrice.amount;
+        if (!bumpPrice) {
+          return new Response(JSON.stringify({ error: "Oferta adicional sem preço ativo" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
+        bumpItems.push({ product_id: bumpPrice.product_id, price_id: bumpPrice.id, amount: bumpPrice.amount });
+        subtotal += bumpPrice.amount;
       }
     }
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
-    const selectedInstallments = Math.min(installments || 1, price.max_installments || 12);
+    const selectedInstallments = requestedInstallments;
 
     // Upsert customer
     const { data: existingCustomer } = await supabase
@@ -283,16 +319,22 @@ Deno.serve(async (req) => {
         name: customer.name, cpf, phone: customer.phone || null,
       }).eq("id", customerId);
     } else {
-      const { data: newCust } = await supabase
+      const { data: newCust, error: custErr } = await supabase
         .from("customers")
         .insert({ workspace_id, email: customer.email, name: customer.name, cpf, phone: customer.phone || null })
         .select("id")
         .single();
-      customerId = newCust!.id;
+      if (custErr || !newCust) {
+        console.error("Erro ao criar cliente:", JSON.stringify(custErr));
+        return new Response(JSON.stringify({ error: "Erro ao registrar cliente" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      customerId = newCust.id;
     }
 
     // Create order
-    const { data: order } = await supabase
+    const { data: order, error: orderErr } = await supabase
       .from("orders")
       .insert({
         workspace_id,
@@ -312,7 +354,8 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
 
-    if (!order) {
+    if (orderErr || !order) {
+      console.error("Erro ao criar pedido:", JSON.stringify(orderErr));
       return new Response(JSON.stringify({ error: "Erro ao criar pedido" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -324,7 +367,15 @@ Deno.serve(async (req) => {
         order_id: order.id, product_id: b.product_id, price_id: b.price_id, quantity: 1, unit_amount: b.amount, total_amount: b.amount, is_order_bump: true, is_upsell: false,
       })),
     ];
-    await supabase.from("order_items").insert(orderItems);
+    const { error: itemsErr } = await supabase.from("order_items").insert(orderItems);
+    if (itemsErr) {
+      console.error("Erro ao criar itens do pedido:", JSON.stringify(itemsErr));
+      await supabase.from("orders").update({ status: "FAILED" }).eq("id", order.id);
+      return new Response(JSON.stringify({ error: "Erro ao criar itens do pedido" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     if (checkout_session_id) {
       await supabase.from("checkout_sessions").update({
