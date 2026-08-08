@@ -9433,6 +9433,7 @@ export type Database = {
       }
       soft_delete_post: { Args: { p_post_id: string }; Returns: boolean }
       sync_workspace_plan: { Args: { p_workspace_id: string }; Returns: string }
+      unaccent: { Args: { "": string }; Returns: string }
       update_community_space: {
         Args: { p_community_id: string; p_patch: Json; p_space_id: string }
         Returns: boolean
