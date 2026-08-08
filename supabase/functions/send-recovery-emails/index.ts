@@ -192,7 +192,10 @@ Deno.serve(async (req) => {
       const checkoutUrl = `https://${projectRef}.supabase.co/checkout?session=${session.id}`;
 
       const template = EMAIL_TEMPLATES[recovery.email_number as 1 | 2 | 3];
-      if (!template) continue;
+      if (!template) {
+        await releaseClaim();
+        continue;
+      }
 
       const subject = typeof template.subject === "function"
         ? template.subject(productName)
