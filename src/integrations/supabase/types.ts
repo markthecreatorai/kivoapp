@@ -8033,6 +8033,27 @@ export type Database = {
           },
         ]
       }
+      user_account_types: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_asset_entitlements: {
         Row: {
           asset_id: string
@@ -8867,6 +8888,7 @@ export type Database = {
         Args: { p_recovered?: boolean; p_session_id: string }
         Returns: undefined
       }
+      ensure_producer_workspace: { Args: never; Returns: string }
       generate_recurring_occurrences: {
         Args: { p_event_id: string }
         Returns: number
@@ -9118,6 +9140,7 @@ export type Database = {
       }
     }
     Enums: {
+      account_type: "PRODUCER" | "MEMBER"
       app_role: "admin" | "moderator" | "user"
       community_access_type: "FREE_WITH_PRODUCT" | "PAID_SUBSCRIPTION" | "OPEN"
       community_member_role: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"
@@ -9289,6 +9312,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_type: ["PRODUCER", "MEMBER"],
       app_role: ["admin", "moderator", "user"],
       community_access_type: ["FREE_WITH_PRODUCT", "PAID_SUBSCRIPTION", "OPEN"],
       community_member_role: ["OWNER", "ADMIN", "MODERATOR", "MEMBER"],
