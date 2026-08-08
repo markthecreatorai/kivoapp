@@ -724,6 +724,9 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
   // 3. Update order status
   await supabase.from("orders").update({ status: "DISPUTED" }).eq("id", paymentRecord.order_id);
 
+  // 3b. Cancela comissões de afiliado do pedido contestado
+  await cancelOrderCommissions(supabase, paymentRecord.order_id, "Chargeback aberto");
+
   // 4. Reverse split entry (freeze creator balance)
   await supabase.from("split_entries").update({
     status: "refunded",
