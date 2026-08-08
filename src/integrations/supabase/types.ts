@@ -5160,43 +5160,55 @@ export type Database = {
       }
       fee_config: {
         Row: {
+          auto_approve_limit_cents: number
           boleto_fixed_cents: number
           created_at: string
           credit_card_percent: number
           description: string | null
           id: string
+          min_withdrawal_cents: number
           pix_percent: number
           plan_type: string
           platform_percent: number
           reserve_hold_days: number | null
           reserve_percent: number | null
           updated_at: string
+          withdrawal_fixed_cents: number
+          withdrawal_percent: number
         }
         Insert: {
+          auto_approve_limit_cents?: number
           boleto_fixed_cents?: number
           created_at?: string
           credit_card_percent?: number
           description?: string | null
           id?: string
+          min_withdrawal_cents?: number
           pix_percent?: number
           plan_type: string
           platform_percent?: number
           reserve_hold_days?: number | null
           reserve_percent?: number | null
           updated_at?: string
+          withdrawal_fixed_cents?: number
+          withdrawal_percent?: number
         }
         Update: {
+          auto_approve_limit_cents?: number
           boleto_fixed_cents?: number
           created_at?: string
           credit_card_percent?: number
           description?: string | null
           id?: string
+          min_withdrawal_cents?: number
           pix_percent?: number
           plan_type?: string
           platform_percent?: number
           reserve_hold_days?: number | null
           reserve_percent?: number | null
           updated_at?: string
+          withdrawal_fixed_cents?: number
+          withdrawal_percent?: number
         }
         Relationships: []
       }

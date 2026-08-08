@@ -130,3 +130,6 @@ verify_jwt = false
 
 [functions.get-wallet-balance]
 verify_jwt = true
+
+[functions.create-payout-request]
+verify_jwt = true
