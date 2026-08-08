@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
+import { describePlanError } from "@/lib/plan-errors";
 
 type ProductStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
