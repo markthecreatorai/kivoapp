@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const {
       product_id, price_id, method, customer,
-      checkout_session_id, card, installments, coupon_code,
+      checkout_session_id, card_token, card_last4, card_brand,
+      installments, coupon_code,
       affiliate_link_id, idempotency_key, bump_product_ids,
     } = body;
 
@@ -92,11 +93,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (method === "credit_card" && (!card?.number || !card?.cvv || !card?.exp_month || !card?.exp_year || !card?.holder_name)) {
-      return new Response(JSON.stringify({ error: "Dados do cartão incompletos" }), {
+    // PCI-DSS: esta função nunca recebe PAN/CVV — apenas o token do gateway
+    if (method === "credit_card" && !card_token) {
+      return new Response(JSON.stringify({ error: "Token do cartão ausente. Refaça o pagamento." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
