@@ -232,22 +232,18 @@ Deno.serve(async (req) => {
           if (!emailResponse.ok) {
             const errText = await emailResponse.text();
             console.error(`Email send failed for ${session.email}:`, errText);
+            await releaseClaim();
             continue;
           }
         } catch (emailErr) {
           console.error(`Email send error:`, emailErr);
+          await releaseClaim();
           continue;
         }
       } else {
         // Fallback: just log
         console.log(`[DRY RUN] Would send email #${recovery.email_number} to ${session.email}: ${subject}`);
       }
-
-      // Mark as sent
-      await supabase
-        .from("recovery_emails")
-        .update({ sent_at: now })
-        .eq("id", recovery.id);
 
       sent++;
     }
