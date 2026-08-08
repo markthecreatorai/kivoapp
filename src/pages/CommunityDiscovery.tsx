@@ -86,16 +86,18 @@ export default function CommunityDiscovery() {
 
   // Dummy community for auth modal context (discovery page, no specific community)
   const dummyCommunity = { name: "Kivo", slug: "", icon_url: null, id: "", access_type: "OPEN", require_approval: false };
-  const { data: communities = [], isLoading } = useQuery({
+  const { data: communities = [], isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["public-communities"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("communities")
         .select("*")
         .eq("is_active", true)
         .order("member_count", { ascending: false });
+      if (error) throw error;
       return (data || []) as any[];
     },
+    retry: 1,
   });
 
   const filtered = communities.filter((c: any) => {
@@ -210,6 +212,19 @@ export default function CommunityDiscovery() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Sparkles className="h-9 w-9 text-muted-foreground/40" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-1">Não conseguimos carregar as comunidades</h2>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Houve uma falha ao buscar a lista de comunidades. Tente novamente em alguns instantes.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => refetch()} disabled={isRefetching}>
+              Tentar novamente
+            </Button>
           </div>
         ) : sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">

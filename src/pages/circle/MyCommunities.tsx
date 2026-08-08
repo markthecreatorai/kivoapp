@@ -59,11 +59,11 @@ export default function MyCommunities() {
   const [slugEdited, setSlugEdited] = useState(false);
 
   // Fetch communities where user is a member
-  const { data: communities = [], isLoading } = useQuery<CommunityCard[]>({
+  const { data: communities = [], isLoading, isError, refetch, isRefetching } = useQuery<CommunityCard[]>({
     queryKey: ["my-communities", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("community_members")
         .select(`
           role,
@@ -76,11 +76,14 @@ export default function MyCommunities() {
         .eq("status", "ACTIVE")
         .order("created_at", { ascending: false });
 
+      if (error) throw error;
+
       return ((data || []) as any[])
         .filter((m: any) => m.community?.is_active)
         .map((m: any) => ({ ...m.community, role: m.role }));
     },
     enabled: !!user,
+    retry: 1,
   });
 
   // Fetch user's purchased courses/products
@@ -243,6 +246,26 @@ export default function MyCommunities() {
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : isError ? (
+          <div className="text-center py-20 space-y-5">
+            <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Users className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Não conseguimos carregar suas comunidades</h2>
+              <p className="text-muted-foreground mt-1">
+                Houve uma falha de conexão com o servidor. Tente novamente em alguns instantes.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
+                {isRefetching && <Loader2 className="h-4 w-4 animate-spin" />} Tentar novamente
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/circles/explore")} className="gap-2">
+                <Globe className="h-4 w-4" /> Explorar
+              </Button>
+            </div>
           </div>
         ) : communities.length === 0 ? (
           /* Empty state */

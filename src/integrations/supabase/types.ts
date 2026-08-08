@@ -2245,6 +2245,66 @@ export type Database = {
           },
         ]
       }
+      community_join_applications: {
+        Row: {
+          answers: Json
+          community_id: string
+          created_at: string
+          id: string
+          invite_code: string | null
+          member_id: string | null
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          community_id: string
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          member_id?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          community_id?: string
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          member_id?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_join_applications_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_join_applications_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_live_streams: {
         Row: {
           access_rule: string
@@ -9038,6 +9098,11 @@ export type Database = {
           display_message: string
           reason: string
         }[]
+      }
+      can_admin_community: { Args: { _community_id: string }; Returns: boolean }
+      can_moderate_community: {
+        Args: { _community_id: string }
+        Returns: boolean
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       complete_checkout_session: {
