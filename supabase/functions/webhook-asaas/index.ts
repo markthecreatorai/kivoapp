@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     workspace_id: paymentRecord?.workspace_id || null,
     order_id: paymentRecord?.order_id || null,
     status_before: statusBefore,
-    attempts: existingEvent ? (existingEvent as any).attempts + 1 : 1,
+    attempts: (existingEvent?.attempts ?? 0) + 1,
   };
 
   let webhookEventId: string;
@@ -121,19 +121,29 @@ Deno.serve(async (req) => {
     }).eq("id", existingEvent.id);
     webhookEventId = existingEvent.id;
   } else {
-    const { data: we } = await supabase
+    const { data: we, error: weErr } = await supabase
       .from("webhook_events")
       .insert(webhookInsert)
       .select("id")
       .single();
-    if (!we) {
-      console.error("Failed to persist webhook_event");
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (weErr || !we) {
+      // Corrida entre duas entregas do mesmo evento: recupera a linha existente
+      const { data: raced } = await supabase
+        .from("webhook_events")
+        .select("id")
+        .eq("provider", "ASAAS")
+        .eq("external_event_id", String(externalEventId))
+        .maybeSingle();
+      if (!raced) {
+        console.error("Failed to persist webhook_event:", weErr);
+        return new Response(JSON.stringify({ ok: false }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      webhookEventId = raced.id;
+    } else {
+      webhookEventId = we.id;
     }
-
-    webhookEventId = we.id;
   }
 
   try {
