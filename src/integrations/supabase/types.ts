@@ -8192,6 +8192,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallet_ledger: {
         Row: {
           amount: number
@@ -8842,11 +8863,25 @@ export type Database = {
         }[]
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      complete_checkout_session: {
+        Args: { p_recovered?: boolean; p_session_id: string }
+        Returns: undefined
+      }
       generate_recurring_occurrences: {
         Args: { p_event_id: string }
         Returns: number
       }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
+      get_checkout_session_public: {
+        Args: { p_session_id: string }
+        Returns: {
+          coupon_code: string
+          email: string
+          id: string
+          status: string
+          workspace_id: string
+        }[]
+      }
       get_community_ids_for_user: {
         Args: { _user_id: string }
         Returns: string[]
@@ -9001,6 +9036,17 @@ export type Database = {
         Args: { _community_id: string; _user_id: string }
         Returns: boolean
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      increment_invite_link_uses: {
+        Args: { p_link_id: string }
+        Returns: undefined
+      }
       is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_community_member:
         | { Args: { _community_id: string }; Returns: boolean }
@@ -9072,6 +9118,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       community_access_type: "FREE_WITH_PRODUCT" | "PAID_SUBSCRIPTION" | "OPEN"
       community_member_role: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"
       community_member_status:
@@ -9242,6 +9289,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       community_access_type: ["FREE_WITH_PRODUCT", "PAID_SUBSCRIPTION", "OPEN"],
       community_member_role: ["OWNER", "ADMIN", "MODERATOR", "MEMBER"],
       community_member_status: ["PENDING", "ACTIVE", "MUTED", "BANNED", "LEFT"],
