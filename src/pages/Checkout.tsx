@@ -317,30 +317,54 @@ export default function Checkout() {
     return Object.keys(errs).length === 0;
   }, [customer]);
 
-  // Coupon validation via edge function
-  const handleApplyCoupon = async (code: string): Promise<boolean> => {
-    if (!product || !price) return false;
+  // Coupon validation via edge function (server is the source of truth)
+  const handleApplyCoupon = useCallback(async (
+    code: string,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!product || !price) return { ok: false, error: "Produto indisponível" };
+    const orderAmount = (price.amount ?? 0) + bumpAmount;
     try {
       const res = await supabase.functions.invoke("validate-coupon", {
         body: {
           code,
           workspace_id: product.workspace_id,
           customer_email: customer.email || undefined,
-          order_amount: price.amount,
+          order_amount: orderAmount,
         },
       });
-      if (res.error) return false;
-      const data = res.data;
-      if (data?.valid) {
-        setAppliedCoupon({ code: data.code, discount: data.discount });
+      const data = res.data as
+        | { valid: boolean; code?: string; type?: string; value?: number; discount?: number; error?: string }
+        | null;
+
+      if (data?.valid && data.code) {
+        setAppliedCoupon({
+          code: data.code,
+          type: data.type || "FIXED",
+          value: Number(data.value ?? 0),
+          discount: Number(data.discount ?? 0),
+        });
         trackEvent("coupon_applied", { code: data.code, discount: data.discount }, product.workspace_id);
-        return true;
+        return { ok: true };
       }
-      return false;
+
+      return {
+        ok: false,
+        error: data?.error || (res.error ? "Não foi possível validar o cupom agora" : "Cupom inválido ou expirado"),
+      };
     } catch {
-      return false;
+      return { ok: false, error: "Não foi possível validar o cupom agora" };
     }
-  };
+  }, [product, price, bumpAmount, customer.email]);
+
+  // Re-apply a coupon restored from an abandoned checkout session
+  useEffect(() => {
+    if (!pendingCouponCode || !product || !price) return;
+    const code = pendingCouponCode;
+    setPendingCouponCode(null);
+    void handleApplyCoupon(code);
+  }, [pendingCouponCode, product, price, handleApplyCoupon]);
+
+
 
   // Payment handlers
   const handlePayPix = async () => {
