@@ -13,6 +13,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
+import { isPrivateFileUrl, getSignedPrivateUrl } from "@/lib/private-files";
 
 interface Module {
   id: string;
@@ -57,6 +58,8 @@ export default function MemberCourse() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [allCompleted, setAllCompleted] = useState(false);
   const [generatingCert, setGeneratingCert] = useState(false);
 
@@ -257,6 +260,25 @@ export default function MemberCourse() {
     }
   };
 
+  // Mídia privada: troca a URL do bucket por uma URL assinada (5 min),
+  // emitida pela edge function que confere o entitlement ativo.
+  useEffect(() => {
+    let cancelled = false;
+    setMediaUrl(null);
+    setMediaError(null);
+
+    const source = activeLesson?.media_url;
+    if (!source || !isPrivateFileUrl(source) || !productId) return;
+
+    getSignedPrivateUrl({ path: source, productId })
+      .then((signed) => { if (!cancelled) setMediaUrl(signed); })
+      .catch((err: Error) => {
+        if (!cancelled) setMediaError(err.message || "Não foi possível liberar o conteúdo");
+      });
+
+    return () => { cancelled = true; };
+  }, [activeLesson?.id, activeLesson?.media_url, productId]);
+
   const markComplete = async () => {
     if (!activeLesson || !customerId) return;
     setCompleting(true);
@@ -302,10 +324,31 @@ export default function MemberCourse() {
   const renderContent = () => {
     if (!activeLesson) return null;
 
-    if (activeLesson.media_url && (activeLesson.media_type === "video" || activeLesson.media_url.includes("youtube") || activeLesson.media_url.includes("vimeo"))) {
-      const isEmbed = activeLesson.media_url.includes("youtube") || activeLesson.media_url.includes("vimeo");
+    // Mídia privada: aguarda a URL assinada emitida pela edge function.
+    if (isPrivateFileUrl(activeLesson.media_url)) {
+      if (mediaError) {
+        return (
+          <div className="text-center py-12 text-muted-foreground">
+            <FileText className="w-10 h-10 mx-auto mb-3" />
+            <p>{mediaError}</p>
+          </div>
+        );
+      }
+      if (!mediaUrl) {
+        return (
+          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" /> Liberando conteúdo...
+          </div>
+        );
+      }
+    }
+
+    const resolvedUrl = isPrivateFileUrl(activeLesson.media_url) ? mediaUrl : activeLesson.media_url;
+
+    if (resolvedUrl && (activeLesson.media_type === "video" || resolvedUrl.includes("youtube") || resolvedUrl.includes("vimeo"))) {
+      const isEmbed = resolvedUrl.includes("youtube") || resolvedUrl.includes("vimeo");
       if (isEmbed) {
-        let embedUrl = activeLesson.media_url;
+        let embedUrl = resolvedUrl;
         if (embedUrl.includes("youtube.com/watch")) {
           const vid = new URL(embedUrl).searchParams.get("v");
           embedUrl = `https://www.youtube.com/embed/${vid}`;
@@ -321,26 +364,26 @@ export default function MemberCourse() {
         );
       }
       return (
-        <video controls className="w-full rounded-lg bg-black aspect-video" src={activeLesson.media_url}>
+        <video controls className="w-full rounded-lg bg-black aspect-video" src={resolvedUrl}>
           Your browser does not support the video tag.
         </video>
       );
     }
 
-    if (activeLesson.media_type === "audio" && activeLesson.media_url) {
+    if (activeLesson.media_type === "audio" && resolvedUrl) {
       return (
         <div className="bg-muted rounded-xl p-6 flex flex-col items-center gap-4">
           <Headphones className="w-12 h-12 text-muted-foreground" />
-          <audio controls className="w-full" src={activeLesson.media_url} />
+          <audio controls className="w-full" src={resolvedUrl} />
         </div>
       );
     }
 
-    if (activeLesson.media_type === "pdf" && activeLesson.media_url) {
+    if (activeLesson.media_type === "pdf" && resolvedUrl) {
       return (
         <div className="space-y-3">
-          <iframe src={activeLesson.media_url} className="w-full h-[600px] rounded-lg border" />
-          <a href={activeLesson.media_url} target="_blank" rel="noopener noreferrer">
+          <iframe src={resolvedUrl} className="w-full h-[600px] rounded-lg border" />
+          <a href={resolvedUrl} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm"><FileText className="w-4 h-4" /> Download PDF</Button>
           </a>
         </div>

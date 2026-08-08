@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/tracking";
+import { isPrivateFileUrl, getSignedPrivateUrl } from "@/lib/private-files";
 
 /* ─── Types ─── */
 interface AssetItem {
@@ -273,12 +274,8 @@ export default function MemberLibrary() {
     try {
       trackEvent("asset_download_clicked", { asset_id: item.id, title: item.title }, item.workspace_id);
 
-      // Generate signed URL
-      const { data: signedData, error } = await supabase.storage
-        .from("private-files")
-        .createSignedUrl(item.file_path, 300);
-
-      if (error || !signedData?.signedUrl) throw new Error("Erro ao gerar link de download");
+      // URL assinada emitida no servidor após conferir o entitlement do asset
+      const signedUrl = await getSignedPrivateUrl({ path: item.file_path, assetId: item.id });
 
       // Log download
       if (userId) {
@@ -289,7 +286,7 @@ export default function MemberLibrary() {
         });
       }
 
-      window.open(signedData.signedUrl, "_blank");
+      window.open(signedUrl, "_blank");
       toast.success("Download iniciado!");
     } catch (e: any) {
       toast.error(e.message || "Erro ao baixar");
@@ -305,18 +302,12 @@ export default function MemberLibrary() {
       trackEvent("asset_download_clicked", { product_id: item.product_id }, item.workspace_id);
 
       let downloadUrl = item.delivery_url;
-      const isPrivate = item.delivery_url.includes("private-files");
 
-      if (isPrivate) {
-        const pathMatch = item.delivery_url.match(/private-files\/(.+)/);
-        if (pathMatch) {
-          const filePath = pathMatch[1].split("?")[0];
-          const { data, error } = await supabase.storage
-            .from("private-files")
-            .createSignedUrl(filePath, 300);
-          if (error || !data?.signedUrl) throw new Error("Erro ao gerar link");
-          downloadUrl = data.signedUrl;
-        }
+      if (isPrivateFileUrl(item.delivery_url)) {
+        downloadUrl = await getSignedPrivateUrl({
+          path: item.delivery_url,
+          productId: item.product_id,
+        });
       }
 
       if (customerId) {
