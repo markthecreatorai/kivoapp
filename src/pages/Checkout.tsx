@@ -499,7 +499,7 @@ export default function Checkout() {
             await (supabase as any).rpc("complete_checkout_session", { p_session_id: sessionId, p_recovered: true });
             trackEvent("cart_recovered", { session_id: sessionId, order_id: orderId, method: "pix" }, product?.workspace_id);
           }
-          await supabase.functions.invoke("post-purchase", { body: { order_id: orderId } });
+          // Entitlements/splits são criados pelo webhook do gateway
           navigate(`/order/success/${orderId}`);
         }
       } catch {
