@@ -145,7 +145,8 @@ JUSTIFICATIVA: [explicação curta de 2-3 frases sobre o porquê dessa faixa]`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: MODEL,
+
         messages: [
           { role: "system", content: SYSTEM_PROMPTS[type] },
           { role: "user", content: userPrompt },
