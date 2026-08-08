@@ -83,6 +83,11 @@ Deno.serve(async (req) => {
       resetCount = ids.length;
     }
 
+    await cronRun.finish("SUCCESS", {
+      active_yesterday: activeYesterday?.length || 0,
+      streak_bonuses: streakBonusCount,
+      streaks_reset: resetCount,
+    });
     return new Response(
       JSON.stringify({
         success: true,
@@ -94,6 +99,7 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Error processing streaks:", error);
+    await cronRun.finish("FAILED", {}, (error as Error).message);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
