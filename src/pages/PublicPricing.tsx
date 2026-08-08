@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
 import { Check, X, ShieldCheck, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,21 +13,19 @@ export default function PublicPricing() {
   const [annual, setAnnual] = useState(false);
   const { user } = useAuth();
 
+  useEffect(() => {
+    document.title = "Planos e preços da Kivo | Comece grátis";
+    const desc = document.querySelector('meta[name="description"]');
+    if (desc) {
+      desc.setAttribute(
+        "content",
+        "Compare os planos da Kivo: gratuito, Creator e Creator Pro. Venda produtos digitais, crie área de membros e comunidade. 14 dias grátis.",
+      );
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
-      <Helmet>
-        <title>Planos e preços da Kivo | Comece grátis</title>
-        <meta
-          name="description"
-          content="Compare os planos da Kivo: gratuito, Creator e Creator Pro. Venda produtos digitais, crie área de membros e comunidade. 14 dias grátis."
-        />
-        <link rel="canonical" href="https://kivohub.com.br/planos" />
-        <meta property="og:title" content="Planos e preços da Kivo | Comece grátis" />
-        <meta property="og:description" content="Compare os planos da Kivo e comece a vender hoje. 14 dias grátis nos planos pagos." />
-        <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary_large_image" />
-      </Helmet>
-
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Link to="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
