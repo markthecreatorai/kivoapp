@@ -123,10 +123,12 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
     if (!we) {
+      console.error("Failed to persist webhook_event");
       return new Response(JSON.stringify({ ok: false }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
     webhookEventId = we.id;
   }
 
