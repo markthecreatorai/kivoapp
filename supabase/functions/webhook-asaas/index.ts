@@ -25,15 +25,21 @@ Deno.serve(async (req) => {
     return new Response("Invalid JSON", { status: 400, headers: corsHeaders });
   }
 
-  if (webhookToken) {
-    const headerToken = req.headers.get("asaas-access-token") || "";
-    if (headerToken !== webhookToken) {
-      console.error("Invalid Asaas webhook token");
-      return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-    }
-  } else {
-    console.warn("ASAAS_WEBHOOK_TOKEN not set — skipping token validation");
+  // Fail closed: sem token configurado, não processa nada.
+  if (!webhookToken) {
+    console.error("ASAAS_WEBHOOK_TOKEN not set — refusing to process webhook");
+    return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
+
+  const headerToken = req.headers.get("asaas-access-token") || "";
+  if (!timingSafeEqualStr(headerToken, webhookToken)) {
+    console.error("Invalid Asaas webhook token");
+    return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+  }
+
 
   const eventType = payload?.event || "unknown";
   const paymentData = payload?.payment;
