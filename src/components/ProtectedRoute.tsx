@@ -91,12 +91,11 @@ export default function ProtectedRoute({
         </div>
       );
     }
-    // Consumer → let them through (they don't need a workspace)
+    // Consumer (conta de membro) tentando área de criador → oferece upgrade
     if (consumerCheck.isConsumer) {
-      return <>{children}</>;
+      return <ProducerUpgradePrompt />;
     }
-    // Not a consumer, no workspace → onboarding
-    return <Navigate to="/onboarding" replace />;
+
   }
 
   return <>{children}</>;
