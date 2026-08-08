@@ -77,11 +77,11 @@ export default function Checkout() {
 
       // ── Recovery flow: restore from abandoned session ──
       if (recoverySessionId) {
-        const { data: session } = await supabase
-          .from("checkout_sessions")
-          .select("id, email, workspace_id, coupon_code, status")
-          .eq("id", recoverySessionId)
-          .maybeSingle();
+        const { data: sessionRows } = await (supabase as any).rpc("get_checkout_session_public", {
+          p_session_id: recoverySessionId,
+        });
+        const session = Array.isArray(sessionRows) ? sessionRows[0] : sessionRows;
+
 
         if (session && session.status === "ABANDONED") {
           setSessionId(session.id);
