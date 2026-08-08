@@ -301,18 +301,12 @@ export default function MemberLibrary() {
       trackEvent("asset_download_clicked", { product_id: item.product_id }, item.workspace_id);
 
       let downloadUrl = item.delivery_url;
-      const isPrivate = item.delivery_url.includes("private-files");
 
-      if (isPrivate) {
-        const pathMatch = item.delivery_url.match(/private-files\/(.+)/);
-        if (pathMatch) {
-          const filePath = pathMatch[1].split("?")[0];
-          const { data, error } = await supabase.storage
-            .from("private-files")
-            .createSignedUrl(filePath, 300);
-          if (error || !data?.signedUrl) throw new Error("Erro ao gerar link");
-          downloadUrl = data.signedUrl;
-        }
+      if (isPrivateFileUrl(item.delivery_url)) {
+        downloadUrl = await getSignedPrivateUrl({
+          path: item.delivery_url,
+          productId: item.product_id,
+        });
       }
 
       if (customerId) {
