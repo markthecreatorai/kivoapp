@@ -133,6 +133,9 @@ Deno.serve(async (req) => {
   const cronDenied = requireCronSecret(req, "renew-subscriptions");
   if (cronDenied) return cronDenied;
 
+  const reqBody = await readJsonBody(req);
+  const cronRun = await startCronRun(req, reqBody);
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -142,6 +145,7 @@ Deno.serve(async (req) => {
     const apiKey = (Deno.env.get("ASAAS_API_KEY") || "").trim();
     if (!apiKey) {
       console.error("renew-subscriptions abortado: ASAAS_API_KEY não configurada. Nenhuma renovação executada.");
+      await cronRun.finish("FAILED", {}, "ASAAS_API_KEY não configurada");
       return new Response(
         JSON.stringify({ error: "Gateway de pagamento não configurado — renovações abortadas" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
