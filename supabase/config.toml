@@ -127,3 +127,6 @@ verify_jwt = false
 
 [functions.release-holds]
 verify_jwt = false
+
+[functions.get-wallet-balance]
+verify_jwt = true
