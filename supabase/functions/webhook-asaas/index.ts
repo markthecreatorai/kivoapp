@@ -8,6 +8,19 @@ const corsHeaders = {
 const MAX_ATTEMPTS = 5;
 const RETRY_DELAYS = [60, 300, 900, 3600, 7200];
 
+/** Comparação em tempo constante de duas strings. */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  let diff = ea.length ^ eb.length;
+  const len = Math.max(ea.length, eb.length);
+  for (let i = 0; i < len; i++) {
+    diff |= (ea[i] ?? 0) ^ (eb[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
