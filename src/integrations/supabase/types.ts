@@ -7690,6 +7690,82 @@ export type Database = {
           },
         ]
       }
+      subscription_charge_attempts: {
+        Row: {
+          amount: number
+          attempt_number: number
+          created_at: string
+          error_message: string | null
+          gateway_payment_id: string | null
+          gateway_status: string | null
+          id: string
+          invoice_id: string | null
+          is_retry: boolean
+          next_retry_at: string | null
+          provider: string
+          status: string
+          subscription_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          amount?: number
+          attempt_number?: number
+          created_at?: string
+          error_message?: string | null
+          gateway_payment_id?: string | null
+          gateway_status?: string | null
+          id?: string
+          invoice_id?: string | null
+          is_retry?: boolean
+          next_retry_at?: string | null
+          provider?: string
+          status?: string
+          subscription_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          attempt_number?: number
+          created_at?: string
+          error_message?: string | null
+          gateway_payment_id?: string | null
+          gateway_status?: string | null
+          id?: string
+          invoice_id?: string | null
+          is_retry?: boolean
+          next_retry_at?: string | null
+          provider?: string
+          status?: string
+          subscription_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_charge_attempts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_charge_attempts_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_charge_attempts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           billing_interval: string
