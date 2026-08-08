@@ -139,9 +139,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       throw new Error('Você precisa estar autenticado para criar uma loja.');
     }
 
+    // Nome que geraria um slug reservado (rota do sistema) é bloqueado antes do insert
+    if (isReservedSlug(slugifyName(name))) {
+      throw new Error('Esse nome não pode ser usado porque conflita com uma página do sistema. Escolha outro.');
+    }
+
     const { data, error } = await supabase
       .rpc('create_workspace_with_owner', { p_name: name })
       .single();
+
 
     if (error) {
       console.error('Error creating workspace:', error);
