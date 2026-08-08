@@ -69,22 +69,14 @@ Deno.serve(async (req) => {
       .neq("status", "canceled");
     if (ledgerErr) throw ledgerErr;
 
-    const rows = ledger || [];
-    const isDebit = (r: { amount: number; type: string }) =>
-      Number(r.amount) < 0 || r.type === "withdrawal";
+    const rows = (ledger || []) as LedgerRow[];
 
-    // Créditos liberados (available) e débitos já efetivados (withdrawal/fee liquidados)
-    const credits = rows
-      .filter((r) => !isDebit(r) && (r.status === "available" || r.status === "settled"))
-      .reduce((s, r) => s + Number(r.amount || 0), 0);
-    const debits = rows
-      .filter((r) => isDebit(r) && (r.status === "available" || r.status === "settled"))
-      .reduce((s, r) => s + Math.abs(Number(r.amount || 0)), 0);
-    const availableBalance = credits - debits;
+    // Regra canônica compartilhada (espelha public.get_wallet_balance):
+    // 'settled' é informativo e não afeta saldo; saques sempre subtraem.
+    const { available: availableBalance, pending: pendingBalance } = computeBalances(rows);
 
     // Pendentes (ainda em hold), agrupados por available_at
-    const pendingRows = rows.filter((r) => r.status === "pending" && !isDebit(r));
-    const pendingBalance = pendingRows.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const pendingRows = rows.filter((r) => isPending(r));
 
     const grouped = new Map<string, { available_at: string | null; amount: number; count: number }>();
     for (const r of pendingRows) {
