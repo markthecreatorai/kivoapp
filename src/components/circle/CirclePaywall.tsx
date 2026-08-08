@@ -179,6 +179,14 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
         <p className="text-muted-foreground">
           O administrador ainda não configurou os planos de assinatura.
         </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/circles/${community.slug}/about`)}>
+            Ver detalhes da comunidade
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/circles")}>
+            Minhas comunidades
+          </Button>
+        </div>
       </div>
     );
   }
