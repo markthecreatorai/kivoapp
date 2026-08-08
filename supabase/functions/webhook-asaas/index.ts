@@ -310,12 +310,12 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
         const feeTier = feeTierForPlan((ws as any)?.plan);
         const { data: feeConfig } = await supabase
           .from("fee_config")
-          .select("reserve_percent, reserve_release_days")
+          .select("reserve_percent, reserve_hold_days")
           .eq("plan_type", feeTier)
           .maybeSingle();
 
-        const reservePercent = feeConfig?.reserve_percent || 10;
-        const releaseDays = feeConfig?.reserve_release_days || 30;
+        const reservePercent = Number(feeConfig?.reserve_percent ?? 0);
+        const releaseDays = Number(feeConfig?.reserve_hold_days ?? 0);
         const finalNet = updateData.net_amount || tx.net_amount;
         const reserveAmount = Math.round(finalNet * reservePercent / 100);
 

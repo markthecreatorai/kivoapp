@@ -738,7 +738,7 @@ Deno.serve(async (req) => {
       // Create security reserve if paid immediately
       if (txStatus === "paid" && netAmount > 0) {
         const reserveAmount = Math.round(netAmount * reservePercent / 100);
-        const releaseDays = feeConfig?.reserve_release_days || 30;
+        const releaseDays = Number(feeConfig?.reserve_hold_days ?? 0);
         if (reserveAmount > 0) {
           await supabase.from("security_reserves").insert({
             workspace_id,
