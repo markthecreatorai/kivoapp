@@ -83,10 +83,7 @@ async function incrementInviteUsage(communityId: string, inviteCode?: string) {
   if (invite.expires_at && new Date(invite.expires_at) < new Date()) return;
   if (invite.max_uses && invite.uses_count >= invite.max_uses) return;
 
-  await (supabase as any)
-    .from("community_invite_links")
-    .update({ uses_count: (invite.uses_count || 0) + 1 })
-    .eq("id", invite.id);
+  await (supabase as any).rpc("increment_invite_link_uses", { p_link_id: invite.id });
 }
 
 export async function completePendingCommunityJoin(userId: string) {

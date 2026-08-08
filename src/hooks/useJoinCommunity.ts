@@ -329,10 +329,7 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
       if (inviteCode) {
         const invite = await validateInviteCode(community.id, inviteCode);
         if (invite) {
-          await (supabase as any)
-            .from("community_invite_links")
-            .update({ uses_count: (invite.uses_count || 0) + 1 })
-            .eq("id", invite.id);
+          await (supabase as any).rpc("increment_invite_link_uses", { p_link_id: invite.id });
         }
       }
 

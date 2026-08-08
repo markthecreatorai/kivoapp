@@ -1,9 +1,9 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthProvider";
-import { isAdminUser } from "@/lib/admin";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
 
 interface AdminRouteProps {
@@ -11,14 +11,34 @@ interface AdminRouteProps {
 }
 
 export default function AdminRoute({ children }: AdminRouteProps) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { toast } = useToast();
   const logged = useRef(false);
+  const [allowed, setAllowed] = useState<boolean | null>(null);
 
-  const allowed = isAdminUser(user);
+  // Server-side role check (public.user_roles) — no client-side hardcoded emails
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      setAllowed(false);
+      return;
+    }
+    let active = true;
+    (supabase as any)
+      .rpc("is_admin_user", { _user_id: user.id })
+      .then(({ data }: { data: boolean | null }) => {
+        if (active) setAllowed(Boolean(data));
+      })
+      .catch(() => {
+        if (active) setAllowed(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, loading]);
 
   useEffect(() => {
-    if (!allowed && user && !logged.current) {
+    if (allowed === false && user && !logged.current) {
       logged.current = true;
       toast({
         title: "Acesso restrito",
@@ -37,9 +57,14 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     }
   }, [allowed, user, toast]);
 
+  if (loading || allowed === null) {
+    return null;
+  }
+
   if (!allowed) {
     return <Navigate to="/dashboard" replace />;
   }
+
 
   return <>{children}</>;
 }
