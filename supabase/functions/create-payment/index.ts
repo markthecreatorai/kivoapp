@@ -54,51 +54,24 @@ async function findOrCreateAsaasCustomer(
   return created.id;
 }
 
-// ── Simulation fallback ──
-
-function simulatePayment(method: string, _totalAmount: number) {
-  if (method === "pix") {
-    return {
-      status: "pending",
-      gateway_payment_id: `sim_pix_${crypto.randomUUID().slice(0, 8)}`,
-      provider: "simulation",
-      pix: {
-        qr_code: `00020126580014br.gov.bcb.pix0136${crypto.randomUUID()}5204000053039865802BR5925KIVO PAGAMENTOS6009SAO PAULO62070503***6304`,
-        qr_code_url: "",
-        expires_at: new Date(Date.now() + 30 * 60000).toISOString(),
-      },
-    };
-  }
-  if (method === "credit_card") {
-    return {
-      status: "paid",
-      gateway_payment_id: `sim_cc_${crypto.randomUUID().slice(0, 8)}`,
-      provider: "simulation",
-      card_last4: "4242",
-      card_brand: "visa",
-    };
-  }
-  if (method === "boleto") {
-    return {
-      status: "pending",
-      gateway_payment_id: `sim_bol_${crypto.randomUUID().slice(0, 8)}`,
-      provider: "simulation",
-      boleto: {
-        barcode: `23793.38128 60000.${String(Date.now()).slice(-6)} 00000.000${Math.floor(Math.random() * 900) + 100} 1 0000000000`,
-        pdf_url: "",
-        due_at: new Date(Date.now() + 3 * 86400000).toISOString(),
-      },
-    };
-  }
-  throw new Error("Método inválido");
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ── Gateway guardrail: never process/deliver anything without a real gateway ──
+  const gatewayApiKey = (Deno.env.get("ASAAS_API_KEY") || "").trim();
+  const sandboxMode = (Deno.env.get("KIVO_PAYMENTS_SANDBOX") || "").trim().toLowerCase() === "true";
+
+  if (!gatewayApiKey && !sandboxMode) {
+    console.error("create-payment blocked: ASAAS_API_KEY não configurada. Nenhum pedido, pagamento ou entitlement foi criado.");
+    return new Response(JSON.stringify({ error: "Gateway de pagamento não configurado" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
+
     const body = await req.json();
     const {
       product_id, price_id, method, customer, workspace_id,
@@ -159,8 +132,9 @@ Deno.serve(async (req) => {
     }
 
     // Platform-owned model: always use global platform credentials
-    const asaasApiKey = Deno.env.get("ASAAS_API_KEY") || "";
+    const asaasApiKey = gatewayApiKey;
     const useAsaas = !!asaasApiKey;
+
 
     // Fetch product
     const { data: product } = await supabase
@@ -453,9 +427,15 @@ Deno.serve(async (req) => {
         });
       }
     } else {
-      console.log("Processing in SIMULATED mode (no gateway credentials)");
-      gatewayResult = simulatePayment(method, totalAmount);
+      // Explicit sandbox mode (KIVO_PAYMENTS_SANDBOX=true): never "paid", never entitlements
+      console.log("Processing in KIVO_PAYMENTS_SANDBOX mode — order will be marked TEST");
+      gatewayResult = {
+        status: "test",
+        gateway_payment_id: `sandbox_${crypto.randomUUID().slice(0, 8)}`,
+        provider: "sandbox",
+      };
     }
+
     } catch (gatewayErr) {
       // Mark order as FAILED when gateway rejects
       console.error("Gateway error, marking order FAILED:", (gatewayErr as Error).message);
@@ -502,6 +482,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Sandbox: order stays TEST, never COMPLETED, never entitlements
+    if (gatewayResult.status === "test") {
+      await supabase.from("orders").update({ status: "TEST" }).eq("id", order.id);
+      if (checkout_session_id) {
+        await supabase.from("checkout_sessions").update({ status: "TEST" }).eq("id", checkout_session_id);
+      }
+    }
+
     // If paid immediately (credit card)
     if (paymentStatus === "SUCCEEDED") {
       const { error: orderUpdateErr } = await supabase.from("orders").update({ status: "COMPLETED", paid_at: new Date().toISOString() }).eq("id", order.id);
@@ -515,6 +503,7 @@ Deno.serve(async (req) => {
       }
       await grantEntitlements(supabase, order.id, customerId, orderItems);
     }
+
 
     // ─── Create transaction record (new split model) ───
     try {
@@ -595,7 +584,7 @@ Deno.serve(async (req) => {
       order_id: order.id,
       payment_id: payment!.id,
       status: gatewayResult.status,
-      provider: gatewayResult.provider || "simulation",
+      provider: gatewayResult.provider || "asaas",
     };
 
     if (method === "pix" && gatewayResult.pix) {
