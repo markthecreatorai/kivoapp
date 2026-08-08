@@ -40,9 +40,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const finalizeSignedIn = async (signedInUser: User) => {
+      const skipRedirect = shouldSkipAutoRedirect(window.location.pathname);
       try {
+        // A entrada pendente na comunidade sempre é concluída (é escrita no banco);
+        // só a navegação automática é suprimida nas rotas donas do fluxo.
         const completed = await completePendingCommunityJoin(signedInUser.id);
         if (completed?.communitySlug) {
+          if (skipRedirect) return;
           setTimeout(() => {
             navigate(
               completed.status === "PENDING"
@@ -57,6 +61,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error("Error completing pending community join:", error);
       }
 
+      if (skipRedirect) return;
+
       try {
         const raw = sessionStorage.getItem("kivo_nav_intent");
         if (raw) {
@@ -68,6 +74,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } catch {}
     };
+
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
