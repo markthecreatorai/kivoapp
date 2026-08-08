@@ -752,6 +752,77 @@ Deno.serve(async (req) => {
           });
         }
       }
+
+      // ─── Split entry (pending) ───────────────────────────────────────────
+      // Resolution order: product-specific rule > workspace default > global default.
+      // status = "pending" and available_at = null: both only change when the
+      // webhook confirms the payment. NOTHING is written to wallet_ledger here.
+      try {
+        const { data: existingSplit } = await supabase
+          .from("split_entries")
+          .select("id")
+          .eq("order_id", order.id)
+          .maybeSingle();
+
+        if (!existingSplit) {
+          const { data: ruleRows } = await supabase.rpc("get_split_rule", {
+            p_workspace_id: workspace_id,
+            p_product_id: product.id,
+            p_payment_method: method,
+          });
+          const rule = ruleRows?.[0] || null;
+          const platformPercent = Number(rule?.platform_percent ?? 8);
+          const affiliatePercent = Number(rule?.affiliate_percent ?? 0);
+
+          // Affiliate: only charge the affiliate slice when the order actually
+          // carries an affiliate link resolvable to an affiliate.
+          let affiliateId: string | null = null;
+          if (affiliate_link_id) {
+            const { data: affLink } = await supabase
+              .from("affiliate_links")
+              .select("affiliate_id")
+              .eq("id", affiliate_link_id)
+              .maybeSingle();
+            affiliateId = affLink?.affiliate_id || null;
+          }
+
+          const splitPlatformFee = Math.round(grossAmount * platformPercent / 100);
+          const splitAffiliateFee = affiliateId
+            ? Math.round(grossAmount * affiliatePercent / 100)
+            : 0;
+          const creatorNet = grossAmount - gatewayFee - splitPlatformFee - splitAffiliateFee;
+
+          console.log("[create-payment] split_entry (pending)", JSON.stringify({
+            order_id: order.id,
+            split_rule_id: rule?.id ?? null,
+            method,
+            gross_amount: grossAmount,
+            gateway_fee: gatewayFee,
+            platform_percent: platformPercent,
+            platform_fee: splitPlatformFee,
+            affiliate_id: affiliateId,
+            affiliate_percent: affiliatePercent,
+            affiliate_fee: splitAffiliateFee,
+            creator_net: creatorNet,
+          }));
+
+          const { error: splitErr } = await supabase.from("split_entries").insert({
+            workspace_id,
+            order_id: order.id,
+            split_rule_id: rule?.id ?? null,
+            gross_amount: grossAmount,
+            gateway_fee: gatewayFee,
+            platform_fee: splitPlatformFee,
+            affiliate_fee: splitAffiliateFee,
+            creator_net: creatorNet,
+            status: "pending",
+            available_at: null,
+          });
+          if (splitErr) console.error("[create-payment] split_entries insert error:", JSON.stringify(splitErr));
+        }
+      } catch (splitCatch) {
+        console.error("Split entry creation error (non-fatal):", splitCatch);
+      }
     } catch (txErr) {
       console.error("Transaction record creation error (non-fatal):", txErr);
     }
