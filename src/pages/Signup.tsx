@@ -72,7 +72,7 @@ export default function Signup() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [creatorType, setCreatorType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [zxcvbnFn, setZxcvbnFn] = useState<null | ((password: string) => any)>(null);
+  
   const [existingAccount, setExistingAccount] = useState<null | {
     kind: "confirmed" | "unconfirmed";
     email: string;
