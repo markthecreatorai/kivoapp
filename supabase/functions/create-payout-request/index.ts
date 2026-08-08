@@ -3,6 +3,7 @@
 // nunca confiado como valor livre do body. Saldo é sempre recalculado server-side.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { computeBalances, type LedgerRow } from "../_shared/wallet-balance.ts";
 
 const FN = "create-payout-request";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
