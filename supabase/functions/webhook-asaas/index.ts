@@ -786,17 +786,28 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
   // Cancela comissões de afiliado (não entram no saldo a pagar)
   await cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado");
 
-  // Ledger
+  // Ledger — cancela o crédito da venda e registra o reembolso.
+  // ATENÇÃO: wallet_ledger é em CENTAVOS; paymentData.value vem em REAIS.
+  const refundCents = Math.round(Number(refundAmount || 0) * 100);
   await supabase.from("wallet_ledger").update({ status: "canceled" })
     .eq("order_id", paymentRecord.order_id).eq("type", "sale");
-  await supabase.from("wallet_ledger").insert({
-    workspace_id: paymentRecord.workspace_id,
-    order_id: paymentRecord.order_id,
-    type: "refund",
-    amount: -refundAmount,
-    status: "settled",
-    description: `Reembolso Asaas #${paymentRecord.order_id.slice(0, 8)}`,
-  });
+  const refundDescription = `Reembolso Asaas #${paymentRecord.order_id.slice(0, 8)}`;
+  const { data: existingRefundLedger } = await supabase
+    .from("wallet_ledger")
+    .select("id")
+    .eq("order_id", paymentRecord.order_id)
+    .eq("type", "refund")
+    .maybeSingle();
+  if (!existingRefundLedger) {
+    await supabase.from("wallet_ledger").insert({
+      workspace_id: paymentRecord.workspace_id,
+      order_id: paymentRecord.order_id,
+      type: "refund",
+      amount: -refundCents,
+      status: "settled",
+      description: refundDescription,
+    });
+  }
 
   // Reverse split entry
   await supabase.from("split_entries").update({
@@ -881,17 +892,27 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     status: "disputed",
   }).eq("order_id", paymentRecord.order_id);
 
-  // 6. Ledger reversal
+  // 6. Ledger reversal — wallet_ledger em CENTAVOS, paymentData.value em REAIS.
+  const chargebackCents = Math.round(Number(chargebackAmount || 0) * 100);
   await supabase.from("wallet_ledger").update({ status: "canceled" })
     .eq("order_id", paymentRecord.order_id).eq("type", "sale");
-  await supabase.from("wallet_ledger").insert({
-    workspace_id: paymentRecord.workspace_id,
-    order_id: paymentRecord.order_id,
-    type: "chargeback",
-    amount: -chargebackAmount,
-    status: "settled",
-    description: `Chargeback #${paymentRecord.order_id.slice(0, 8)}`,
-  });
+  const { data: existingCbLedger } = await supabase
+    .from("wallet_ledger")
+    .select("id")
+    .eq("order_id", paymentRecord.order_id)
+    .eq("type", "chargeback")
+    .maybeSingle();
+  if (!existingCbLedger) {
+    const { error: cbLedgerErr } = await supabase.from("wallet_ledger").insert({
+      workspace_id: paymentRecord.workspace_id,
+      order_id: paymentRecord.order_id,
+      type: "chargeback",
+      amount: -chargebackCents,
+      status: "settled",
+      description: `Chargeback #${paymentRecord.order_id.slice(0, 8)}`,
+    });
+    if (cbLedgerErr) console.error("[webhook-asaas] falha ao lançar chargeback no ledger:", cbLedgerErr);
+  }
 
   // 7. Check if creator balance went negative → block payouts
   const { data: balanceData } = await supabase.rpc("get_creator_balance", {
@@ -927,7 +948,7 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     const telegramKey = Deno.env.get("TELEGRAM_API_KEY");
     const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
     if (telegramKey && chatId) {
-      const msg = `🚨 CHARGEBACK\nWorkspace: ${paymentRecord.workspace_id.slice(0, 8)}\nOrder: ${paymentRecord.order_id.slice(0, 8)}\nValor: R$ ${(chargebackAmount / 100).toFixed(2)}\nRisk Score: ${riskScore}`;
+      const msg = `🚨 CHARGEBACK\nWorkspace: ${paymentRecord.workspace_id.slice(0, 8)}\nOrder: ${paymentRecord.order_id.slice(0, 8)}\nValor: R$ ${Number(chargebackAmount).toFixed(2)}\nRisk Score: ${riskScore}`;
       await fetch(`https://api.telegram.org/bot${telegramKey}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
