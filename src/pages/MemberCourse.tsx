@@ -260,6 +260,25 @@ export default function MemberCourse() {
     }
   };
 
+  // Mídia privada: troca a URL do bucket por uma URL assinada (5 min),
+  // emitida pela edge function que confere o entitlement ativo.
+  useEffect(() => {
+    let cancelled = false;
+    setMediaUrl(null);
+    setMediaError(null);
+
+    const source = activeLesson?.media_url;
+    if (!source || !isPrivateFileUrl(source) || !productId) return;
+
+    getSignedPrivateUrl({ path: source, productId })
+      .then((signed) => { if (!cancelled) setMediaUrl(signed); })
+      .catch((err: Error) => {
+        if (!cancelled) setMediaError(err.message || "Não foi possível liberar o conteúdo");
+      });
+
+    return () => { cancelled = true; };
+  }, [activeLesson?.id, activeLesson?.media_url, productId]);
+
   const markComplete = async () => {
     if (!activeLesson || !customerId) return;
     setCompleting(true);
