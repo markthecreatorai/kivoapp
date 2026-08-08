@@ -228,11 +228,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Update order status
-    await supabase
-      .from("orders")
-      .update({ status: "COMPLETED", paid_at: new Date().toISOString() })
-      .eq("id", order.id);
+    // 4. Order is already COMPLETED/paid at this point (validated above) — never set it here
 
     // 5. Update checkout session
     if (order.checkout_session_id) {
