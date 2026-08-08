@@ -419,7 +419,7 @@ export default function Checkout() {
           await (supabase as any).rpc("complete_checkout_session", { p_session_id: sessionId, p_recovered: true });
           trackEvent("cart_recovered", { session_id: sessionId, order_id: data.order_id, method: "credit_card" }, product.workspace_id);
         }
-        await supabase.functions.invoke("post-purchase", { body: { order_id: data.order_id } });
+        // Entitlements/splits são criados pelo backend (create-payment + webhook do gateway)
         navigate(`/order/success/${data.order_id}`);
       } else {
         const rawMsg = data?.message || data?.error || "unknown";
