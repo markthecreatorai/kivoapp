@@ -135,52 +135,24 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   };
 
   const createWorkspace = async (name: string): Promise<Workspace | null> => {
-    if (!user) return null;
-
-    try {
-      const { data: slugData, error: slugError } = await supabase
-        .rpc('generate_unique_slug', { base_name: name });
-
-      if (slugError) {
-        console.error("Error generating slug:", slugError);
-        return null;
-      }
-
-      const { data: workspace, error: workspaceError } = await supabase
-        .from('workspaces')
-        .insert({
-          name,
-          slug: slugData,
-        })
-        .select()
-        .single();
-
-      if (workspaceError) {
-        console.error("Error creating workspace:", workspaceError);
-        return null;
-      }
-
-      const { error: memberError } = await supabase
-        .from('workspace_members')
-        .insert({
-          user_id: user.id,
-          workspace_id: workspace.id,
-          role: 'OWNER',
-        });
-
-      if (memberError) {
-        console.error("Error creating workspace membership:", memberError);
-        return null;
-      }
-
-      await refreshWorkspaces();
-      
-      return workspace;
-    } catch (error) {
-      console.error("Error creating workspace:", error);
-      return null;
+    if (!user) {
+      throw new Error('Você precisa estar autenticado para criar uma loja.');
     }
+
+    const { data, error } = await supabase
+      .rpc('create_workspace_with_owner', { p_name: name })
+      .single();
+
+    if (error) {
+      console.error('Error creating workspace:', error);
+      throw new Error(error.message || 'Não foi possível criar a loja.');
+    }
+
+    await refreshWorkspaces();
+
+    return (data as Workspace) ?? null;
   };
+
 
   useEffect(() => {
     if (session) {

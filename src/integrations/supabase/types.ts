@@ -9109,6 +9109,35 @@ export type Database = {
         Args: { p_recovered?: boolean; p_session_id: string }
         Returns: undefined
       }
+      create_workspace_with_owner: {
+        Args: { p_name: string }
+        Returns: {
+          activated_at: string | null
+          asaas_account_id: string | null
+          asaas_customer_id: string | null
+          asaas_wallet_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          logo_url: string | null
+          metadata: Json | null
+          name: string
+          payment_setup_complete: boolean
+          plan: string
+          plan_expires_at: string | null
+          plan_started_at: string | null
+          slug: string
+          timezone: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "workspaces"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cron_invoke: {
         Args: {
           p_body?: Json
@@ -9343,6 +9372,7 @@ export type Database = {
         Returns: boolean
       }
       is_workspace_member: { Args: { _workspace_id: string }; Returns: boolean }
+      is_workspace_owner: { Args: { _workspace_id: string }; Returns: boolean }
       join_community: {
         Args: {
           p_community_id: string
