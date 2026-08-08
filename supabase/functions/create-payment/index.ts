@@ -427,9 +427,15 @@ Deno.serve(async (req) => {
         });
       }
     } else {
-      console.log("Processing in SIMULATED mode (no gateway credentials)");
-      gatewayResult = simulatePayment(method, totalAmount);
+      // Explicit sandbox mode (KIVO_PAYMENTS_SANDBOX=true): never "paid", never entitlements
+      console.log("Processing in KIVO_PAYMENTS_SANDBOX mode — order will be marked TEST");
+      gatewayResult = {
+        status: "test",
+        gateway_payment_id: `sandbox_${crypto.randomUUID().slice(0, 8)}`,
+        provider: "sandbox",
+      };
     }
+
     } catch (gatewayErr) {
       // Mark order as FAILED when gateway rejects
       console.error("Gateway error, marking order FAILED:", (gatewayErr as Error).message);
