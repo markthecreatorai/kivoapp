@@ -55,7 +55,9 @@ export default function Checkout() {
 
   const [customer, setCustomer] = useState({ name: "", email: "", cpf: "", phone: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [pendingCouponCode, setPendingCouponCode] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<string>("pix");
 
   const [paymentLoading, setPaymentLoading] = useState(false);
