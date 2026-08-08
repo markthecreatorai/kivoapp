@@ -7635,12 +7635,14 @@ export type Database = {
           created_at: string
           creator_percent: number
           hold_days: number
+          hold_days_card: number
+          hold_days_pix: number
           id: string
           is_default: boolean
           platform_percent: number
           product_id: string | null
           updated_at: string
-          workspace_id: string
+          workspace_id: string | null
         }
         Insert: {
           affiliate_percent?: number
@@ -7648,12 +7650,14 @@ export type Database = {
           created_at?: string
           creator_percent?: number
           hold_days?: number
+          hold_days_card?: number
+          hold_days_pix?: number
           id?: string
           is_default?: boolean
           platform_percent?: number
           product_id?: string | null
           updated_at?: string
-          workspace_id: string
+          workspace_id?: string | null
         }
         Update: {
           affiliate_percent?: number
@@ -7661,12 +7665,14 @@ export type Database = {
           created_at?: string
           creator_percent?: number
           hold_days?: number
+          hold_days_card?: number
+          hold_days_pix?: number
           id?: string
           is_default?: boolean
           platform_percent?: number
           product_id?: string | null
           updated_at?: string
-          workspace_id?: string
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -9283,16 +9289,33 @@ export type Database = {
           total_revenue: number
         }[]
       }
-      get_split_rule: {
-        Args: { p_product_id?: string; p_workspace_id: string }
-        Returns: {
-          affiliate_percent: number
-          creator_percent: number
-          hold_days: number
-          id: string
-          platform_percent: number
-        }[]
-      }
+      get_split_rule:
+        | {
+            Args: { p_product_id?: string; p_workspace_id: string }
+            Returns: {
+              affiliate_percent: number
+              creator_percent: number
+              hold_days: number
+              id: string
+              platform_percent: number
+            }[]
+          }
+        | {
+            Args: {
+              p_payment_method?: string
+              p_product_id?: string
+              p_workspace_id: string
+            }
+            Returns: {
+              affiliate_percent: number
+              creator_percent: number
+              hold_days: number
+              hold_days_card: number
+              hold_days_pix: number
+              id: string
+              platform_percent: number
+            }[]
+          }
       get_top_communities_revenue: {
         Args: {
           p_end_date: string

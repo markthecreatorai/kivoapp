@@ -464,6 +464,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
         const { data: ruleData } = await supabase.rpc("get_split_rule", {
           p_workspace_id: order.workspace_id,
           p_product_id: orderItems?.[0]?.product_id || null,
+          p_payment_method: order.payment_method || null,
         });
         const rule = ruleData?.[0] || { platform_percent: 10, creator_percent: 90, affiliate_percent: 0, hold_days: 14 };
         const gatewayFee = netFee > 0 ? netFee : Math.round(totalAmount * 3.49 / 100);
