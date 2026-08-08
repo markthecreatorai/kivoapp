@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/tracking";
+import { isPrivateFileUrl, getSignedPrivateUrl } from "@/lib/private-files";
 
 /* ─── Types ─── */
 interface AssetItem {
