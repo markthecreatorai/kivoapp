@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Loader2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useWorkspace } from "@/contexts/WorkspaceProvider";
 
 interface AICopyModalProps {
   open: boolean;
@@ -28,14 +29,20 @@ export function AICopyModal({ open, onOpenChange, field, productName, onSelect }
   const [benefits, setBenefits] = useState("");
   const [loading, setLoading] = useState(false);
   const [variations, setVariations] = useState<string[]>([]);
+  const { currentWorkspace } = useWorkspace();
 
   const generate = async () => {
+    if (!currentWorkspace?.id) {
+      toast.error("Selecione um workspace antes de gerar com IA");
+      return;
+    }
     setLoading(true);
     setVariations([]);
     try {
       const { data, error } = await supabase.functions.invoke("ai-generate", {
         body: {
           type: "copy",
+          workspace_id: currentWorkspace.id,
           context: { field, niche, audience, benefits, productName },
         },
       });

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Lightbulb, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useWorkspace } from "@/contexts/WorkspaceProvider";
 
 interface Props {
   productType: string;
@@ -13,13 +14,19 @@ interface Props {
 export function AIPriceSuggestion({ productType, productName, productDescription }: Props) {
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<{ min: number; max: number; justification: string } | null>(null);
+  const { currentWorkspace } = useWorkspace();
 
   const getSuggestion = async () => {
+    if (!currentWorkspace?.id) {
+      toast.error("Selecione um workspace antes de gerar com IA");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-generate", {
         body: {
           type: "price",
+          workspace_id: currentWorkspace.id,
           context: {
             productType,
             niche: productName || "",
