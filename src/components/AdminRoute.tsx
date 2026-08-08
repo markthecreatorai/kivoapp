@@ -1,9 +1,9 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthProvider";
-import { isAdminUser } from "@/lib/admin";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
 
 interface AdminRouteProps {
