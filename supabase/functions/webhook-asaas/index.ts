@@ -389,11 +389,15 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
   }
 
   // Wallet ledger + split + reserve
+  // ATENÇÃO: wallet_ledger, split_entries, reserve_entries e security_reserves
+  // armazenam valores em CENTAVOS (integer). orders.total_amount é em reais (numeric).
   if (order) {
     const HOLD_DAYS = 14;
     const availableAt = new Date(Date.now() + HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const totalAmount = Number(order.total_amount || 0);
-    const netFee = paymentData?.netValue ? totalAmount - Number(paymentData.netValue) : 0;
+    const totalAmount = Math.round(Number(order.total_amount || 0) * 100); // centavos
+    const netFee = paymentData?.netValue
+      ? Math.max(0, totalAmount - Math.round(Number(paymentData.netValue) * 100))
+      : 0;
     const netAmount = totalAmount - netFee;
 
     const { data: existingLedger } = await supabase
