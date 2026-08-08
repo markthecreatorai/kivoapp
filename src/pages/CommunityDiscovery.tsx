@@ -213,6 +213,19 @@ export default function CommunityDiscovery() {
               </div>
             ))}
           </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Sparkles className="h-9 w-9 text-muted-foreground/40" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-1">Não conseguimos carregar as comunidades</h2>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Houve uma falha ao buscar a lista de comunidades. Tente novamente em alguns instantes.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => refetch()} disabled={isRefetching}>
+              Tentar novamente
+            </Button>
+          </div>
         ) : sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
