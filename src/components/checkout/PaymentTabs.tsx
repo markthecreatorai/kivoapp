@@ -87,7 +87,7 @@ function PixCountdown({ expiresAt, onExpired }: { expiresAt: string; onExpired: 
 
 export function PaymentTabs({
   total, pixTotal, maxInstallments,
-  onPayPix, onPayCard, onPayBoleto,
+  onPayPix, onPayCard, onPayBoleto, customer,
   pixData, boletoData, paymentLoading, paymentError, paymentSuccess,
   onTabChange
 }: PaymentTabsProps) {
@@ -97,8 +97,64 @@ export function PaymentTabs({
   const [copied, setCopied] = useState(false);
   const [pixExpired, setPixExpired] = useState(false);
   const [cardErrors, setCardErrors] = useState<CardValidationErrors>({});
+  const [tokenizing, setTokenizing] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
   const [installmentOptions, setInstallmentOptions] = useState<InstallmentOption[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
+
+  // Troca os dados do cartão por um token do gateway. O PAN/CVV nunca
+  // chega ao create-payment nem é persistido em nenhum estado global.
+  const tokenizeAndPay = async () => {
+    const errs = validateCardFields(card);
+    setCardErrors(errs);
+    setTokenError(null);
+    if (Object.keys(errs).length > 0) return;
+    if (!customer?.name || !customer?.email || !customer?.cpf) {
+      setTokenError("Preencha seus dados antes de pagar com cartão.");
+      return;
+    }
+
+    setTokenizing(true);
+    try {
+      const [expMonth, expYear] = card.expiry.split("/");
+      const res = await supabase.functions.invoke("tokenize-card", {
+        body: {
+          customer: {
+            name: customer.name,
+            email: customer.email,
+            cpf: customer.cpf.replace(/\D/g, ""),
+            phone: customer.phone?.replace(/\D/g, ""),
+          },
+          card: {
+            number: card.number.replace(/\D/g, ""),
+            exp_month: expMonth,
+            exp_year: expYear,
+            cvv: card.cvv.replace(/\D/g, ""),
+            holder_name: card.holder_name,
+          },
+        },
+      });
+      const data: any = res.data;
+      if (res.error || data?.error || !data?.card_token) {
+        throw new Error(data?.error || res.error?.message || "Não foi possível validar o cartão.");
+      }
+
+      // Limpa dados sensíveis do formulário imediatamente após tokenizar
+      setCard((prev) => ({ ...prev, number: "", cvv: "" }));
+
+      await onPayCard({
+        card_token: data.card_token,
+        card_last4: data.card_last4,
+        card_brand: data.card_brand,
+        installments: card.installments,
+      });
+    } catch (e: any) {
+      setTokenError(e?.message || "Não foi possível validar o cartão.");
+    } finally {
+      setTokenizing(false);
+    }
+  };
+
 
   useEffect(() => {
     if (maxInstallments <= 1 || total <= 0) {
