@@ -440,6 +440,7 @@ Deno.serve(async (req) => {
           },
         };
       } else if (method === "credit_card") {
+        // Cobrança tokenizada: nenhum dado sensível de cartão existe nesta função
         const chargePayload: any = {
           customer: asaasCustomerId,
           billingType: "CREDIT_CARD",
@@ -447,22 +448,7 @@ Deno.serve(async (req) => {
           description: product.name,
           externalReference: order.id,
           dueDate: new Date().toISOString().slice(0, 10),
-          creditCard: {
-            holderName: card.holder_name,
-            number: card.number.replace(/\s/g, ""),
-            expiryMonth: card.exp_month,
-            expiryYear: card.exp_year.length === 2 ? `20${card.exp_year}` : card.exp_year,
-            ccv: card.cvv,
-          },
-          creditCardHolderInfo: {
-            name: customer.name,
-            email: customer.email,
-            cpfCnpj: cpf,
-            phone: customer.phone?.replace(/\D/g, "") || "11999999999",
-            postalCode: customer.zip || "01310100",
-            addressNumber: customer.address_number || "100",
-            address: customer.address || "Av Paulista",
-          },
+          creditCardToken: card_token,
         };
 
         // Only add installmentCount for 2+ installments (Asaas rejects installmentCount=1)
@@ -483,13 +469,15 @@ Deno.serve(async (req) => {
           status: ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH", "APPROVED"].includes(charge.status) ? "paid" : (charge.status === "DECLINED" || charge.status === "REFUNDED" ? "failed" : "pending"),
           gateway_payment_id: charge.id,
           provider: "asaas",
-          card_last4: card.number.replace(/\s/g, "").slice(-4),
-          card_brand: charge.creditCard?.creditCardBrand || "unknown",
+          card_last4: (card_last4 || charge.creditCard?.creditCardNumber || "").toString().slice(-4) || null,
+          card_brand: charge.creditCard?.creditCardBrand || card_brand || "unknown",
+          card_token,
           installments: selectedInstallments,
           installment_value: installmentValue,
           total_with_interest: totalWithInterest,
         };
       } else if (method === "boleto") {
+
         const charge = await callAsaas("/payments", {
           customer: asaasCustomerId,
           billingType: "BOLETO",
