@@ -30,12 +30,10 @@ export function SettingsPayments() {
     queryKey: ["fee-config", plan],
     queryFn: async () => {
       const planKey = plan === "CREATOR_PRO" ? "creator_pro" : "creator";
-      const { data } = await supabase
-        .from("fee_config")
-        .select("plan_type, credit_card_percent, pix_percent, platform_percent, boleto_fixed_cents")
-        .eq("plan_type", planKey)
-        .maybeSingle();
-      return data;
+      // fee_config não é legível pelo cliente (RLS); usamos RPC de resumo.
+      const { data } = await (supabase as any).rpc("get_plan_fee_summary", { p_plan: planKey });
+      return Array.isArray(data) ? data[0] : data;
+
     },
   });
 

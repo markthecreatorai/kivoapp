@@ -136,18 +136,22 @@ export default function CreatorFinance() {
 
       const idempotencyKey = `payout-${workspaceId}-${Date.now()}`;
 
-      const { error } = await (supabase as any).from("payout_requests").insert({
-        workspace_id: workspaceId!,
-        bank_account_id: effectiveAccount,
-        requested_by: user.id,
-        amount: availableBalance,
-        fee: 0,
-        net_amount: availableBalance,
-        status: "pending",
-        idempotency_key: idempotencyKey,
+      // Insert direto foi removido por segurança: RLS bloqueia escrita do cliente.
+      // A criação passa pela edge function que revalida saldo e taxas server-side.
+      const { data, error } = await supabase.functions.invoke("create-payout-request", {
+        body: {
+          bank_account_id: effectiveAccount,
+          amount: Math.round(availableBalance),
+          idempotency_key: idempotencyKey,
+        },
       });
 
-      if (error) throw new Error("Não foi possível processar agora. Tente novamente em instantes.");
+      if (error || (data as any)?.error) {
+        throw new Error(
+          (data as any)?.error || "Não foi possível processar agora. Tente novamente em instantes.",
+        );
+      }
+
 
       await supabase.from("audit_logs").insert({
         workspace_id: workspaceId!,
