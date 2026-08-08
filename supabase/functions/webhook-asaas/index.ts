@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   if (externalReference) {
     const { data } = await supabase
       .from("payments")
-      .select("id, order_id, workspace_id, status")
+      .select("id, order_id, workspace_id, status, gateway_payment_id")
       .eq("order_id", externalReference)
       .maybeSingle();
     paymentRecord = data;
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
   if (!paymentRecord && gatewayPaymentId) {
     const { data } = await supabase
       .from("payments")
-      .select("id, order_id, workspace_id, status")
+      .select("id, order_id, workspace_id, status, gateway_payment_id")
       .eq("gateway_payment_id", String(gatewayPaymentId))
       .maybeSingle();
     paymentRecord = data;
@@ -205,6 +205,44 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     return "NOT_FOUND";
   }
 
+  // ── Validação: a cobrança do evento precisa pertencer a este pedido ──
+  const eventPaymentId = paymentData?.id ? String(paymentData.id) : null;
+  const storedPaymentId = paymentRecord.gateway_payment_id ? String(paymentRecord.gateway_payment_id) : null;
+  if (eventPaymentId && storedPaymentId && eventPaymentId !== storedPaymentId) {
+    console.error(
+      `Asaas payment ${eventPaymentId} does not belong to order ${paymentRecord.order_id} (stored=${storedPaymentId}) — ignoring`,
+    );
+    return "PAYMENT_MISMATCH";
+  }
+
+  // ── Carrega o pedido ANTES de qualquer efeito colateral ──
+  const { data: order, error: orderLoadErr } = await supabase
+    .from("orders")
+    .select("id, status, paid_at, customer_id, checkout_session_id, customer_email, customer_name, total_amount, subtotal_amount, discount_amount, affiliate_link_id, workspace_id, payment_method")
+    .eq("id", paymentRecord.order_id)
+    .maybeSingle();
+
+  if (orderLoadErr) {
+    console.error("Failed to load order:", orderLoadErr);
+    throw new Error(`Order load failed: ${orderLoadErr.message}`);
+  }
+  if (!order) {
+    console.warn(`Order ${paymentRecord.order_id} not found for Asaas payment ${eventPaymentId}`);
+    return "ORDER_NOT_FOUND";
+  }
+
+  // Pedidos de teste nunca geram entitlement nem financeiro.
+  if (order.status === "TEST") {
+    console.log(`Order ${order.id} is TEST — skipping all provisioning`);
+    return "TEST_IGNORED";
+  }
+
+  // Idempotência: pedido já concluído não repete efeitos.
+  if (order.status === "COMPLETED" && order.paid_at) {
+    console.log(`Order ${order.id} already COMPLETED (paid_at=${order.paid_at}) — skipping duplicate processing`);
+    return "ALREADY_COMPLETED";
+  }
+
   // ─── Update transaction record ───
   try {
     const { data: tx } = await supabase
@@ -284,30 +322,43 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     console.error("Transaction update error (non-fatal):", txErr);
   }
 
-  await supabase.from("payments").update({
+  const { error: payUpdErr } = await supabase.from("payments").update({
     status: "SUCCEEDED",
     processed_at: new Date().toISOString(),
+    gateway_payment_id: storedPaymentId || eventPaymentId,
   }).eq("id", paymentRecord.id);
+  if (payUpdErr) {
+    console.error("Failed to update payment:", payUpdErr);
+    throw new Error(`Payment update failed: ${payUpdErr.message}`);
+  }
 
-  await supabase.from("pix_payment_data").update({
+  const { error: pixUpdErr } = await supabase.from("pix_payment_data").update({
     paid_at: new Date().toISOString(),
   }).eq("payment_id", paymentRecord.id);
+  if (pixUpdErr) console.error("Failed to update pix_payment_data (non-fatal):", pixUpdErr);
 
-  await supabase.from("orders").update({
+  // Marca COMPLETED apenas se ainda não estiver — guarda extra contra corrida de eventos.
+  const { data: completedRows, error: orderUpdErr } = await supabase.from("orders").update({
     status: "COMPLETED",
     paid_at: new Date().toISOString(),
-  }).eq("id", paymentRecord.order_id);
+  }).eq("id", paymentRecord.order_id).neq("status", "COMPLETED").select("id");
+  if (orderUpdErr) {
+    console.error("Failed to complete order:", orderUpdErr);
+    throw new Error(`Order update failed: ${orderUpdErr.message}`);
+  }
+  if (!completedRows || completedRows.length === 0) {
+    console.log(`Order ${paymentRecord.order_id} was completed concurrently — skipping duplicate effects`);
+    return "ALREADY_COMPLETED";
+  }
 
-  const { data: orderItems } = await supabase
+  const { data: orderItems, error: itemsErr } = await supabase
     .from("order_items")
     .select("product_id")
     .eq("order_id", paymentRecord.order_id);
-
-  const { data: order } = await supabase
-    .from("orders")
-    .select("customer_id, checkout_session_id, customer_email, customer_name, total_amount, subtotal_amount, discount_amount, affiliate_link_id, workspace_id, payment_method")
-    .eq("id", paymentRecord.order_id)
-    .single();
+  if (itemsErr) {
+    console.error("Failed to load order items:", itemsErr);
+    throw new Error(`Order items load failed: ${itemsErr.message}`);
+  }
 
   if (order?.customer_id && orderItems) {
     for (const item of orderItems) {
@@ -330,10 +381,11 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
   }
 
   if (order?.checkout_session_id) {
-    await supabase.from("checkout_sessions").update({
+    const { error: csErr } = await supabase.from("checkout_sessions").update({
       status: "COMPLETED",
       completed_at: new Date().toISOString(),
     }).eq("id", order.checkout_session_id);
+    if (csErr) console.error("Failed to complete checkout session:", csErr);
   }
 
   // Wallet ledger + split + reserve
@@ -352,7 +404,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       .maybeSingle();
 
     if (!existingLedger) {
-      await supabase.from("wallet_ledger").insert({
+      const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
         workspace_id: order.workspace_id,
         order_id: paymentRecord.order_id,
         type: "sale",
@@ -361,6 +413,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
         available_at: availableAt,
         description: `Venda #${paymentRecord.order_id.slice(0, 8)}`,
       });
+      if (ledgerErr) console.error("Failed to insert wallet_ledger sale:", ledgerErr);
 
       if (netFee > 0) {
         await supabase.from("wallet_ledger").insert({
@@ -395,7 +448,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
         const creatorNet = netAfterGw - platformFee - affiliateFee;
         const splitAvailableAt = new Date(Date.now() + (rule.hold_days || 14) * 86400000).toISOString();
 
-        const { data: splitEntry } = await supabase.from("split_entries").insert({
+        const { data: splitEntry, error: splitErr } = await supabase.from("split_entries").insert({
           workspace_id: order.workspace_id,
           order_id: paymentRecord.order_id,
           split_rule_id: rule.id || null,
@@ -407,6 +460,10 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           status: "pending",
           available_at: splitAvailableAt,
         }).select("id").single();
+        if (splitErr) {
+          console.error("Failed to insert split entry:", splitErr);
+          throw new Error(`Split entry failed: ${splitErr.message}`);
+        }
 
         // Rolling reserve: withhold % of creator_net
         if (creatorNet > 0) {
