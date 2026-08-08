@@ -95,6 +95,14 @@ Deno.serve(async (req) => {
     }
 
     // SECURITY: only paid orders can be provisioned
+    // Sandbox/test orders are never provisioned.
+    if (order.status === "TEST") {
+      console.warn(`post-purchase: refusing TEST order ${order.id}`);
+      return new Response(JSON.stringify({ error: "Pedido de teste — nenhum acesso concedido" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (order.status !== "COMPLETED" || !order.paid_at) {
       console.error(`post-purchase: refusing unpaid order ${order.id} (status=${order.status}, paid_at=${order.paid_at})`);
       return new Response(JSON.stringify({ error: "Pedido não pago" }), {

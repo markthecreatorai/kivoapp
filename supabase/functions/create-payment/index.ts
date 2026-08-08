@@ -64,7 +64,17 @@ Deno.serve(async (req) => {
 
   // ── Gateway guardrail: never process/deliver anything without a real gateway ──
   const gatewayApiKey = (Deno.env.get("ASAAS_API_KEY") || "").trim();
-  const sandboxMode = (Deno.env.get("KIVO_PAYMENTS_SANDBOX") || "").trim().toLowerCase() === "true";
+  const sandboxRequested = (Deno.env.get("KIVO_PAYMENTS_SANDBOX") || "").trim().toLowerCase() === "true";
+  const isProductionEnv = (Deno.env.get("ASAAS_ENV") || "").trim().toLowerCase() === "production";
+
+  // HARD LOCK: sandbox mode is never honoured in production, no matter the flag.
+  if (sandboxRequested && isProductionEnv) {
+    console.warn(
+      "KIVO_PAYMENTS_SANDBOX=true IGNORADO: ASAAS_ENV=production. " +
+      "Remova o secret KIVO_PAYMENTS_SANDBOX — pagamentos seguirão pelo gateway real.",
+    );
+  }
+  const sandboxMode = sandboxRequested && !isProductionEnv;
 
   if (!gatewayApiKey && !sandboxMode) {
     console.error("create-payment blocked: ASAAS_API_KEY não configurada. Nenhum pedido, pagamento ou entitlement foi criado.");
