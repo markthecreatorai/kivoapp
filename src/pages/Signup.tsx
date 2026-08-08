@@ -428,14 +428,9 @@ export default function Signup() {
                     <div className="flex items-center space-x-2">
                       <Progress value={(passwordStrength.score + 1) * 20} className="flex-1 h-2" />
                       <span className="text-xs text-muted-foreground">
-                        {strengthLabels[passwordStrength.score]}
+                        {passwordStrength.label}
                       </span>
                     </div>
-                    {passwordStrength.feedback.suggestions.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {passwordStrength.feedback.suggestions[0]}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
