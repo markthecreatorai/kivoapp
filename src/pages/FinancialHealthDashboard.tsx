@@ -55,10 +55,10 @@ export default function FinancialHealthDashboard() {
       const creatorNet = splits.filter((e: any) => e.status !== "refunded").reduce((s: number, e: any) => s + (e.creator_net || 0), 0);
 
       // Payouts
-      const payoutsPaid = payouts.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + (p.net_amount || 0), 0);
+      const payoutsPaid = payouts.filter((p: any) => p.status === "completed" || p.status === "paid").reduce((s: number, p: any) => s + (p.net_amount || 0), 0);
       const payoutsFailed = payouts.filter((p: any) => p.status === "failed").length;
-      const payoutsReview = payouts.filter((p: any) => p.status === "manual_review").length;
-      const payoutsPending = payouts.filter((p: any) => p.status === "requested" || p.status === "processing").length;
+      const payoutsReview = payouts.filter((p: any) => p.status === "in_review" || p.status === "manual_review").length;
+      const payoutsPending = payouts.filter((p: any) => ["pending", "approved", "in_review", "processing", "requested"].includes(p.status)).length;
 
       // Chargebacks
       const cbOpen = cbs.filter((c: any) => !["won", "lost"].includes(c.status));

@@ -30,10 +30,10 @@ export default function AdminPayouts() {
         .filter(e => e.status !== "refunded")
         .reduce((s, e) => s + (e.creator_net || 0), 0);
       const totalPaid = payouts
-        .filter(p => p.status === "paid")
+        .filter(p => p.status === "completed" || p.status === "paid")
         .reduce((s, p) => s + (p.net_amount || 0), 0);
       const totalPending = payouts
-        .filter(p => p.status === "requested" || p.status === "processing")
+        .filter(p => ["pending", "approved", "in_review", "processing", "requested"].includes(p.status))
         .reduce((s, p) => s + (p.amount || 0), 0);
       const totalRefunded = refunds.reduce((s, r) => s + (r.creator_net || 0), 0);
 

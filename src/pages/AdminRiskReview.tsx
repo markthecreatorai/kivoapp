@@ -36,7 +36,7 @@ export default function AdminRiskReview() {
       const { data, error } = await supabase
         .from("payout_requests")
         .select("*")
-        .in("status", ["manual_review", "requested"])
+        .in("status", ["in_review", "manual_review", "pending"])
         .order("created_at", { ascending: true })
         .limit(100);
       if (error) throw error;
@@ -78,7 +78,7 @@ export default function AdminRiskReview() {
 
       if (action === "approve") {
         const { error } = await supabase.from("payout_requests").update({
-          status: "requested",
+          status: "approved",
           review_reason: reviewNote || null,
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
