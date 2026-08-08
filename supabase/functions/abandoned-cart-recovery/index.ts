@@ -113,10 +113,12 @@ Deno.serve(async (req) => {
       processed++;
     }
 
-    console.log(`Processed ${processed} abandoned carts`);
-    return new Response(JSON.stringify({ processed }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    console.log(`Processed ${processed} abandoned carts (skipped ${skipped})`);
+    await cronRun.finish("SUCCESS", { processed, skipped });
+    return new Response(JSON.stringify({ processed, skipped }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err: any) {
     console.error("Unexpected error:", JSON.stringify({ message: err.message, stack: err.stack?.slice(0, 200) }));
+    await cronRun.finish("FAILED", {}, err?.message ?? "Internal error");
     return errorResponse("INTERNAL_ERROR", "Internal error", 500, true);
   }
 });
