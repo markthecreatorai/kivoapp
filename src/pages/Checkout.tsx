@@ -476,16 +476,19 @@ export default function Checkout() {
 
   // Poll check-payment-status every 7 seconds when PIX is active
   useEffect(() => {
-    if (!pixData || paymentSuccess || !orderId) return;
-    
+    if (!pixData || paymentSuccess || !orderId || !customer.email) return;
+
     const pollInterval = setInterval(async () => {
       try {
         const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
         const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const url = `https://${projectId}.supabase.co/functions/v1/check-payment-status?order_id=${orderId}`;
+        const url = `https://${projectId}.supabase.co/functions/v1/check-payment-status`;
         const resp = await fetch(url, {
-          headers: { "apikey": apiKey },
+          method: "POST",
+          headers: { "apikey": apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId, email: customer.email }),
         });
+
         if (!resp.ok) return;
         const data = await resp.json();
         if (data?.status === "SUCCEEDED") {
@@ -505,7 +508,7 @@ export default function Checkout() {
     }, 7000);
 
     return () => clearInterval(pollInterval);
-  }, [pixData, paymentSuccess, orderId, navigate]);
+  }, [pixData, paymentSuccess, orderId, navigate, customer.email]);
 
   if (loading) {
     return (

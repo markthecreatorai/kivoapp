@@ -9218,6 +9218,10 @@ export type Database = {
         Args: { p_community_id: string; p_patch: Json; p_space_id: string }
         Returns: boolean
       }
+      workspace_accepts_public_writes: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       account_type: "PRODUCER" | "MEMBER"
