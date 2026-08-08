@@ -456,11 +456,13 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     if (totalAmount > 0) {
       const { data: existingSplit } = await supabase
         .from("split_entries")
-        .select("id")
+        .select("id, status")
         .eq("order_id", paymentRecord.order_id)
         .maybeSingle();
 
-      if (!existingSplit) {
+      // create-payment already wrote a "pending" entry with available_at = null.
+      // On confirmation we recompute with the real gateway fee and fill available_at.
+      if (!existingSplit || existingSplit.status === "pending") {
         const { data: ruleData } = await supabase.rpc("get_split_rule", {
           p_workspace_id: order.workspace_id,
           p_product_id: orderItems?.[0]?.product_id || null,
@@ -474,7 +476,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
         const creatorNet = netAfterGw - platformFee - affiliateFee;
         const splitAvailableAt = new Date(Date.now() + (rule.hold_days || 14) * 86400000).toISOString();
 
-        const { data: splitEntry, error: splitErr } = await supabase.from("split_entries").insert({
+        const splitPayload = {
           workspace_id: order.workspace_id,
           order_id: paymentRecord.order_id,
           split_rule_id: rule.id || null,
@@ -485,14 +487,24 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           creator_net: creatorNet,
           status: "pending",
           available_at: splitAvailableAt,
-        }).select("id").single();
+        };
+
+        const { data: splitEntry, error: splitErr } = existingSplit
+          ? await supabase.from("split_entries").update(splitPayload).eq("id", existingSplit.id).select("id").single()
+          : await supabase.from("split_entries").insert(splitPayload).select("id").single();
         if (splitErr) {
-          console.error("Failed to insert split entry:", splitErr);
+          console.error("Failed to persist split entry:", splitErr);
           throw new Error(`Split entry failed: ${splitErr.message}`);
         }
 
-        // Rolling reserve: withhold % of creator_net
-        if (creatorNet > 0) {
+        // Rolling reserve: withhold % of creator_net (idempotent per order)
+        const { data: existingReserve } = await supabase
+          .from("reserve_entries")
+          .select("id")
+          .eq("order_id", paymentRecord.order_id)
+          .maybeSingle();
+
+        if (creatorNet > 0 && !existingReserve) {
           const { data: reservePolicy } = await supabase
             .from("reserve_policies")
             .select("reserve_percent, release_window_days")
