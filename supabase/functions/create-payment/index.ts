@@ -166,9 +166,14 @@ Deno.serve(async (req) => {
     const workspace_id = product.workspace_id as string;
 
     // Verify workspace exists
+    // NOTA: workspaces.asaas_account_id / asaas_wallet_id NÃO são usados no fluxo
+    // de pagamento. O modelo adotado é custódia na conta Kivo + ledger interno
+    // (split_entries / wallet_ledger / reserve_entries), sem split nativo do Asaas.
+    // As colunas permanecem no schema apenas para uso futuro.
     const { data: workspace } = await supabase
       .from("workspaces")
-      .select("id, asaas_account_id, plan")
+      .select("id, plan")
+
       .eq("id", workspace_id)
       .maybeSingle();
 
