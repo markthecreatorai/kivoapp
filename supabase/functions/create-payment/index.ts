@@ -363,6 +363,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Redeem the coupon atomically (locks the row, re-checks total and per-customer
+    // limits, records coupon_usages and increments current_uses in one transaction).
+    if (appliedCoupon) {
+      const { data: redeemed, error: redeemErr } = await supabase.rpc("redeem_coupon", {
+        p_coupon_id: appliedCoupon.id,
+        p_order_id: order.id,
+        p_customer_email: customer.email,
+        p_discount: couponDiscount,
+      });
+      if (redeemErr || redeemed !== true) {
+        console.error("Falha ao resgatar cupom:", coupon_code, JSON.stringify(redeemErr));
+        await supabase.from("orders").update({ status: "FAILED" }).eq("id", order.id);
+        return new Response(JSON.stringify({ error: "Cupom atingiu o limite de usos" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+
+
 
     if (checkout_session_id) {
       await supabase.from("checkout_sessions").update({
