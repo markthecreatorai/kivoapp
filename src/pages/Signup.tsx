@@ -179,6 +179,7 @@ export default function Signup() {
         options: {
           data: {
             full_name: fullName,
+            account_type: "CREATOR",
             is_creator: true,
             creator_type: creatorType,
             utm_source: utmData.utm_source || searchParams.get("utm_source") || "",
