@@ -5,7 +5,7 @@ import { getStoredAffiliateLink } from "@/hooks/useAffiliateTracking";
 import { ProductSummary } from "@/components/checkout/ProductSummary";
 import { CustomerForm } from "@/components/checkout/CustomerForm";
 import { CouponSection } from "@/components/checkout/CouponSection";
-import { PaymentTabs, type CardData } from "@/components/checkout/PaymentTabs";
+import { PaymentTabs, type CardTokenPayload } from "@/components/checkout/PaymentTabs";
 import { OrderTotal } from "@/components/checkout/OrderTotal";
 import { OrderBumpCard, type OrderBump } from "@/components/checkout/OrderBumpCard";
 import { validateCPF } from "@/lib/cpf";
