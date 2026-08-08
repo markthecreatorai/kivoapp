@@ -565,6 +565,7 @@ export default function Checkout() {
           onPayPix={handlePayPix}
           onPayCard={handlePayCard}
           onPayBoleto={handlePayBoleto}
+          customer={{ name: customer.name, email: customer.email, cpf: customer.cpf, phone: customer.phone }}
           pixData={pixData}
           boletoData={boletoData}
           paymentLoading={paymentLoading}
