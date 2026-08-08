@@ -25,7 +25,6 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("node_modules")) {
             // Heavy, truly independent libs — safe to split
             if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-            if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
             if (id.includes("@tiptap") || id.includes("prosemirror")) return "vendor-editor";
             if (id.includes("date-fns")) return "vendor-date";
             // Everything else (react, radix, supabase, lucide, etc.)
