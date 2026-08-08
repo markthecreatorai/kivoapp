@@ -125,7 +125,12 @@ export default function Products() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast.success("Produto duplicado com sucesso!");
     },
+    onError: (error) => {
+      const info = describePlanError(error);
+      toast.error(info.title, { description: info.description });
+    },
   });
+
 
   const archiveMutation = useMutation({
     mutationFn: async (productId: string) => {
