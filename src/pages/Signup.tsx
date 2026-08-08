@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPasswordStrength } from "@/lib/password-strength";
 import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/tracking";
 import { Progress } from "@/components/ui/progress";
