@@ -84,6 +84,7 @@ export default function MemberLogin() {
           data: {
             display_name: displayName,
             full_name: displayName,
+            account_type: "MEMBER",
             is_creator: false,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
