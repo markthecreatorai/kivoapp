@@ -13,6 +13,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
+import { isPrivateFileUrl, getSignedPrivateUrl } from "@/lib/private-files";
 
 interface Module {
   id: string;
