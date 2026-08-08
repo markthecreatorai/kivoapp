@@ -20,6 +20,7 @@ export interface CouponRecord {
   max_uses: number | null;
   max_uses_per_customer: number;
   current_uses: number;
+  applies_to_product_ids: string[] | null;
   valid_from: string;
   valid_until: string | null;
   is_active: boolean;
@@ -66,6 +67,8 @@ export async function resolveCoupon(
     workspaceId: string;
     orderAmount: number;
     customerEmail?: string | null;
+    /** Product being purchased — required to honour product-restricted coupons. */
+    productId?: string | null;
   },
 ): Promise<CouponResolution> {
   const code = String(params.code || "").trim().toUpperCase();
@@ -76,13 +79,14 @@ export async function resolveCoupon(
   const { data: coupon } = await supabase
     .from("coupons")
     .select(
-      "id, code, type, value, min_order_amount, max_uses, max_uses_per_customer, current_uses, valid_from, valid_until, is_active",
+      "id, code, type, value, min_order_amount, max_uses, max_uses_per_customer, current_uses, valid_from, valid_until, is_active, applies_to_product_ids",
     )
     .eq("workspace_id", params.workspaceId)
     .eq("code", code)
     .maybeSingle();
 
-  if (!coupon) return { valid: false, error: "Cupom não encontrado", discount: 0 };
+  // Scoped by workspace_id above: a coupon from another workspace simply is not found.
+  if (!coupon) return { valid: false, error: "Cupom inválido", discount: 0 };
   if (!coupon.is_active) return { valid: false, error: "Cupom inativo", discount: 0 };
 
   const now = new Date();
@@ -92,8 +96,24 @@ export async function resolveCoupon(
   if (coupon.valid_until && new Date(coupon.valid_until) < now) {
     return { valid: false, error: "Cupom expirado", discount: 0 };
   }
-  if (coupon.max_uses !== null && coupon.current_uses >= coupon.max_uses) {
-    return { valid: false, error: "Cupom atingiu o limite de usos", discount: 0 };
+  if (coupon.max_uses !== null) {
+    // Trust the real usage rows, not only the denormalized counter.
+    const { count: globalUses } = await supabase
+      .from("coupon_usages")
+      .select("id", { count: "exact", head: true })
+      .eq("coupon_id", coupon.id);
+    const used = Math.max(Number(coupon.current_uses || 0), globalUses ?? 0);
+    if (used >= coupon.max_uses) {
+      return { valid: false, error: "Cupom atingiu o limite de usos", discount: 0 };
+    }
+  }
+
+  // Product-restricted coupons: empty/NULL list = valid for every product.
+  const restricted = coupon.applies_to_product_ids;
+  if (restricted && restricted.length > 0) {
+    if (!params.productId || !restricted.includes(params.productId)) {
+      return { valid: false, error: "Cupom não válido para este produto", discount: 0 };
+    }
   }
 
   if (params.customerEmail) {

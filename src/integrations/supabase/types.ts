@@ -3923,6 +3923,7 @@ export type Database = {
       }
       coupons: {
         Row: {
+          applies_to_product_ids: string[] | null
           code: string
           created_at: string
           current_uses: number
@@ -3939,6 +3940,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          applies_to_product_ids?: string[] | null
           code: string
           created_at?: string
           current_uses?: number
@@ -3955,6 +3957,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          applies_to_product_ids?: string[] | null
           code?: string
           created_at?: string
           current_uses?: number
@@ -9384,15 +9387,27 @@ export type Database = {
         Returns: undefined
       }
       plan_max_products: { Args: { _plan: string }; Returns: number }
-      redeem_coupon: {
-        Args: {
-          p_coupon_id: string
-          p_customer_email: string
-          p_discount: number
-          p_order_id: string
-        }
-        Returns: boolean
-      }
+      redeem_coupon:
+        | {
+            Args: {
+              p_coupon_id: string
+              p_customer_email: string
+              p_discount: number
+              p_order_id: string
+            }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_coupon_id: string
+              p_customer_email: string
+              p_discount: number
+              p_order_amount: number
+              p_order_id: string
+              p_product_id?: string
+            }
+            Returns: Json
+          }
       release_coupon: {
         Args: { p_coupon_id: string; p_order_id: string }
         Returns: boolean

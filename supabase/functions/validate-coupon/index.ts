@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     });
 
   try {
-    const { code, workspace_id, customer_email, order_amount } = await req.json();
+    const { code, workspace_id, customer_email, order_amount, product_id } = await req.json();
 
     if (!code || !workspace_id) {
       return json({ valid: false, error: "Código e workspace são obrigatórios" }, 400);
@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
       workspaceId: workspace_id,
       customerEmail: customer_email || null,
       orderAmount: Number(order_amount || 0),
+      productId: product_id || null,
     });
 
     if (!result.valid || !result.coupon) {
