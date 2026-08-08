@@ -5168,6 +5168,8 @@ export type Database = {
           pix_percent: number
           plan_type: string
           platform_percent: number
+          reserve_hold_days: number | null
+          reserve_percent: number | null
           updated_at: string
         }
         Insert: {
@@ -5179,6 +5181,8 @@ export type Database = {
           pix_percent?: number
           plan_type: string
           platform_percent?: number
+          reserve_hold_days?: number | null
+          reserve_percent?: number | null
           updated_at?: string
         }
         Update: {
@@ -5190,6 +5194,8 @@ export type Database = {
           pix_percent?: number
           plan_type?: string
           platform_percent?: number
+          reserve_hold_days?: number | null
+          reserve_percent?: number | null
           updated_at?: string
         }
         Relationships: []
