@@ -38,7 +38,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
   const { user, session } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedInterval, setSelectedInterval] = useState<"monthly" | "yearly">("monthly");
+  const [selectedInterval, setSelectedInterval] = useState<"monthly" | "yearly" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
   const [cardData, setCardData] = useState({
@@ -58,9 +58,14 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
     },
   });
 
-  const monthlyPlan = plans?.find((p: any) => p.interval === "monthly");
-  const yearlyPlan = plans?.find((p: any) => p.interval === "yearly");
-  const activePlan = selectedInterval === "yearly" && yearlyPlan ? yearlyPlan : monthlyPlan;
+  const monthlyPlan = plans?.find((p: any) => String(p.interval).toLowerCase() === "monthly");
+  const yearlyPlan = plans?.find((p: any) => String(p.interval).toLowerCase() === "yearly");
+  // Fallback: se a comunidade só tem plano anual (ou um interval fora do padrão),
+  // seleciona o primeiro plano disponível para nunca ficar sem CTA.
+  const effectiveInterval: "monthly" | "yearly" =
+    selectedInterval ?? (monthlyPlan ? "monthly" : "yearly");
+  const activePlan =
+    (effectiveInterval === "yearly" ? yearlyPlan : monthlyPlan) ?? plans?.[0];
 
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
@@ -174,6 +179,14 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
         <p className="text-muted-foreground">
           O administrador ainda não configurou os planos de assinatura.
         </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/circles/${community.slug}/about`)}>
+            Ver detalhes da comunidade
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/circles")}>
+            Minhas comunidades
+          </Button>
+        </div>
       </div>
     );
   }
@@ -213,7 +226,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
               onClick={() => setSelectedInterval("monthly")}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                selectedInterval === "monthly"
+                effectiveInterval === "monthly"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               )}
@@ -224,7 +237,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
               onClick={() => setSelectedInterval("yearly")}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors relative",
-                selectedInterval === "yearly"
+                effectiveInterval === "yearly"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               )}
@@ -377,6 +390,16 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Shield className="h-3.5 w-3.5" />
           <span>Pagamento seguro via Asaas · Cancele quando quiser</span>
+        </div>
+
+        {/* Escape */}
+        <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/circles/${community.slug}/about`)}>
+            Ver detalhes da comunidade
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/circles")}>
+            Minhas comunidades
+          </Button>
         </div>
       </div>
     </div>
