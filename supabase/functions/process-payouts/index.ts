@@ -1,401 +1,395 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+// process-payouts — executa transferências (Asaas) dos saques aprovados.
+// Chamável APENAS internamente: cron (X-Kivo-Cron-Secret) ou admin Kivo (JWT).
+// Nunca pelo produtor. verify_jwt = true no config.toml.
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-cron-secret",
-};
+const FN = "process-payouts";
+const BATCH_LIMIT = 25;
+const RISK_THRESHOLD = 50;
+const ACTIVE_CHARGEBACKS = ["new", "evidence_pending", "submitted"];
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 function getAsaasBase() {
-  const env = Deno.env.get("ASAAS_ENV") || "sandbox";
-  return env === "production"
+  return (Deno.env.get("ASAAS_ENV") || "sandbox") === "production"
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/api/v3";
 }
 
-interface RiskResult {
-  risk_score: number;
-  risk_flags: any[];
-  recent_chargebacks: number;
-  refund_ratio: number;
-  payout_count_today: number;
-  payout_total_today: number;
+function timingSafeEqualStr(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
-interface PayoutSettings {
-  min_payout_amount: number;
-  max_daily_payout: number;
-  max_payouts_per_day: number;
-  kyc_required: boolean;
-  kyc_approved: boolean;
-  auto_payout_enabled: boolean;
-  risk_threshold: number;
-}
+type Admin = ReturnType<typeof createClient>;
 
-const DEFAULT_SETTINGS: PayoutSettings = {
-  min_payout_amount: 5000,
-  max_daily_payout: 500000,
-  max_payouts_per_day: 3,
-  kyc_required: false,
-  kyc_approved: false,
-  auto_payout_enabled: true,
-  risk_threshold: 50,
-};
+/** Autoriza cron (segredo) ou admin Kivo (JWT). Retorna o "caller" ou null. */
+async function authorize(req: Request, admin: Admin): Promise<string | null> {
+  const expected = Deno.env.get("CRON_SECRET");
+  const provided =
+    req.headers.get("x-kivo-cron-secret") || req.headers.get("x-cron-secret") || "";
+  if (expected && provided && timingSafeEqualStr(provided, expected)) return "cron";
+
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return null;
+  const token = authHeader.replace("Bearer ", "");
+
+  const { data: userData } = await admin.auth.getUser(token);
+  const userId = userData?.user?.id;
+  if (!userId) return null;
+
+  const { data: isAdmin } = await admin.rpc("is_admin_user");
+  // is_admin_user usa o contexto do chamador; validamos também por user_roles
+  const { data: roleRow } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  if (isAdmin === true || roleRow) return `admin:${userId}`;
+  return null;
+}
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // Auth: x-cron-secret
-  const cronSecret = Deno.env.get("CRON_SECRET");
-  const providedSecret = req.headers.get("x-cron-secret");
-  if (!cronSecret || providedSecret !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const startedAt = Date.now();
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const asaasKey = Deno.env.get("ASAAS_API_KEY");
-  const supabase = createClient(supabaseUrl, serviceKey);
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 
+  const caller = await authorize(req, admin);
+  if (!caller) {
+    console.warn(`[${FN}] chamada não autorizada`);
+    return json({ error: "Unauthorized" }, 401);
+  }
+
+  const asaasKey = Deno.env.get("ASAAS_API_KEY");
   const summary = {
     processed: 0,
-    paid: 0,
+    completed: 0,
     failed: 0,
-    blocked: 0,
-    manual_review: 0,
+    in_review: 0,
+    skipped: 0,
     errors: [] as string[],
   };
 
   try {
-    // Fetch pending payout requests
-    const { data: pendingPayouts } = await supabase
+    // ─── 1. Saques aprovados (idempotência: só status "approved" entra) ───
+    const { data: approved, error: fetchErr } = await admin
       .from("payout_requests")
-      .select("id, workspace_id, bank_account_id, amount, net_amount, requested_by, status")
-      .eq("status", "requested")
+      .select(
+        "id, workspace_id, bank_account_id, amount, fee, net_amount, status, idempotency_key",
+      )
+      .eq("status", "approved")
       .order("created_at", { ascending: true })
-      .limit(50);
+      .limit(BATCH_LIMIT);
+    if (fetchErr) throw fetchErr;
 
-    if (!pendingPayouts || pendingPayouts.length === 0) {
-      return new Response(JSON.stringify({ success: true, summary, message: "No pending payouts" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!approved || approved.length === 0) {
+      return json({ success: true, summary, message: "Nenhum saque aprovado" });
     }
 
-    for (const payout of pendingPayouts) {
+    for (const payout of approved) {
       try {
-        // 1. Get payout settings
-        const { data: settingsRow } = await supabase
-          .from("payout_settings")
-          .select("*")
-          .eq("workspace_id", payout.workspace_id)
+        // ─── 2. Trava otimista: approved → processing (só 1 worker ganha) ───
+        const { data: locked, error: lockErr } = await admin
+          .from("payout_requests")
+          .update({ status: "processing", processing_started_at: new Date().toISOString() })
+          .eq("id", payout.id)
+          .eq("status", "approved")
+          .select("id")
           .maybeSingle();
-        const settings: PayoutSettings = settingsRow || DEFAULT_SETTINGS;
-
-        // 2. Pre-payout validations
-        const validationErrors: string[] = [];
-
-        // Min amount
-        if (payout.amount < settings.min_payout_amount) {
-          validationErrors.push(`Valor abaixo do mínimo (${settings.min_payout_amount / 100})`);
+        if (lockErr) throw lockErr;
+        if (!locked) {
+          summary.skipped++;
+          continue;
         }
+        summary.processed++;
 
-        // KYC
-        if (settings.kyc_required && !settings.kyc_approved) {
-          validationErrors.push("KYC não aprovado");
-        }
-
-        // Auto payout disabled
-        if (!settings.auto_payout_enabled) {
-          validationErrors.push("Auto-payout desabilitado");
-        }
-
-        // Bank account exists
-        if (!payout.bank_account_id) {
-          validationErrors.push("Conta bancária não informada");
-        } else {
-          const { data: bankAccount } = await supabase
-            .from("bank_accounts")
-            .select("id, pix_key, pix_key_type")
-            .eq("id", payout.bank_account_id)
-            .maybeSingle();
-          if (!bankAccount) {
-            validationErrors.push("Conta bancária não encontrada");
-          }
-        }
-
-        // Available balance check
-        const { data: balanceData } = await supabase.rpc("get_creator_balance", {
-          p_workspace_id: payout.workspace_id,
-        });
-        const availableBalance = Number(balanceData?.[0]?.available_balance || 0);
-        if (payout.amount > availableBalance) {
-          validationErrors.push(`Saldo insuficiente (disponível: ${availableBalance / 100})`);
-        }
-
-        // 3. Risk scoring
-        const { data: riskData } = await supabase.rpc("calculate_payout_risk", {
-          p_workspace_id: payout.workspace_id,
-        });
-        const risk: RiskResult = riskData?.[0] || {
-          risk_score: 0, risk_flags: [], recent_chargebacks: 0,
-          refund_ratio: 0, payout_count_today: 0, payout_total_today: 0,
+        const fail = async (reason: string) => {
+          await admin
+            .from("payout_requests")
+            .update({
+              status: "failed",
+              failed_reason: reason.slice(0, 500),
+              processed_at: new Date().toISOString(),
+            })
+            .eq("id", payout.id);
+          await refundDebit(admin, payout);
+          await notifyCreator(admin, payout.workspace_id, "payout_failed", {
+            amount: payout.net_amount,
+            failure_reason: reason,
+          });
+          summary.failed++;
         };
 
-        // Velocity checks
-        if (risk.payout_count_today >= settings.max_payouts_per_day) {
-          validationErrors.push(`Limite de saques diários atingido (${settings.max_payouts_per_day})`);
+        // ─── 3. Conta bancária ───
+        if (!payout.bank_account_id) {
+          await fail("Conta bancária não informada");
+          continue;
         }
-        if (Number(risk.payout_total_today) + payout.amount > settings.max_daily_payout) {
-          validationErrors.push(`Limite de valor diário atingido`);
+        const { data: bank } = await admin
+          .from("bank_accounts")
+          .select(
+            "id, workspace_id, pix_key, pix_key_type, bank_code, agency, account_number, account_type, holder_name, holder_document",
+          )
+          .eq("id", payout.bank_account_id)
+          .maybeSingle();
+        if (!bank || String(bank.workspace_id) !== String(payout.workspace_id)) {
+          await fail("Conta bancária inválida para este workspace");
+          continue;
         }
 
-        // Log fraud checks
-        const checks = [
-          { check_type: "min_amount", passed: payout.amount >= settings.min_payout_amount },
-          { check_type: "balance_check", passed: payout.amount <= availableBalance },
-          { check_type: "velocity_count", passed: risk.payout_count_today < settings.max_payouts_per_day },
-          { check_type: "velocity_amount", passed: Number(risk.payout_total_today) + payout.amount <= settings.max_daily_payout },
-          { check_type: "risk_score", passed: risk.risk_score < settings.risk_threshold },
-        ];
+        // ─── 4. Chargeback ativo bloqueia o repasse ───
+        const { data: cbs } = await admin
+          .from("chargeback_cases")
+          .select("id")
+          .eq("workspace_id", payout.workspace_id)
+          .in("status", ACTIVE_CHARGEBACKS)
+          .limit(1);
+        if (cbs && cbs.length > 0) {
+          await admin
+            .from("payout_requests")
+            .update({
+              status: "in_review",
+              review_reason: "Chargeback ativo no workspace — repasse retido",
+            })
+            .eq("id", payout.id);
+          summary.in_review++;
+          continue;
+        }
 
-        for (const check of checks) {
-          await supabase.from("fraud_checks").insert({
-            workspace_id: payout.workspace_id,
-            payout_request_id: payout.id,
-            check_type: check.check_type,
-            passed: check.passed,
-            details: { risk_score: risk.risk_score, flags: risk.risk_flags },
+        // ─── 5. Risco ───
+        const { data: riskData } = await admin.rpc("calculate_payout_risk", {
+          p_workspace_id: payout.workspace_id,
+        });
+        const risk = (riskData as Array<Record<string, unknown>> | null)?.[0] ?? null;
+        const riskScore = Number(risk?.risk_score ?? 0);
+        const riskFlags = risk?.risk_flags ?? [];
+
+        if (riskScore >= RISK_THRESHOLD) {
+          await admin
+            .from("payout_requests")
+            .update({
+              status: "in_review",
+              review_reason: `Risco alto (score ${riskScore})`,
+              risk_score: riskScore,
+              risk_flags: riskFlags as never,
+            })
+            .eq("id", payout.id);
+          await notifyCreator(admin, payout.workspace_id, "payout_review", {
+            amount: payout.net_amount,
           });
-        }
-
-        // Block if validation fails
-        if (validationErrors.length > 0) {
-          await supabase.from("payout_requests").update({
-            status: "failed",
-            failed_reason: validationErrors.join("; "),
-            risk_score: risk.risk_score,
-            risk_flags: risk.risk_flags,
-            processed_at: new Date().toISOString(),
-          }).eq("id", payout.id);
-
-          summary.blocked++;
-          summary.processed++;
+          summary.in_review++;
           continue;
         }
-
-        // Send to manual review if high risk
-        if (risk.risk_score >= settings.risk_threshold) {
-          await supabase.from("payout_requests").update({
-            status: "manual_review",
-            review_reason: `Risk score: ${risk.risk_score}. Flags: ${JSON.stringify(risk.risk_flags)}`,
-            risk_score: risk.risk_score,
-            risk_flags: risk.risk_flags,
-          }).eq("id", payout.id);
-
-          // Alert admin
-          await sendAlert(supabase, payout.workspace_id,
-            `⚠️ Payout #${payout.id.slice(0, 8)} enviado para revisão manual. Score: ${risk.risk_score}`);
-
-          // Notify creator
-          await notifyCreator(supabase, payout.workspace_id, "payout_review", { amount: payout.net_amount });
-
-          summary.manual_review++;
-          summary.processed++;
-          continue;
-        }
-
-        // 4. Execute transfer via Asaas
-        await supabase.from("payout_requests").update({
-          status: "processing",
-          risk_score: risk.risk_score,
-          risk_flags: risk.risk_flags,
-        }).eq("id", payout.id);
 
         if (!asaasKey) {
-          await supabase.from("payout_requests").update({
-            status: "failed",
-            failed_reason: "ASAAS_API_KEY not configured",
-            processed_at: new Date().toISOString(),
-          }).eq("id", payout.id);
-          summary.failed++;
-          summary.processed++;
+          await fail("ASAAS_API_KEY não configurada");
           continue;
         }
 
-        // Get bank account details for Asaas transfer
-        const { data: bankAcc } = await supabase
-          .from("bank_accounts")
-          .select("*")
-          .eq("id", payout.bank_account_id)
-          .single();
+        // ─── 6. Garante o débito no ledger antes de transferir ───
+        await ensureDebit(admin, payout);
 
-        const transferBody: any = {
-          value: payout.net_amount / 100, // Asaas expects reais, not cents
-          description: `Repasse Kivo #${payout.id.slice(0, 8)}`,
+        // ─── 7. Transferência Asaas ───
+        const transferBody: Record<string, unknown> = {
+          value: Number((payout.net_amount / 100).toFixed(2)), // Asaas usa reais
+          description: `Repasse Kivo #${String(payout.id).slice(0, 8)}`,
+          externalReference: payout.id,
         };
-
-        // Use PIX if available, otherwise bank transfer
-        if (bankAcc?.pix_key) {
+        if (bank.pix_key) {
           transferBody.operationType = "PIX";
-          transferBody.pixAddressKey = bankAcc.pix_key;
+          transferBody.pixAddressKey = bank.pix_key;
+          if (bank.pix_key_type) transferBody.pixAddressKeyType = bank.pix_key_type;
         } else {
           transferBody.operationType = "TED";
           transferBody.bankAccount = {
-            bank: { code: bankAcc?.bank_code },
-            accountName: bankAcc?.holder_name,
-            ownerName: bankAcc?.holder_name,
-            cpfCnpj: bankAcc?.holder_document,
-            agency: bankAcc?.agency,
-            account: bankAcc?.account_number,
-            accountDigit: "",
-            bankAccountType: bankAcc?.account_type === "poupanca" ? "SAVINGS" : "CHECKING",
+            bank: { code: bank.bank_code },
+            accountName: bank.holder_name,
+            ownerName: bank.holder_name,
+            cpfCnpj: bank.holder_document,
+            agency: bank.agency,
+            account: bank.account_number,
+            bankAccountType: bank.account_type === "poupanca" ? "SAVINGS" : "CHECKING",
           };
         }
 
-        const transferRes = await fetch(`${getAsaasBase()}/transfers`, {
+        const res = await fetch(`${getAsaasBase()}/transfers`, {
           method: "POST",
           headers: {
-            "access_token": asaasKey,
+            access_token: asaasKey,
             "Content-Type": "application/json",
+            // idempotência no gateway: evita transferência duplicada
+            "asaas-idempotency-key": String(payout.idempotency_key || payout.id),
           },
           body: JSON.stringify(transferBody),
         });
+        const data = await res.json().catch(() => ({}));
 
-        const transferData = await transferRes.json();
+        if (!res.ok || data?.errors) {
+          const msg = data?.errors?.[0]?.description || data?.message ||
+            `HTTP ${res.status}`;
+          console.error(`[${FN}] transferência falhou ${payout.id}: ${msg}`);
+          await fail(msg);
+          continue;
+        }
 
-        if (!transferRes.ok || transferData.errors) {
-          const errorMsg = transferData.errors?.[0]?.description || transferData.message || "Transfer failed";
-          await supabase.from("payout_requests").update({
+        // ─── 8. Sucesso ───
+        await admin
+          .from("payout_requests")
+          .update({
+            status: "completed",
+            external_transfer_id: data?.id ?? null,
+            failed_reason: null,
+            risk_score: riskScore,
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", payout.id);
+
+        await admin.from("audit_logs").insert({
+          workspace_id: payout.workspace_id,
+          entity_type: "payout_request",
+          entity_id: payout.id,
+          action: "payout_completed",
+          metadata: {
+            amount_cents: payout.amount,
+            net_amount_cents: payout.net_amount,
+            fee_cents: payout.fee,
+            external_transfer_id: data?.id ?? null,
+            method: bank.pix_key ? "PIX" : "TED",
+            caller,
+          } as never,
+        });
+
+        await notifyCreator(admin, payout.workspace_id, "payout_paid", {
+          amount: payout.net_amount,
+          external_transfer_id: data?.id ?? null,
+        });
+
+        summary.completed++;
+      } catch (err) {
+        const msg = (err as Error).message;
+        console.error(`[${FN}] erro no saque ${payout.id}:`, msg);
+        summary.errors.push(`${String(payout.id).slice(0, 8)}:${msg}`);
+        await admin
+          .from("payout_requests")
+          .update({
             status: "failed",
-            failed_reason: errorMsg,
+            failed_reason: msg.slice(0, 500),
             processed_at: new Date().toISOString(),
-          }).eq("id", payout.id);
-
-          await sendAlert(supabase, payout.workspace_id,
-            `❌ Payout #${payout.id.slice(0, 8)} falhou: ${errorMsg}`);
-
-          // Notify creator
-          await notifyCreator(supabase, payout.workspace_id, "payout_failed", { amount: payout.net_amount, failure_reason: errorMsg });
-
-          summary.failed++;
-        } else {
-          await supabase.from("payout_requests").update({
-            status: "paid",
-            external_transfer_id: transferData.id,
-            processed_at: new Date().toISOString(),
-          }).eq("id", payout.id);
-
-          // Audit log
-          await supabase.from("audit_logs").insert({
-            workspace_id: payout.workspace_id,
-            entity_type: "payout_request",
-            entity_id: payout.id,
-            action: "payout_paid",
-            metadata: {
-              amount: payout.net_amount,
-              external_transfer_id: transferData.id,
-              method: bankAcc?.pix_key ? "PIX" : "TED",
-            },
-          });
-
-          // Notify creator
-          await notifyCreator(supabase, payout.workspace_id, "payout_paid", { amount: payout.net_amount, external_transfer_id: transferData.id });
-
-          summary.paid++;
-        }
-
-        summary.processed++;
-      } catch (err: any) {
-        console.error(`Error processing payout ${payout.id}:`, err.message);
-        summary.errors.push(`${payout.id.slice(0, 8)}:${err.message}`);
-        await supabase.from("payout_requests").update({
-          status: "failed",
-          failed_reason: err.message,
-          processed_at: new Date().toISOString(),
-        }).eq("id", payout.id);
+          })
+          .eq("id", payout.id);
+        await refundDebit(admin, payout);
         summary.failed++;
-        summary.processed++;
-      }
-    }
-
-    // Alert summary if any issues
-    if (summary.failed > 0 || summary.manual_review > 0) {
-      try {
-        const telegramKey = Deno.env.get("TELEGRAM_API_KEY");
-        const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
-        if (telegramKey && chatId) {
-          const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
-          const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-          const msg = `💸 *Payouts Processados*\n\n✅ Pagos: ${summary.paid}\n❌ Falhos: ${summary.failed}\n⚠️ Revisão: ${summary.manual_review}\n🚫 Bloqueados: ${summary.blocked}`;
-          await fetch(`${GATEWAY_URL}/bot${telegramKey}/sendMessage`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(lovableKey ? { "Authorization": `Bearer ${lovableKey}`, "X-Connection-Api-Key": telegramKey } : {}),
-            },
-            body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: "Markdown" }),
-          });
-        }
-      } catch (e) {
-        console.error("Alert error (non-fatal):", e);
       }
     }
 
     const durationMs = Date.now() - startedAt;
-    console.log(JSON.stringify({ event: "process_payouts_complete", duration_ms: durationMs, summary }));
-
-    return new Response(JSON.stringify({ success: true, summary, duration_ms: durationMs }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    console.error("Process payouts error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.log(JSON.stringify({ event: "process_payouts_complete", durationMs, summary }));
+    return json({ success: true, summary, duration_ms: durationMs });
+  } catch (err) {
+    console.error(`[${FN}] erro:`, (err as Error).message);
+    return json({ error: "Erro ao processar saques" }, 500);
   }
 });
 
-async function sendAlert(supabase: any, workspaceId: string, message: string) {
-  try {
-    // In-app notification to workspace owner
-    const { data: owners } = await supabase
-      .from("workspace_members")
-      .select("user_id")
-      .eq("workspace_id", workspaceId)
-      .eq("role", "OWNER");
+interface PayoutRow {
+  id: string;
+  workspace_id: string;
+  amount: number;
+  net_amount: number;
+}
 
-    if (owners) {
-      for (const owner of owners) {
-        await supabase.from("notifications").insert({
-          user_id: owner.user_id,
-          type: "payout_alert",
-          title: "Alerta de Repasse",
-          body: message,
-        });
-      }
-    }
+/** Débito no ledger (idempotente por descrição `Saque <id>`). */
+async function ensureDebit(admin: Admin, payout: PayoutRow) {
+  const description = `Saque ${payout.id}`;
+  const { data: existing } = await admin
+    .from("wallet_ledger")
+    .select("id")
+    .eq("workspace_id", payout.workspace_id)
+    .eq("type", "withdrawal")
+    .eq("description", description)
+    .maybeSingle();
+  if (existing) return;
+
+  const { error } = await admin.from("wallet_ledger").insert({
+    workspace_id: payout.workspace_id,
+    type: "withdrawal",
+    amount: payout.amount,
+    currency: "BRL",
+    status: "available",
+    available_at: new Date().toISOString(),
+    description,
+  });
+  if (error) throw error;
+}
+
+/** Estorno do débito quando o saque falha (idempotente). */
+async function refundDebit(admin: Admin, payout: PayoutRow) {
+  try {
+    const debitDescription = `Saque ${payout.id}`;
+    const refundDescription = `Estorno saque ${payout.id}`;
+
+    const { data: debit } = await admin
+      .from("wallet_ledger")
+      .select("id, amount")
+      .eq("workspace_id", payout.workspace_id)
+      .eq("type", "withdrawal")
+      .eq("description", debitDescription)
+      .maybeSingle();
+    if (!debit) return; // nunca debitou — nada a estornar
+
+    const { data: alreadyRefunded } = await admin
+      .from("wallet_ledger")
+      .select("id")
+      .eq("workspace_id", payout.workspace_id)
+      .eq("description", refundDescription)
+      .maybeSingle();
+    if (alreadyRefunded) return;
+
+    const { error } = await admin.from("wallet_ledger").insert({
+      workspace_id: payout.workspace_id,
+      type: "adjustment",
+      amount: Math.abs(Number(debit.amount || payout.amount)),
+      currency: "BRL",
+      status: "available",
+      available_at: new Date().toISOString(),
+      description: refundDescription,
+    });
+    if (error) throw error;
+    console.log(`[${FN}] débito estornado para o saque ${payout.id}`);
   } catch (e) {
-    console.error("sendAlert error:", e);
+    console.error(`[${FN}] falha ao estornar débito ${payout.id}:`, (e as Error).message);
   }
 }
 
-async function notifyCreator(supabase: any, workspaceId: string, eventType: string, data: any) {
+async function notifyCreator(
+  admin: Admin,
+  workspaceId: string,
+  eventType: string,
+  data: Record<string, unknown>,
+) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notify-creator`, {
       method: "POST",
-      headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ event_type: eventType, workspace_id: workspaceId, data }),
     });
   } catch (e) {
-    console.error("notifyCreator error (non-fatal):", e);
+    console.error(`[${FN}] notifyCreator (non-fatal):`, (e as Error).message);
   }
 }
