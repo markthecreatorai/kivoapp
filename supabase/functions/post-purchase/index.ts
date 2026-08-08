@@ -49,6 +49,23 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // AUTH: internal-only function. Never callable from the public front-end.
+    const internalToken = Deno.env.get("KIVO_INTERNAL_TOKEN");
+    if (!internalToken) {
+      console.error("post-purchase: KIVO_INTERNAL_TOKEN not configured");
+      return new Response(JSON.stringify({ error: "Função não configurada" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (req.headers.get("x-kivo-internal-token") !== internalToken) {
+      console.error("post-purchase: unauthorized call (invalid internal token)");
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = await req.json();
     const { order_id } = body;
 
@@ -66,7 +83,7 @@ Deno.serve(async (req) => {
     // Get order details
     const { data: order } = await supabase
       .from("orders")
-      .select("id, workspace_id, product_id, customer_email, customer_name, total_amount, payment_method, customer_id, checkout_session_id, status")
+      .select("id, workspace_id, product_id, customer_email, customer_name, total_amount, payment_method, customer_id, checkout_session_id, status, paid_at")
       .eq("id", order_id)
       .single();
 
@@ -77,31 +94,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Idempotency: skip if already completed
-    if (order.status === "COMPLETED") {
-      console.log(`Post-purchase: Order ${order_id} already COMPLETED, skipping`);
-      return new Response(
-        JSON.stringify({ success: true, order_id: order.id, skipped: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // SECURITY: only paid orders can be provisioned
+    if (order.status !== "COMPLETED" || !order.paid_at) {
+      console.error(`post-purchase: refusing unpaid order ${order.id} (status=${order.status}, paid_at=${order.paid_at})`);
+      return new Response(JSON.stringify({ error: "Pedido não pago" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 1. Create entitlement if customer exists (idempotent)
+    // 1. Create entitlement if customer exists (idempotent via unique constraint)
     if (order.customer_id && order.product_id) {
-      const { data: existingEnt } = await supabase
+      const { error: entErr } = await supabase
         .from("entitlements")
-        .select("id")
-        .eq("order_id", order.id)
-        .eq("product_id", order.product_id)
-        .eq("customer_id", order.customer_id)
-        .maybeSingle();
-
-      if (!existingEnt) {
-        await supabase.from("entitlements").insert({
-          customer_id: order.customer_id,
-          product_id: order.product_id,
-          order_id: order.id,
-        });
+        .upsert(
+          {
+            customer_id: order.customer_id,
+            product_id: order.product_id,
+            order_id: order.id,
+          },
+          { onConflict: "customer_id,product_id,order_id", ignoreDuplicates: true }
+        );
+      if (entErr) {
+        console.error("post-purchase: entitlement upsert error:", JSON.stringify(entErr));
       }
     }
 
@@ -213,11 +228,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Update order status
-    await supabase
-      .from("orders")
-      .update({ status: "COMPLETED", paid_at: new Date().toISOString() })
-      .eq("id", order.id);
+    // 4. Order is already COMPLETED/paid at this point (validated above) — never set it here
 
     // 5. Update checkout session
     if (order.checkout_session_id) {
