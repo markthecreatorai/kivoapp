@@ -81,10 +81,14 @@ Deno.serve(async (req) => {
     return json({ error: "Gateway não configurado" }, 503);
   }
 
+  const asaasBase = (Deno.env.get("ASAAS_ENV") || "sandbox").trim().toLowerCase() === "production"
+    ? "https://api.asaas.com/v3"
+    : "https://sandbox.asaas.com/api/v3";
+
   // Cancel in Asaas
   if (sub.provider_subscription_id) {
     try {
-      const res = await fetch(`https://api.asaas.com/v3/subscriptions/${sub.provider_subscription_id}`, {
+      const res = await fetch(`${asaasBase}/subscriptions/${sub.provider_subscription_id}`, {
         method: "DELETE",
         headers: { access_token: asaasApiKey },
       });
