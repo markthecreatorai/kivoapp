@@ -90,7 +90,9 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const asaasApiKey = Deno.env.get("ASAAS_API_KEY");
-  const asaasBase = "https://api.asaas.com/v3";
+  const asaasBase = (Deno.env.get("ASAAS_ENV") || "sandbox").trim().toLowerCase() === "production"
+    ? "https://api.asaas.com/v3"
+    : "https://sandbox.asaas.com/api/v3";
 
   // ── 1. Authentication ──
   const authHeader = req.headers.get("Authorization");

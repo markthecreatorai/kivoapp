@@ -82,7 +82,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Gateway de pagamento não configurado." }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const asaasBase = "https://api.asaas.com/v3";
+    const asaasBase = (Deno.env.get("ASAAS_ENV") || "sandbox").trim().toLowerCase() === "production"
+    ? "https://api.asaas.com/v3"
+    : "https://sandbox.asaas.com/api/v3";
 
     // Resolve CPF/CNPJ
     let customerCpf = cpf?.replace(/\D/g, "") || "";
