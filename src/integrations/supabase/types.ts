@@ -9069,6 +9069,10 @@ export type Database = {
         Args: { p_link_id: string }
         Returns: undefined
       }
+      increment_product_sales: {
+        Args: { p_product_id: string }
+        Returns: undefined
+      }
       is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_community_member:
         | { Args: { _community_id: string }; Returns: boolean }
