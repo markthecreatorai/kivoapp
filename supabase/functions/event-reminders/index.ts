@@ -11,6 +11,10 @@ Deno.serve(async (req) => {
   const cronDenied = requireCronSecret(req, "event-reminders");
   if (cronDenied) return cronDenied;
 
+  const cronRun = await startCronRun(req, await readJsonBody(req));
+
+
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
