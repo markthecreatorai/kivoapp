@@ -574,7 +574,9 @@ Deno.serve(async (req) => {
         order_id: order.id,
         status: "FAILED",
       }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        // 502: falha real de downstream (gateway). Nunca 200 — frontends que só
+        // checam response.ok tratariam a falha como sucesso.
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

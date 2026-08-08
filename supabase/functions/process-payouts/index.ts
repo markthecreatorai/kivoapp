@@ -303,7 +303,13 @@ Deno.serve(async (req) => {
     const durationMs = Date.now() - startedAt;
     console.log(JSON.stringify({ event: "process_payouts_complete", durationMs, summary }));
     await run.finish("SUCCESS", { ...summary, duration_ms: durationMs });
-    return json({ success: true, summary, duration_ms: durationMs });
+    // Se tentamos transferências e TODAS falharam no gateway, o batch não é sucesso:
+    // devolve 502 para que cron/admin enxerguem a falha de downstream.
+    const allGatewayFailed = summary.processed > 0 && summary.completed === 0 && summary.failed > 0;
+    return json(
+      { success: !allGatewayFailed, summary, duration_ms: durationMs },
+      allGatewayFailed ? 502 : 200,
+    );
   } catch (err) {
     console.error(`[${FN}] erro:`, (err as Error).message);
     await run.finish("FAILED", { ...summary, duration_ms: Date.now() - startedAt }, (err as Error).message);
