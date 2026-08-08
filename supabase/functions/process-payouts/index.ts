@@ -3,6 +3,7 @@
 // Nunca pelo produtor. verify_jwt = true no config.toml.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 
 const FN = "process-payouts";
 const BATCH_LIMIT = 25;
@@ -73,6 +74,9 @@ Deno.serve(async (req) => {
     return json({ error: "Unauthorized" }, 401);
   }
 
+  const cronBody = await readJsonBody(req);
+  const run = await startCronRun(req, cronBody);
+
   const asaasKey = Deno.env.get("ASAAS_API_KEY");
   const summary = {
     processed: 0,
@@ -96,6 +100,7 @@ Deno.serve(async (req) => {
     if (fetchErr) throw fetchErr;
 
     if (!approved || approved.length === 0) {
+      await run.finish("SUCCESS", { ...summary, message: "Nenhum saque aprovado" });
       return json({ success: true, summary, message: "Nenhum saque aprovado" });
     }
 
@@ -297,11 +302,14 @@ Deno.serve(async (req) => {
 
     const durationMs = Date.now() - startedAt;
     console.log(JSON.stringify({ event: "process_payouts_complete", durationMs, summary }));
+    await run.finish("SUCCESS", { ...summary, duration_ms: durationMs });
     return json({ success: true, summary, duration_ms: durationMs });
   } catch (err) {
     console.error(`[${FN}] erro:`, (err as Error).message);
+    await run.finish("FAILED", { ...summary, duration_ms: Date.now() - startedAt }, (err as Error).message);
     return json({ error: "Erro ao processar saques" }, 500);
   }
+
 });
 
 interface PayoutRow {
