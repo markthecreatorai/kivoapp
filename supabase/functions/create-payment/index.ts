@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { computePixDiscount, resolveCoupon, round2 } from "../_shared/coupon.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
