@@ -137,12 +137,14 @@ Deno.serve(async (req) => {
       totalReminders += notifications.length;
     }
 
+    await cronRun.finish("SUCCESS", { reminders_sent: totalReminders, events_checked: allEvents.length });
     return new Response(
       JSON.stringify({ success: true, reminders_sent: totalReminders, events_checked: allEvents.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error processing event reminders:", error);
+    await cronRun.finish("FAILED", {}, (error as Error).message);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
