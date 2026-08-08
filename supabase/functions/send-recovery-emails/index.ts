@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
 
     if (fetchErr) {
       console.error("Error fetching pending emails:", fetchErr);
+      await cronRun.finish("FAILED", {}, fetchErr.message);
       return new Response(JSON.stringify({ error: fetchErr.message }), {
         status: 500,
         headers: corsHeaders,
@@ -105,10 +106,12 @@ Deno.serve(async (req) => {
     }
 
     if (!pendingEmails || pendingEmails.length === 0) {
+      await cronRun.finish("SUCCESS", { sent: 0, skipped: 0 });
       return new Response(JSON.stringify({ sent: 0 }), { headers: corsHeaders });
     }
 
     let sent = 0;
+    let skipped = 0;
 
     for (const recovery of pendingEmails) {
       // Check if checkout was completed (buyer purchased) — cancel remaining
