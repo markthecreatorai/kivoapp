@@ -568,7 +568,7 @@ Deno.serve(async (req) => {
     // PIX data
     if (method === "pix" && gatewayResult.pix) {
       await supabase.from("pix_payment_data").insert({
-        payment_id: payment!.id,
+        payment_id: payment.id,
         qr_code: gatewayResult.pix.qr_code,
         qr_code_url: gatewayResult.pix.qr_code_url || null,
         copy_paste_code: gatewayResult.pix.qr_code,
@@ -633,7 +633,7 @@ Deno.serve(async (req) => {
       await supabase.from("transactions").insert({
         workspace_id,
         order_id: order.id,
-        payment_id: payment!.id,
+        payment_id: payment.id,
         gateway_payment_id: gatewayResult.gateway_payment_id || null,
         payment_method: method,
         gross_amount: grossAmount,
@@ -676,7 +676,7 @@ Deno.serve(async (req) => {
     // Build response
     const response: any = {
       order_id: order.id,
-      payment_id: payment!.id,
+      payment_id: payment.id,
       status: gatewayResult.status,
       provider: gatewayResult.provider || "asaas",
     };
