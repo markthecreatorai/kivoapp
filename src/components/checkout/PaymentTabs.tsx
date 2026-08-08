@@ -21,8 +21,10 @@ interface PaymentTabsProps {
   pixTotal: number | null;
   maxInstallments: number;
   onPayPix: () => Promise<void>;
-  onPayCard: (cardData: CardData) => Promise<void>;
+  onPayCard: (payload: CardTokenPayload) => Promise<void>;
   onPayBoleto: () => Promise<void>;
+  /** Dados do titular usados apenas para a tokenização do cartão */
+  customer?: { name: string; email: string; cpf: string; phone?: string };
   pixData: { qr_code: string; qr_code_url: string; expires_at: string } | null;
   boletoData: { barcode: string; pdf_url: string; due_at?: string } | null;
   paymentLoading: boolean;
@@ -38,6 +40,15 @@ export interface CardData {
   holder_name: string;
   installments: number;
 }
+
+/** Único payload de cartão que sai deste componente para o backend de pedidos */
+export interface CardTokenPayload {
+  card_token: string;
+  card_last4: string;
+  card_brand: string;
+  installments: number;
+}
+
 
 function PixCountdown({ expiresAt, onExpired }: { expiresAt: string; onExpired: () => void }) {
   const [timeLeft, setTimeLeft] = useState("");
