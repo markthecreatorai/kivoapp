@@ -537,7 +537,7 @@ Deno.serve(async (req) => {
 
     // Create payment record
     const paymentStatus = gatewayResult.status === "paid" ? "SUCCEEDED" : "PENDING";
-    const { data: payment } = await supabase
+    const { data: payment, error: paymentErr } = await supabase
       .from("payments")
       .insert({
         workspace_id,
@@ -553,6 +553,17 @@ Deno.serve(async (req) => {
       })
       .select("id")
       .single();
+
+    if (paymentErr || !payment) {
+      console.error("Erro ao registrar pagamento:", JSON.stringify(paymentErr));
+      return new Response(JSON.stringify({
+        error: "Erro ao registrar pagamento",
+        order_id: order.id,
+      }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     // PIX data
     if (method === "pix" && gatewayResult.pix) {
