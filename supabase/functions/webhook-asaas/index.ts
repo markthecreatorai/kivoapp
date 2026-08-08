@@ -8,6 +8,19 @@ const corsHeaders = {
 const MAX_ATTEMPTS = 5;
 const RETRY_DELAYS = [60, 300, 900, 3600, 7200];
 
+/** Comparação em tempo constante de duas strings. */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  let diff = ea.length ^ eb.length;
+  const len = Math.max(ea.length, eb.length);
+  for (let i = 0; i < len; i++) {
+    diff |= (ea[i] ?? 0) ^ (eb[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,15 +38,21 @@ Deno.serve(async (req) => {
     return new Response("Invalid JSON", { status: 400, headers: corsHeaders });
   }
 
-  if (webhookToken) {
-    const headerToken = req.headers.get("asaas-access-token") || "";
-    if (headerToken !== webhookToken) {
-      console.error("Invalid Asaas webhook token");
-      return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-    }
-  } else {
-    console.warn("ASAAS_WEBHOOK_TOKEN not set — skipping token validation");
+  // Fail closed: sem token configurado, não processa nada.
+  if (!webhookToken) {
+    console.error("ASAAS_WEBHOOK_TOKEN not set — refusing to process webhook");
+    return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
+
+  const headerToken = req.headers.get("asaas-access-token") || "";
+  if (!timingSafeEqualStr(headerToken, webhookToken)) {
+    console.error("Invalid Asaas webhook token");
+    return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+  }
+
 
   const eventType = payload?.event || "unknown";
   const paymentData = payload?.payment;
@@ -104,10 +123,12 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
     if (!we) {
+      console.error("Failed to persist webhook_event");
       return new Response(JSON.stringify({ ok: false }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
     webhookEventId = we.id;
   }
 
@@ -160,6 +181,12 @@ Deno.serve(async (req) => {
       next_retry_at: nextRetryAt,
       last_attempt_at: new Date().toISOString(),
     }).eq("id", webhookEventId);
+
+    // 500 para que o Asaas reenvie o evento.
+    return new Response(JSON.stringify({ ok: false, error: "processing_failed" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
@@ -167,6 +194,7 @@ Deno.serve(async (req) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
+
 
 // ─── Event Handlers ───
 
@@ -282,33 +310,22 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
 
   if (order?.customer_id && orderItems) {
     for (const item of orderItems) {
-      const { data: existing } = await supabase
-        .from("entitlements")
-        .select("id")
-        .eq("order_id", paymentRecord.order_id)
-        .eq("product_id", item.product_id)
-        .eq("customer_id", order.customer_id)
-        .maybeSingle();
-
-      if (!existing) {
-        await supabase.from("entitlements").insert({
-          customer_id: order.customer_id,
-          product_id: item.product_id,
-          order_id: paymentRecord.order_id,
-        });
+      const { error: entErr } = await supabase.from("entitlements").upsert({
+        customer_id: order.customer_id,
+        product_id: item.product_id,
+        order_id: paymentRecord.order_id,
+      }, { onConflict: "customer_id,product_id,order_id", ignoreDuplicates: true });
+      if (entErr) {
+        console.error("Failed to upsert entitlement:", entErr);
+        throw new Error(`Entitlement upsert failed: ${entErr.message}`);
       }
 
-      const { data: prod } = await supabase
-        .from("products")
-        .select("sales_count")
-        .eq("id", item.product_id)
-        .single();
-      if (prod) {
-        await supabase.from("products").update({
-          sales_count: (prod.sales_count || 0) + 1,
-        }).eq("id", item.product_id);
-      }
+      const { error: salesErr } = await supabase.rpc("increment_product_sales", {
+        p_product_id: item.product_id,
+      });
+      if (salesErr) console.error("Failed to increment sales_count:", salesErr);
     }
+
   }
 
   if (order?.checkout_session_id) {
