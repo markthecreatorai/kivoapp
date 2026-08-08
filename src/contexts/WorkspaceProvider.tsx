@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthProvider";
+import { isReservedSlug, slugifyName } from "@/lib/reserved-slugs";
+
 
 export interface Workspace {
   id: string;
