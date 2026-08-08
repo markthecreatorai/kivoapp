@@ -150,7 +150,7 @@ export default function AuthCallback() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={() => navigate("/dashboard", { replace: true })}>
+                <Button className="w-full" onClick={() => navigate(destination, { replace: true })}>
                   Acessar minha conta
                 </Button>
               </CardContent>
