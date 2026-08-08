@@ -253,12 +253,43 @@ Deno.serve(async (req) => {
           });
         }
         bumpItems.push({ product_id: bumpPrice.product_id, price_id: bumpPrice.id, amount: bumpPrice.amount });
-        subtotal += bumpPrice.amount;
+        subtotal += Number(bumpPrice.amount);
       }
     }
 
-    const totalAmount = Math.max(0, subtotal - discountAmount);
+    subtotal = round2(subtotal);
+
+    // ── Discounts (server-side source of truth) ─────────────────────────────
+    // Order: coupon over the subtotal, then the PIX percentage over the result.
+    // The frontend (src/lib/checkout-totals.ts) applies the exact same order.
+    let couponDiscount = 0;
+    let appliedCoupon: { id: string } | null = null;
+    if (coupon_code) {
+      const couponResult = await resolveCoupon(supabase, {
+        code: String(coupon_code),
+        workspaceId: workspace_id,
+        customerEmail: customer.email,
+        orderAmount: subtotal,
+      });
+      if (!couponResult.valid || !couponResult.coupon) {
+        console.warn("Cupom rejeitado no create-payment:", coupon_code, couponResult.error);
+        return new Response(JSON.stringify({ error: couponResult.error || "Cupom inválido" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      couponDiscount = couponResult.discount;
+      appliedCoupon = { id: couponResult.coupon.id };
+    }
+
+    const amountAfterCoupon = round2(Math.max(0, subtotal - couponDiscount));
+    const pixDiscount = method === "pix"
+      ? computePixDiscount(amountAfterCoupon, price.pix_discount_percent)
+      : 0;
+
+    const discountAmount = round2(couponDiscount + pixDiscount);
+    const totalAmount = round2(Math.max(0, amountAfterCoupon - pixDiscount));
     const selectedInstallments = requestedInstallments;
+
 
     // Upsert customer
     const { data: existingCustomer } = await supabase
