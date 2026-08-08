@@ -1,5 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
@@ -75,6 +76,9 @@ Deno.serve(async (req) => {
   const cronDenied = requireCronSecret(req, "send-recovery-emails");
   if (cronDenied) return cronDenied;
 
+  const reqBody = await readJsonBody(req);
+  const cronRun = await startCronRun(req, reqBody);
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -94,6 +98,7 @@ Deno.serve(async (req) => {
 
     if (fetchErr) {
       console.error("Error fetching pending emails:", fetchErr);
+      await cronRun.finish("FAILED", {}, fetchErr.message);
       return new Response(JSON.stringify({ error: fetchErr.message }), {
         status: 500,
         headers: corsHeaders,
@@ -101,10 +106,12 @@ Deno.serve(async (req) => {
     }
 
     if (!pendingEmails || pendingEmails.length === 0) {
+      await cronRun.finish("SUCCESS", { sent: 0, skipped: 0 });
       return new Response(JSON.stringify({ sent: 0 }), { headers: corsHeaders });
     }
 
     let sent = 0;
+    let skipped = 0;
 
     for (const recovery of pendingEmails) {
       // Check if checkout was completed (buyer purchased) — cancel remaining
@@ -125,6 +132,32 @@ Deno.serve(async (req) => {
           .is("sent_at", null);
         continue;
       }
+
+      // IDEMPOTÊNCIA: reserva o envio marcando sent_at antes de enviar.
+      // Se outra execução já reservou, esta pula. Em caso de falha no envio,
+      // a reserva é desfeita para nova tentativa na próxima janela.
+      const { data: claimed, error: claimErr } = await supabase
+        .from("recovery_emails")
+        .update({ sent_at: now })
+        .eq("id", recovery.id)
+        .is("sent_at", null)
+        .is("converted_at", null)
+        .select("id");
+
+      if (claimErr) {
+        console.error("Falha ao reservar email de recuperação:", claimErr.message);
+        continue;
+      }
+      if (!claimed || claimed.length === 0) {
+        skipped++;
+        continue;
+      }
+
+      const releaseClaim = async () => {
+        await supabase.from("recovery_emails").update({ sent_at: null }).eq("id", recovery.id);
+      };
+
+
 
       // Get product info from checkout line items
       const { data: lineItems } = await supabase
@@ -159,7 +192,10 @@ Deno.serve(async (req) => {
       const checkoutUrl = `https://${projectRef}.supabase.co/checkout?session=${session.id}`;
 
       const template = EMAIL_TEMPLATES[recovery.email_number as 1 | 2 | 3];
-      if (!template) continue;
+      if (!template) {
+        await releaseClaim();
+        continue;
+      }
 
       const subject = typeof template.subject === "function"
         ? template.subject(productName)
@@ -199,10 +235,12 @@ Deno.serve(async (req) => {
           if (!emailResponse.ok) {
             const errText = await emailResponse.text();
             console.error(`Email send failed for ${session.email}:`, errText);
+            await releaseClaim();
             continue;
           }
         } catch (emailErr) {
           console.error(`Email send error:`, emailErr);
+          await releaseClaim();
           continue;
         }
       } else {
@@ -210,19 +248,15 @@ Deno.serve(async (req) => {
         console.log(`[DRY RUN] Would send email #${recovery.email_number} to ${session.email}: ${subject}`);
       }
 
-      // Mark as sent
-      await supabase
-        .from("recovery_emails")
-        .update({ sent_at: now })
-        .eq("id", recovery.id);
-
       sent++;
     }
 
-    console.log(`Sent ${sent} recovery emails`);
-    return new Response(JSON.stringify({ sent }), { headers: corsHeaders });
+    console.log(`Sent ${sent} recovery emails (skipped ${skipped})`);
+    await cronRun.finish("SUCCESS", { sent, skipped });
+    return new Response(JSON.stringify({ sent, skipped }), { headers: corsHeaders });
   } catch (err) {
     console.error("Unexpected error:", err);
+    await cronRun.finish("FAILED", {}, String(err));
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: corsHeaders,

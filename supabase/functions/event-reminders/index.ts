@@ -1,5 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
@@ -10,6 +11,10 @@ Deno.serve(async (req) => {
 
   const cronDenied = requireCronSecret(req, "event-reminders");
   if (cronDenied) return cronDenied;
+
+  const cronRun = await startCronRun(req, await readJsonBody(req));
+
+
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -28,6 +33,7 @@ Deno.serve(async (req) => {
       .gt("starts_at", now.toISOString());
 
     if (!allEvents || allEvents.length === 0) {
+      await cronRun.finish("SUCCESS", { reminders_sent: 0, events_checked: 0 });
       return new Response(
         JSON.stringify({ success: true, reminders_sent: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -137,12 +143,14 @@ Deno.serve(async (req) => {
       totalReminders += notifications.length;
     }
 
+    await cronRun.finish("SUCCESS", { reminders_sent: totalReminders, events_checked: allEvents.length });
     return new Response(
       JSON.stringify({ success: true, reminders_sent: totalReminders, events_checked: allEvents.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error processing event reminders:", error);
+    await cronRun.finish("FAILED", {}, (error as Error).message);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

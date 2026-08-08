@@ -1,5 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
@@ -18,6 +19,9 @@ Deno.serve(async (req) => {
 
   const cronDenied = requireCronSecret(req, "abandoned-cart-recovery");
   if (cronDenied) return cronDenied;
+
+  const reqBody = await readJsonBody(req);
+  const cronRun = await startCronRun(req, reqBody);
 
   try {
     const supabase = createClient(
@@ -40,24 +44,36 @@ Deno.serve(async (req) => {
 
     if (fetchErr) {
       console.error("Fetch error:", JSON.stringify({ code: fetchErr.code, message: fetchErr.message }));
+      await cronRun.finish("FAILED", {}, fetchErr.message);
       return errorResponse("FETCH_ERROR", fetchErr.message, 500, true);
     }
 
     if (!abandonedSessions || abandonedSessions.length === 0) {
+      await cronRun.finish("SUCCESS", { processed: 0, skipped: 0 });
       return new Response(JSON.stringify({ processed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let processed = 0;
+    let skipped = 0;
 
     for (const session of abandonedSessions) {
-      // Mark as abandoned
-      const { error: updateErr } = await supabase
+      // IDEMPOTÊNCIA: só uma execução consegue marcar a sessão como abandonada
+      // (filtro status=OPEN + abandoned_at nulo). As demais pulam.
+      const { data: claimedSessions, error: updateErr } = await supabase
         .from("checkout_sessions")
         .update({ status: "ABANDONED", abandoned_at: new Date().toISOString() })
-        .eq("id", session.id);
+        .eq("id", session.id)
+        .eq("status", "OPEN")
+        .is("abandoned_at", null)
+        .select("id");
 
       if (updateErr) {
         console.error("Update failed:", JSON.stringify({ session_id: session.id, error: updateErr.message }));
+        continue;
+      }
+
+      if (!claimedSessions || claimedSessions.length === 0) {
+        skipped++;
         continue;
       }
 
@@ -97,10 +113,12 @@ Deno.serve(async (req) => {
       processed++;
     }
 
-    console.log(`Processed ${processed} abandoned carts`);
-    return new Response(JSON.stringify({ processed }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    console.log(`Processed ${processed} abandoned carts (skipped ${skipped})`);
+    await cronRun.finish("SUCCESS", { processed, skipped });
+    return new Response(JSON.stringify({ processed, skipped }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err: any) {
     console.error("Unexpected error:", JSON.stringify({ message: err.message, stack: err.stack?.slice(0, 200) }));
+    await cronRun.finish("FAILED", {}, err?.message ?? "Internal error");
     return errorResponse("INTERNAL_ERROR", "Internal error", 500, true);
   }
 });

@@ -1,5 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
@@ -133,6 +134,9 @@ Deno.serve(async (req) => {
   const cronDenied = requireCronSecret(req, "renew-subscriptions");
   if (cronDenied) return cronDenied;
 
+  const reqBody = await readJsonBody(req);
+  const cronRun = await startCronRun(req, reqBody);
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -142,6 +146,7 @@ Deno.serve(async (req) => {
     const apiKey = (Deno.env.get("ASAAS_API_KEY") || "").trim();
     if (!apiKey) {
       console.error("renew-subscriptions abortado: ASAAS_API_KEY não configurada. Nenhuma renovação executada.");
+      await cronRun.finish("FAILED", {}, "ASAAS_API_KEY não configurada");
       return new Response(
         JSON.stringify({ error: "Gateway de pagamento não configurado — renovações abortadas" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -152,15 +157,53 @@ Deno.serve(async (req) => {
     let renewed = 0;
     let dunning = 0;
     let expired = 0;
+    let skipped = 0;
 
-    const logAttempt = async (row: Record<string, unknown>) => {
-      const { error } = await supabase.from("subscription_charge_attempts").insert(row);
-      if (error) console.error("Falha ao registrar tentativa de cobrança:", error);
+    /**
+     * IDEMPOTÊNCIA: reserva a tentativa antes de falar com o gateway.
+     * A chave (assinatura + fim do período + nº da tentativa) tem índice único,
+     * então uma segunda execução na mesma janela não cobra de novo.
+     */
+    const claimAttempt = async (row: Record<string, unknown>): Promise<boolean> => {
+      const { error } = await supabase
+        .from("subscription_charge_attempts")
+        .insert({ ...row, status: "PENDING" });
+      if (!error) return true;
+      if ((error as any).code === "23505") {
+        console.log("Cobrança já reservada por outra execução:", row.idempotency_key);
+        return false;
+      }
+      console.error("Falha ao reservar tentativa de cobrança:", error);
+      return false;
+    };
+
+    const finalizeAttempt = async (key: string, patch: Record<string, unknown>) => {
+      const { error } = await supabase
+        .from("subscription_charge_attempts")
+        .update(patch)
+        .eq("idempotency_key", key);
+      if (error) console.error("Falha ao atualizar tentativa de cobrança:", error);
     };
 
     /** Cobra, e só renova quando o gateway confirmar o pagamento. */
     async function processCharge(sub: any, plan: any, product: any, price: any, isRetry: boolean) {
       const attemptNumber = (sub.dunning_attempts || 0) + 1;
+      const idempotencyKey = `renew:${sub.id}:${sub.current_period_end}:${attemptNumber}`;
+
+      const claimed = await claimAttempt({
+        subscription_id: sub.id,
+        workspace_id: sub.workspace_id,
+        attempt_number: attemptNumber,
+        is_retry: isRetry,
+        amount: price.amount,
+        idempotency_key: idempotencyKey,
+      });
+
+      if (!claimed) {
+        skipped++;
+        return;
+      }
+
       const result = await chargeStoredCard(
         apiKey,
         sub,
@@ -197,13 +240,8 @@ Deno.serve(async (req) => {
             .is("revoked_at", null);
         }
 
-        await logAttempt({
-          subscription_id: sub.id,
-          workspace_id: sub.workspace_id,
+        await finalizeAttempt(idempotencyKey, {
           invoice_id: invoice?.id ?? null,
-          attempt_number: attemptNumber,
-          is_retry: isRetry,
-          amount: price.amount,
           gateway_payment_id: result.gatewayPaymentId,
           gateway_status: result.gatewayStatus,
           status: "PAID",
@@ -232,13 +270,8 @@ Deno.serve(async (req) => {
         last_dunning_at: now,
       }).eq("id", sub.id);
 
-      await logAttempt({
-        subscription_id: sub.id,
-        workspace_id: sub.workspace_id,
+      await finalizeAttempt(idempotencyKey, {
         invoice_id: invoice?.id ?? null,
-        attempt_number: attemptNumber,
-        is_retry: isRetry,
-        amount: price.amount,
         gateway_payment_id: result.gatewayPaymentId,
         gateway_status: result.gatewayStatus,
         status: "FAILED",
@@ -355,12 +388,14 @@ Deno.serve(async (req) => {
       expired++;
     }
 
+    await cronRun.finish("SUCCESS", { renewed, dunning, expired, skipped });
     return new Response(
-      JSON.stringify({ renewed, dunning, expired }),
+      JSON.stringify({ renewed, dunning, expired, skipped }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("Error:", error);
+    await cronRun.finish("FAILED", {}, (error as Error).message);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },

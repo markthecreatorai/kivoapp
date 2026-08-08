@@ -1,5 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
@@ -10,6 +11,10 @@ Deno.serve(async (req) => {
 
   const cronDenied = requireCronSecret(req, "process-streaks");
   if (cronDenied) return cronDenied;
+
+  const cronRun = await startCronRun(req, await readJsonBody(req));
+
+
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -83,6 +88,11 @@ Deno.serve(async (req) => {
       resetCount = ids.length;
     }
 
+    await cronRun.finish("SUCCESS", {
+      active_yesterday: activeYesterday?.length || 0,
+      streak_bonuses: streakBonusCount,
+      streaks_reset: resetCount,
+    });
     return new Response(
       JSON.stringify({
         success: true,
@@ -94,6 +104,7 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Error processing streaks:", error);
+    await cronRun.finish("FAILED", {}, (error as Error).message);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
