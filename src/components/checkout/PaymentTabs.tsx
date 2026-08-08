@@ -374,18 +374,16 @@ export function PaymentTabs({
           )}
 
           <Button
-            onClick={() => {
-              const errs = validateCardFields(card);
-              setCardErrors(errs);
-              if (Object.keys(errs).length > 0) return;
-              onPayCard(card);
-            }}
-            disabled={paymentLoading || loadingInstallments}
+            onClick={tokenizeAndPay}
+            disabled={paymentLoading || tokenizing || loadingInstallments}
             className="w-full bg-green-500 hover:bg-green-600 text-white rounded-full h-12 text-base font-bold"
           >
-            {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(cardTotal)}`}
+            {(paymentLoading || tokenizing) ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(cardTotal)}`}
           </Button>
-          {paymentError && <p className="text-sm text-destructive text-center">{paymentError}</p>}
+          {(tokenError || paymentError) && (
+            <p className="text-sm text-destructive text-center">{tokenError || paymentError}</p>
+          )}
+
         </TabsContent>
 
         <TabsContent value="boleto" className="mt-4 space-y-4">
