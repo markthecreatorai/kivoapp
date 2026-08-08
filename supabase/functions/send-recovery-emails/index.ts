@@ -133,6 +133,32 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // IDEMPOTÊNCIA: reserva o envio marcando sent_at antes de enviar.
+      // Se outra execução já reservou, esta pula. Em caso de falha no envio,
+      // a reserva é desfeita para nova tentativa na próxima janela.
+      const { data: claimed, error: claimErr } = await supabase
+        .from("recovery_emails")
+        .update({ sent_at: now })
+        .eq("id", recovery.id)
+        .is("sent_at", null)
+        .is("converted_at", null)
+        .select("id");
+
+      if (claimErr) {
+        console.error("Falha ao reservar email de recuperação:", claimErr.message);
+        continue;
+      }
+      if (!claimed || claimed.length === 0) {
+        skipped++;
+        continue;
+      }
+
+      const releaseClaim = async () => {
+        await supabase.from("recovery_emails").update({ sent_at: null }).eq("id", recovery.id);
+      };
+
+
+
       // Get product info from checkout line items
       const { data: lineItems } = await supabase
         .from("checkout_line_items")
