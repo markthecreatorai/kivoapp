@@ -94,8 +94,10 @@ export default function Checkout() {
             setCustomer((prev) => ({ ...prev, email: session.email! }));
           }
           if (session.coupon_code) {
-            setAppliedCoupon({ code: session.coupon_code, discount: 0 });
+            // Re-validated against the server once product/price are loaded
+            setPendingCouponCode(session.coupon_code);
           }
+
           trackEvent("cart_recovery_started", { session_id: recoverySessionId }, session.workspace_id);
 
           // Load product from line items
