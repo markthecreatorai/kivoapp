@@ -25,6 +25,9 @@ import {
   Loader2,
 } from "lucide-react";
 import kivoReferralLogo from "@/assets/kivo-referral-logo.png";
+import NotFound from "@/pages/NotFound";
+import { isReservedSlug } from "@/lib/reserved-slugs";
+
 
 /** Detect stale Vite-bundled kivo logo saved in DB from previous builds */
 function resolveThumb(url: string | null | undefined): string {
