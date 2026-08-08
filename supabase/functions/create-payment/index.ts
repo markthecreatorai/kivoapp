@@ -518,9 +518,18 @@ Deno.serve(async (req) => {
       // Mark order as FAILED when gateway rejects
       console.error("Gateway error, marking order FAILED:", (gatewayErr as Error).message);
       await supabase.from("orders").update({ status: "FAILED" }).eq("id", order.id);
+      // Give the coupon use back — the order never became payable
+      if (appliedCoupon) {
+        const { error: releaseErr } = await supabase.rpc("release_coupon", {
+          p_coupon_id: appliedCoupon.id,
+          p_order_id: order.id,
+        });
+        if (releaseErr) console.error("Erro ao liberar cupom:", JSON.stringify(releaseErr));
+      }
       if (checkout_session_id) {
         await supabase.from("checkout_sessions").update({ status: "FAILED" }).eq("id", checkout_session_id);
       }
+
       return new Response(JSON.stringify({
         error: (gatewayErr as Error).message || "Erro no gateway de pagamento",
         order_id: order.id,
