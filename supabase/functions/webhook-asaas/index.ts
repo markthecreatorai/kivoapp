@@ -409,18 +409,84 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     if (csErr) console.error("Failed to complete checkout session:", csErr);
   }
 
-  // Wallet ledger + split + reserve
+  // ─── Liquidação financeira: split → wallet_ledger → reserva ───
   // ATENÇÃO: wallet_ledger, split_entries, reserve_entries e security_reserves
   // armazenam valores em CENTAVOS (integer). orders.total_amount é em reais (numeric).
   if (order) {
-    const HOLD_DAYS = 14;
-    const availableAt = new Date(Date.now() + HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const totalAmount = Math.round(Number(order.total_amount || 0) * 100); // centavos
     const netFee = paymentData?.netValue
       ? Math.max(0, totalAmount - Math.round(Number(paymentData.netValue) * 100))
       : 0;
-    const netAmount = totalAmount - netFee;
+    const nowIso = new Date().toISOString();
+    const paymentMethod = (order.payment_method || "credit_card").toLowerCase();
+    const isCard = paymentMethod !== "pix" && paymentMethod !== "boleto";
 
+    // 1) Split rule aplicável (produto → workspace → default global)
+    const { data: ruleData } = await supabase.rpc("get_split_rule", {
+      p_workspace_id: order.workspace_id,
+      p_product_id: orderItems?.[0]?.product_id || null,
+      p_payment_method: order.payment_method || null,
+    });
+    const rule = ruleData?.[0] || {
+      id: null, platform_percent: 8, creator_percent: 92, affiliate_percent: 0, hold_days: 30,
+    };
+    const holdDays = Number(rule.hold_days ?? 30);
+    const splitAvailableAt = new Date(Date.now() + holdDays * 86400000).toISOString();
+
+    // 2) split_entries: deveria existir (criado em create-payment). Se não existir é erro grave.
+    const { data: existingSplit } = await supabase
+      .from("split_entries")
+      .select("id, status, creator_net, gross_amount, gateway_fee, platform_fee, affiliate_fee")
+      .eq("order_id", paymentRecord.order_id)
+      .maybeSingle();
+
+    if (!existingSplit) {
+      console.error(
+        `[webhook-asaas][ALERTA] Pedido pago SEM split calculado — order_id=${paymentRecord.order_id}, workspace_id=${order.workspace_id}. Recriando split na confirmação.`,
+      );
+    }
+
+    let splitId: string | null = existingSplit?.id || null;
+    let creatorNet = 0;
+
+    if (totalAmount > 0) {
+      const gatewayFee = netFee > 0 ? netFee : (existingSplit?.gateway_fee ?? Math.round(totalAmount * 3.49 / 100));
+      const netAfterGw = Math.max(0, totalAmount - gatewayFee);
+      const platformFee = Math.round(netAfterGw * Number(rule.platform_percent) / 100);
+      const affiliateFee = existingSplit?.affiliate_fee ?? Math.round(netAfterGw * Number(rule.affiliate_percent) / 100);
+      creatorNet = netAfterGw - platformFee - affiliateFee;
+
+      const splitPayload = {
+        workspace_id: order.workspace_id,
+        order_id: paymentRecord.order_id,
+        split_rule_id: (rule as any).id || null,
+        gross_amount: totalAmount,
+        gateway_fee: gatewayFee,
+        platform_fee: platformFee,
+        affiliate_fee: affiliateFee,
+        creator_net: creatorNet,
+        status: "settled",
+        settled_at: nowIso,
+        available_at: splitAvailableAt,
+      };
+
+      if (existingSplit && existingSplit.status === "settled") {
+        // Já liquidado — mantém valores originais (idempotência)
+        creatorNet = Number(existingSplit.creator_net || 0);
+      } else {
+        const { data: splitEntry, error: splitErr } = existingSplit
+          ? await supabase.from("split_entries").update(splitPayload).eq("id", existingSplit.id).select("id").single()
+          : await supabase.from("split_entries").insert(splitPayload).select("id").single();
+        if (splitErr) {
+          // Falha no split não deve bloquear a confirmação do pedido
+          console.error("[webhook-asaas][ALERTA] Falha ao liquidar split entry:", splitErr);
+        } else {
+          splitId = splitEntry?.id || splitId;
+        }
+      }
+    }
+
+    // 3) wallet_ledger: crédito do creator_net (idempotente por order_id + type)
     const { data: existingLedger } = await supabase
       .from("wallet_ledger")
       .select("id")
@@ -428,15 +494,16 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       .eq("type", "sale")
       .maybeSingle();
 
-    if (!existingLedger) {
+    if (!existingLedger && creatorNet > 0) {
       const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
         workspace_id: order.workspace_id,
         order_id: paymentRecord.order_id,
         type: "sale",
-        amount: netAmount,
+        amount: creatorNet,
+        currency: (order as any).currency || "BRL",
         status: "pending",
-        available_at: availableAt,
-        description: `Venda #${paymentRecord.order_id.slice(0, 8)}`,
+        available_at: splitAvailableAt,
+        description: `Venda #${paymentRecord.order_id.slice(0, 8)} — liberação em ${holdDays}d (${paymentMethod})`,
       });
       if (ledgerErr) console.error("Failed to insert wallet_ledger sale:", ledgerErr);
 
@@ -446,86 +513,56 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           order_id: paymentRecord.order_id,
           type: "fee",
           amount: -netFee,
+          currency: (order as any).currency || "BRL",
           status: "settled",
           description: `Taxa Asaas #${paymentRecord.order_id.slice(0, 8)}`,
         });
       }
+    } else if (existingLedger) {
+      console.log(`[webhook-asaas] wallet_ledger já possui crédito para order ${paymentRecord.order_id} — skip`);
     }
 
-    // Split entry + rolling reserve
-    if (totalAmount > 0) {
-      const { data: existingSplit } = await supabase
-        .from("split_entries")
-        .select("id, status")
+    // 4) Reserva de segurança (só cartão, % do creator_net, idempotente por order)
+    if (creatorNet > 0 && isCard) {
+      const { data: existingReserve } = await supabase
+        .from("reserve_entries")
+        .select("id")
         .eq("order_id", paymentRecord.order_id)
         .maybeSingle();
 
-      // create-payment already wrote a "pending" entry with available_at = null.
-      // On confirmation we recompute with the real gateway fee and fill available_at.
-      if (!existingSplit || existingSplit.status === "pending") {
-        const { data: ruleData } = await supabase.rpc("get_split_rule", {
-          p_workspace_id: order.workspace_id,
-          p_product_id: orderItems?.[0]?.product_id || null,
-          p_payment_method: order.payment_method || null,
-        });
-        const rule = ruleData?.[0] || { platform_percent: 10, creator_percent: 90, affiliate_percent: 0, hold_days: 14 };
-        const gatewayFee = netFee > 0 ? netFee : Math.round(totalAmount * 3.49 / 100);
-        const netAfterGw = totalAmount - gatewayFee;
-        const platformFee = Math.round(netAfterGw * Number(rule.platform_percent) / 100);
-        const affiliateFee = Math.round(netAfterGw * Number(rule.affiliate_percent) / 100);
-        const creatorNet = netAfterGw - platformFee - affiliateFee;
-        const splitAvailableAt = new Date(Date.now() + (rule.hold_days || 14) * 86400000).toISOString();
-
-        const splitPayload = {
-          workspace_id: order.workspace_id,
-          order_id: paymentRecord.order_id,
-          split_rule_id: rule.id || null,
-          gross_amount: totalAmount,
-          gateway_fee: gatewayFee,
-          platform_fee: platformFee,
-          affiliate_fee: affiliateFee,
-          creator_net: creatorNet,
-          status: "pending",
-          available_at: splitAvailableAt,
-        };
-
-        const { data: splitEntry, error: splitErr } = existingSplit
-          ? await supabase.from("split_entries").update(splitPayload).eq("id", existingSplit.id).select("id").single()
-          : await supabase.from("split_entries").insert(splitPayload).select("id").single();
-        if (splitErr) {
-          console.error("Failed to persist split entry:", splitErr);
-          throw new Error(`Split entry failed: ${splitErr.message}`);
-        }
-
-        // Rolling reserve: withhold % of creator_net (idempotent per order)
-        const { data: existingReserve } = await supabase
-          .from("reserve_entries")
-          .select("id")
-          .eq("order_id", paymentRecord.order_id)
+      if (!existingReserve) {
+        const { data: ws } = await supabase
+          .from("workspaces")
+          .select("plan")
+          .eq("id", order.workspace_id)
+          .maybeSingle();
+        const feeTier = feeTierForPlan((ws as any)?.plan);
+        const { data: feeConfig } = await supabase
+          .from("fee_config")
+          .select("reserve_percent, reserve_hold_days")
+          .eq("plan_type", feeTier)
           .maybeSingle();
 
-        if (creatorNet > 0 && !existingReserve) {
-          const { data: reservePolicy } = await supabase
-            .from("reserve_policies")
-            .select("reserve_percent, release_window_days")
-            .eq("workspace_id", order.workspace_id)
-            .maybeSingle();
+        const reservePercent = Number(feeConfig?.reserve_percent ?? 0);
+        const reserveHoldDays = Number(feeConfig?.reserve_hold_days ?? 0);
+        const reserveAmount = Math.round(creatorNet * reservePercent / 100);
 
-          const reservePercent = reservePolicy?.reserve_percent || 10;
-          const releaseWindowDays = reservePolicy?.release_window_days || 30;
-          const reserveAmount = Math.round(creatorNet * Number(reservePercent) / 100);
+        console.log("[webhook-asaas] reserve_entries", JSON.stringify({
+          fee_tier: feeTier, reservePercent, reserveHoldDays, paymentMethod, reserveAmount,
+        }));
 
-          if (reserveAmount > 0) {
-            await supabase.from("reserve_entries").insert({
-              workspace_id: order.workspace_id,
-              order_id: paymentRecord.order_id,
-              split_entry_id: splitEntry?.id || null,
-              amount: reserveAmount,
-              reserve_percent: reservePercent,
-              release_at: new Date(Date.now() + releaseWindowDays * 86400000).toISOString(),
-              status: "held",
-            });
-          }
+        if (reservePercent > 0 && reserveAmount > 0) {
+          const { error: resErr } = await supabase.from("reserve_entries").insert({
+            workspace_id: order.workspace_id,
+            order_id: paymentRecord.order_id,
+            split_entry_id: splitId,
+            amount: reserveAmount,
+            reserve_percent: reservePercent,
+            // retenção adicional além do hold normal (proteção contra chargeback)
+            release_at: new Date(Date.now() + (holdDays + reserveHoldDays) * 86400000).toISOString(),
+            status: "held",
+          });
+          if (resErr) console.error("Failed to insert reserve entry:", resErr);
         }
       }
     }
