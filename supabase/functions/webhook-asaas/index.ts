@@ -179,6 +179,12 @@ Deno.serve(async (req) => {
       next_retry_at: nextRetryAt,
       last_attempt_at: new Date().toISOString(),
     }).eq("id", webhookEventId);
+
+    // 500 para que o Asaas reenvie o evento.
+    return new Response(JSON.stringify({ ok: false, error: "processing_failed" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
@@ -186,6 +192,7 @@ Deno.serve(async (req) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
+
 
 // ─── Event Handlers ───
 
