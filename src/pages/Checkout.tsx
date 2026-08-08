@@ -508,7 +508,7 @@ export default function Checkout() {
     }, 7000);
 
     return () => clearInterval(pollInterval);
-  }, [pixData, paymentSuccess, orderId, navigate]);
+  }, [pixData, paymentSuccess, orderId, navigate, customer.email]);
 
   if (loading) {
     return (
