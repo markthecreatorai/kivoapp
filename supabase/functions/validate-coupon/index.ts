@@ -1,6 +1,7 @@
 import { corsHeadersFor } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
+import { resolveCoupon } from "../_shared/coupon.ts";
 
 // Anti-enumeration limits
 const IP_LIMIT = 20; // attempts per IP
@@ -14,14 +15,17 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   try {
     const { code, workspace_id, customer_email, order_amount } = await req.json();
 
     if (!code || !workspace_id) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Código e workspace são obrigatórios" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ valid: false, error: "Código e workspace são obrigatórios" }, 400);
     }
 
     const supabase = createClient(
@@ -29,7 +33,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 0. Rate limit (IP + workspace) to block coupon brute force
+    // Rate limit (IP + workspace) to block coupon brute force
     const ip = getClientIp(req);
     const ipCheck = await checkRateLimit(
       supabase, "validate-coupon:ip", ip, IP_LIMIT, IP_WINDOW_SECONDS,
@@ -52,110 +56,28 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Same logic used by create-payment (server-side source of truth)
+    const result = await resolveCoupon(supabase, {
+      code,
+      workspaceId: workspace_id,
+      customerEmail: customer_email || null,
+      orderAmount: Number(order_amount || 0),
+    });
 
-    // 1. Find coupon
-    const { data: coupon, error: couponErr } = await supabase
-      .from("coupons")
-      .select("*")
-      .eq("workspace_id", workspace_id)
-      .eq("code", code.toUpperCase())
-      .single();
-
-    if (couponErr || !coupon) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Cupom não encontrado" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!result.valid || !result.coupon) {
+      return json({ valid: false, error: result.error || "Cupom inválido" });
     }
 
-    // 2. Check active
-    if (!coupon.is_active) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Cupom inativo" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 3. Check validity dates
-    const now = new Date();
-    if (new Date(coupon.valid_from) > now) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Cupom ainda não está válido" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    if (coupon.valid_until && new Date(coupon.valid_until) < now) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Cupom expirado" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 4. Check max_uses
-    if (coupon.max_uses !== null && coupon.current_uses >= coupon.max_uses) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Cupom atingiu o limite de usos" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 5. Check per-customer usage
-    if (customer_email) {
-      const { count } = await supabase
-        .from("coupon_usages")
-        .select("id", { count: "exact", head: true })
-        .eq("coupon_id", coupon.id)
-        .eq("customer_email", customer_email.toLowerCase());
-
-      if ((count ?? 0) >= coupon.max_uses_per_customer) {
-        return new Response(
-          JSON.stringify({ valid: false, error: "Você já usou este cupom" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // 6. Check min order amount
-    const orderAmountNum = Number(order_amount || 0);
-    if (coupon.min_order_amount && orderAmountNum < coupon.min_order_amount) {
-      const minFormatted = new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      }).format(coupon.min_order_amount / 100);
-      return new Response(
-        JSON.stringify({
-          valid: false,
-          error: `Pedido mínimo de ${minFormatted}`,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 7. Calculate discount
-    let discount = 0;
-    if (coupon.type === "PERCENT") {
-      discount = Math.round(orderAmountNum * (coupon.value / 100));
-    } else {
-      // FIXED — value is in cents
-      discount = Math.min(coupon.value, orderAmountNum);
-    }
-
-    return new Response(
-      JSON.stringify({
-        valid: true,
-        coupon_id: coupon.id,
-        code: coupon.code,
-        type: coupon.type,
-        value: coupon.value,
-        discount,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({
+      valid: true,
+      coupon_id: result.coupon.id,
+      code: result.coupon.code,
+      type: result.coupon.type,
+      value: Number(result.coupon.value),
+      discount: result.discount,
+    });
   } catch (err) {
     console.error("Validate coupon error:", err);
-    return new Response(
-      JSON.stringify({ valid: false, error: "Erro interno" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({ valid: false, error: "Erro interno" }, 500);
   }
 });
