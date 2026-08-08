@@ -58,9 +58,14 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
     },
   });
 
-  const monthlyPlan = plans?.find((p: any) => p.interval === "monthly");
-  const yearlyPlan = plans?.find((p: any) => p.interval === "yearly");
-  const activePlan = selectedInterval === "yearly" && yearlyPlan ? yearlyPlan : monthlyPlan;
+  const monthlyPlan = plans?.find((p: any) => String(p.interval).toLowerCase() === "monthly");
+  const yearlyPlan = plans?.find((p: any) => String(p.interval).toLowerCase() === "yearly");
+  // Fallback: se a comunidade só tem plano anual (ou um interval fora do padrão),
+  // seleciona o primeiro plano disponível para nunca ficar sem CTA.
+  const effectiveInterval: "monthly" | "yearly" =
+    selectedInterval ?? (monthlyPlan ? "monthly" : "yearly");
+  const activePlan =
+    (effectiveInterval === "yearly" ? yearlyPlan : monthlyPlan) ?? plans?.[0];
 
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
