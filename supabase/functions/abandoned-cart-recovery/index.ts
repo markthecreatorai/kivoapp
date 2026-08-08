@@ -44,24 +44,36 @@ Deno.serve(async (req) => {
 
     if (fetchErr) {
       console.error("Fetch error:", JSON.stringify({ code: fetchErr.code, message: fetchErr.message }));
+      await cronRun.finish("FAILED", {}, fetchErr.message);
       return errorResponse("FETCH_ERROR", fetchErr.message, 500, true);
     }
 
     if (!abandonedSessions || abandonedSessions.length === 0) {
+      await cronRun.finish("SUCCESS", { processed: 0, skipped: 0 });
       return new Response(JSON.stringify({ processed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let processed = 0;
+    let skipped = 0;
 
     for (const session of abandonedSessions) {
-      // Mark as abandoned
-      const { error: updateErr } = await supabase
+      // IDEMPOTÊNCIA: só uma execução consegue marcar a sessão como abandonada
+      // (filtro status=OPEN + abandoned_at nulo). As demais pulam.
+      const { data: claimedSessions, error: updateErr } = await supabase
         .from("checkout_sessions")
         .update({ status: "ABANDONED", abandoned_at: new Date().toISOString() })
-        .eq("id", session.id);
+        .eq("id", session.id)
+        .eq("status", "OPEN")
+        .is("abandoned_at", null)
+        .select("id");
 
       if (updateErr) {
         console.error("Update failed:", JSON.stringify({ session_id: session.id, error: updateErr.message }));
+        continue;
+      }
+
+      if (!claimedSessions || claimedSessions.length === 0) {
+        skipped++;
         continue;
       }
 
