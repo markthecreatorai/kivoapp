@@ -355,12 +355,14 @@ Deno.serve(async (req) => {
       expired++;
     }
 
+    await cronRun.finish("SUCCESS", { renewed, dunning, expired, skipped });
     return new Response(
-      JSON.stringify({ renewed, dunning, expired }),
+      JSON.stringify({ renewed, dunning, expired, skipped }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("Error:", error);
+    await cronRun.finish("FAILED", {}, (error as Error).message);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
