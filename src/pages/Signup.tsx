@@ -213,13 +213,22 @@ export default function Signup() {
           if (referralCode && outcome.userId) {
             createReferralAttribution(referralCode, outcome.userId);
           }
+          // Fonte da verdade: só existe login imediato quando o Auth devolve session.
+          const hasSession = Boolean(response.data?.session);
           toast({
             title: "Conta criada!",
-            description: outcome.kind === "success_pending_verification"
-              ? "Verifique seu email para confirmar a conta e continue"
-              : "Vamos começar!",
+            description: hasSession
+              ? "Vamos começar!"
+              : "Enviamos um link de confirmação para o seu email",
           });
-          navigate(outcome.kind === "success_pending_verification" ? "/verify-email" : "/onboarding");
+          if (hasSession) {
+            navigate("/onboarding", { replace: true });
+          } else {
+            navigate(`/verify-email?email=${encodeURIComponent(emailCheck.email)}`, {
+              replace: true,
+              state: { email: emailCheck.email },
+            });
+          }
           return;
         }
       }
