@@ -240,7 +240,7 @@ serve(async (req) => {
       const hasTrial = plan.trial_days > 0;
       const isFree = plan.price_cents === 0;
       let status = "pending";
-      let startedAt = now.toISOString();
+      const startedAt = now.toISOString();
       let trialEndsAt: string | null = null;
       let nextBillingAt: string | null = null;
       let providerSubscriptionId: string | null = null;

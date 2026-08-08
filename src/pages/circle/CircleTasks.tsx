@@ -112,7 +112,7 @@ export default function CircleTasks() {
 
       // Fetch assignees
       const taskIds = (data || []).map((t: any) => t.id);
-      let assigneesMap: Record<string, any[]> = {};
+      const assigneesMap: Record<string, any[]> = {};
       if (taskIds.length > 0) {
         const { data: assignees } = await supabase
           .from("community_task_assignees")
