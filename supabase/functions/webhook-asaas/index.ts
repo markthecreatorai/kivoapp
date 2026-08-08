@@ -305,7 +305,7 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
 
   const { data: order } = await supabase
     .from("orders")
-    .select("customer_id, checkout_session_id, customer_email, customer_name, total_amount, workspace_id, payment_method")
+    .select("customer_id, checkout_session_id, customer_email, customer_name, total_amount, subtotal_amount, discount_amount, affiliate_link_id, workspace_id, payment_method")
     .eq("id", paymentRecord.order_id)
     .single();
 
