@@ -76,6 +76,9 @@ Deno.serve(async (req) => {
   const cronDenied = requireCronSecret(req, "send-recovery-emails");
   if (cronDenied) return cronDenied;
 
+  const reqBody = await readJsonBody(req);
+  const cronRun = await startCronRun(req, reqBody);
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
