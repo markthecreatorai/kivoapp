@@ -296,18 +296,18 @@ export default function UpgradeFlow() {
     const poll = async () => {
       if (cancelled) return;
       attempts++;
+      // Source of truth: workspaces.plan, written only after the gateway confirms payment
       const { data } = await supabase
-        .from("workspace_subscriptions")
-        .select("status, plan_code")
-        .eq("workspace_id", currentWorkspace.id)
-        .in("status", ["active", "trialing"])
+        .from("workspaces")
+        .select("plan")
+        .eq("id", currentWorkspace.id)
         .maybeSingle();
 
-      if (data) {
+      if (data && data.plan && data.plan !== "FREE") {
         setPixModalOpen(false);
         setStep(2);
         setConfirmStatus("confirmed");
-        trackEvent("upgrade_checkout_succeeded", { plan_code: data.plan_code, source_ui: sourceUI, method: "pix" });
+        trackEvent("upgrade_checkout_succeeded", { plan_code: data.plan, source_ui: sourceUI, method: "pix" });
         return;
       }
       if (attempts >= maxAttempts) {
@@ -357,7 +357,7 @@ export default function UpgradeFlow() {
       const success = await upgradeMidCycle({ planCode: selectedPlan, sourceUI });
       if (success) {
         setStep(2);
-        setConfirmStatus("confirmed");
+        setConfirmStatus("polling"); // only confirmed once workspaces.plan reflects the payment
       }
       return;
     }
@@ -382,9 +382,9 @@ export default function UpgradeFlow() {
         },
       });
 
-      if (result?.status === "active") {
+      if (result?.status === "active" || result?.status === "pending") {
         setStep(2);
-        setConfirmStatus("confirmed");
+        setConfirmStatus("polling"); // confirmed only after the Asaas webhook activates the plan
       }
     } else {
       // PIX
@@ -442,15 +442,14 @@ export default function UpgradeFlow() {
     const poll = async () => {
       attempts++;
       const { data } = await supabase
-        .from("workspace_subscriptions")
-        .select("status, plan_code")
-        .eq("workspace_id", currentWorkspace.id)
-        .in("status", ["active", "trialing"])
+        .from("workspaces")
+        .select("plan")
+        .eq("id", currentWorkspace.id)
         .maybeSingle();
 
-      if (data) {
+      if (data && data.plan && data.plan !== "FREE") {
         setConfirmStatus("confirmed");
-        trackEvent("upgrade_checkout_succeeded", { plan_code: data.plan_code, source_ui: sourceUI });
+        trackEvent("upgrade_checkout_succeeded", { plan_code: data.plan, source_ui: sourceUI });
         return;
       }
       if (attempts >= maxAttempts) {

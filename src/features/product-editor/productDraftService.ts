@@ -21,6 +21,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { describePlanError } from "@/lib/plan-errors";
 
 export type ProductType = Database["public"]["Enums"]["product_type"];
 
@@ -142,7 +143,16 @@ async function performCreate(
     .select("id")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    // Limite de plano é validado no banco (trigger); propaga mensagem legível
+    const info = describePlanError(error);
+    if (info.isPlanLimit) {
+      const planErr = new Error(info.description) as Error & { isPlanLimit?: boolean };
+      planErr.isPlanLimit = true;
+      throw planErr;
+    }
+    throw error;
+  }
   if (!product?.id) {
     throw new Error("Produto criado sem id retornado.");
   }

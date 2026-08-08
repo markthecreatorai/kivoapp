@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { feeTierForPlan } from "../_shared/plan.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -251,15 +252,15 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       if (!existingReserve && tx.net_amount > 0) {
         const { data: ws } = await supabase
           .from("workspaces")
-          .select("plan_type")
+          .select("plan")
           .eq("id", paymentRecord.workspace_id)
           .maybeSingle();
 
-        const planType = ws?.plan_type || "creator";
+        const feeTier = feeTierForPlan((ws as any)?.plan);
         const { data: feeConfig } = await supabase
           .from("fee_config")
           .select("reserve_percent, reserve_release_days")
-          .eq("plan_type", planType)
+          .eq("plan_type", feeTier)
           .maybeSingle();
 
         const reservePercent = feeConfig?.reserve_percent || 10;
@@ -799,7 +800,10 @@ async function handleSubscriptionEvent(supabase: any, eventType: string, payload
 
   let newStatus: string;
   switch (eventType) {
-    case "SUBSCRIPTION_CREATED": newStatus = "pending"; break;
+    // Never downgrade an already-paid subscription because of a late CREATED event
+    case "SUBSCRIPTION_CREATED":
+      newStatus = ["active", "trialing"].includes(sub.status) ? sub.status : "pending";
+      break;
     case "SUBSCRIPTION_UPDATED": newStatus = sub.status; break;
     case "SUBSCRIPTION_DELETED":
     case "SUBSCRIPTION_INACTIVATED": newStatus = "canceled"; break;

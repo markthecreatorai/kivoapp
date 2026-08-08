@@ -8863,7 +8863,6 @@ export type Database = {
           plan: string
           plan_expires_at: string | null
           plan_started_at: string | null
-          plan_type: string
           slug: string
           timezone: string
           trial_ends_at: string | null
@@ -8884,7 +8883,6 @@ export type Database = {
           plan?: string
           plan_expires_at?: string | null
           plan_started_at?: string | null
-          plan_type?: string
           slug: string
           timezone?: string
           trial_ends_at?: string | null
@@ -8905,7 +8903,6 @@ export type Database = {
           plan?: string
           plan_expires_at?: string | null
           plan_started_at?: string | null
-          plan_type?: string
           slug?: string
           timezone?: string
           trial_ends_at?: string | null
@@ -9003,6 +9000,15 @@ export type Database = {
         Returns: undefined
       }
       ensure_producer_workspace: { Args: never; Returns: string }
+      expire_overdue_workspace_plans: {
+        Args: never
+        Returns: {
+          plan_code: string
+          previous_status: string
+          subscription_id: string
+          workspace_id: string
+        }[]
+      }
       generate_recurring_occurrences: {
         Args: { p_event_id: string }
         Returns: number
@@ -9217,6 +9223,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      plan_max_products: { Args: { _plan: string }; Returns: number }
       redeem_coupon: {
         Args: {
           p_coupon_id: string
@@ -9265,6 +9272,7 @@ export type Database = {
         Returns: Json
       }
       soft_delete_post: { Args: { p_post_id: string }; Returns: boolean }
+      sync_workspace_plan: { Args: { p_workspace_id: string }; Returns: string }
       update_community_space: {
         Args: { p_community_id: string; p_patch: Json; p_space_id: string }
         Returns: boolean

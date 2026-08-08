@@ -97,7 +97,7 @@ export default function Pricing() {
       return;
     }
     if (planCode === "free") return;
-    navigate(`/upgrade?plan=${planCode}&source_ui=pricing_page`);
+    navigate(`/billing/upgrade-flow?plan=${planCode}&source_ui=pricing_page`);
   };
 
   const currentCode = currentPlan === "CREATOR" ? "creator" : currentPlan === "CREATOR_PRO" ? "creator-pro" : "free";
