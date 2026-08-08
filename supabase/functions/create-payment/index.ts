@@ -273,6 +273,7 @@ Deno.serve(async (req) => {
         workspaceId: workspace_id,
         customerEmail: customer.email,
         orderAmount: subtotal,
+        productId: product.id,
       });
       if (!couponResult.valid || !couponResult.coupon) {
         console.warn("Cupom rejeitado no create-payment:", coupon_code, couponResult.error);
@@ -291,6 +292,22 @@ Deno.serve(async (req) => {
 
     const discountAmount = round2(couponDiscount + pixDiscount);
     const totalAmount = round2(Math.max(0, amountAfterCoupon - pixDiscount));
+
+    // The discount can never exceed the subtotal nor produce a free order:
+    // a R$ 0 charge cannot be created at the gateway, and an order must never
+    // reach COMPLETED without a real payment confirmation.
+    if (discountAmount > subtotal + 0.001) {
+      console.error("Desconto maior que o subtotal", { subtotal, discountAmount });
+      return new Response(JSON.stringify({ error: "Desconto inválido para este pedido" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (totalAmount <= 0) {
+      console.warn("Pedido zerado por desconto — bloqueado", { subtotal, discountAmount, coupon_code });
+      return new Response(JSON.stringify({ error: "O desconto não pode zerar o valor do pedido" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const selectedInstallments = requestedInstallments;
 
 
@@ -374,11 +391,15 @@ Deno.serve(async (req) => {
         p_order_id: order.id,
         p_customer_email: customer.email,
         p_discount: couponDiscount,
+        p_order_amount: subtotal,
+        p_product_id: product.id,
       });
-      if (redeemErr || redeemed !== true) {
-        console.error("Falha ao resgatar cupom:", coupon_code, JSON.stringify(redeemErr));
+      const redeemOk = redeemed === true || (redeemed && (redeemed as any).ok === true);
+      if (redeemErr || !redeemOk) {
+        console.error("Falha ao resgatar cupom:", coupon_code, JSON.stringify(redeemErr ?? redeemed));
         await supabase.from("orders").update({ status: "FAILED" }).eq("id", order.id);
-        return new Response(JSON.stringify({ error: "Cupom atingiu o limite de usos" }), {
+        const reason = (redeemed as any)?.error || "Cupom não pôde ser aplicado";
+        return new Response(JSON.stringify({ error: reason }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
