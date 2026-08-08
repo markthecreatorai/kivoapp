@@ -266,18 +266,24 @@ export default function Checkout() {
     });
   }, [product]);
 
-  // Price calculations
+  // Price calculations — same order as the backend: coupon over subtotal, then PIX %
   const bumpAmount = useMemo(
     () => orderBumps.filter((b) => selectedBumps.has(b.bump_product_id)).reduce((sum, b) => sum + b.bump_price, 0),
     [orderBumps, selectedBumps]
   );
-  const subtotal = (price?.amount ?? 0) + bumpAmount;
-  const couponDiscount = appliedCoupon?.discount ?? 0;
-  const pixDiscountAmount = price?.pix_discount_percent ? (price.amount) * (price.pix_discount_percent / 100) : null;
-  const pixTotal = pixDiscountAmount ? subtotal - couponDiscount - pixDiscountAmount : null;
-  const cardTotal = subtotal - couponDiscount;
-  const currentTotal = activeTab === "pix" && pixTotal ? pixTotal : cardTotal;
+  const totals = useMemo(
+    () => computeCheckoutTotals({
+      priceAmount: price?.amount ?? 0,
+      bumpAmount,
+      coupon: appliedCoupon,
+      pixDiscountPercent: price?.pix_discount_percent,
+    }),
+    [price?.amount, price?.pix_discount_percent, bumpAmount, appliedCoupon]
+  );
+  const { subtotal, couponDiscount, pixDiscount: pixDiscountAmount, cardTotal, pixTotal } = totals;
+  const currentTotal = activeTab === "pix" && pixTotal !== null ? pixTotal : cardTotal;
   const selectedBumpIds = useMemo(() => Array.from(selectedBumps), [selectedBumps]);
+
 
   // Save email on blur for checkout recovery
   const handleEmailBlur = useCallback(async () => {
