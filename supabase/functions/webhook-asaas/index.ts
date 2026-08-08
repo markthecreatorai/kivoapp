@@ -301,33 +301,22 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
 
   if (order?.customer_id && orderItems) {
     for (const item of orderItems) {
-      const { data: existing } = await supabase
-        .from("entitlements")
-        .select("id")
-        .eq("order_id", paymentRecord.order_id)
-        .eq("product_id", item.product_id)
-        .eq("customer_id", order.customer_id)
-        .maybeSingle();
-
-      if (!existing) {
-        await supabase.from("entitlements").insert({
-          customer_id: order.customer_id,
-          product_id: item.product_id,
-          order_id: paymentRecord.order_id,
-        });
+      const { error: entErr } = await supabase.from("entitlements").upsert({
+        customer_id: order.customer_id,
+        product_id: item.product_id,
+        order_id: paymentRecord.order_id,
+      }, { onConflict: "customer_id,product_id,order_id", ignoreDuplicates: true });
+      if (entErr) {
+        console.error("Failed to upsert entitlement:", entErr);
+        throw new Error(`Entitlement upsert failed: ${entErr.message}`);
       }
 
-      const { data: prod } = await supabase
-        .from("products")
-        .select("sales_count")
-        .eq("id", item.product_id)
-        .single();
-      if (prod) {
-        await supabase.from("products").update({
-          sales_count: (prod.sales_count || 0) + 1,
-        }).eq("id", item.product_id);
-      }
+      const { error: salesErr } = await supabase.rpc("increment_product_sales", {
+        p_product_id: item.product_id,
+      });
+      if (salesErr) console.error("Failed to increment sales_count:", salesErr);
     }
+
   }
 
   if (order?.checkout_session_id) {
