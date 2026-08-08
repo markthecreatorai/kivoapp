@@ -5,7 +5,7 @@ import { getStoredAffiliateLink } from "@/hooks/useAffiliateTracking";
 import { ProductSummary } from "@/components/checkout/ProductSummary";
 import { CustomerForm } from "@/components/checkout/CustomerForm";
 import { CouponSection } from "@/components/checkout/CouponSection";
-import { PaymentTabs, type CardData } from "@/components/checkout/PaymentTabs";
+import { PaymentTabs, type CardTokenPayload } from "@/components/checkout/PaymentTabs";
 import { OrderTotal } from "@/components/checkout/OrderTotal";
 import { OrderBumpCard, type OrderBump } from "@/components/checkout/OrderBumpCard";
 import { validateCPF } from "@/lib/cpf";
@@ -370,12 +370,12 @@ export default function Checkout() {
     }
   };
 
-  const handlePayCard = async (cardData: CardData) => {
+  const handlePayCard = async (cardPayload: CardTokenPayload) => {
     if (!validate() || !product || !price) return;
     setPaymentLoading(true);
     setPaymentError(null);
     const requestId = crypto.randomUUID();
-    console.info("[Checkout:card] request", { requestId, slug: productSlug, method: "credit_card", installments: cardData.installments });
+    console.info("[Checkout:card] request", { requestId, slug: productSlug, method: "credit_card", installments: cardPayload.installments });
     try {
       const res = await supabase.functions.invoke("create-payment", {
         body: {
@@ -388,21 +388,18 @@ export default function Checkout() {
             cpf: customer.cpf.replace(/\D/g, ""),
             phone: customer.phone.replace(/\D/g, ""),
           },
-          card: {
-            number: cardData.number.replace(/\s/g, ""),
-            exp_month: cardData.expiry.split("/")[0],
-            exp_year: "20" + (cardData.expiry.split("/")[1] || "00"),
-            cvv: cardData.cvv.replace(/\D/g, ""),
-            holder_name: cardData.holder_name,
-          },
-          installments: cardData.installments,
-          workspace_id: product.workspace_id,
+          // Somente o token do gateway trafega para o backend (PCI-DSS)
+          card_token: cardPayload.card_token,
+          card_last4: cardPayload.card_last4,
+          card_brand: cardPayload.card_brand,
+          installments: cardPayload.installments,
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
           bump_product_ids: selectedBumpIds,
         },
       });
+
       if (res.error) {
         console.error("[Checkout:card] edge error", { requestId, error: res.error.message });
         throw new Error(res.error.message);
@@ -568,6 +565,7 @@ export default function Checkout() {
           onPayPix={handlePayPix}
           onPayCard={handlePayCard}
           onPayBoleto={handlePayBoleto}
+          customer={{ name: customer.name, email: customer.email, cpf: customer.cpf, phone: customer.phone }}
           pixData={pixData}
           boletoData={boletoData}
           paymentLoading={paymentLoading}

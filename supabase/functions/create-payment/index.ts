@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const {
       product_id, price_id, method, customer,
-      checkout_session_id, card, installments, coupon_code,
+      checkout_session_id, card_token, card_last4, card_brand,
+      installments, coupon_code,
       affiliate_link_id, idempotency_key, bump_product_ids,
     } = body;
 
@@ -92,11 +93,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (method === "credit_card" && (!card?.number || !card?.cvv || !card?.exp_month || !card?.exp_year || !card?.holder_name)) {
-      return new Response(JSON.stringify({ error: "Dados do cartão incompletos" }), {
+    // PCI-DSS: esta função nunca recebe PAN/CVV — apenas o token do gateway
+    if (method === "credit_card" && !card_token) {
+      return new Response(JSON.stringify({ error: "Token do cartão ausente. Refaça o pagamento." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -437,6 +440,7 @@ Deno.serve(async (req) => {
           },
         };
       } else if (method === "credit_card") {
+        // Cobrança tokenizada: nenhum dado sensível de cartão existe nesta função
         const chargePayload: any = {
           customer: asaasCustomerId,
           billingType: "CREDIT_CARD",
@@ -444,22 +448,7 @@ Deno.serve(async (req) => {
           description: product.name,
           externalReference: order.id,
           dueDate: new Date().toISOString().slice(0, 10),
-          creditCard: {
-            holderName: card.holder_name,
-            number: card.number.replace(/\s/g, ""),
-            expiryMonth: card.exp_month,
-            expiryYear: card.exp_year.length === 2 ? `20${card.exp_year}` : card.exp_year,
-            ccv: card.cvv,
-          },
-          creditCardHolderInfo: {
-            name: customer.name,
-            email: customer.email,
-            cpfCnpj: cpf,
-            phone: customer.phone?.replace(/\D/g, "") || "11999999999",
-            postalCode: customer.zip || "01310100",
-            addressNumber: customer.address_number || "100",
-            address: customer.address || "Av Paulista",
-          },
+          creditCardToken: card_token,
         };
 
         // Only add installmentCount for 2+ installments (Asaas rejects installmentCount=1)
@@ -480,13 +469,15 @@ Deno.serve(async (req) => {
           status: ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH", "APPROVED"].includes(charge.status) ? "paid" : (charge.status === "DECLINED" || charge.status === "REFUNDED" ? "failed" : "pending"),
           gateway_payment_id: charge.id,
           provider: "asaas",
-          card_last4: card.number.replace(/\s/g, "").slice(-4),
-          card_brand: charge.creditCard?.creditCardBrand || "unknown",
+          card_last4: (card_last4 || charge.creditCard?.creditCardNumber || "").toString().slice(-4) || null,
+          card_brand: charge.creditCard?.creditCardBrand || card_brand || "unknown",
+          card_token,
           installments: selectedInstallments,
           installment_value: installmentValue,
           total_with_interest: totalWithInterest,
         };
       } else if (method === "boleto") {
+
         const charge = await callAsaas("/payments", {
           customer: asaasCustomerId,
           billingType: "BOLETO",
@@ -598,6 +589,20 @@ Deno.serve(async (req) => {
         await supabase.from("checkout_sessions").update({ status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", checkout_session_id);
       }
       await grantEntitlements(supabase, order.id, customerId, orderItems);
+
+      // Guarda o token do cartão nas assinaturas do cliente para viabilizar renovação recorrente
+      if (method === "credit_card" && card_token) {
+        const { error: subTokenErr } = await supabase
+          .from("subscriptions")
+          .update({ card_token })
+          .eq("workspace_id", workspace_id)
+          .eq("customer_id", customerId)
+          .in("status", ["ACTIVE", "TRIALING", "PAST_DUE", "active", "trialing", "past_due"]);
+        if (subTokenErr) {
+          console.error("Falha ao salvar card_token na assinatura:", JSON.stringify(subTokenErr));
+        }
+      }
+
     }
 
 

@@ -3,6 +3,9 @@ project_id = "wfuwenylojhabresnrvi"
 [functions.create-payment]
 verify_jwt = false
 
+[functions.tokenize-card]
+verify_jwt = false
+
 [functions.post-purchase]
 verify_jwt = true
 

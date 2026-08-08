@@ -21,8 +21,10 @@ interface PaymentTabsProps {
   pixTotal: number | null;
   maxInstallments: number;
   onPayPix: () => Promise<void>;
-  onPayCard: (cardData: CardData) => Promise<void>;
+  onPayCard: (payload: CardTokenPayload) => Promise<void>;
   onPayBoleto: () => Promise<void>;
+  /** Dados do titular usados apenas para a tokenização do cartão */
+  customer?: { name: string; email: string; cpf: string; phone?: string };
   pixData: { qr_code: string; qr_code_url: string; expires_at: string } | null;
   boletoData: { barcode: string; pdf_url: string; due_at?: string } | null;
   paymentLoading: boolean;
@@ -38,6 +40,15 @@ export interface CardData {
   holder_name: string;
   installments: number;
 }
+
+/** Único payload de cartão que sai deste componente para o backend de pedidos */
+export interface CardTokenPayload {
+  card_token: string;
+  card_last4: string;
+  card_brand: string;
+  installments: number;
+}
+
 
 function PixCountdown({ expiresAt, onExpired }: { expiresAt: string; onExpired: () => void }) {
   const [timeLeft, setTimeLeft] = useState("");
@@ -76,7 +87,7 @@ function PixCountdown({ expiresAt, onExpired }: { expiresAt: string; onExpired: 
 
 export function PaymentTabs({
   total, pixTotal, maxInstallments,
-  onPayPix, onPayCard, onPayBoleto,
+  onPayPix, onPayCard, onPayBoleto, customer,
   pixData, boletoData, paymentLoading, paymentError, paymentSuccess,
   onTabChange
 }: PaymentTabsProps) {
@@ -86,8 +97,64 @@ export function PaymentTabs({
   const [copied, setCopied] = useState(false);
   const [pixExpired, setPixExpired] = useState(false);
   const [cardErrors, setCardErrors] = useState<CardValidationErrors>({});
+  const [tokenizing, setTokenizing] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
   const [installmentOptions, setInstallmentOptions] = useState<InstallmentOption[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
+
+  // Troca os dados do cartão por um token do gateway. O PAN/CVV nunca
+  // chega ao create-payment nem é persistido em nenhum estado global.
+  const tokenizeAndPay = async () => {
+    const errs = validateCardFields(card);
+    setCardErrors(errs);
+    setTokenError(null);
+    if (Object.keys(errs).length > 0) return;
+    if (!customer?.name || !customer?.email || !customer?.cpf) {
+      setTokenError("Preencha seus dados antes de pagar com cartão.");
+      return;
+    }
+
+    setTokenizing(true);
+    try {
+      const [expMonth, expYear] = card.expiry.split("/");
+      const res = await supabase.functions.invoke("tokenize-card", {
+        body: {
+          customer: {
+            name: customer.name,
+            email: customer.email,
+            cpf: customer.cpf.replace(/\D/g, ""),
+            phone: customer.phone?.replace(/\D/g, ""),
+          },
+          card: {
+            number: card.number.replace(/\D/g, ""),
+            exp_month: expMonth,
+            exp_year: expYear,
+            cvv: card.cvv.replace(/\D/g, ""),
+            holder_name: card.holder_name,
+          },
+        },
+      });
+      const data: any = res.data;
+      if (res.error || data?.error || !data?.card_token) {
+        throw new Error(data?.error || res.error?.message || "Não foi possível validar o cartão.");
+      }
+
+      // Limpa dados sensíveis do formulário imediatamente após tokenizar
+      setCard((prev) => ({ ...prev, number: "", cvv: "" }));
+
+      await onPayCard({
+        card_token: data.card_token,
+        card_last4: data.card_last4,
+        card_brand: data.card_brand,
+        installments: card.installments,
+      });
+    } catch (e: any) {
+      setTokenError(e?.message || "Não foi possível validar o cartão.");
+    } finally {
+      setTokenizing(false);
+    }
+  };
+
 
   useEffect(() => {
     if (maxInstallments <= 1 || total <= 0) {
@@ -307,18 +374,16 @@ export function PaymentTabs({
           )}
 
           <Button
-            onClick={() => {
-              const errs = validateCardFields(card);
-              setCardErrors(errs);
-              if (Object.keys(errs).length > 0) return;
-              onPayCard(card);
-            }}
-            disabled={paymentLoading || loadingInstallments}
+            onClick={tokenizeAndPay}
+            disabled={paymentLoading || tokenizing || loadingInstallments}
             className="w-full bg-green-500 hover:bg-green-600 text-white rounded-full h-12 text-base font-bold"
           >
-            {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(cardTotal)}`}
+            {(paymentLoading || tokenizing) ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pagar ${formatCurrency(cardTotal)}`}
           </Button>
-          {paymentError && <p className="text-sm text-destructive text-center">{paymentError}</p>}
+          {(tokenError || paymentError) && (
+            <p className="text-sm text-destructive text-center">{tokenError || paymentError}</p>
+          )}
+
         </TabsContent>
 
         <TabsContent value="boleto" className="mt-4 space-y-4">
