@@ -786,17 +786,28 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
   // Cancela comissões de afiliado (não entram no saldo a pagar)
   await cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado");
 
-  // Ledger
+  // Ledger — cancela o crédito da venda e registra o reembolso.
+  // ATENÇÃO: wallet_ledger é em CENTAVOS; paymentData.value vem em REAIS.
+  const refundCents = Math.round(Number(refundAmount || 0) * 100);
   await supabase.from("wallet_ledger").update({ status: "canceled" })
     .eq("order_id", paymentRecord.order_id).eq("type", "sale");
-  await supabase.from("wallet_ledger").insert({
-    workspace_id: paymentRecord.workspace_id,
-    order_id: paymentRecord.order_id,
-    type: "refund",
-    amount: -refundAmount,
-    status: "settled",
-    description: `Reembolso Asaas #${paymentRecord.order_id.slice(0, 8)}`,
-  });
+  const refundDescription = `Reembolso Asaas #${paymentRecord.order_id.slice(0, 8)}`;
+  const { data: existingRefundLedger } = await supabase
+    .from("wallet_ledger")
+    .select("id")
+    .eq("order_id", paymentRecord.order_id)
+    .eq("type", "refund")
+    .maybeSingle();
+  if (!existingRefundLedger) {
+    await supabase.from("wallet_ledger").insert({
+      workspace_id: paymentRecord.workspace_id,
+      order_id: paymentRecord.order_id,
+      type: "refund",
+      amount: -refundCents,
+      status: "settled",
+      description: refundDescription,
+    });
+  }
 
   // Reverse split entry
   await supabase.from("split_entries").update({
