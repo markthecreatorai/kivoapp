@@ -12,6 +12,8 @@ import { validateCPF } from "@/lib/cpf";
 import { mapPaymentError } from "@/lib/cpf";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { trackEvent } from "@/lib/tracking";
+import { computeCheckoutTotals, type AppliedCoupon } from "@/lib/checkout-totals";
+
 
 interface Product {
   id: string;
