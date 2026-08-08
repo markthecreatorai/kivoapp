@@ -9273,6 +9273,16 @@ export type Database = {
           source_type: string
         }[]
       }
+      get_plan_fee_summary: {
+        Args: { p_plan: string }
+        Returns: {
+          boleto_fixed_cents: number
+          credit_card_percent: number
+          pix_percent: number
+          plan_type: string
+          platform_percent: number
+        }[]
+      }
       get_reserve_balance: {
         Args: { p_workspace_id: string }
         Returns: {
