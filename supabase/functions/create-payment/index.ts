@@ -482,6 +482,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Sandbox: order stays TEST, never COMPLETED, never entitlements
+    if (gatewayResult.status === "test") {
+      await supabase.from("orders").update({ status: "TEST" }).eq("id", order.id);
+      if (checkout_session_id) {
+        await supabase.from("checkout_sessions").update({ status: "TEST" }).eq("id", checkout_session_id);
+      }
+    }
+
     // If paid immediately (credit card)
     if (paymentStatus === "SUCCEEDED") {
       const { error: orderUpdateErr } = await supabase.from("orders").update({ status: "COMPLETED", paid_at: new Date().toISOString() }).eq("id", order.id);
@@ -495,6 +503,7 @@ Deno.serve(async (req) => {
       }
       await grantEntitlements(supabase, order.id, customerId, orderItems);
     }
+
 
     // ─── Create transaction record (new split model) ───
     try {
