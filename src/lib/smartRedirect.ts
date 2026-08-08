@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getAccountType } from "@/lib/accountType";
 
 type QR = { data: any[] | null };
 
@@ -15,7 +16,7 @@ async function queryIds(table: string, filters: Record<string, string>): Promise
  * Determines the best landing page for the current user based on their profile.
  */
 export async function resolveSmartRedirect(userId: string): Promise<string> {
-  // 1. Check nav intent (community auth flow)
+  // 1. Check nav intent (community auth flow) — always wins
   try {
     const raw = sessionStorage.getItem("kivo_nav_intent");
     if (raw) {
@@ -27,25 +28,34 @@ export async function resolveSmartRedirect(userId: string): Promise<string> {
     }
   } catch {}
 
-  // 2. Has workspace membership → creator
-  // NOTE: workspaces no longer has owner_id; ownership is in workspace_members.role
+  // 2. Tipo de conta explícito é a fonte de verdade para o destino inicial
+  const accountType = await getAccountType(userId);
+
+  if (accountType === "MEMBER") {
+    if (await queryIds("community_members", { user_id: userId, status: "ACTIVE" })) return "/circles";
+    if (await queryIds("user_asset_entitlements", { user_id: userId })) return "/member";
+    return "/circles/explore";
+  }
+
+  if (accountType === "PRODUCER") {
+    if (await queryIds("workspace_members", { user_id: userId })) return "/dashboard";
+    return "/onboarding";
+  }
+
+  // 3. Sem tipo de conta (conta legada) → inferência pelas tabelas reais
   if (await queryIds("workspace_members", { user_id: userId })) return "/dashboard";
-
-  // 3. Has community membership → consumer hub
   if (await queryIds("community_members", { user_id: userId, status: "ACTIVE" })) return "/circles";
-
-  // 4. Has entitlements → buyer area
   if (await queryIds("user_asset_entitlements", { user_id: userId })) return "/member";
-
-  // 5. Fallback
   return "/circles/explore";
 }
 
 /**
- * Checks whether a user is a consumer (has memberships or entitlements but no workspace).
+ * Checks whether a user is a consumer (member account or memberships/entitlements
+ * without a producer workspace).
  */
 export async function isConsumerOnly(userId: string): Promise<boolean> {
   if (await queryIds("workspace_members", { user_id: userId })) return false;
+  if ((await getAccountType(userId)) === "MEMBER") return true;
   if (await queryIds("community_members", { user_id: userId, status: "ACTIVE" })) return true;
   if (await queryIds("user_asset_entitlements", { user_id: userId })) return true;
   return false;
