@@ -59,11 +59,11 @@ export default function MyCommunities() {
   const [slugEdited, setSlugEdited] = useState(false);
 
   // Fetch communities where user is a member
-  const { data: communities = [], isLoading } = useQuery<CommunityCard[]>({
+  const { data: communities = [], isLoading, isError, refetch, isRefetching } = useQuery<CommunityCard[]>({
     queryKey: ["my-communities", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("community_members")
         .select(`
           role,
@@ -76,11 +76,14 @@ export default function MyCommunities() {
         .eq("status", "ACTIVE")
         .order("created_at", { ascending: false });
 
+      if (error) throw error;
+
       return ((data || []) as any[])
         .filter((m: any) => m.community?.is_active)
         .map((m: any) => ({ ...m.community, role: m.role }));
     },
     enabled: !!user,
+    retry: 1,
   });
 
   // Fetch user's purchased courses/products
