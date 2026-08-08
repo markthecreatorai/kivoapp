@@ -1,10 +1,7 @@
+import { corsHeaders } from "../_shared/cors.ts";
+import { requireCronSecret } from "../_shared/cron-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 const EMAIL_TEMPLATES = {
   1: {
@@ -74,6 +71,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const cronDenied = requireCronSecret(req, "send-recovery-emails");
+  if (cronDenied) return cronDenied;
 
   try {
     const supabase = createClient(
