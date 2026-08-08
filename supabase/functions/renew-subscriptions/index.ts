@@ -152,15 +152,53 @@ Deno.serve(async (req) => {
     let renewed = 0;
     let dunning = 0;
     let expired = 0;
+    let skipped = 0;
 
-    const logAttempt = async (row: Record<string, unknown>) => {
-      const { error } = await supabase.from("subscription_charge_attempts").insert(row);
-      if (error) console.error("Falha ao registrar tentativa de cobrança:", error);
+    /**
+     * IDEMPOTÊNCIA: reserva a tentativa antes de falar com o gateway.
+     * A chave (assinatura + fim do período + nº da tentativa) tem índice único,
+     * então uma segunda execução na mesma janela não cobra de novo.
+     */
+    const claimAttempt = async (row: Record<string, unknown>): Promise<boolean> => {
+      const { error } = await supabase
+        .from("subscription_charge_attempts")
+        .insert({ ...row, status: "PENDING" });
+      if (!error) return true;
+      if ((error as any).code === "23505") {
+        console.log("Cobrança já reservada por outra execução:", row.idempotency_key);
+        return false;
+      }
+      console.error("Falha ao reservar tentativa de cobrança:", error);
+      return false;
+    };
+
+    const finalizeAttempt = async (key: string, patch: Record<string, unknown>) => {
+      const { error } = await supabase
+        .from("subscription_charge_attempts")
+        .update(patch)
+        .eq("idempotency_key", key);
+      if (error) console.error("Falha ao atualizar tentativa de cobrança:", error);
     };
 
     /** Cobra, e só renova quando o gateway confirmar o pagamento. */
     async function processCharge(sub: any, plan: any, product: any, price: any, isRetry: boolean) {
       const attemptNumber = (sub.dunning_attempts || 0) + 1;
+      const idempotencyKey = `renew:${sub.id}:${sub.current_period_end}:${attemptNumber}`;
+
+      const claimed = await claimAttempt({
+        subscription_id: sub.id,
+        workspace_id: sub.workspace_id,
+        attempt_number: attemptNumber,
+        is_retry: isRetry,
+        amount: price.amount,
+        idempotency_key: idempotencyKey,
+      });
+
+      if (!claimed) {
+        skipped++;
+        return;
+      }
+
       const result = await chargeStoredCard(
         apiKey,
         sub,
