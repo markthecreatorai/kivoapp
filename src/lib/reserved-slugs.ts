@@ -50,3 +50,15 @@ export function normalizeSlug(slug: string | null | undefined): string {
 export function isReservedSlug(slug: string | null | undefined): boolean {
   return RESERVED_SET.has(normalizeSlug(slug));
 }
+
+/** Converte um nome de loja no slug que o backend geraria (para validação prévia). */
+export function slugifyName(name: string | null | undefined): string {
+  return (name ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
