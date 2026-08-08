@@ -237,13 +237,15 @@ Deno.serve(async (req) => {
 
           // Record usage
           if (customer.email) {
-            await supabase.from("coupon_usages").insert({
+            const { error: usageErr } = await supabase.from("coupon_usages").insert({
               coupon_id: coupon.id,
               customer_email: customer.email.toLowerCase(),
               order_amount: subtotal,
               discount_amount: couponDiscount,
-            }).catch(() => {});
+            });
+            if (usageErr) console.error("Erro ao registrar uso de cupom:", JSON.stringify(usageErr));
           }
+
         }
       }
     }
