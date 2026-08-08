@@ -124,3 +124,6 @@ verify_jwt = false
 
 [functions.resend-webhook]
 verify_jwt = false
+
+[functions.release-holds]
+verify_jwt = false
