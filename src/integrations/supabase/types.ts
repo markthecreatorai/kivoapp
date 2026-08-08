@@ -9397,6 +9397,7 @@ export type Database = {
         Args: { p_coupon_id: string; p_order_id: string }
         Returns: boolean
       }
+      reserved_slugs: { Args: never; Returns: string[] }
       resolve_member_tiers: {
         Args: { p_community_id: string; p_user_id: string }
         Returns: {
