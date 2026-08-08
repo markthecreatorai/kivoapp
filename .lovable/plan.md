@@ -1,124 +1,51 @@
+# Separação de papéis (Infoprodutor vs Membro) + fluxo de cadastro de membro
 
+## Auditoria — estado atual (verificado)
 
-## Diagnóstico — auditoria login + membros da comunidade
+Onde o papel é definido hoje:
+- Não existe campo persistido de tipo de conta. `auth.users.raw_user_meta_data.is_creator` é gravado (`true` em `/signup`, `false` no modal de comunidade) e **nunca é lido** por nenhum guard.
+- Papel é inferido em runtime por `src/lib/smartRedirect.ts`: existe `workspace_members` → `/dashboard`; senão `community_members ACTIVE` → `/circles`; senão `user_asset_entitlements` → `/member`; fallback `/circles/explore`.
+- `public.user_roles` (`admin`/`moderator`/`user`) serve só para admin de plataforma. `community_members.role` e `workspace_members.role` são papéis internos e já estão corretos/separados.
 
-### Causa raiz do erro atual
-`column "status" is of type community_member_status but expression is of type text`
+Causa raiz nº 1 (banco): o gatilho `on_auth_user_created` → `handle_new_user()` cria workspace + `workspace_members` OWNER para **todo** usuário novo, ignorando `is_creator`. Dados atuais: 10 usuários / 10 linhas em `workspace_members`; os 2 usuários de comunidade também têm workspace. Efeito: todo membro é classificado como infoprodutor (`isConsumerOnly` = false, redirect = `/dashboard`).
 
-A migration anterior (`20260418011534`) corrigiu o cast de `role` mas esqueceu o cast de `status` no `join_community` SQL:
+Causa raiz nº 2 (fluxo/UX de auth do membro):
+- `src/pages/MemberLogin.tsx` só faz login (`signInWithPassword` + magic link). **Não existe criar conta** — usuário novo recebe "Email ou senha incorretos" e interpreta como erro de cadastro.
+- `MemberLogin.tsx` não usa `useSearchParams`: o `?redirect=` gerado por `src/pages/JoinCommunity.tsx` (linhas 292, 328, 351, 450) é ignorado; após login vai sempre para `/member`.
+- Magic link usa `emailRedirectTo` fixo `${origin}/member`, perdendo o destino `/join/:slug`.
+- `src/contexts/AuthProvider.tsx` não tem lista `skipRedirectPaths` — ele sempre executa `completePendingCommunityJoin` + `kivo_nav_intent` no `SIGNED_IN`, o que pode competir com o fluxo `/join/:slug`.
 
-```sql
--- UPDATE branch (escala de role): falta cast em status
-UPDATE public.community_members
-SET role = p_role::community_member_role,
-    ...,
-    status = p_status              -- ❌ text → enum
-WHERE ...
+Uma correção não substitui a outra: sem a nº 2 o membro não consegue se cadastrar por `/join`; sem a nº 1 ele se cadastra e cai na área de infoprodutor.
 
--- INSERT branch: também falta cast
-INSERT INTO public.community_members (..., role, status)
-VALUES (..., p_role::community_member_role, p_status);   -- ❌
-```
+## Modelo acordado
 
-Quando o `p_status` chega via RPC (ex: `"PENDING"` em comunidades com `require_approval`, ou `"ACTIVE"` no fluxo padrão), o Postgres rejeita.
+`account_type` explícito (`PRODUCER` | `MEMBER`), usado **apenas** para: (a) decidir se o gatilho cria workspace, (b) decidir a rota inicial pós-signup/login. Guards de área continuam lendo a tabela real (`workspace_members` para rotas de produtor, `community_members` para comunidade), então os dois papéis coexistem. Membro pode virar infoprodutor depois com workspace criado on-demand.
 
-### Auditoria completa do fluxo (4 vetores que tocam `community_members`)
+## Etapas
 
-| # | Local | Como insere status | Status |
-|---|---|---|---|
-| 1 | `join_community` RPC (SQL) | `p_status` text sem cast | ❌ **bug** |
-| 2 | Edge `create-circle-subscription` | `.upsert({ status: "ACTIVE" })` via PostgREST | ✅ ok (PostgREST converte) |
-| 3 | Edge `circle-subscription` | `.upsert({ status: "ACTIVE" })` via PostgREST | ✅ ok |
-| 4 | Triggers (`fn_enforce_sync_owner_admin`, `sync_member_profile_across_communities`, `fn_update_member_count`) | não tocam `status` | ✅ ok |
+### 1. Banco (uma migration)
+- Tabela `public.user_account_types` (`user_id` PK → `auth.users`, `account_type` enum `account_type` = PRODUCER|MEMBER, timestamps), com GRANTs, RLS (usuário lê a própria linha; escrita só via funções `security definer`).
+- `handle_new_user()` passa a: gravar `account_type` a partir de `raw_user_meta_data->>'is_creator'` (`true` → PRODUCER, `false` → MEMBER, ausente → MEMBER) e **criar workspace apenas quando PRODUCER**.
+- Backfill único: PRODUCER para quem já tem `workspace_members`, MEMBER para o resto. A inferência não fica viva no código.
+- RPC `ensure_producer_workspace()` (`security definer`): cria workspace + `workspace_members` OWNER e promove `account_type` para PRODUCER, idempotente — base do upgrade in-app.
 
-Enums vigentes (confirmados no DB):
-- `community_member_status`: `PENDING, ACTIVE, MUTED, BANNED, LEFT`
-- `community_member_role`: `OWNER, ADMIN, MODERATOR, MEMBER`
+### 2. Leitura de papel no frontend
+- `src/lib/smartRedirect.ts`: `resolveSmartRedirect` lê `user_account_types` primeiro (MEMBER → `/circles` ou `/member`; PRODUCER → `/dashboard`), mantendo o `kivo_nav_intent` com prioridade máxima. `isConsumerOnly` passa a considerar `account_type = 'MEMBER'` como consumidor mesmo sem comunidade ainda (corrige o membro recém-cadastrado que ainda não entrou em comunidade nenhuma).
+- `ProtectedRoute` continua igual em contrato; rotas de produtor (`/products/*`, `/store*`, `/dashboard`) exigem workspace real — membro sem workspace vê tela de upgrade ("Quero vender") que chama `ensure_producer_workspace` em vez de cair em `/onboarding` de criador.
 
-Todos os call-sites do front (`CircleLayout`, `CommunityAuthModal`, `useJoinCommunity`, `MyCommunities`, `CircleAbout`) já passam valores válidos (`"ACTIVE"` ou `"PENDING"`), então **não há mudança de FE necessária**.
+### 3. Cadastro de membro em `/member/login`
+- Adicionar aba "Criar conta" usando `supabase.auth.signUp` com `data: { is_creator: false }`, `emailRedirectTo` preservando o destino, o guard de email (`useAuthEmailGuard`) e o resolver central `resolveAuthSignupOutcome` (mesmos estados de "já cadastrado" já usados em `/signup`).
+- Ler `?redirect=` e `?email=` com `useSearchParams`; após login por senha e após signup, navegar para o `redirect` (fallback `/member`).
+- Magic link: propagar o destino em `emailRedirectTo`.
 
-### Fluxo de login auditado (sem outros riscos)
-- `AuthProvider` ✅ usa padrão correto (listener antes de `getSession`, refresh silencioso, navegação só em SIGNED_OUT, respeita `kivo_nav_intent` para retornar à comunidade)
-- `MemberLogin` ✅ magic link + senha funcionando, redireciona para `/member`
-- `CommunityAuthModal` ✅ signup → auto-join (atualmente bloqueado pelo bug do enum) → navega ao feed
-- `useJoinCommunity` ✅ delega para `join_community` RPC (mesmo bug)
+### 4. AuthProvider
+- Introduzir `skipRedirectPaths` incluindo `/join`, `/member/login`, `/circles/:slug/about` — nesses caminhos o `SIGNED_IN` não dispara navegação automática, deixando a página dona do fluxo.
 
----
+### 5. Testes (vitest) e relatório
+Cobrir e reportar um por um: (a) novo membro via `/join/:slug` cai na comunidade alvo; (b) aba "Criar conta" existe em `/member/login`; (c) login de membro existente (senha e magic link) vai ao destino certo; (d) `/signup` de infoprodutor continua indo para `/onboarding`; (e) infoprodutor que também é membro mantém os dois papéis sem conflito; (f) membro em rota de produtor recebe upgrade/bloqueio, não onboarding de criador; (g) logout/login preserva `account_type`.
 
-## Plano de correção (1 migration cirúrgica + validação)
-
-### 1. Migration: corrigir cast de `status` em `join_community`
-
-Adicionar `::community_member_status` em **ambos** os pontos (UPDATE e INSERT). Também blindar contra valores inválidos com `CASE` para cair em `'ACTIVE'` se algo inesperado vier:
-
-```sql
-CREATE OR REPLACE FUNCTION public.join_community(
-  p_community_id uuid, p_user_id uuid,
-  p_display_name text DEFAULT '',
-  p_role text DEFAULT 'MEMBER',
-  p_status text DEFAULT 'ACTIVE'
-) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
-AS $$
-DECLARE
-  v_safe_status community_member_status;
-  v_safe_role community_member_role;
-  ...
-BEGIN
-  -- Coerção segura (defense-in-depth)
-  v_safe_status := CASE upper(coalesce(p_status,'ACTIVE'))
-    WHEN 'PENDING' THEN 'PENDING'::community_member_status
-    WHEN 'ACTIVE'  THEN 'ACTIVE'::community_member_status
-    WHEN 'MUTED'   THEN 'MUTED'::community_member_status
-    WHEN 'BANNED' THEN 'BANNED'::community_member_status
-    WHEN 'LEFT'   THEN 'LEFT'::community_member_status
-    ELSE 'ACTIVE'::community_member_status
-  END;
-  v_safe_role := CASE upper(coalesce(p_role,'MEMBER'))
-    WHEN 'OWNER' THEN 'OWNER'::community_member_role
-    WHEN 'ADMIN' THEN 'ADMIN'::community_member_role
-    WHEN 'MODERATOR' THEN 'MODERATOR'::community_member_role
-    ELSE 'MEMBER'::community_member_role
-  END;
-  ...
-  -- usa v_safe_role / v_safe_status nos UPDATE e INSERT
-END;
-$$;
-```
-
-### 2. Verificação pós-deploy (suite de fumaça via DB)
-
-Executar 3 chamadas de teste no SQL editor para garantir os 3 caminhos:
-- novo membro `ACTIVE` (free)
-- novo membro `PENDING` (require_approval)
-- escalada de role (MEMBER → ADMIN) preservando status
-
-### 3. Frontend — sem alteração necessária
-Confirmação: nenhum call-site precisa de `as any` adicional ou cast no payload. A fix é 100% server-side.
-
----
-
-## Arquivos afetados
-
-| Arquivo | Tipo | Mudança |
-|---|---|---|
-| `supabase/migrations/<novo>.sql` | novo | Recria `join_community` com cast seguro de `status` + `role` |
-
-Zero mudanças em FE / edge functions / testes.
-
-## Riscos & mitigação
-
-| Risco | Mitigação |
-|---|---|
-| Função em produção → downtime momentâneo | `CREATE OR REPLACE` é atômico, sem janela |
-| Valores legados/garbled em `p_status` | `CASE ... ELSE 'ACTIVE'` garante fallback |
-| Cliente passar minúsculas | `upper()` normaliza |
-| Quebrar `community-access.test.tsx` | Mocks não tocam DB; teste continua verde |
-
-## Definição de pronto
-- Cadastro novo via `CommunityAuthModal` cria membro `ACTIVE` sem erro
-- Cadastro em comunidade com `require_approval=true` cria membro `PENDING`
-- Escalada de role (owner promove membro) ainda funciona
-- 211/211 testes existentes verdes
-- Sem novos warnings no `supabase--linter`
-
+## Notas técnicas
+- Arquivos alterados: `src/pages/MemberLogin.tsx`, `src/pages/JoinCommunity.tsx` (propagação de destino), `src/lib/smartRedirect.ts`, `src/contexts/AuthProvider.tsx`, `src/components/ProtectedRoute.tsx`, novo `src/lib/accountType.ts`, novo componente de upgrade, novos testes em `src/test/`.
+- Sem alteração em `workspace_role` / `community_member_role`.
+- `is_creator` continua sendo gravado no metadata, mas passa a ser apenas entrada do gatilho; a fonte de verdade é `user_account_types`.
+- Risco principal: usuários existentes que hoje têm workspace "fantasma" criado sem intenção continuam PRODUCER após o backfill (comportamento inalterado, sem regressão). Rollback: reverter `handle_new_user()` para a versão atual; a tabela nova é aditiva.
