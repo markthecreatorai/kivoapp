@@ -383,6 +383,16 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
           <Shield className="h-3.5 w-3.5" />
           <span>Pagamento seguro via Asaas · Cancele quando quiser</span>
         </div>
+
+        {/* Escape */}
+        <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/circles/${community.slug}/about`)}>
+            Ver detalhes da comunidade
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/circles")}>
+            Minhas comunidades
+          </Button>
+        </div>
       </div>
     </div>
   );
