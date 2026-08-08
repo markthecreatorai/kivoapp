@@ -95,8 +95,10 @@ export default function ProtectedRoute({
     if (consumerCheck.isConsumer) {
       return <ProducerUpgradePrompt />;
     }
-
+    // Conta de criador sem workspace → onboarding
+    return <Navigate to="/onboarding" replace />;
   }
+
 
   return <>{children}</>;
 }
