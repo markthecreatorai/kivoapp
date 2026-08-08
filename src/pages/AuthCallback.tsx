@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import { clearReferralCode } from "@/hooks/useReferralTracking";
+import { resolveSmartRedirect } from "@/lib/smartRedirect";
+
 
 type Status = "loading" | "success" | "error";
 
