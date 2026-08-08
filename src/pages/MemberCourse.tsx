@@ -57,6 +57,8 @@ export default function MemberCourse() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [allCompleted, setAllCompleted] = useState(false);
   const [generatingCert, setGeneratingCert] = useState(false);
 
