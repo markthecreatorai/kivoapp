@@ -74,12 +74,12 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const {
-      product_id, price_id, method, customer, workspace_id,
+      product_id, price_id, method, customer,
       checkout_session_id, card, installments, coupon_code,
       affiliate_link_id, idempotency_key, bump_product_ids,
     } = body;
 
-    if (!product_id || !price_id || !method || !customer?.email || !customer?.name || !customer?.cpf || !workspace_id) {
+    if (!product_id || !price_id || !method || !customer?.email || !customer?.name || !customer?.cpf) {
       return new Response(JSON.stringify({ error: "Campos obrigatórios não preenchidos" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -118,12 +118,43 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Verify workspace exists + fetch Asaas config
+    // Platform-owned model: always use global platform credentials
+    const asaasApiKey = gatewayApiKey;
+    const useAsaas = !!asaasApiKey;
+
+    // Fetch product (must be published and not deleted)
+    const { data: product, error: productErr } = await supabase
+      .from("products")
+      .select("id, name, slug, workspace_id, type, status, deleted_at")
+      .eq("id", product_id)
+      .maybeSingle();
+    if (productErr) {
+      console.error("Erro ao buscar produto:", JSON.stringify(productErr));
+      return new Response(JSON.stringify({ error: "Erro ao carregar produto" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!product) {
+      return new Response(JSON.stringify({ error: "Produto não encontrado" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (product.deleted_at || product.status !== "PUBLISHED") {
+      console.error("Produto indisponível:", product.id, product.status, product.deleted_at);
+      return new Response(JSON.stringify({ error: "Produto indisponível" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // SECURITY: workspace is always derived from the product, never from the request body
+    const workspace_id = product.workspace_id as string;
+
+    // Verify workspace exists
     const { data: workspace } = await supabase
       .from("workspaces")
       .select("id, asaas_account_id, plan_type")
       .eq("id", workspace_id)
-      .single();
+      .maybeSingle();
 
     if (!workspace) {
       return new Response(JSON.stringify({ error: "Workspace não encontrado" }), {
@@ -131,39 +162,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Platform-owned model: always use global platform credentials
-    const asaasApiKey = gatewayApiKey;
-    const useAsaas = !!asaasApiKey;
-
-
-    // Fetch product
-    const { data: product } = await supabase
-      .from("products")
-      .select("id, name, slug, workspace_id, type")
-      .eq("id", product_id)
-      .single();
-    if (!product) {
-      return new Response(JSON.stringify({ error: "Produto não encontrado" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (product.workspace_id !== workspace_id) {
-      return new Response(JSON.stringify({ error: "Produto não pertence a este workspace" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Fetch price
-    const { data: price } = await supabase
+    // Fetch price — MUST belong to this product
+    const { data: price, error: priceErr } = await supabase
       .from("prices")
-      .select("id, amount, pix_discount_percent, max_installments")
+      .select("id, amount, pix_discount_percent, max_installments, is_active, product_id")
       .eq("id", price_id)
-      .single();
+      .eq("product_id", product_id)
+      .maybeSingle();
+    if (priceErr) {
+      console.error("Erro ao buscar preço:", JSON.stringify(priceErr));
+      return new Response(JSON.stringify({ error: "Erro ao carregar preço" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!price) {
-      return new Response(JSON.stringify({ error: "Preço não encontrado" }), {
+      console.error("Preço inválido para o produto:", price_id, product_id);
+      return new Response(JSON.stringify({ error: "Preço inválido para este produto" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (price.is_active === false) {
+      return new Response(JSON.stringify({ error: "Produto indisponível" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Validate installments against the price configuration
+    const maxInstallments = price.max_installments || 12;
+    const requestedInstallments = Number(installments) || 1;
+    if (requestedInstallments < 1 || requestedInstallments > maxInstallments) {
+      return new Response(JSON.stringify({ error: `Número de parcelas inválido (máximo ${maxInstallments}x)` }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     // Calculate totals
     let subtotal = price.amount;
