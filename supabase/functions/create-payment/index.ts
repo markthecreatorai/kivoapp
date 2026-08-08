@@ -589,6 +589,20 @@ Deno.serve(async (req) => {
         await supabase.from("checkout_sessions").update({ status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", checkout_session_id);
       }
       await grantEntitlements(supabase, order.id, customerId, orderItems);
+
+      // Guarda o token do cartão nas assinaturas do cliente para viabilizar renovação recorrente
+      if (method === "credit_card" && card_token) {
+        const { error: subTokenErr } = await supabase
+          .from("subscriptions")
+          .update({ card_token })
+          .eq("workspace_id", workspace_id)
+          .eq("customer_id", customerId)
+          .in("status", ["ACTIVE", "TRIALING", "PAST_DUE", "active", "trialing", "past_due"]);
+        if (subTokenErr) {
+          console.error("Falha ao salvar card_token na assinatura:", JSON.stringify(subTokenErr));
+        }
+      }
+
     }
 
 
