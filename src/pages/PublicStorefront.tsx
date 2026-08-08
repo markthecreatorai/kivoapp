@@ -410,30 +410,9 @@ export default function PublicStorefront() {
 
   // ─── 404 ───
   if (notFound || !storefront) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-white">
-        <div className="text-6xl mb-4">🔍</div>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: "#1a1a1a" }}>
-          Página não encontrada
-        </h1>
-        <p className="mb-6" style={{ color: "#666" }}>
-          Esse link não existe ou ainda não foi publicado.
-        </p>
-        <div className="flex flex-col gap-3 items-center">
-          <a
-            href="https://kivohub.com.br"
-            className="px-6 py-3 rounded-full text-white font-medium"
-            style={{ backgroundColor: "#F9423A" }}
-          >
-            Crie sua própria loja na Kivo
-          </a>
-          <a href="/" className="text-sm text-muted-foreground hover:underline">
-            ← Voltar para Home
-          </a>
-        </div>
-      </div>
-    );
+    return <NotFound />;
   }
+
 
   const socialLinks: Record<string, string> = (typeof storefront.social_links === 'object' && storefront.social_links !== null) ? storefront.social_links : {};
   const socialPlatforms: { key: string; icon: React.ElementType }[] = [
