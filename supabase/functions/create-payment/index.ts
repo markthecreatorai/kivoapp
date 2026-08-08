@@ -735,10 +735,12 @@ Deno.serve(async (req) => {
         fee_config_snapshot: feeConfig || null,
       });
 
-      // Create security reserve if paid immediately
-      if (txStatus === "paid" && netAmount > 0) {
+      // Security reserve: ONLY on credit card sales (PIX/boleto have no reserve).
+      // reserve_hold_days are ADDITIONAL days on top of the standard D+30 hold.
+      const isCard = method !== "pix" && method !== "boleto";
+      if (txStatus === "paid" && netAmount > 0 && isCard && reservePercent > 0) {
         const reserveAmount = Math.round(netAmount * reservePercent / 100);
-        const releaseDays = Number(feeConfig?.reserve_hold_days ?? 0);
+        const releaseDays = 30 + Number(feeConfig?.reserve_hold_days ?? 0);
         if (reserveAmount > 0) {
           await supabase.from("security_reserves").insert({
             workspace_id,

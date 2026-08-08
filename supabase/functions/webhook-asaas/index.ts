@@ -315,9 +315,17 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           .maybeSingle();
 
         const reservePercent = Number(feeConfig?.reserve_percent ?? 0);
-        const releaseDays = Number(feeConfig?.reserve_hold_days ?? 0);
+        // reserve_hold_days are ADDITIONAL days on top of the standard D+30 hold
+        const releaseDays = 30 + Number(feeConfig?.reserve_hold_days ?? 0);
         const finalNet = updateData.net_amount || tx.net_amount;
-        const reserveAmount = Math.round(finalNet * reservePercent / 100);
+        // Reserve applies ONLY to credit card sales
+        const isCard = tx.payment_method !== "pix" && tx.payment_method !== "boleto";
+        const reserveAmount = isCard ? Math.round(finalNet * reservePercent / 100) : 0;
+
+        console.log("[webhook-asaas] reserva", JSON.stringify({
+          fee_tier: feeTier, db_row: feeConfig ?? null,
+          payment_method: tx.payment_method, reserveAmount, releaseDays,
+        }));
 
         if (reserveAmount > 0) {
           await supabase.from("security_reserves").insert({
