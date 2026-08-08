@@ -315,8 +315,8 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           .maybeSingle();
 
         const reservePercent = Number(feeConfig?.reserve_percent ?? 0);
-        // reserve_hold_days are ADDITIONAL days on top of the standard D+30 hold
-        const releaseDays = 30 + Number(feeConfig?.reserve_hold_days ?? 0);
+        // reserve_hold_days is the absolute release window for the reserved slice (D+N from sale)
+        const releaseDays = Number(feeConfig?.reserve_hold_days ?? 0);
         const finalNet = updateData.net_amount || tx.net_amount;
         // Reserve applies ONLY to credit card sales
         const isCard = tx.payment_method !== "pix" && tx.payment_method !== "boleto";
