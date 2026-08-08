@@ -218,7 +218,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
               onClick={() => setSelectedInterval("monthly")}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                selectedInterval === "monthly"
+                effectiveInterval === "monthly"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               )}
@@ -229,7 +229,7 @@ export default function CirclePaywall({ community, isPastDue = false }: Props) {
               onClick={() => setSelectedInterval("yearly")}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors relative",
-                selectedInterval === "yearly"
+                effectiveInterval === "yearly"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               )}
