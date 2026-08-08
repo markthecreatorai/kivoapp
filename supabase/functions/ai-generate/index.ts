@@ -175,6 +175,17 @@ JUSTIFICATIVA: [explicação curta de 2-3 frases sobre o porquê dessa faixa]`;
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
 
+    // ── 4. Audit / cost tracking ──
+    const { error: logErr } = await admin.from("ai_usage_log").insert({
+      workspace_id,
+      user_id: userId,
+      generation_type: type,
+      model: MODEL,
+      source: "ai-generate",
+    });
+    if (logErr) console.error("ai-generate usage log error:", logErr.message);
+
+
     // Parse based on type
     let result: any;
 
