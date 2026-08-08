@@ -132,8 +132,9 @@ Deno.serve(async (req) => {
     }
 
     // Platform-owned model: always use global platform credentials
-    const asaasApiKey = Deno.env.get("ASAAS_API_KEY") || "";
+    const asaasApiKey = gatewayApiKey;
     const useAsaas = !!asaasApiKey;
+
 
     // Fetch product
     const { data: product } = await supabase
