@@ -109,35 +109,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ─── 6. Saldo disponível recalculado server-side (mesma regra do get-wallet-balance) ───
+    // ─── 6. Saldo disponível recalculado server-side (regra canônica compartilhada) ───
     const { data: ledger, error: ledgerErr } = await admin
       .from("wallet_ledger")
-      .select("amount, status, type")
-      .eq("workspace_id", workspaceId)
-      .neq("status", "canceled");
+      .select("amount, status, type, available_at, description")
+      .eq("workspace_id", workspaceId);
     if (ledgerErr) throw ledgerErr;
 
-    const rows = ledger || [];
-    const isDebit = (r: { amount: number; type: string }) =>
-      Number(r.amount) < 0 || r.type === "withdrawal";
-    const settled = (s: string) => s === "available" || s === "settled";
+    const rows = (ledger || []) as (LedgerRow & { description?: string | null })[];
+    const { available: availableBalance } = computeBalances(rows);
 
-    const credits = rows
-      .filter((r) => !isDebit(r) && settled(String(r.status)))
-      .reduce((s, r) => s + Number(r.amount || 0), 0);
-    const debits = rows
-      .filter((r) => isDebit(r) && settled(String(r.status)))
-      .reduce((s, r) => s + Math.abs(Number(r.amount || 0)), 0);
-    const availableBalance = credits - debits;
-
-    // Saques ainda em análise/processamento também bloqueiam saldo
+    // Saques abertos que ainda NÃO debitaram o ledger travam saldo
+    // (evita dupla contagem quando o débito `Saque <id>` já existe).
     const { data: openReqs, error: openErr } = await admin
       .from("payout_requests")
-      .select("amount")
+      .select("id, amount")
       .eq("workspace_id", workspaceId)
-      .in("status", ["pending", "in_review"]);
+      .in("status", ["pending", "in_review", "approved", "processing"]);
     if (openErr) throw openErr;
-    const lockedByOpen = (openReqs || []).reduce((s, r) => s + Number(r.amount || 0), 0);
+
+    const debitedDescriptions = new Set(
+      rows
+        .filter((r) => r.type === "withdrawal" && r.status !== "canceled")
+        .map((r) => String(r.description || "")),
+    );
+    const lockedByOpen = (openReqs || [])
+      .filter((r) => !debitedDescriptions.has(`Saque ${r.id}`))
+      .reduce((s, r) => s + Number(r.amount || 0), 0);
 
     const spendable = availableBalance - lockedByOpen;
     if (amount > spendable) {
