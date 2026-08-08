@@ -273,12 +273,8 @@ export default function MemberLibrary() {
     try {
       trackEvent("asset_download_clicked", { asset_id: item.id, title: item.title }, item.workspace_id);
 
-      // Generate signed URL
-      const { data: signedData, error } = await supabase.storage
-        .from("private-files")
-        .createSignedUrl(item.file_path, 300);
-
-      if (error || !signedData?.signedUrl) throw new Error("Erro ao gerar link de download");
+      // URL assinada emitida no servidor após conferir o entitlement do asset
+      const signedUrl = await getSignedPrivateUrl({ path: item.file_path, assetId: item.id });
 
       // Log download
       if (userId) {
@@ -289,7 +285,7 @@ export default function MemberLibrary() {
         });
       }
 
-      window.open(signedData.signedUrl, "_blank");
+      window.open(signedUrl, "_blank");
       toast.success("Download iniciado!");
     } catch (e: any) {
       toast.error(e.message || "Erro ao baixar");
