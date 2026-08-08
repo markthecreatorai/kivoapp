@@ -660,14 +660,43 @@ Deno.serve(async (req) => {
         .eq("plan_type", feeTier)
         .maybeSingle();
 
-      const gatewayFeePercent = feeConfig?.gateway_fee_percent || 3.49;
-      const platformFeePercent = feeConfig?.platform_fee_percent || 10;
-      const reservePercent = feeConfig?.reserve_percent || 10;
-
+      // Real fee_config columns: credit_card_percent, pix_percent, boleto_fixed_cents,
+      // platform_percent, reserve_percent, reserve_hold_days
       const grossAmount = Math.round(totalAmount * 100); // store in centavos
-      const gatewayFee = Math.round(grossAmount * gatewayFeePercent / 100);
+
+      let gatewayFeePercent = 0;
+      let gatewayFee = 0;
+      if (method === "pix") {
+        gatewayFeePercent = Number(feeConfig?.pix_percent ?? 0.99);
+        gatewayFee = Math.round(grossAmount * gatewayFeePercent / 100);
+      } else if (method === "boleto") {
+        // boleto is a FIXED fee in centavos, not a percentage
+        gatewayFee = Math.round(Number(feeConfig?.boleto_fixed_cents ?? 199));
+      } else {
+        gatewayFeePercent = Number(feeConfig?.credit_card_percent ?? 4.99);
+        gatewayFee = Math.round(grossAmount * gatewayFeePercent / 100);
+      }
+
+      const platformFeePercent = Number(feeConfig?.platform_percent ?? 0);
+      const reservePercent = Number(feeConfig?.reserve_percent ?? 0);
       const platformFee = Math.round((grossAmount - gatewayFee) * platformFeePercent / 100);
       const netAmount = grossAmount - gatewayFee - platformFee;
+
+      console.log("[create-payment] fee_config lido do banco", JSON.stringify({
+        fee_tier: feeTier,
+        db_row: feeConfig ?? null,
+        method,
+        applied: {
+          gateway_fee_percent: gatewayFeePercent,
+          gateway_fee_cents: gatewayFee,
+          platform_percent: platformFeePercent,
+          platform_fee_cents: platformFee,
+          reserve_percent: reservePercent,
+          reserve_hold_days: Number(feeConfig?.reserve_hold_days ?? 0),
+          gross_amount_cents: grossAmount,
+          net_amount_cents: netAmount,
+        },
+      }));
 
       // Calculate available_at based on payment method
       let availableAt: string;
