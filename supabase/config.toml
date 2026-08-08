@@ -37,6 +37,9 @@ verify_jwt = true
 [functions.generate-certificate]
 verify_jwt = true
 
+[functions.sign-private-file]
+verify_jwt = true
+
 [functions.process-streaks]
 verify_jwt = false
 
