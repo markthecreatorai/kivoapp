@@ -584,7 +584,7 @@ Deno.serve(async (req) => {
       order_id: order.id,
       payment_id: payment!.id,
       status: gatewayResult.status,
-      provider: gatewayResult.provider || "simulation",
+      provider: gatewayResult.provider || "asaas",
     };
 
     if (method === "pix" && gatewayResult.pix) {
