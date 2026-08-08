@@ -286,6 +286,14 @@ export default function PublicStorefront() {
   useEffect(() => {
     if (!slug) return;
 
+    // Slug reservado pelo sistema: 404 imediato, sem consultar o banco
+    if (isReservedSlug(slug)) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+
+
     (async () => {
       setLoading(true);
 
