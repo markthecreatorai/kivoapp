@@ -297,11 +297,14 @@ Deno.serve(async (req) => {
 
     const durationMs = Date.now() - startedAt;
     console.log(JSON.stringify({ event: "process_payouts_complete", durationMs, summary }));
+    await run.finish("SUCCESS", { ...summary, duration_ms: durationMs });
     return json({ success: true, summary, duration_ms: durationMs });
   } catch (err) {
     console.error(`[${FN}] erro:`, (err as Error).message);
+    await run.finish("FAILED", { ...summary, duration_ms: Date.now() - startedAt }, (err as Error).message);
     return json({ error: "Erro ao processar saques" }, 500);
   }
+
 });
 
 interface PayoutRow {
