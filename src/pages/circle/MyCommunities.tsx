@@ -247,6 +247,26 @@ export default function MyCommunities() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
+        ) : isError ? (
+          <div className="text-center py-20 space-y-5">
+            <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Users className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Não conseguimos carregar suas comunidades</h2>
+              <p className="text-muted-foreground mt-1">
+                Houve uma falha de conexão com o servidor. Tente novamente em alguns instantes.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
+                {isRefetching && <Loader2 className="h-4 w-4 animate-spin" />} Tentar novamente
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/circles/explore")} className="gap-2">
+                <Globe className="h-4 w-4" /> Explorar
+              </Button>
+            </div>
+          </div>
         ) : communities.length === 0 ? (
           /* Empty state */
           <div className="text-center py-20 space-y-5">
