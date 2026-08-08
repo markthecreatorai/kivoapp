@@ -497,8 +497,14 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
           throw new Error(`Split entry failed: ${splitErr.message}`);
         }
 
-        // Rolling reserve: withhold % of creator_net
-        if (creatorNet > 0) {
+        // Rolling reserve: withhold % of creator_net (idempotent per order)
+        const { data: existingReserve } = await supabase
+          .from("reserve_entries")
+          .select("id")
+          .eq("order_id", paymentRecord.order_id)
+          .maybeSingle();
+
+        if (creatorNet > 0 && !existingReserve) {
           const { data: reservePolicy } = await supabase
             .from("reserve_policies")
             .select("reserve_percent, release_window_days")
