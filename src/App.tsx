@@ -67,7 +67,6 @@ const PaymentLogs = lazyWithRetry(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazyWithRetry(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazyWithRetry(() => import("./pages/EmailCampaigns"));
 const AnalyticsExecutive = lazyWithRetry(() => import("./pages/AnalyticsExecutive"));
-const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
 const Index = lazyWithRetry(() => import("./pages/Index"));
 const PublicPricing = lazyWithRetry(() => import("./pages/PublicPricing"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
