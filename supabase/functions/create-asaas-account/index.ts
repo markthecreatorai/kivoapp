@@ -1,4 +1,15 @@
+// ⚠️ DEPRECADA — NÃO USAR NO ONBOARDING (decisão de arquitetura, ago/2026).
+// O modelo financeiro da Kivo é CUSTÓDIA + LEDGER INTERNO: todo pagamento entra
+// na conta Asaas da Kivo e a divisão é feita em split_entries / wallet_ledger /
+// reserve_entries, com repasse via POST /transfers (process-payouts).
+// NÃO usamos split nativo do Asaas nem subcontas por produtor.
+// Consequência: workspaces.asaas_account_id e workspaces.asaas_wallet_id existem
+// no schema mas NÃO participam de nenhum fluxo de pagamento/repasse. Mantidos
+// apenas para eventual migração futura para split nativo.
+// Esta função não é chamada por nenhum fluxo do app; mantida somente como
+// referência de integração. Não adicione chamadas a ela sem revisar a decisão.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
