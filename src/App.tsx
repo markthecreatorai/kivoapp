@@ -67,7 +67,8 @@ const PaymentLogs = lazyWithRetry(() => import("./pages/PaymentLogs"));
 const FiscalClosing = lazyWithRetry(() => import("./pages/FiscalClosing"));
 const EmailCampaigns = lazyWithRetry(() => import("./pages/EmailCampaigns"));
 const AnalyticsExecutive = lazyWithRetry(() => import("./pages/AnalyticsExecutive"));
-const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
+const Index = lazyWithRetry(() => import("./pages/Index"));
+const PublicPricing = lazyWithRetry(() => import("./pages/PublicPricing"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
 const Terms = lazyWithRetry(() => import("./pages/Terms"));
 const GtmDashboard = lazyWithRetry(() => import("./pages/GtmDashboard"));
@@ -349,7 +350,8 @@ const App = () => (
                 <Route path="/circles/discover" element={<Navigate to="/circles/explore" replace />} />
 
                 {/* Landing page */}
-                <Route path="/" element={<GlobalTrackingWrapper><LandingPage /></GlobalTrackingWrapper>} />
+                <Route path="/" element={<GlobalTrackingWrapper><Index /></GlobalTrackingWrapper>} />
+                <Route path="/planos" element={<GlobalTrackingWrapper><PublicPricing /></GlobalTrackingWrapper>} />
                 <Route path="/privacy" element={<GlobalTrackingWrapper><Privacy /></GlobalTrackingWrapper>} />
                 <Route path="/terms" element={<GlobalTrackingWrapper><Terms /></GlobalTrackingWrapper>} />
 
