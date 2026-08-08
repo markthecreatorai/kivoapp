@@ -84,6 +84,7 @@ export default function MemberLogin() {
           data: {
             display_name: displayName,
             full_name: displayName,
+            account_type: "MEMBER",
             is_creator: false,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
@@ -129,11 +130,22 @@ export default function MemberLogin() {
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: emailCheck.email,
       options: {
+        shouldCreateUser: false,
         emailRedirectTo: `${window.location.origin}${redirectTo}`,
       },
     });
     if (authError) {
-      setError(authError.message);
+      const msg = (authError.message || "").toLowerCase();
+      const notFound =
+        authError.status === 422 ||
+        msg.includes("signups not allowed") ||
+        msg.includes("user not found") ||
+        msg.includes("otp_disabled");
+      setError(
+        notFound
+          ? "Não encontramos uma conta com esse email. O acesso à área de membros é liberado após a compra — use o mesmo email da compra ou crie sua conta na aba \"Criar conta\"."
+          : authError.message,
+      );
     } else {
       setMagicLinkSent(true);
     }
