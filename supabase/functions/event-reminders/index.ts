@@ -28,6 +28,7 @@ Deno.serve(async (req) => {
       .gt("starts_at", now.toISOString());
 
     if (!allEvents || allEvents.length === 0) {
+      await cronRun.finish("SUCCESS", { reminders_sent: 0, events_checked: 0 });
       return new Response(
         JSON.stringify({ success: true, reminders_sent: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
