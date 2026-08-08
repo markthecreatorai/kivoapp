@@ -6467,12 +6467,14 @@ export type Database = {
           amount: number
           bank_account_id: string | null
           created_at: string
+          external_transfer_id: string | null
           failed_reason: string | null
           fee: number
           id: string
           idempotency_key: string | null
           net_amount: number
           processed_at: string | null
+          processing_started_at: string | null
           requested_by: string
           review_reason: string | null
           reviewed_at: string | null
@@ -6487,12 +6489,14 @@ export type Database = {
           amount: number
           bank_account_id?: string | null
           created_at?: string
+          external_transfer_id?: string | null
           failed_reason?: string | null
           fee?: number
           id?: string
           idempotency_key?: string | null
           net_amount: number
           processed_at?: string | null
+          processing_started_at?: string | null
           requested_by: string
           review_reason?: string | null
           reviewed_at?: string | null
@@ -6507,12 +6511,14 @@ export type Database = {
           amount?: number
           bank_account_id?: string | null
           created_at?: string
+          external_transfer_id?: string | null
           failed_reason?: string | null
           fee?: number
           id?: string
           idempotency_key?: string | null
           net_amount?: number
           processed_at?: string | null
+          processing_started_at?: string | null
           requested_by?: string
           review_reason?: string | null
           reviewed_at?: string | null

@@ -143,7 +143,7 @@ export default function CreatorFinance() {
         amount: availableBalance,
         fee: 0,
         net_amount: availableBalance,
-        status: "requested",
+        status: "pending",
         idempotency_key: idempotencyKey,
       });
 

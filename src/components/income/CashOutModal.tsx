@@ -57,7 +57,7 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
         amount: availableBalance,
         fee: 0,
         net_amount: availableBalance,
-        status: "requested",
+        status: "pending",
         idempotency_key: idempotencyKey,
         requested_by: user.id,
       }).select("id").single();
