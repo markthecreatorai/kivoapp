@@ -248,10 +248,12 @@ Deno.serve(async (req) => {
       sent++;
     }
 
-    console.log(`Sent ${sent} recovery emails`);
-    return new Response(JSON.stringify({ sent }), { headers: corsHeaders });
+    console.log(`Sent ${sent} recovery emails (skipped ${skipped})`);
+    await cronRun.finish("SUCCESS", { sent, skipped });
+    return new Response(JSON.stringify({ sent, skipped }), { headers: corsHeaders });
   } catch (err) {
     console.error("Unexpected error:", err);
+    await cronRun.finish("FAILED", {}, String(err));
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: corsHeaders,
