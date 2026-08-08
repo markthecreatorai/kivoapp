@@ -14,11 +14,12 @@ interface SplitRule {
   hold_days: number;
 }
 
-async function getSplitRule(supabase: any, workspaceId: string, productId: string | null): Promise<SplitRule> {
+async function getSplitRule(supabase: any, workspaceId: string, productId: string | null, paymentMethod: string | null = null): Promise<SplitRule> {
   // Try product-specific first, then default
   const { data } = await supabase.rpc("get_split_rule", {
     p_workspace_id: workspaceId,
     p_product_id: productId,
+    p_payment_method: paymentMethod,
   });
 
   if (data && data.length > 0) return data[0];
@@ -256,7 +257,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!existingSplitEntry) {
-        const rule = await getSplitRule(supabase, order.workspace_id, order.product_id);
+        const rule = await getSplitRule(supabase, order.workspace_id, order.product_id, order.payment_method ?? null);
         const split = calculateSplit(grossAmount, rule);
         const availableAt = new Date();
         availableAt.setDate(availableAt.getDate() + rule.hold_days);
