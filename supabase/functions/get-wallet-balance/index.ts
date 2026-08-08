@@ -2,6 +2,7 @@
 // Requer JWT (verify_jwt = true) e valida a associação ao workspace via workspace_members.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { computeBalances, isPending, type LedgerRow } from "../_shared/wallet-balance.ts";
 
 const FN = "get-wallet-balance";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
