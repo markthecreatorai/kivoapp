@@ -57,15 +57,18 @@ Deno.serve(async (req) => {
 
   const eventType = payload?.event || "unknown";
   const paymentData = payload?.payment;
-  const externalEventId = paymentData?.id || payload?.id || crypto.randomUUID();
+  // A UNIQUE do banco é (provider, external_event_id) — a chave precisa carregar o
+  // tipo do evento, senão PAYMENT_CONFIRMED e PAYMENT_RECEIVED da mesma cobrança
+  // colidem e o webhook devolve 500 em loop.
+  const rawEventId = payload?.id || paymentData?.id || crypto.randomUUID();
+  const externalEventId = `${rawEventId}:${eventType}`;
 
   // Idempotency check
   const { data: existingEvent } = await supabase
     .from("webhook_events")
-    .select("id, status")
+    .select("id, status, attempts")
     .eq("provider", "ASAAS")
     .eq("external_event_id", String(externalEventId))
-    .eq("event_type", eventType)
     .maybeSingle();
 
   if (existingEvent?.status === "PROCESSED") {
