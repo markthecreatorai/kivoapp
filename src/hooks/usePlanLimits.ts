@@ -84,46 +84,46 @@ export function usePlanLimits(): PlanInfo {
   const [loading, setLoading] = useState(true);
   const [realPlan, setRealPlan] = useState<PlanType>("FREE");
 
-  // Read plan from workspace_subscriptions (source of truth)
+  // SINGLE SOURCE OF TRUTH: workspaces.plan (always FREE | CREATOR | CREATOR_PRO).
+  // It is written exclusively by the DB function sync_workspace_plan(), which reacts
+  // to the subscription lifecycle (paid / past_due / canceled / expired).
   useEffect(() => {
     if (!currentWorkspace) return;
+    let cancelled = false;
+
     const fetchPlan = async () => {
       const { data } = await supabase
-        .from("workspace_subscriptions")
-        .select("plan_code, status")
-        .eq("workspace_id", currentWorkspace.id)
-        .in("status", ["active", "trialing", "past_due"])
-        .order("created_at", { ascending: false })
-        .limit(1)
+        .from("workspaces")
+        .select("plan")
+        .eq("id", currentWorkspace.id)
         .maybeSingle();
 
-      if (data?.plan_code) {
-        const codeMap: Record<string, PlanType> = { creator: "CREATOR", "creator-pro": "CREATOR_PRO", free: "FREE" };
-        setRealPlan(codeMap[data.plan_code] || "FREE");
-        return;
-      }
-
-      // Fallback: workspace.plan_type (from Asaas integration)
-      const { data: ws } = await supabase
-        .from("workspaces")
-        .select("plan_type")
-        .eq("id", currentWorkspace.id)
-        .single();
-
-      if (ws?.plan_type) {
-        const typeMap: Record<string, PlanType> = {
-          creator: "CREATOR", "creator-pro": "CREATOR_PRO", pro: "CREATOR_PRO", free: "FREE",
-        };
-        setRealPlan(typeMap[ws.plan_type] || "FREE");
-        return;
-      }
-
-      // Final fallback
-      const metaPlan = ((currentWorkspace as any)?.plan as PlanType);
-      setRealPlan(metaPlan || "FREE");
+      if (cancelled) return;
+      const value = String(data?.plan || "FREE").toUpperCase() as PlanType;
+      setRealPlan(PLAN_LIMITS[value] ? value : "FREE");
     };
+
     fetchPlan();
+
+    // Keep the UI in sync when the webhook upgrades/downgrades the workspace
+    const channel = supabase
+      .channel(`workspace-plan-${currentWorkspace.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "workspaces", filter: `id=eq.${currentWorkspace.id}` },
+        (payload) => {
+          const value = String((payload.new as any)?.plan || "FREE").toUpperCase() as PlanType;
+          setRealPlan(PLAN_LIMITS[value] ? value : "FREE");
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, [currentWorkspace]);
+
 
   const plan = realPlan;
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.FREE;

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { computePixDiscount, resolveCoupon, round2 } from "../_shared/coupon.ts";
+import { feeTierForPlan } from "../_shared/plan.ts";
 
 
 const corsHeaders = {
@@ -157,7 +158,7 @@ Deno.serve(async (req) => {
     // Verify workspace exists
     const { data: workspace } = await supabase
       .from("workspaces")
-      .select("id, asaas_account_id, plan_type")
+      .select("id, asaas_account_id, plan")
       .eq("id", workspace_id)
       .maybeSingle();
 
@@ -621,11 +622,11 @@ Deno.serve(async (req) => {
 
     // ─── Create transaction record (new split model) ───
     try {
-      const planType = workspace?.plan_type || "free";
+      const feeTier = feeTierForPlan((workspace as any)?.plan);
       const { data: feeConfig } = await supabase
         .from("fee_config")
         .select("*")
-        .eq("plan_type", planType === "free" ? "creator" : planType)
+        .eq("plan_type", feeTier)
         .maybeSingle();
 
       const gatewayFeePercent = feeConfig?.gateway_fee_percent || 3.49;

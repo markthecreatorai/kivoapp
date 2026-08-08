@@ -186,6 +186,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: errorDetail }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Card: NEVER assume the charge succeeded. Ask Asaas for the first invoice status. ──
+    let cardConfirmed = false;
+    let firstCardPaymentId: string | null = null;
+    if (payment_method === "card") {
+      try {
+        const firstRes = await fetch(`${asaasBase}/subscriptions/${subData.id}/payments?limit=1`, {
+          headers: { access_token: asaasApiKey },
+        });
+        const firstData = await firstRes.json();
+        const firstPayment = firstData?.data?.[0];
+        firstCardPaymentId = firstPayment?.id || null;
+        cardConfirmed = ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes(String(firstPayment?.status || ""));
+        console.log(`First card invoice for ${subData.id}: status=${firstPayment?.status} confirmed=${cardConfirmed}`);
+      } catch (err) {
+        console.error("Failed to read first subscription invoice:", err);
+      }
+    }
+
     // Store subscription record
     await adminClient.from("workspace_subscriptions").upsert({
       workspace_id,
@@ -194,7 +212,8 @@ Deno.serve(async (req) => {
       provider_subscription_id: subData.id,
       provider_customer_id: asaasCustomerId,
       plan_code,
-      status: payment_method === "card" ? "active" : "pending",
+      // Only a confirmed charge activates the plan; the Asaas webhook flips it otherwise
+      status: payment_method === "card" && cardConfirmed ? "active" : "pending",
       billing_cycle,
     }, { onConflict: "workspace_id,provider" });
 
@@ -208,11 +227,12 @@ Deno.serve(async (req) => {
       metadata: { plan_code, billing_cycle, origin_path, payment_method, asaas_subscription_id: subData.id },
     });
 
-    // For CARD: subscription is active immediately
+    // For CARD: report the real gateway outcome (never a fake "active")
     if (payment_method === "card") {
       return new Response(JSON.stringify({
-        status: "active",
+        status: cardConfirmed ? "active" : "pending",
         subscription_id: subData.id,
+        payment_id: firstCardPaymentId,
         provider: "asaas",
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

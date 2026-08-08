@@ -29,7 +29,7 @@ export function SettingsPayments() {
   const { data: feeConfig } = useQuery({
     queryKey: ["fee-config", plan],
     queryFn: async () => {
-      const planKey = plan === "CREATOR_PRO" ? "pro" : "creator";
+      const planKey = plan === "CREATOR_PRO" ? "creator_pro" : "creator";
       const { data } = await supabase
         .from("fee_config")
         .select("plan_type, credit_card_percent, pix_percent, platform_percent, boleto_fixed_cents")
