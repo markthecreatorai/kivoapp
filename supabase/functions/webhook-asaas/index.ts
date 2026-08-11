@@ -658,6 +658,14 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
   // Cancela comissões de afiliado (não entram no saldo a pagar)
   await cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado");
 
+  // Cancela comissão de indicação deste pagamento (idempotente)
+  if (paymentData?.id) {
+    const { error: refCancelErr } = await supabase.rpc("cancel_referral_commissions_for_payment", {
+      p_payment_id: String(paymentData.id),
+    });
+    if (refCancelErr) console.error("[Referral] Falha ao cancelar comissão:", JSON.stringify(refCancelErr));
+  }
+
   // Ledger — cancela o crédito da venda e registra o reembolso.
   // ATENÇÃO: wallet_ledger é em CENTAVOS; paymentData.value vem em REAIS.
   const refundCents = Math.round(Number(refundAmount || 0) * 100);
