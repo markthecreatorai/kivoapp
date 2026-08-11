@@ -72,9 +72,15 @@ Deno.serve(async (req) => {
       }
       if (outcome === "NEEDS_PRODUCT_DECISION") {
         console.warn(
-          `[${FN}] reserva ${reserve.id} mantida retida (sem débito de segregação): ${result.reason}`,
+          `[${FN}] reserva ${reserve.id} mantida retida (sem prova estruturada de segregação): ${result.reason}`,
         );
       }
+      if (outcome === "ORIGIN_NOT_LIQUID") {
+        // O débito de origem ainda não tem data econômica: liberar aqui
+        // anteciparia liquidez. Segue retida para o próximo ciclo.
+        console.warn(`[${FN}] reserva ${reserve.id} retida (origem sem liquidez): ${result.reason}`);
+      }
+
     }
 
     // Notificações são efeito colateral externo: ficam FORA da transação
