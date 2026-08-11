@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Commit-base | `68f2afbd` (HEAD na execução da Onda 1, 2026-08-11 UTC; inclui `529448c2` e `68f2afbd`) |
+| Commit-base | `9c871a74` (HEAD na execução da Onda 2, 2026-08-11 UTC; descendente de `68f2afbd`, que inclui `529448c2`) |
 | Data de emissão | 11/08/2026 |
 | Autor | Engenharia Kivo (documento operacional de homologação) |
 | Ambientes | `DEV` (preview Lovable + Supabase dev), `SANDBOX` (Asaas sandbox), `PROD` (kivohub.com.br + Supabase prod) |
@@ -1225,3 +1225,59 @@ Método: testes automatizados, inspeção read-only de código/config e smoke HT
 - Arquivos alterados: `src/pages/Login.tsx`, `src/pages/AuthCallback.tsx`, `src/test/wave1-routes-auth-contract.test.ts` (novo), este checklist.
 - **AGUARDANDO AUTORIZAÇÃO DE DEPLOY:** 4 Edge Functions (`create-asaas-account`, `reconcile-asaas`, `release-reserves`, `subscription-health-daily`), 2 migrations de RPC, 1 migration de advisory lock, publicação do frontend.
 - Próximo bloco recomendado: **Onda 2 — produtos, cursos e entrega (PR/CB)**, mantendo pagamentos fora de escopo.
+
+## 28. Onda 2 — Produtos, cursos e entrega — 2026-08-11 (UTC)
+
+### 28.1 Reconciliação de pendências da Onda 0
+
+| ID | Item | Status | Evidência sanitizada |
+|---|---|---|---|
+| IF-021 | `create-asaas-account` implantada com kill-switch | APROVADO | Deploy autorizado pós-Onda 0; smoke `curl` → HTTP **410 Gone**, mensagem de depreciação. Nenhuma chamada externa. |
+| IF-014 | `reconcile-asaas`, `release-reserves`, `subscription-health-daily` implantadas com auditoria `cron_runs` | APROVADO | Smoke com segredo inválido → HTTP **401**; logs `Unauthorized call`; `cron_runs` sem novas linhas de teste. Nenhum efeito financeiro. |
+| SEC-060 | Migrations granulares de RPC (`20260811052805`, `20260811052931`) | APROVADO (aplicadas) | Verificado por leitura em `supabase_migrations.schema_migrations` + `pg_proc`/ACL. Advisor caiu 149 → 69. |
+| AU-WS-LOCK | Advisory lock em `ensure_producer_workspace_for` | APROVADO (aplicada) | `pg_get_functiondef` contém `pg_advisory_xact_lock`; execução revogada de `anon`. |
+
+### 28.2 Casos executados (Produtos)
+
+| ID | Caso | Status | Evidência |
+|---|---|---|---|
+| PR-ISO-001 | Isolamento de produtos entre workspaces | APROVADO | `pg_policies.products`: leitura por `is_workspace_member(workspace_id)` OU (`status='PUBLISHED'` AND `is_storefront_visible` AND `deleted_at IS NULL`); escrita só admin/membro do workspace. |
+| PR-PUB-001 | Publicação/despublicação e visibilidade na vitrine | APROVADO | Anon só alcança linhas publicadas e visíveis; rascunhos invisíveis por RLS. |
+| PR-LIM-001 | Limite de produtos por plano | APROVADO | Triggers `enforce_plan_product_limit` / `..._on_restore` presentes e com execução revogada de `anon` (trigger-only). |
+| PR-EDIT-001 | Autosave/draft do editor e round-trip de estado | APROVADO | Suíte `product-editor-*` (mappers, reducer, binding matrix, versioning, single-read-path) verde. |
+
+### 28.3 Uploads, Storage e entrega — 3 falhas P0/P1 corrigidas
+
+| ID | Caso | Status | Evidência / correção |
+|---|---|---|---|
+| ST-RLS-001 | Upload de entregável respeita RLS do bucket privado | **CORRIGIDO (era P0)** | Policy exige `(storage.foldername(name))[1] = auth.uid()`. `ProductDeliveryStep.tsx` subia em `deliveries/...` → falha total de upload. Agora `${user.id}/deliveries/...`. |
+| ST-SIGN-001 | Entregável privado só acessível por URL assinada | **CORRIGIDO (era P0)** | Caminho salvo sem marcador `private-files/` fazia `isPrivateFileUrl` retornar false e o consumidor abrir URL crua (403). Marcador canônico gravado no save. |
+| ST-IDOR-001 | Upload de mídia de aula não permite gravar fora do próprio prefixo | **CORRIGIDO (era P1)** | `course/LessonEditor.tsx` e `circle/LessonEditor.tsx` agora prefixam `${user.id}/` no bucket privado. |
+| ST-SIGN-002 | Download pós-compra do produto digital | **CORRIGIDO (era P0)** | `OrderSuccess.tsx` chamava `window.open(downloadUrl)` cru. Agora assina via `getSignedPrivateUrl({ path, productId })` com estado de carregamento e toast de erro. |
+| ST-SIGN-003 | Assinatura validada no servidor (entitlement + traversal) | APROVADO | `sign-private-file`: exige Bearer, `getClaims`, allowlist de caminhos derivada de `entitlements` com `revoked_at IS NULL`, rejeita `..`, expiração 300s. |
+| ST-SIGN-004 | Consumidores de biblioteca/curso assinam mídia | APROVADO | `MemberLibrary.tsx` e `MemberCourse.tsx` usam `getSignedPrivateUrl`. |
+
+### 28.4 Cursos — P0 de autorização (SQL preparada, NÃO aplicada)
+
+| ID | Caso | Status | Evidência |
+|---|---|---|---|
+| CB-RLS-001 | RLS de `courses`/`course_modules`/`course_lessons` | APROVADO | Todas as operações condicionadas a `is_workspace_member(courses.workspace_id)`. |
+| CB-REORDER-IDOR | Reordenação autorizada apenas para o dono do curso | **REPROVADO — AGUARDANDO AUTORIZAÇÃO DE MIGRATION** | `pg_get_functiondef` mostra `batch_reorder_lessons/modules` como `SECURITY DEFINER` fazendo `UPDATE ... WHERE id = ...` **sem checagem de dono** → escrita cross-tenant (contorna a RLS). SQL de correção preparada em `docs/pending-sql/onda2-batch-reorder-ownership-guard.sql` (reaplica `is_workspace_member` dentro da função). Não aplicada nesta rodada. |
+| CB-PROG-001 | Progresso, retomada, quiz e certificado | APROVADO | Suítes `course-builder.test.ts`, `course-builder-integration.test.tsx` verdes; certificados legíveis só pelo aluno (por e-mail do JWT) ou pelo workspace dono. |
+
+### 28.5 Regressão adicionada
+
+- `src/test/wave2-products-delivery-contract.test.ts` (15 casos): todo upload para `private-files` começa por `${user.id}/`, `getUser()` obrigatório antes do upload, marcador canônico gravado, `OrderSuccess` proibido de abrir URL crua, consumidores assinando, e contrato de segurança de `sign-private-file`.
+
+### 28.6 Baseline da Onda 2
+
+- Typecheck: **0 erros**.
+- Vitest: **409 testes / 38 arquivos** verdes.
+- Nenhuma migration aplicada, nenhuma Edge Function publicada, frontend não publicado nesta rodada.
+
+### 28.7 Ações externas geradas
+
+| ID | Instrução | Painel | Risco se ignorado |
+|---|---|---|---|
+| EXT-014 | Autorizar aplicação da SQL `docs/pending-sql/onda2-batch-reorder-ownership-guard.sql` (correção de IDOR na reordenação de módulos/aulas) | Lovable → migration tool | ALTO: usuário autenticado de outro workspace pode reordenar aulas de cursos alheios |
+| EXT-015 | Autorizar publicação do frontend para que as correções de upload/assinatura de entrega cheguem a produção | Lovable → Publish | ALTO: hoje o upload de entregável de produto digital falha por RLS em produção |
