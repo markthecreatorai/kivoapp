@@ -81,50 +81,22 @@ export default function Signup() {
   const [creatorType, setCreatorType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const [existingAccount, setExistingAccount] = useState<null | {
-    kind: "confirmed" | "unconfirmed";
-    email: string;
-  }>(null);
-  const [resending, setResending] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const [codeCooldown, setCodeCooldown] = useState(60);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { emailError, suggestion, guard, reset } = useAuthEmailGuard("signup");
 
+  // Reabre o modal após refresh, quando o contexto pendente ainda é válido.
   useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((c) => c - 1), 1000);
-    return () => clearInterval(t);
-  }, [resendCooldown]);
-
-  const handleResendVerification = async () => {
-    if (!existingAccount || resendCooldown > 0) return;
-    setResending(true);
-    try {
-      const emailCheck = guard(existingAccount.email);
-      if (!emailCheck.ok) {
-        toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
-        return;
-      }
-      trackEvent("auth.resend_clicked", { surface: "signup", email: emailCheck.email });
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: emailCheck.email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (error) {
-        trackEvent("auth.resend_failed", { surface: "signup", error_message: error.message });
-        toast({ title: "Erro ao reenviar", description: error.message, variant: "destructive" });
-      } else {
-        trackEvent("auth.resend_success", { surface: "signup" });
-        toast({ title: "Email reenviado!", description: "Verifique sua caixa de entrada e spam." });
-        setResendCooldown(60);
-      }
-    } finally {
-      setResending(false);
+    const pending = getPendingVerification();
+    if (pending && pending.flowOrigin === "producer") {
+      setEmail(pending.email);
+      setVerifying(true);
     }
-  };
+  }, []);
+
 
   // Handle OAuth error callback
   useEffect(() => {
