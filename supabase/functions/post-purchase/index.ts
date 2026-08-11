@@ -247,126 +247,26 @@ Deno.serve(async (req) => {
         .eq("id", order.checkout_session_id);
     }
 
-    // 6. SPLIT: Record split entry for this sale (idempotent)
-    const grossAmount = Number(order.total_amount || 0);
-    if (grossAmount > 0) {
-      const { data: existingSplitEntry } = await supabase
-        .from("split_entries")
-        .select("id")
-        .eq("order_id", order.id)
-        .maybeSingle();
+    // 6. SPLIT + CARTEIRA + COMISSÃO DE AFILIADO
+    // Fonte única de verdade: RPC transacional, idempotente, service_role only.
+    // Nunca recalcular aqui — a base é orders.total_amount (já líquida de descontos)
+    // e a comissão sai de affiliate_programs, reservada dentro do creator_net.
+    const { data: financials, error: finErr } = await supabase.rpc("process_order_financials", {
+      p_order_id: order.id,
+      p_gateway_fee_cents: 0,
+      p_settle: true,
+    });
 
-      if (!existingSplitEntry) {
-        const rule = await getSplitRule(supabase, order.workspace_id, order.product_id, order.payment_method ?? null);
-        const split = calculateSplit(grossAmount, rule);
-        const availableAt = new Date();
-        availableAt.setDate(availableAt.getDate() + rule.hold_days);
-
-        await supabase.from("split_entries").insert({
-          workspace_id: order.workspace_id,
-          order_id: order.id,
-          split_rule_id: rule.id || null,
-          gross_amount: grossAmount,
-          gateway_fee: split.gatewayFee,
-          platform_fee: split.platformFee,
-          affiliate_fee: split.affiliateFee,
-          creator_net: split.creatorNet,
-          status: "pending",
-          available_at: availableAt.toISOString(),
-        });
-
-        // Also record in wallet_ledger for backward compatibility
-        const { data: existingLedger } = await supabase
-          .from("wallet_ledger")
-          .select("id")
-          .eq("order_id", order.id)
-          .eq("type", "sale")
-          .maybeSingle();
-
-        if (!existingLedger) {
-          await supabase.from("wallet_ledger").insert({
-            workspace_id: order.workspace_id,
-            order_id: order.id,
-            type: "sale",
-            amount: split.creatorNet,
-            status: "pending",
-            available_at: availableAt.toISOString(),
-            description: `Venda #${order.id.slice(0, 8)} (líq. ${split.creatorNet})`,
-          });
-        }
-
-        console.log(`Split recorded for order ${order.id}: gross=${grossAmount} gw=${split.gatewayFee} plat=${split.platformFee} aff=${split.affiliateFee} net=${split.creatorNet}`);
-
-        // 6b. Create affiliate commission if affiliate_link_id present
-        if (split.affiliateFee > 0) {
-          try {
-            // Get affiliate_link_id from the order or checkout_session
-            let affiliateLinkId: string | null = null;
-
-            const { data: orderRow } = await supabase
-              .from("orders")
-              .select("affiliate_link_id")
-              .eq("id", order.id)
-              .single();
-            affiliateLinkId = orderRow?.affiliate_link_id || null;
-
-            if (!affiliateLinkId && order.checkout_session_id) {
-              const { data: sess } = await supabase
-                .from("checkout_sessions")
-                .select("affiliate_link_id")
-                .eq("id", order.checkout_session_id)
-                .single();
-              affiliateLinkId = sess?.affiliate_link_id || null;
-            }
-
-            if (affiliateLinkId) {
-              const { data: affLink } = await supabase
-                .from("affiliate_links")
-                .select("affiliate_id")
-                .eq("id", affiliateLinkId)
-                .single();
-
-              if (affLink) {
-                // Check idempotency
-                const { data: existingComm } = await supabase
-                  .from("commissions")
-                  .select("id")
-                  .eq("order_id", order.id)
-                  .eq("affiliate_id", affLink.affiliate_id)
-                  .maybeSingle();
-
-                if (!existingComm) {
-                  const holdDays = rule.hold_days || 14;
-                  const holdUntil = new Date();
-                  holdUntil.setDate(holdUntil.getDate() + holdDays);
-
-                  await supabase.from("commissions").insert({
-                    affiliate_id: affLink.affiliate_id,
-                    order_id: order.id,
-                    amount: split.affiliateFee,
-                    status: "PENDING",
-                    hold_until: holdUntil.toISOString(),
-                  });
-
-                  // Mark attribution as converted
-                  await supabase
-                    .from("affiliate_attributions")
-                    .update({ converted_at: new Date().toISOString() })
-                    .eq("affiliate_link_id", affiliateLinkId)
-                    .is("converted_at", null);
-
-                  console.log(`Commission created: affiliate=${affLink.affiliate_id} amount=${split.affiliateFee} order=${order.id}`);
-                }
-              }
-            }
-          } catch (commErr) {
-            console.error("Commission creation error (non-fatal):", commErr);
-          }
-        }
-      } else {
-        console.log(`Split already exists for order ${order.id}, skipping`);
-      }
+    if (finErr) {
+      console.error(`post-purchase: process_order_financials falhou para ${order.id}:`, JSON.stringify(finErr));
+      return new Response(JSON.stringify({ error: "Falha ao processar repasse do pedido" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    console.log(`post-purchase: financials do pedido ${order.id}:`, JSON.stringify(financials));
+
 
     // 7. AUTO NFS-e EMISSION
     try {
