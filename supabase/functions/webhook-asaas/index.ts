@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { feeTierForPlan } from "../_shared/plan.ts";
+import { handleRefundCompleted, handleRefundInProgress } from "../_shared/refunds.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -164,8 +165,14 @@ Deno.serve(async (req) => {
       statusAfter = await handlePaid(supabase, paymentRecord, paymentData);
     } else if (eventType === "PAYMENT_OVERDUE" || eventType === "PAYMENT_FAILED") {
       statusAfter = await handleFailed(supabase, paymentRecord, paymentData);
-    } else if (eventType === "PAYMENT_REFUNDED" || eventType === "PAYMENT_REFUND_IN_PROGRESS") {
-      statusAfter = await handleRefunded(supabase, paymentRecord, paymentData);
+    } else if (eventType === "PAYMENT_REFUNDED" || eventType === "PAYMENT_PARTIALLY_REFUNDED") {
+      // Reembolso CONCLUÍDO (total ou parcial). O tipo é decidido pelo evento +
+      // acumulado no banco, nunca por paymentData.status.
+      statusAfter = await handleRefundCompleted(supabase, paymentRecord, paymentData, eventType);
+    } else if (eventType === "PAYMENT_REFUND_IN_PROGRESS") {
+      // Reembolso agendado/em processamento: auditoria apenas, sem efeito financeiro.
+      statusAfter = await handleRefundInProgress(supabase, paymentRecord, paymentData);
+
     } else if (eventType === "PAYMENT_DELETED") {
       statusAfter = await handleCanceled(supabase, paymentRecord);
     } else if (eventType === "PAYMENT_CHARGEBACK_REQUESTED") {
@@ -644,149 +651,6 @@ async function cancelOrderCommissions(supabase: any, orderId: string, reason: st
     console.error("[Affiliate] Erro ao cancelar comissão (non-fatal):", e);
   }
 }
-
-async function handleRefunded(supabase: any, paymentRecord: any, paymentData: any): Promise<string> {
-  if (!paymentRecord) return "NOT_FOUND";
-
-  // ── Quanto foi realmente devolvido? ──
-  // `paymentData.value` é o valor da COBRANÇA, não do reembolso. Em reembolso
-  // parcial o Asaas mantém `value` cheio e detalha o devolvido em `refunds[]`.
-  // Usar `value` como valor reembolsado inflava o débito e cancelava a venda
-  // inteira no ledger (P0). Fonte de verdade: soma de `refunds[]`.
-  const chargeAmount = Number(paymentData?.value || 0);
-  const refundList = Array.isArray(paymentData?.refunds) ? paymentData.refunds : [];
-  const refundedFromList = refundList.reduce(
-    (sum: number, r: any) => sum + Math.abs(Number(r?.value || 0)),
-    0,
-  );
-  const refundAmount = refundedFromList > 0 ? refundedFromList : chargeAmount;
-
-  const refundCents = Math.round(refundAmount * 100);
-  const chargeCents = Math.round(chargeAmount * 100);
-  // Só é reembolso TOTAL quando o devolvido alcança a cobrança (ou o Asaas diz REFUNDED).
-  const asaasStatus = String(paymentData?.status || "").toUpperCase();
-  const isPartial =
-    asaasStatus === "PARTIALLY_REFUNDED" ||
-    (chargeCents > 0 && refundCents > 0 && refundCents < chargeCents);
-
-  // Idempotência por reembolso do gateway (um pedido pode ter vários parciais).
-  const gatewayRefundId = refundList.find((r: any) => r?.id)?.id
-    ? String(refundList.find((r: any) => r?.id).id)
-    : paymentData?.id
-      ? String(paymentData.id)
-      : null;
-
-  if (gatewayRefundId) {
-    const { data: existingRefund } = await supabase
-      .from("refunds")
-      .select("id")
-      .eq("order_id", paymentRecord.order_id)
-      .eq("gateway_refund_id", gatewayRefundId)
-      .maybeSingle();
-    if (existingRefund) {
-      console.log(`Refund ${gatewayRefundId} already processed for order ${paymentRecord.order_id}`);
-      return isPartial ? "ALREADY_PARTIALLY_REFUNDED" : "ALREADY_REFUNDED";
-    }
-  }
-
-  await supabase.from("refunds").insert({
-    order_id: paymentRecord.order_id,
-    payment_id: paymentRecord.id,
-    amount: refundAmount,
-    status: "PROCESSED",
-    processed_at: new Date().toISOString(),
-    gateway_refund_id: gatewayRefundId,
-  });
-
-  // ── Ledger ──
-  // Reembolso parcial NÃO cancela o crédito da venda: apenas debita o valor
-  // devolvido. Cancelar a venda + debitar o reembolso zeraria o pedido inteiro
-  // (dupla contagem contra o produtor).
-  if (!isPartial) {
-    await supabase.from("wallet_ledger").update({ status: "canceled" })
-      .eq("order_id", paymentRecord.order_id).eq("type", "sale");
-  }
-
-  // ATENÇÃO: wallet_ledger é em CENTAVOS; valores do Asaas vêm em REAIS.
-  const refundDescription = isPartial
-    ? `Reembolso parcial Asaas #${paymentRecord.order_id.slice(0, 8)}`
-    : `Reembolso Asaas #${paymentRecord.order_id.slice(0, 8)}`;
-
-  if (refundCents > 0) {
-    // No total, o crédito da venda já foi cancelado: o débito serve de trilha e
-    // não deve mover saldo duas vezes, então entra como `settled` (fora do saldo).
-    // No parcial, o débito É o efeito financeiro e precisa reduzir o disponível.
-    const ledgerStatus = isPartial ? "available" : "settled";
-    const { data: existingRefundLedger } = await supabase
-      .from("wallet_ledger")
-      .select("id")
-      .eq("order_id", paymentRecord.order_id)
-      .eq("type", "refund")
-      .eq("description", refundDescription)
-      .maybeSingle();
-    if (!existingRefundLedger) {
-      await supabase.from("wallet_ledger").insert({
-        workspace_id: paymentRecord.workspace_id,
-        order_id: paymentRecord.order_id,
-        type: "refund",
-        amount: -refundCents,
-        status: ledgerStatus,
-        description: refundDescription,
-      });
-    }
-  }
-
-  if (isPartial) {
-    // Pedido segue válido: acesso, comissões e reserva permanecem.
-    // O CHECK de orders.status não contempla um estado parcial, então o pedido
-    // NÃO é rebaixado aqui — o valor devolvido fica registrado em refunds/ledger.
-    console.log(
-      `Partial refund of ${refundCents} cents on order ${paymentRecord.order_id} (charge ${chargeCents}) — order status preserved`,
-    );
-    return "PARTIALLY_REFUNDED";
-  }
-
-
-  await supabase.from("orders").update({ status: "REFUNDED" }).eq("id", paymentRecord.order_id);
-  await supabase.from("entitlements").update({ revoked_at: new Date().toISOString() }).eq("order_id", paymentRecord.order_id);
-
-  // Cancela comissões de afiliado (não entram no saldo a pagar)
-  await cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado");
-
-  // Cancela comissão de indicação deste pagamento (idempotente)
-  if (paymentData?.id) {
-    const { error: refCancelErr } = await supabase.rpc("cancel_referral_commissions_for_payment", {
-      p_payment_id: String(paymentData.id),
-    });
-    if (refCancelErr) console.error("[Referral] Falha ao cancelar comissão:", JSON.stringify(refCancelErr));
-  }
-
-  // Reverse split entry
-  await supabase.from("split_entries").update({
-    status: "refunded",
-    refunded_at: new Date().toISOString(),
-  }).eq("order_id", paymentRecord.order_id);
-
-  // Forfeit any held reserve for this order
-  await supabase.from("reserve_entries").update({
-    status: "forfeited",
-    released_at: new Date().toISOString(),
-  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
-
-  // Update transaction + security_reserves (new model)
-  await supabase.from("transactions").update({
-    status: "refunded",
-    refunded_at: new Date().toISOString(),
-  }).eq("order_id", paymentRecord.order_id);
-
-  await supabase.from("security_reserves").update({
-    status: "forfeited",
-    released_at: new Date().toISOString(),
-  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
-
-  return "REFUNDED";
-}
-
 
 async function handleChargeback(supabase: any, paymentRecord: any, paymentData: any): Promise<string> {
   if (!paymentRecord) return "NOT_FOUND";
