@@ -738,10 +738,14 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
 
   if (isPartial) {
     // Pedido segue válido: acesso, comissões e reserva permanecem.
-    await supabase.from("orders").update({ status: "PARTIALLY_REFUNDED" })
-      .eq("id", paymentRecord.order_id).eq("status", "COMPLETED");
+    // O CHECK de orders.status não contempla um estado parcial, então o pedido
+    // NÃO é rebaixado aqui — o valor devolvido fica registrado em refunds/ledger.
+    console.log(
+      `Partial refund of ${refundCents} cents on order ${paymentRecord.order_id} (charge ${chargeCents}) — order status preserved`,
+    );
     return "PARTIALLY_REFUNDED";
   }
+
 
   await supabase.from("orders").update({ status: "REFUNDED" }).eq("id", paymentRecord.order_id);
   await supabase.from("entitlements").update({ revoked_at: new Date().toISOString() }).eq("order_id", paymentRecord.order_id);
