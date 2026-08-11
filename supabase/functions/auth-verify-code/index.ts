@@ -97,27 +97,41 @@ Deno.serve(async (req) => {
           return { error };
         },
         consumeCode: async (codeId) => {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("auth_verification_codes")
             .update({ consumed_at: new Date().toISOString() })
             .eq("id", codeId)
             .is("consumed_at", null)
             .select("id")
             .maybeSingle();
-          return !!data;
+          if (error) {
+            // Erro de infraestrutura: nunca tratar como sucesso.
+            console.error("[auth-verify-code] consume failed (retryable):", error.message);
+            return "error";
+          }
+          return data ? "consumed" : "already_consumed";
         },
         getAccountType: async (userId) => {
           // Lido do banco, nunca de metadado enviado pelo cliente.
-          const { data } = await supabase
+          // Erro ou linha ausente => falha segura (503), sem downgrade p/ MEMBER.
+          const { data, error } = await supabase
             .from("user_account_types")
             .select("account_type")
             .eq("user_id", userId)
             .maybeSingle();
-          return data?.account_type === "PRODUCER" ? "PRODUCER" : "MEMBER";
+          if (error) {
+            console.error("[auth-verify-code] account type query failed:", error.message);
+            return { ok: false, reason: "error" };
+          }
+          if (!data?.account_type) {
+            console.error("[auth-verify-code] account type row missing for user", userId);
+            return { ok: false, reason: "missing" };
+          }
+          return { ok: true, accountType: data.account_type === "PRODUCER" ? "PRODUCER" : "MEMBER" };
         },
         ensureProducerWorkspace: async (userId) => {
           const { error } = await supabase.rpc("ensure_producer_workspace_for", { p_user_id: userId });
-          if (error) console.error("[auth-verify-code] workspace failed:", error.message);
+          if (error) console.error("[auth-verify-code] workspace failed (retryable):", error.message);
           return { error };
         },
       },
