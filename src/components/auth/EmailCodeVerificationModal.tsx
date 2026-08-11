@@ -117,8 +117,7 @@ export default function EmailCodeVerificationModal({
     next[index] = clean;
     setDigits(next);
     if (index < CODE_LENGTH - 1) inputs.current[index + 1]?.focus();
-    const filled = next.join("");
-    if (filled.length === CODE_LENGTH && !filled.includes("")) void submit(filled);
+    if (next.every((d) => d !== "")) void submit(next.join(""));
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
