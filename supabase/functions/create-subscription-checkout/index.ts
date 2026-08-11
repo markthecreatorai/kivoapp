@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
       customer_name,
       payment_method, // "card" | "pix"
       credit_card,    // { holderName, number, expiryMonth, expiryYear, ccv }
+      referral_code,  // capturado no frontend (cookie/localStorage)
     } = body;
 
     if (!workspace_id || !plan_code) {
