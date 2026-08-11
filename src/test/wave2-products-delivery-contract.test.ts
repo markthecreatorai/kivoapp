@@ -20,18 +20,27 @@ const PRIVATE_UPLOAD_FILES = [
   "src/components/circle/LessonEditor.tsx",
 ];
 
+/** Nomes de variáveis usadas como caminho em uploads para `private-files`. */
+function privateUploadVars(src: string): string[] {
+  const vars = new Set<string>();
+  const re = /from\(\s*["']private-files["']\s*\)\s*(?:\n\s*)?\.upload\(\s*([A-Za-z_$][\w$]*)/g;
+  for (const m of src.matchAll(re)) vars.add(m[1]);
+  return [...vars];
+}
+
 describe("Onda 2 — uploads no bucket privado exigem prefixo auth.uid()", () => {
   for (const file of PRIVATE_UPLOAD_FILES) {
-    it(`${file}: todo caminho de upload começa por \${user.id}`, () => {
+    it(`${file}: todo caminho de upload privado começa por \${user.id}`, () => {
       const src = read(file);
-      // Extrai as atribuições de caminho em template string do arquivo.
-      const paths = [...src.matchAll(/(?:path|filePath)\s*=\s*`([^`]+)`/g)].map((m) => m[1]);
-      expect(paths.length).toBeGreaterThan(0);
-      const privatePaths = paths.filter((p) => !p.startsWith("http"));
-      for (const p of privatePaths) {
-        expect(p.startsWith("${user.id}/"), `caminho inseguro/inválido: ${p}`).toBe(true);
+      const vars = privateUploadVars(src);
+      expect(vars.length).toBeGreaterThan(0);
+      for (const v of vars) {
+        const decl = new RegExp(`${v}\\s*=\\s*\`([^\`]+)\``).exec(src);
+        expect(decl, `caminho de ${v} não encontrado em ${file}`).not.toBeNull();
+        expect(decl![1].startsWith("${user.id}/"), `caminho inseguro: ${decl![1]}`).toBe(true);
       }
     });
+
 
     it(`${file}: obtém o usuário autenticado antes de subir arquivo`, () => {
       const src = read(file);
