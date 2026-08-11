@@ -1,17 +1,14 @@
 -- ============================================================================
 -- Onda 3 / P0 FI-REFUND-V2 — reembolso incremental atômico (hardening final)
 --
--- FONTE ÚNICA VERSIONADA deste SQL. Substitui e apaga
--- docs/pending-migrations/20260811064500_process_refund_increment_atomic.sql
--- (pasta removida neste commit).
+-- FONTE ÚNICA VERSIONADA deste SQL, no caminho canônico
+--   supabase/migrations/20260811074500_process_refund_increment_atomic.sql
+-- (as pastas intermediárias docs/pending-migrations/ e
+-- supabase/migrations-pending/ foram removidas).
 --
--- POR QUE NÃO ESTÁ EM supabase/migrations/: a plataforma bloqueia escrita
--- direta nessa pasta ("managed by the migration system"); o único caminho para
--- criar arquivo lá é a ferramenta de migration, que APLICA o SQL na hora. Esta
--- rodada é explicitamente "sem aplicação", então o arquivo fica aqui já com o
--- TIMESTAMP CANÔNICO de destino (posterior ao último aplicado, 20260811070000).
--- Ao autorizar, aplicar este conteúdo integral via ferramenta de migration como
---   20260811074500_process_refund_increment_atomic.sql
+-- STATUS: NÃO APLICADA. O timestamp é posterior ao último aplicado
+-- (20260811070000); aplicar este conteúdo integral, sem edição, somente com
+-- autorização explícita.
 --
 -- ORDEM OBRIGATÓRIA DE ROLLOUT: migration ANTES do deploy do webhook-asaas.
 -- Sem a RPC o handler falha fechado (500/retry) e nenhum reembolso é processado
