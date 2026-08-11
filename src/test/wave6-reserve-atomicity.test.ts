@@ -159,10 +159,11 @@ describe("QA-4A-V6 — reversão cumulativa (100 → 80 → 60 ⇒ 40)", () => {
   });
 
   it("SQL grava o valor ACUMULADO no upsert, nunca o delta", () => {
-    expect(sql).toMatch(/v_cum\s*:= greatest\(v_base - v_target, v_prev\)/);
-    expect(sql).toMatch(/DO UPDATE SET\s*\n\s*amount\s*= EXCLUDED\.amount/);
-    expect(sql).not.toMatch(/DO UPDATE SET amount = v_delta/);
-    expect(sql).toMatch(/SELECT COALESCE\(sum\(amount\), 0\) INTO v_prev/);
+    const code = sql.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+    expect(code).toMatch(/v_cum\s*:= greatest\(v_base - v_target, v_prev\)/);
+    expect(code).toMatch(/DO UPDATE SET\s*\n\s*amount\s*= EXCLUDED\.amount/);
+    expect(code).not.toMatch(/amount = v_delta/);
+    expect(code).toMatch(/SELECT COALESCE\(sum\(amount\), 0\) INTO v_prev/);
   });
 
   it("crédito é monotônico: chamada repetida não reduz o já emitido", () => {
