@@ -284,6 +284,7 @@ Deno.serve(async (req) => {
       manual_review: summary.manual_review,
     }));
 
+    await cronRun.finish("SUCCESS", { ...summary, duration_ms: durationMs });
     return new Response(JSON.stringify({
       success: true,
       summary,
@@ -303,6 +304,7 @@ Deno.serve(async (req) => {
       status: "error",
       error: err.message,
     }));
+    await cronRun.finish("FAILED", { duration_ms: durationMs }, err.message);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
