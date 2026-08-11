@@ -30,10 +30,8 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
     let ledgerReleased = 0;
     let ledgerAmount = 0;
-    let reservesReleased = 0;
-    let reservesAmount = 0;
     let reservesHeldByChargeback = 0;
-    let reserveCreditsSkipped = 0;
+
 
     // ─── 1) wallet_ledger: pending vencido → available ───
     const { data: dueLedger, error: ledgerErr } = await supabase
