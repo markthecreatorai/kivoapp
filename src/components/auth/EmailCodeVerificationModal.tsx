@@ -224,6 +224,15 @@ export default function EmailCodeVerificationModal({
           <div className="space-y-2">
             <Button
               type="button"
+              className="w-full gap-2"
+              onClick={handleConfirm}
+              disabled={code.length !== CODE_LENGTH || status !== "idle"}
+            >
+              {status === "verifying" ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              Confirmar código
+            </Button>
+            <Button
+              type="button"
               variant="outline"
               className="w-full gap-2"
               onClick={handleResend}
