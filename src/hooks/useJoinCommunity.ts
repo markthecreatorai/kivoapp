@@ -30,6 +30,13 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
   }>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState<null | {
+    email: string;
+    password: string;
+    returnTarget: string;
+    cooldown: number;
+  }>(null);
+
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
