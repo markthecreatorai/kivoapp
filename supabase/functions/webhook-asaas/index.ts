@@ -1075,115 +1075,101 @@ async function handleSubscriptionPaid(supabase: any, paymentData: any): Promise<
 }
 
 // ── Referral Commission Helpers ──
-
-const REFERRAL_COMMISSION_RATE = 0.20; // 20% lifetime
+// Fonte única = RPC public.record_subscription_referral_commission:
+// idempotente por (payment_id, event_type), payment_id TEXTUAL (pay_...),
+// valida a atribuição travada do usuário indicado e atualiza first_paid_at.
 
 async function processReferralCommission(supabase: any, wsSub: any, paymentData: any) {
-  // Find workspace owner user_id
-  const { data: wsOwner } = await supabase
+  const { data: wsOwner, error: ownerErr } = await supabase
     .from("workspace_members")
     .select("user_id")
     .eq("workspace_id", wsSub.workspace_id)
     .eq("role", "OWNER")
     .maybeSingle();
 
+  if (ownerErr) {
+    console.error("[Referral] Falha ao buscar owner do workspace:", JSON.stringify(ownerErr));
+    return;
+  }
   if (!wsOwner?.user_id) return;
 
   const referredUserId = wsOwner.user_id;
-  const providerEventId = String(paymentData?.id || "");
+  const providerEventId = paymentData?.id ? String(paymentData.id) : "";
+  const paymentAmount = Number(paymentData?.value || 0);
 
-  // Idempotency: check if this payment event was already processed
-  if (providerEventId) {
-    const { data: existing } = await supabase
-      .from("referral_commissions")
-      .select("id")
-      .eq("payment_id", providerEventId)
-      .maybeSingle();
-    if (existing) {
-      console.log(`[Referral] Duplicate payment event ${providerEventId}, skipping`);
-      return;
-    }
+  if (!providerEventId) {
+    console.error("[Referral] Evento sem payment id — comissão não registrada");
+    return;
   }
-
-  // Find referral attribution for this user
-  const { data: attribution } = await supabase
-    .from("referral_attributions")
-    .select("id, referrer_user_id, referral_status, first_paid_subscription_at")
-    .eq("referred_user_id", referredUserId)
-    .in("referral_status", ["pending_subscription", "active"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!attribution) {
-    // Check if terminated — log resubscription without referral
-    const { data: terminated } = await supabase
-      .from("referral_attributions")
-      .select("id, referrer_user_id")
-      .eq("referred_user_id", referredUserId)
-      .eq("referral_status", "terminated")
-      .maybeSingle();
-
-    if (terminated) {
-      await supabase.from("referral_audit_log").insert({
-        referrer_user_id: terminated.referrer_user_id,
-        referred_user_id: referredUserId,
-        event_type: "resubscription_without_referral",
-        subscription_id: wsSub.id,
-        plan_id: wsSub.plan_code,
-        payment_provider_event_id: providerEventId,
-      });
-    }
+  if (paymentAmount <= 0) {
+    console.error(`[Referral] Valor inválido (${paymentAmount}) no evento ${providerEventId}`);
     return;
   }
 
-  const paymentAmount = Number(paymentData?.value || 0);
-  const commissionAmount = Math.round(paymentAmount * REFERRAL_COMMISSION_RATE * 100) / 100;
+  const { data: result, error: rpcErr } = await supabase.rpc(
+    "record_subscription_referral_commission",
+    {
+      p_referred_user_id: referredUserId,
+      p_payment_id: providerEventId,
+      p_amount: paymentAmount,
+      p_event_type: null,
+      p_subscription_id: wsSub.id,
+    },
+  );
 
-  const isFirstPayment = attribution.referral_status === "pending_subscription";
+  if (rpcErr) {
+    console.error("[Referral] RPC de comissão falhou:", JSON.stringify(rpcErr));
+    return;
+  }
 
-  if (isFirstPayment) {
-    // Activate the referral
-    await supabase
-      .from("referral_attributions")
-      .update({
-        referral_status: "active",
-        first_paid_subscription_at: new Date().toISOString(),
-        subscription_id: wsSub.id,
-        plan_id: wsSub.plan_code,
-        payment_provider_event_id: providerEventId,
-        first_paid_at: new Date().toISOString(),
-      })
-      .eq("id", attribution.id);
+  if (!result?.ok) {
+    // Sem atribuição válida: registra reassinatura sem indicação, se houver histórico
+    if (result?.error === "no_attribution") {
+      const { data: terminated } = await supabase
+        .from("referral_attributions")
+        .select("id, referrer_user_id")
+        .eq("referred_user_id", referredUserId)
+        .eq("referral_status", "terminated")
+        .maybeSingle();
 
-    await supabase.from("referral_audit_log").insert({
-      referrer_user_id: attribution.referrer_user_id,
+      if (terminated) {
+        const { error: auditErr } = await supabase.from("referral_audit_log").insert({
+          referrer_user_id: terminated.referrer_user_id,
+          referred_user_id: referredUserId,
+          event_type: "resubscription_without_referral",
+          subscription_id: wsSub.id,
+          plan_id: wsSub.plan_code,
+          payment_provider_event_id: providerEventId,
+        });
+        if (auditErr) console.error("[Referral] Falha no audit log:", JSON.stringify(auditErr));
+      }
+      return;
+    }
+    console.error("[Referral] Comissão não registrada:", JSON.stringify(result));
+    return;
+  }
+
+  if (result.duplicate) {
+    console.log(`[Referral] Evento ${providerEventId} já processado — nada duplicado`);
+    return;
+  }
+
+  if (result.first_payment) {
+    const { error: auditErr } = await supabase.from("referral_audit_log").insert({
+      referrer_user_id: result.referrer_user_id,
       referred_user_id: referredUserId,
       event_type: "first_subscription_paid",
       subscription_id: wsSub.id,
       plan_id: wsSub.plan_code,
       payment_provider_event_id: providerEventId,
-      metadata: { amount: paymentAmount, commission: commissionAmount },
+      metadata: { amount: paymentAmount, commission: result.amount },
     });
+    if (auditErr) console.error("[Referral] Falha no audit log:", JSON.stringify(auditErr));
   }
 
-  // Create commission (both first and recurring)
-  if (commissionAmount > 0) {
-    await supabase.from("referral_commissions").insert({
-      referrer_user_id: attribution.referrer_user_id,
-      referred_user_id: referredUserId,
-      subscription_id: wsSub.id,
-      payment_id: providerEventId,
-      commission_rate: REFERRAL_COMMISSION_RATE,
-      gross_base_amount: paymentAmount,
-      commission_amount: commissionAmount,
-      currency: "BRL",
-      status: "pending",
-      event_type: isFirstPayment ? "first_payment" : "recurring_payment",
-    });
-  }
-
-  console.log(`[Referral] Commission created: R$${commissionAmount} for referrer ${attribution.referrer_user_id} (${isFirstPayment ? "first" : "recurring"})`);
+  console.log(
+    `[Referral] Comissão R$${result.amount} registrada para ${result.referrer_user_id} (${result.first_payment ? "primeira" : "recorrente"})`,
+  );
 }
 
 async function terminateReferralOnCancel(supabase: any, sub: any) {
