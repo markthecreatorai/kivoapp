@@ -76,6 +76,28 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Você não pertence a este workspace" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ─── Indicação (referral): atribuição travada na primeira válida ─────────
+    // O código vem do frontend (cookie/localStorage), mas a validação é toda
+    // server-side: indicador ativo, sem autoindicação e idempotente por usuário.
+    let referralAttached = false;
+    let referralReason: string | null = null;
+    if (typeof referral_code === "string" && referral_code.trim().length > 0) {
+      const { data: refResult, error: refErr } = await adminClient.rpc("attach_referral_attribution", {
+        p_referral_code: referral_code.trim().slice(0, 64),
+        p_referred_user_id: userId,
+      });
+      if (refErr) {
+        console.error("[Referral] attach_referral_attribution falhou:", JSON.stringify(refErr));
+        referralReason = "error";
+      } else if (refResult?.ok) {
+        referralAttached = true;
+        referralReason = refResult.locked ? "already_locked" : "attached";
+      } else {
+        referralReason = refResult?.error || "rejected";
+        console.log("[Referral] código recusado:", referralReason);
+      }
+    }
+
     const valueCents = billing_cycle === "annual" ? planConfig.annual_cents : planConfig.monthly_cents;
     const cycle = billing_cycle === "annual" ? "YEARLY" : "MONTHLY";
 
