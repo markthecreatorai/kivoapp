@@ -259,6 +259,8 @@ Deno.serve(async (req) => {
         subscription_id: subData.id,
         payment_id: firstCardPaymentId,
         provider: "asaas",
+        referral_attached: referralAttached,
+        referral_reason: referralReason,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -274,6 +276,8 @@ Deno.serve(async (req) => {
         subscription_id: subData.id,
         provider: "asaas",
         pix: null,
+        referral_attached: referralAttached,
+        referral_reason: referralReason,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -295,6 +299,8 @@ Deno.serve(async (req) => {
         copy_paste: qrData.payload || null,
         expiration_date: qrData.expirationDate || null,
       },
+      referral_attached: referralAttached,
+      referral_reason: referralReason,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
