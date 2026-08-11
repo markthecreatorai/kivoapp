@@ -135,12 +135,14 @@ Deno.serve(async (req) => {
     };
 
     console.log(JSON.stringify(summary));
+    await cronRun.finish("SUCCESS", summary);
 
     return new Response(JSON.stringify({ ok: true, ...summary }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("Release reserves error:", err);
+    await cronRun.finish("FAILED", { duration_ms: Date.now() - startedAt }, (err as Error).message);
     return new Response(JSON.stringify({ ok: false, error: (err as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
