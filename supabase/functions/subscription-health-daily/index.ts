@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Auditoria de execução (public.cron_runs): sem isso o cron_runs_sweep marca TIMEOUT.
+import { startCronRun } from "../_shared/cron-run.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
