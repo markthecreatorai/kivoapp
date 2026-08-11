@@ -127,6 +127,13 @@ export default function EmailCodeVerificationModal({
     if (next.every((d) => d !== "")) void submit(next.join(""));
   };
 
+  // Botão explícito (também usado no retry de falha transitória).
+  const handleConfirm = () => {
+    if (code.length !== CODE_LENGTH || status !== "idle") return;
+    submittedRef.current = "";
+    void submit(code);
+  };
+
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !digits[index] && index > 0) {
       e.preventDefault();
