@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+// Auditoria de execução (public.cron_runs): sem isso o cron_runs_sweep marca TIMEOUT.
+import { startCronRun } from "../_shared/cron-run.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,6 +43,7 @@ Deno.serve(async (req) => {
   }
 
   const startedAt = Date.now();
+  const cronRun = await startCronRun(req);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -48,6 +51,7 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   if (!asaasKey) {
+    await cronRun.finish("FAILED", {}, "ASAAS_API_KEY not configured");
     return new Response(JSON.stringify({
       error: "ASAAS_API_KEY not configured",
       summary: { reconciled: 0, divergences_fixed: 0, manual_review: 0 },
@@ -282,6 +286,7 @@ Deno.serve(async (req) => {
       manual_review: summary.manual_review,
     }));
 
+    await cronRun.finish("SUCCESS", { ...summary, duration_ms: durationMs });
     return new Response(JSON.stringify({
       success: true,
       summary,
@@ -301,6 +306,7 @@ Deno.serve(async (req) => {
       status: "error",
       error: err.message,
     }));
+    await cronRun.finish("FAILED", { duration_ms: durationMs }, err.message);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

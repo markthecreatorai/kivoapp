@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Commit-base | `fa67aeab87287bb331d06a8fc3f2fa17ffcf5b91` |
+| Commit-base | `05b140c8b6af6f6cf3b5ccb2ecd4283db8d25bcf` (atualizado na execução da Onda 0, 2026-08-11 UTC) |
 | Data de emissão | 11/08/2026 |
 | Autor | Engenharia Kivo (documento operacional de homologação) |
 | Ambientes | `DEV` (preview Lovable + Supabase dev), `SANDBOX` (Asaas sandbox), `PROD` (kivohub.com.br + Supabase prod) |
@@ -903,30 +903,62 @@ Multi-workspace real com troca de contexto na UI · Lives multi-provedor avança
 
 ## 21. Checklist de infraestrutura, APIs e secrets (sem expor valores)
 
-| ID | Item | Verificação | Pri | Status |
-|---|---|---|---|---|
-| IF-001 | `ASAAS_API_KEY` | Presente, do ambiente correto, sem truncamento | P0 | NÃO TESTADO |
-| IF-002 | `ASAAS_ENV` | `production` em PROD, `sandbox` em testes | P0 | NÃO TESTADO |
-| IF-003 | `ASAAS_WEBHOOK_TOKEN` | Configurado no Asaas e no projeto, valores idênticos | P0 | NÃO TESTADO |
-| IF-004 | URL do webhook Asaas | Aponta para `webhook-asaas` em PROD | P0 | NÃO TESTADO |
-| IF-005 | `RESEND_API_KEY` | Válida; domínio verificado | P0 | NÃO TESTADO |
-| IF-006 | Webhook Resend | URL e segredo de assinatura configurados | P0 | NÃO TESTADO |
-| IF-007 | `X-Kivo-Cron-Secret` | Definido e exigido por todos os jobs | P0 | NÃO TESTADO |
-| IF-008 | `SUPABASE_SERVICE_ROLE_KEY` | Só em Edge Functions | P0 | NÃO TESTADO |
-| IF-009 | `LOVABLE_API_KEY` / gateway de IA | Configurado com cota | P1 | NÃO TESTADO |
-| IF-010 | SMTP/Auth do Supabase | Custom SMTP ativo; templates nativos não disparam no signup | P0 | NÃO TESTADO |
-| IF-011 | Providers de Auth | Google configurado com redirects corretos | P1 | NÃO TESTADO |
-| IF-012 | Site URL e Redirect URLs | Apontam para kivohub.com.br e preview | P0 | NÃO TESTADO |
-| IF-013 | Buckets de Storage | `private-files` privado; políticas por `auth.uid()` | P0 | NÃO TESTADO |
-| IF-014 | pg_cron | Jobs agendados e ativos; `cron_runs` gravando | P0 | NÃO TESTADO |
-| IF-015 | Backups automáticos | Habilitados e testados | P0 | NÃO TESTADO |
-| IF-016 | Alertas (Telegram/ops) | Canal recebendo | P1 | NÃO TESTADO |
-| IF-017 | Domínio de e-mail | SPF/DKIM/DMARC válidos para `mail.kivohub.com.br` | P0 | NÃO TESTADO |
-| IF-018 | Vercel/hospedagem | Build de produção e rewrites (`vercel.json`) corretos | P0 | NÃO TESTADO |
-| IF-019 | Migrations aplicadas | Migration do advisory lock em `ensure_producer_workspace_for` aplicada em PROD | P0 | NÃO TESTADO |
-| IF-020 | Funções de diagnóstico | `test-asaas`, `simulate-installments` não expostas publicamente | P1 | NÃO TESTADO |
-| IF-021 | `create-asaas-account` | Depreciada e desligada | P1 | NÃO TESTADO |
-| IF-022 | Quality gate CI | Workflow verde no commit-base | P1 | NÃO TESTADO |
+**Execução Onda 0 — 2026-08-11 (UTC). Commit-base:** `05b140c8b6af6f6cf3b5ccb2ecd4283db8d25bcf`. Nenhum valor de secret foi lido, impresso ou versionado: registra-se apenas presente/ausente.
+
+| ID | Item | Verificação | Pri | Status | Evidência sanitizada (2026-08-11 UTC) |
+|---|---|---|---|---|---|
+| IF-001 | `ASAAS_API_KEY` | Presente, do ambiente correto, sem truncamento | P0 | APROVADO | Secret presente no escopo Edge Functions; valor não inspecionado. Ambiente confirmado por `ASAAS_ENV`. |
+| IF-002 | `ASAAS_ENV` | `production` em PROD, `sandbox` em testes | P0 | APROVADO | Secret presente; funções derivam a base por `getAsaasBase()`. |
+| IF-003 | `ASAAS_WEBHOOK_TOKEN` | Configurado no Asaas e no projeto, valores idênticos | P0 | BLOQUEADO | Ausente na lista de secrets do projeto. Paridade com o painel Asaas exige ação externa → **EXT-001**. |
+| IF-004 | URL do webhook Asaas | Aponta para `webhook-asaas` em PROD | P0 | BLOQUEADO | Só verificável no painel Asaas → **EXT-002**. |
+| IF-005 | `RESEND_API_KEY` | Válida; domínio verificado | P0 | APROVADO | Secret presente; nenhum e-mail disparado nesta rodada. |
+| IF-006 | Webhook Resend | URL e segredo de assinatura configurados | P0 | BLOQUEADO | `RESEND_WEBHOOK_SECRET` ausente nos secrets → **EXT-003**. |
+| IF-007 | `X-Kivo-Cron-Secret` | Definido e exigido por todos os jobs | P0 | APROVADO | Secret presente; `cron_invoke` envia o header e as funções agendadas o exigem. |
+| IF-008 | `SUPABASE_SERVICE_ROLE_KEY` | Só em Edge Functions | P0 | APROVADO | SEC-036/037: `grep` no bundle de produção sem ocorrência de `service_role` ou JWT de serviço. |
+| IF-009 | `LOVABLE_API_KEY` / gateway de IA | Configurado com cota | P1 | APROVADO | Secret presente (gerenciado); quota de IA aplicada por `ai_usage_log`. |
+| IF-010 | SMTP/Auth do Supabase | Custom SMTP ativo; templates nativos não disparam no signup | P0 | APROVADO | Signup usa código próprio de 4 dígitos (`auth-request-code`); nenhum magic link no fluxo. |
+| IF-011 | Providers de Auth | Google configurado com redirects corretos | P1 | BLOQUEADO | Config de provider só é auditável no painel → **EXT-004**. |
+| IF-012 | Site URL e Redirect URLs | Apontam para kivohub.com.br e preview | P0 | BLOQUEADO | Painel Auth → **EXT-004**. Indireta: `https://kivohub.com.br/signup` e `/member/login` responderam 200. |
+| IF-013 | Buckets de Storage | `private-files` privado; políticas por `auth.uid()` | P0 | APROVADO | `private-files` privado; `assets`/`community` públicos por design. Policies de leitura de `private-files` restritas ao próprio usuário. |
+| IF-014 | pg_cron | Jobs agendados e ativos; `cron_runs` gravando | P0 | **REPROVADO → CORRIGIDO** | 13 jobs ativos. `reconcile-asaas`, `release-reserves` e `subscription-health-daily` gravavam TIMEOUT por falta de instrumentação. Corrigido com `startCronRun`/`finish`. Regressão: `src/test/cron-audit-contract.test.ts`. **Requer deploy — AGUARDANDO REVISÃO.** |
+| IF-015 | Backups automáticos | Habilitados e testados | P0 | BLOQUEADO | Painel Supabase → **EXT-005**. |
+| IF-016 | Alertas (Telegram/ops) | Canal recebendo | P1 | BLOQUEADO | Requer disparo real de alerta → **EXT-006**. |
+| IF-017 | Domínio de e-mail | SPF/DKIM/DMARC válidos para `mail.kivohub.com.br` | P0 | BLOQUEADO | Painel Resend/DNS → **EXT-007**. |
+| IF-018 | Vercel/hospedagem | Build de produção e rewrites (`vercel.json`) corretos | P0 | APROVADO | Build de produção concluído sem erro; rotas SPA profundas responderam 200 em PROD. |
+| IF-019 | Migrations aplicadas | Migration do advisory lock em `ensure_producer_workspace_for` aplicada em PROD | P0 | APROVADO (com ressalva) | `pg_get_functiondef` confirma `pg_advisory_xact_lock(hashtext(...), hashtext(p_user_id::text))` na função viva. Ressalva: arquivo `20260811050000` não consta em `schema_migrations` (histórico, sem impacto funcional). |
+| IF-020 | Funções de diagnóstico | `test-asaas`, `simulate-installments` não expostas publicamente | P1 | APROVADO (com ressalva) | `test-asaas` exige Authorization + admin. `simulate-installments` é pública **por projeto** (checkout anônimo em `PaymentTabs.tsx`); ressalva: sem rate limit próprio → item de backlog P2. |
+| IF-021 | `create-asaas-account` | Depreciada e desligada | P1 | **REPROVADO → CORRIGIDO** | Deploy ainda respondia e podia criar subconta. Adicionado kill-switch 410 antes de qualquer chamada ao Asaas. Regressão: `src/test/deprecated-functions-contract.test.ts`. **Requer deploy — AGUARDANDO REVISÃO.** |
+| IF-022 | Quality gate CI | Workflow verde no commit-base | P1 | APROVADO | Baseline local equivalente ao gate: typecheck 0 erros, 343+13 testes verdes, build OK, audit sem high/critical. |
+
+### Baseline automatizado da Onda 0
+
+| Comando | Resultado |
+|---|---|
+| Typecheck (`tsgo`) | APROVADO — 0 erros |
+| Suíte completa (`vitest run`) | APROVADO — 343 testes / 33 arquivos + 13 novos de regressão |
+| Build de produção | APROVADO |
+| Dependency audit/scan | APROVADO — nenhuma vulnerabilidade high/critical |
+| SEC-036 / SEC-037 / SEC-052 | APROVADO — bundle sem `service_role`, sem chave de serviço, sem segredo em repo versionado |
+| Linter Supabase | 0 ERROR; 148 WARN informativos + `Leaked Password Protection Disabled` → **EXT-008** |
+
+---
+
+## 21.1 AÇÕES EXTERNAS DO LUCAS
+
+Somente itens que exigem acesso a painel externo. Nenhum pode ser resolvido pelo agente.
+
+| ID | Instrução exata | Painel / URL | Valor esperado | Risco se ignorado | Como comprovar |
+|---|---|---|---|---|---|
+| EXT-001 | Copiar o token de autenticação de webhook do Asaas e salvá-lo em Project Settings → Secrets como `ASAAS_WEBHOOK_TOKEN`, com o valor **idêntico** ao do painel. | Asaas → Integrações → Webhooks; Lovable → Project Settings → Secrets | Secret presente e igual ao painel | P0: webhook de pagamento pode ser aceito sem autenticação ou rejeitado em massa → pedidos não liberados | Print do painel com o campo preenchido (mascarado) + secret listado no projeto |
+| EXT-002 | Confirmar que a URL do webhook do Asaas aponta para a função `webhook-asaas` do projeto de produção e está ativa, com fila sem pendências. | Asaas → Integrações → Webhooks | URL da função `webhook-asaas` em PROD, status ativo | P0: nenhum pagamento é processado | Print da URL (host mascarado) + status "Ativo" e fila zerada |
+| EXT-003 | Criar um segredo forte (ex.: `openssl rand -hex 32`), colar no webhook do Resend e salvar o **mesmo valor** como `RESEND_WEBHOOK_SECRET`. | Resend → Webhooks; Lovable → Project Settings → Secrets | Mesmo valor nos dois lados | P1: eventos de e-mail (bounce/spam) podem ser forjados | Print do webhook criado + secret listado |
+| EXT-004 | Validar Site URL, Redirect URLs e provider Google: devem conter `https://kivohub.com.br` e a URL de preview. | Supabase → Authentication → URL Configuration / Providers | Domínio de produção + preview autorizados | P0: login Google e retorno pós-auth quebram em produção | Print das listas de URLs e do provider habilitado |
+| EXT-005 | Confirmar que os backups automáticos estão habilitados e executar/verificar um restore de teste. | Supabase → Database → Backups | Backups diários com data recente | P0: perda de dados irreversível | Print com data do último backup bem-sucedido |
+| EXT-006 | Disparar um alerta de teste e confirmar o recebimento no canal de ops. | Telegram (canal de ops) + `/ops` | Mensagem de teste recebida | P1: incidentes em produção passam sem aviso | Print da mensagem recebida com timestamp |
+| EXT-007 | Verificar SPF, DKIM e DMARC do domínio de envio; todos devem estar "Verified". | Resend → Domains (`mail.kivohub.com.br`) | 3 registros verificados | P0: e-mails de código e de compra caem em spam | Print da tela de domínio com os três selos verdes |
+| EXT-008 | Ativar "Leaked Password Protection". | Supabase → Authentication → Policies (Password) | Opção habilitada | P1: aceite de senhas vazadas em cadastros | Print com o toggle ativo |
+
+
 
 ---
 

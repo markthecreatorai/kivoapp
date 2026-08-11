@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Auditoria de execução (public.cron_runs): sem isso o cron_runs_sweep marca TIMEOUT.
+import { startCronRun } from "../_shared/cron-run.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +26,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
+  const cronRun = await startCronRun(req);
 
   try {
     // 1. Count by status
@@ -172,11 +175,13 @@ Deno.serve(async (req) => {
       metadata: report,
     });
 
+    await cronRun.finish("SUCCESS", { alerts: alerts?.length ?? 0 });
     return new Response(JSON.stringify({ ok: true, report, alerts }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("Health check error:", err);
+    await cronRun.finish("FAILED", {}, (err as Error).message);
     return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
