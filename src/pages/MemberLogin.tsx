@@ -1,42 +1,52 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Mail, Lock, Sparkles, UserPlus } from "lucide-react";
+import { Loader2, Lock, Sparkles, UserPlus } from "lucide-react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
 import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
-import { resolveAuthSignupOutcome } from "@/lib/authSignupOutcome";
-
-/** Só aceita destinos internos, evitando open redirect. */
-function sanitizeRedirect(value: string | null): string {
-  if (!value) return "/member";
-  if (!value.startsWith("/") || value.startsWith("//")) return "/member";
-  return value;
-}
+import EmailCodeVerificationModal from "@/components/auth/EmailCodeVerificationModal";
+import {
+  clearPendingVerification,
+  getPendingVerification,
+  requestVerificationCode,
+  sanitizeReturnTarget,
+  savePendingVerification,
+  signInAfterVerification,
+} from "@/lib/authVerification";
 
 export default function MemberLogin() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = sanitizeRedirect(searchParams.get("redirect"));
+  const redirectTo = sanitizeReturnTarget(searchParams.get("redirect")) || "/member";
 
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [signupPending, setSignupPending] = useState(false);
-  const [existingAccount, setExistingAccount] = useState<null | "confirmed" | "unconfirmed">(null);
+  const [verifying, setVerifying] = useState(false);
+  const [codeCooldown, setCodeCooldown] = useState(60);
+  const [tab, setTab] = useState("password");
   const { emailError, suggestion, guard, reset } = useAuthEmailGuard("member_login");
+
+  // Reabre o modal após refresh, quando o contexto pendente ainda é válido.
+  useEffect(() => {
+    const pending = getPendingVerification();
+    if (pending && pending.flowOrigin === "circles") {
+      setEmail(pending.email);
+      setTab("signup");
+      setVerifying(true);
+    }
+  }, []);
 
   const clearFieldState = (value: string) => {
     setEmail(value);
     reset();
     setError("");
-    setExistingAccount(null);
   };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -49,11 +59,19 @@ export default function MemberLogin() {
     setEmail(emailCheck.email);
     setLoading(true);
     setError("");
-    const { error: authError } = await supabase.auth.signInWithPassword({ email: emailCheck.email, password });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: emailCheck.email,
+      password,
+    });
     if (authError) {
-      setError(authError.message === "Invalid login credentials"
-        ? "Email ou senha incorretos. Ainda não tem conta? Use a aba \"Criar conta\"."
-        : authError.message);
+      setError(
+        authError.message === "Invalid login credentials"
+          ? 'Email ou senha incorretos. Ainda não tem conta? Use a aba "Criar conta".'
+          : authError.message,
+      );
+    } else if (!data.user?.email_confirmed_at) {
+      setError("Sua conta ainda não foi confirmada. Crie a conta novamente para receber um novo código.");
+      await supabase.auth.signOut();
     } else {
       navigate(redirectTo, { replace: true });
     }
@@ -74,122 +92,54 @@ export default function MemberLogin() {
     setEmail(emailCheck.email);
     setLoading(true);
     setError("");
-    setExistingAccount(null);
 
-    try {
-      const response = await supabase.auth.signUp({
-        email: emailCheck.email,
-        password,
-        options: {
-          data: {
-            display_name: displayName,
-            full_name: displayName,
-            account_type: "MEMBER",
-            is_creator: false,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
-        },
-      });
-
-      const outcome = resolveAuthSignupOutcome(response as any);
-
-      switch (outcome.kind) {
-        case "already_registered_confirmed":
-          setExistingAccount("confirmed");
-          setError("Este email já está cadastrado. Faça login na aba \"Email & Senha\".");
-          return;
-        case "already_registered_unconfirmed":
-          setExistingAccount("unconfirmed");
-          setError("Este email já está cadastrado, mas ainda não foi confirmado. Verifique sua caixa de entrada.");
-          return;
-        case "invalid_email":
-        case "generic_error":
-          setError(outcome.message);
-          return;
-        case "success_active":
-          navigate(redirectTo, { replace: true });
-          return;
-        case "success_pending_verification":
-          setSignupPending(true);
-          return;
-      }
-    } catch {
-      setError("Ocorreu um erro inesperado ao criar sua conta");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const emailCheck = guard(email);
-    if (!emailCheck.ok) { setError(emailCheck.error || "Digite seu email"); return; }
-    setEmail(emailCheck.email);
-    setLoading(true);
-    setError("");
-    const { error: authError } = await supabase.auth.signInWithOtp({
+    const result = await requestVerificationCode({
       email: emailCheck.email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}${redirectTo}`,
-      },
+      password,
+      fullName: displayName,
+      accountType: "MEMBER",
+      flowOrigin: "circles",
+      returnTarget: redirectTo,
+      mode: "signup",
     });
-    if (authError) {
-      const msg = (authError.message || "").toLowerCase();
-      const notFound =
-        authError.status === 422 ||
-        msg.includes("signups not allowed") ||
-        msg.includes("user not found") ||
-        msg.includes("otp_disabled");
-      setError(
-        notFound
-          ? "Não encontramos uma conta com esse email. O acesso à área de membros é liberado após a compra — use o mesmo email da compra ou crie sua conta na aba \"Criar conta\"."
-          : authError.message,
-      );
-    } else {
-      setMagicLinkSent(true);
-    }
     setLoading(false);
+
+    switch (result.kind) {
+      case "code_sent":
+      case "cooldown":
+        savePendingVerification({
+          email: emailCheck.email,
+          accountType: "MEMBER",
+          flowOrigin: "circles",
+          returnTarget: redirectTo,
+        });
+        setCodeCooldown(result.kind === "code_sent" ? result.cooldownSeconds : result.retryAfterSeconds);
+        setVerifying(true);
+        return;
+      case "rate_limited":
+        setError("Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.");
+        return;
+      case "invalid_email":
+        setError("Confira o endereço de e-mail digitado.");
+        return;
+      case "weak_password":
+        setError("A senha precisa ter pelo menos 8 caracteres.");
+        return;
+      default:
+        setError(result.message);
+    }
   };
 
-  if (signupPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-        <div className="max-w-sm w-full text-center space-y-4">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-            <Mail className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground">Confirme seu email</h1>
-          <p className="text-sm text-muted-foreground">
-            Enviamos um link de confirmação para <strong>{email}</strong>. Depois de confirmar,
-            você volta direto para onde estava.
-          </p>
-          <Button variant="ghost" onClick={() => setSignupPending(false)} className="text-sm">
-            Usar outro email
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (magicLinkSent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-        <div className="max-w-sm w-full text-center space-y-4">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-            <Mail className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground">Link enviado!</h1>
-          <p className="text-sm text-muted-foreground">
-            Enviamos um link de acesso para <strong>{email}</strong>. Verifique sua caixa de entrada.
-          </p>
-          <Button variant="ghost" onClick={() => setMagicLinkSent(false)} className="text-sm">
-            Tentar novamente
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const handleVerified = async (result: { next: string | null }) => {
+    const { data, error: signInError } = await signInAfterVerification(email, password);
+    clearPendingVerification();
+    const dest = result.next || redirectTo;
+    if (signInError || !data?.user) {
+      window.location.href = `/member/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(dest)}`;
+      return;
+    }
+    window.location.href = dest;
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
@@ -203,33 +153,11 @@ export default function MemberLogin() {
         </div>
 
         <div className="bg-card rounded-xl border p-6">
-          <Tabs defaultValue="magic" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 mb-4">
-              <TabsTrigger value="magic" className="text-xs">Magic Link</TabsTrigger>
-              <TabsTrigger value="password" className="text-xs">Email &amp; Senha</TabsTrigger>
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <TabsList className="w-full grid grid-cols-2 mb-4">
+              <TabsTrigger value="password" className="text-xs">Entrar</TabsTrigger>
               <TabsTrigger value="signup" className="text-xs">Criar conta</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="magic">
-              <form onSubmit={handleMagicLink} className="space-y-4">
-                <div className="space-y-1">
-                  <Label className="text-sm">Email</Label>
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => clearFieldState(e.target.value)}
-                    placeholder="seu@email.com"
-                    className="h-12"
-                  />
-                  <AuthEmailFieldError error={emailError} suggestion={suggestion} onAcceptSuggestion={(corrected) => clearFieldState(corrected)} />
-                </div>
-                <Button type="submit" disabled={loading} className="w-full h-12 font-semibold">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                    <><Mail className="w-4 h-4" /> Enviar link de acesso</>
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
 
             <TabsContent value="password">
               <form onSubmit={handlePasswordLogin} className="space-y-4">
@@ -305,14 +233,9 @@ export default function MemberLogin() {
                     <><UserPlus className="w-4 h-4" /> Criar conta de membro</>
                   )}
                 </Button>
-                {existingAccount === "confirmed" && (
-                  <p className="text-xs text-center text-muted-foreground">
-                    Já tem conta?{" "}
-                    <Link to={`/forgot-password?email=${encodeURIComponent(email)}`} className="text-primary hover:underline">
-                      Redefinir senha
-                    </Link>
-                  </p>
-                )}
+                <p className="text-xs text-center text-muted-foreground">
+                  Enviamos um código de 4 dígitos por e-mail para confirmar sua conta.
+                </p>
                 <p className="text-xs text-muted-foreground text-center">
                   Quer vender produtos digitais?{" "}
                   <a href="/signup" className="text-primary hover:underline">Criar conta de criador</a>
@@ -320,7 +243,7 @@ export default function MemberLogin() {
               </form>
             </TabsContent>
           </Tabs>
-          {error && <p className="text-sm text-destructive text-center mt-3">{error}</p>}
+          {error && <p className="text-sm text-destructive text-center mt-3" role="alert">{error}</p>}
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
@@ -328,6 +251,20 @@ export default function MemberLogin() {
           <a href="https://kivohub.com.br" className="text-primary hover:underline">Kivo</a>
         </p>
       </div>
+
+      <EmailCodeVerificationModal
+        open={verifying}
+        email={email}
+        accountType="MEMBER"
+        flowOrigin="circles"
+        returnTarget={redirectTo}
+        initialCooldown={codeCooldown}
+        onVerified={handleVerified}
+        onUseAnotherEmail={() => {
+          clearPendingVerification();
+          setVerifying(false);
+        }}
+      />
     </div>
   );
 }
