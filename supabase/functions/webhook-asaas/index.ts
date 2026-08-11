@@ -433,94 +433,59 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     const holdDays = Number(rule.hold_days ?? 30);
     const splitAvailableAt = new Date(Date.now() + holdDays * 86400000).toISOString();
 
-    // 2) split_entries: deveria existir (criado em create-payment). Se não existir é erro grave.
-    const { data: existingSplit } = await supabase
-      .from("split_entries")
-      .select("id, status, creator_net, gross_amount, gateway_fee, platform_fee, affiliate_fee")
-      .eq("order_id", paymentRecord.order_id)
-      .maybeSingle();
-
-    if (!existingSplit) {
-      console.error(
-        `[webhook-asaas][ALERTA] Pedido pago SEM split calculado — order_id=${paymentRecord.order_id}, workspace_id=${order.workspace_id}. Recriando split na confirmação.`,
-      );
-    }
-
-    let splitId: string | null = existingSplit?.id || null;
+    // 2) FONTE ÚNICA DE VERDADE: RPC transacional process_order_commission.
+    //    Ela trava o pedido (FOR UPDATE), valida COMPLETED + paid_at, resolve
+    //    link/programa/afiliado, e grava split_entries + wallet_ledger +
+    //    commissions de forma idempotente (ON CONFLICT). Nenhum cálculo de
+    //    comissão é duplicado aqui.
     let creatorNet = 0;
+    let splitId: string | null = null;
 
-    if (totalAmount > 0) {
-      const gatewayFee = netFee > 0 ? netFee : (existingSplit?.gateway_fee ?? Math.round(totalAmount * 3.49 / 100));
-      const netAfterGw = Math.max(0, totalAmount - gatewayFee);
-      const platformFee = Math.round(netAfterGw * Number(rule.platform_percent) / 100);
-      const affiliateFee = existingSplit?.affiliate_fee ?? Math.round(netAfterGw * Number(rule.affiliate_percent) / 100);
-      creatorNet = netAfterGw - platformFee - affiliateFee;
+    const { data: commResult, error: commRpcErr } = await supabase.rpc("process_order_commission", {
+      p_order_id: paymentRecord.order_id,
+      p_gateway_fee_cents: netFee > 0 ? netFee : null,
+      p_settle: true,
+    });
 
-      const splitPayload = {
-        workspace_id: order.workspace_id,
-        order_id: paymentRecord.order_id,
-        split_rule_id: (rule as any).id || null,
-        gross_amount: totalAmount,
-        gateway_fee: gatewayFee,
-        platform_fee: platformFee,
-        affiliate_fee: affiliateFee,
-        creator_net: creatorNet,
-        status: "settled",
-        settled_at: nowIso,
-        available_at: splitAvailableAt,
-      };
-
-      if (existingSplit && existingSplit.status === "settled") {
-        // Já liquidado — mantém valores originais (idempotência)
-        creatorNet = Number(existingSplit.creator_net || 0);
-      } else {
-        const { data: splitEntry, error: splitErr } = existingSplit
-          ? await supabase.from("split_entries").update(splitPayload).eq("id", existingSplit.id).select("id").single()
-          : await supabase.from("split_entries").insert(splitPayload).select("id").single();
-        if (splitErr) {
-          // Falha no split não deve bloquear a confirmação do pedido
-          console.error("[webhook-asaas][ALERTA] Falha ao liquidar split entry:", splitErr);
-        } else {
-          splitId = splitEntry?.id || splitId;
-        }
-      }
+    if (commRpcErr) {
+      console.error("[webhook-asaas][ALERTA] process_order_commission falhou:", JSON.stringify(commRpcErr));
+    } else if (commResult && (commResult as any).ok !== true) {
+      console.error(
+        "[webhook-asaas][ALERTA] process_order_commission recusou o pedido:",
+        JSON.stringify(commResult),
+      );
+    } else if (commResult) {
+      creatorNet = Number((commResult as any).creator_net_cents || 0);
+      console.log("[webhook-asaas] split/comissão processados:", JSON.stringify(commResult));
     }
 
-    // 3) wallet_ledger: crédito do creator_net (idempotente por order_id + type)
-    const { data: existingLedger } = await supabase
-      .from("wallet_ledger")
-      .select("id")
+    const { data: settledSplit } = await supabase
+      .from("split_entries")
+      .select("id, creator_net, available_at")
       .eq("order_id", paymentRecord.order_id)
-      .eq("type", "sale")
       .maybeSingle();
+    splitId = settledSplit?.id || null;
+    if (!creatorNet) creatorNet = Number(settledSplit?.creator_net || 0);
+    const ledgerAvailableAt = settledSplit?.available_at || splitAvailableAt;
 
-    if (!existingLedger && creatorNet > 0) {
-      const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
+    // 3) Taxa do gateway no ledger (idempotente por order_id + type via índice único)
+    if (netFee > 0) {
+      const { error: feeErr } = await supabase.from("wallet_ledger").insert({
         workspace_id: order.workspace_id,
         order_id: paymentRecord.order_id,
-        type: "sale",
-        amount: creatorNet,
+        type: "fee",
+        amount: -netFee,
         currency: (order as any).currency || "BRL",
-        status: "pending",
-        available_at: splitAvailableAt,
-        description: `Venda #${paymentRecord.order_id.slice(0, 8)} — liberação em ${holdDays}d (${paymentMethod})`,
+        status: "settled",
+        description: `Taxa Asaas #${paymentRecord.order_id.slice(0, 8)}`,
       });
-      if (ledgerErr) console.error("Failed to insert wallet_ledger sale:", ledgerErr);
-
-      if (netFee > 0) {
-        await supabase.from("wallet_ledger").insert({
-          workspace_id: order.workspace_id,
-          order_id: paymentRecord.order_id,
-          type: "fee",
-          amount: -netFee,
-          currency: (order as any).currency || "BRL",
-          status: "settled",
-          description: `Taxa Asaas #${paymentRecord.order_id.slice(0, 8)}`,
-        });
+      if (feeErr && (feeErr as any).code !== "23505") {
+        console.error("Failed to insert wallet_ledger fee:", feeErr);
       }
-    } else if (existingLedger) {
-      console.log(`[webhook-asaas] wallet_ledger já possui crédito para order ${paymentRecord.order_id} — skip`);
     }
+    console.log(
+      `[webhook-asaas] liquidação order ${paymentRecord.order_id}: creator_net=${creatorNet} liberação=${ledgerAvailableAt} (${paymentMethod}, ${holdDays}d)`,
+    );
 
     // 4) Reserva de segurança (só cartão, % do creator_net, idempotente por order)
     if (creatorNet > 0 && isCard) {
