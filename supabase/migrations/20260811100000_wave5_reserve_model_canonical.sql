@@ -500,9 +500,20 @@ BEGIN
     RETURN jsonb_build_object('outcome', 'NO_RESERVE', 'order_id', p_order_id);
   END IF;
 
-  IF v_res.status <> 'held' THEN
-    -- Já liberada/revertida: o estorno da venda em si é responsabilidade de
-    -- process_refund_increment / resolve_chargeback_case.
+  -- Reversível quando ainda retida OU quando outro fluxo
+  -- (process_refund_increment / resolve_chargeback_case) já marcou
+  -- forfeited/reversed SEM emitir o crédito de reversão: sem esse crédito o
+  -- débito de segregação ficaria órfão e o saldo não fecharia em 0. Assim a
+  -- ordem de chegada dos eventos não importa.
+  IF v_res.status NOT IN ('held', 'forfeited', 'reversed') THEN
+    RETURN jsonb_build_object('outcome', 'ALREADY_PROCESSED', 'status', v_res.status,
+                              'reserve_id', v_res.id);
+  END IF;
+
+  IF v_res.status <> 'held' AND EXISTS (
+    SELECT 1 FROM public.wallet_ledger
+     WHERE reserve_entry_id = v_res.id AND reserve_role = 'reversal_credit'
+       AND status <> 'canceled') THEN
     RETURN jsonb_build_object('outcome', 'ALREADY_PROCESSED', 'status', v_res.status,
                               'reserve_id', v_res.id);
   END IF;
