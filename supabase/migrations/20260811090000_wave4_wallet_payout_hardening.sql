@@ -37,6 +37,16 @@
 --           inexistentes ('requested','paid') — a trava de velocidade nunca via
 --           os saques reais (pending/in_review/approved/completed).
 --
+-- P0-WA-09  Resolução de chargeback era uma sequência de writes do cliente
+--           (chargeback_cases → chargeback_timeline → split_entries →
+--           wallet_ledger), sem atomicidade, sem checagem de admin no servidor,
+--           sem transição válida e sem idempotência — e bloqueada pela RLS, que
+--           só permite SELECT nessas tabelas. Pior: ao GANHAR a disputa o fluxo
+--           restaurava split_entries e cancelava o débito de chargeback, mas
+--           deixava o crédito da venda como 'canceled' (o webhook o cancela) e a
+--           reserva como 'forfeited' — o produtor ficava sem o dinheiro mesmo
+--           vencendo. Agora é RPC transacional que devolve venda e reserva.
+--
 -- P1-WA-07  Grants excessivos: anon com DML completo em withdrawals, refunds,
 --           payout_items e chargeback_cases (bloqueado apenas pela RLS).
 -- ============================================================================
@@ -445,3 +455,135 @@ GRANT ALL ON TABLE public.chargeback_cases TO service_role;
 REVOKE ALL ON TABLE public.payout_items FROM anon, authenticated;
 GRANT SELECT ON TABLE public.payout_items TO authenticated;
 GRANT ALL ON TABLE public.payout_items TO service_role;
+
+
+-- ---------------------------------------------------------------------------
+-- 9. resolve_chargeback_case — resolução de disputa em UMA transação
+--    Somente admin, transições válidas, idempotente por estado e devolvendo
+--    TODOS os componentes financeiros quando a disputa é ganha.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.resolve_chargeback_case(
+  p_case_id uuid,
+  p_status text,
+  p_note text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_case public.chargeback_cases;
+  v_restored_sale integer := 0;
+  v_canceled_debit integer := 0;
+  v_restored_split integer := 0;
+  v_restored_reserve integer := 0;
+BEGIN
+  IF v_uid IS NULL OR NOT public.is_admin_user() THEN
+    RAISE EXCEPTION 'Acesso negado';
+  END IF;
+
+  IF p_status NOT IN ('new', 'evidence_pending', 'submitted', 'won', 'lost') THEN
+    RETURN jsonb_build_object('outcome', 'INVALID_STATUS');
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended('chargeback:' || p_case_id::text, 0));
+
+  SELECT * INTO v_case FROM public.chargeback_cases WHERE id = p_case_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('outcome', 'NOT_FOUND');
+  END IF;
+
+  -- Caso encerrado não reabre nem reprocessa financeiro (idempotência de estado).
+  IF v_case.status IN ('won', 'lost') THEN
+    RETURN jsonb_build_object('outcome', 'ALREADY_RESOLVED', 'status', v_case.status);
+  END IF;
+  IF v_case.status = p_status THEN
+    RETURN jsonb_build_object('outcome', 'NO_CHANGE', 'status', v_case.status);
+  END IF;
+
+  UPDATE public.chargeback_cases
+     SET status = p_status,
+         resolved_at = CASE WHEN p_status IN ('won', 'lost') THEN now() ELSE resolved_at END
+   WHERE id = v_case.id;
+
+  INSERT INTO public.chargeback_timeline (case_id, action, actor_id, note)
+  VALUES (
+    v_case.id,
+    'status_changed_to_' || p_status,
+    v_uid,
+    COALESCE(p_note, 'Status alterado para ' || p_status)
+  );
+
+  IF p_status = 'won' AND v_case.order_id IS NOT NULL THEN
+    -- 1) Split volta a valer
+    UPDATE public.split_entries
+       SET status = 'settled', refunded_at = NULL
+     WHERE order_id = v_case.order_id AND status = 'refunded';
+    GET DIAGNOSTICS v_restored_split = ROW_COUNT;
+
+    -- 2) Débito do chargeback deixa de contar
+    UPDATE public.wallet_ledger
+       SET status = 'canceled'
+     WHERE order_id = v_case.order_id AND type = 'chargeback' AND status <> 'canceled';
+    GET DIAGNOSTICS v_canceled_debit = ROW_COUNT;
+
+    -- 3) Crédito da venda é devolvido (o webhook o havia cancelado; sem isto o
+    --    produtor ganhava a disputa e continuava sem o dinheiro)
+    UPDATE public.wallet_ledger
+       SET status = 'available', available_at = now()
+     WHERE order_id = v_case.order_id AND type = 'sale' AND status = 'canceled';
+    GET DIAGNOSTICS v_restored_sale = ROW_COUNT;
+
+    -- 4) Reserva volta a ficar retida (protege o ciclo normal, não é perdida)
+    UPDATE public.security_reserves
+       SET status = 'held', released_at = NULL, release_at = now() + interval '30 days'
+     WHERE order_id = v_case.order_id AND status = 'forfeited';
+    GET DIAGNOSTICS v_restored_reserve = ROW_COUNT;
+
+    UPDATE public.reserve_entries
+       SET status = 'held', released_at = NULL, release_at = now() + interval '30 days'
+     WHERE order_id = v_case.order_id AND status = 'forfeited';
+
+    UPDATE public.transactions
+       SET status = 'paid'
+     WHERE order_id = v_case.order_id AND status = 'disputed';
+
+    INSERT INTO public.chargeback_timeline (case_id, action, actor_id, note)
+    VALUES (v_case.id, 'financial_reversed', v_uid,
+            'Chargeback ganho — venda, split e reserva restaurados');
+  END IF;
+
+  INSERT INTO public.audit_logs (workspace_id, entity_type, entity_id, action, user_id, metadata)
+  VALUES (
+    v_case.workspace_id, 'chargeback_case', v_case.id, 'chargeback_' || p_status, v_uid,
+    jsonb_build_object(
+      'note', p_note,
+      'previous_status', v_case.status,
+      'restored_sale_rows', v_restored_sale,
+      'canceled_chargeback_rows', v_canceled_debit,
+      'restored_split_rows', v_restored_split,
+      'restored_reserve_rows', v_restored_reserve
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'outcome', 'UPDATED',
+    'case_id', v_case.id,
+    'status', p_status,
+    'restored_sale_rows', v_restored_sale,
+    'canceled_chargeback_rows', v_canceled_debit,
+    'restored_split_rows', v_restored_split,
+    'restored_reserve_rows', v_restored_reserve
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.resolve_chargeback_case(uuid, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.resolve_chargeback_case(uuid, text, text) TO authenticated, service_role;
+
+-- Timeline e evidências de chargeback: escrita só via RPC/serviço.
+REVOKE ALL ON TABLE public.chargeback_timeline FROM anon, authenticated;
+GRANT SELECT ON TABLE public.chargeback_timeline TO authenticated;
+GRANT ALL ON TABLE public.chargeback_timeline TO service_role;

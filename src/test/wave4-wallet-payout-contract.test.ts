@@ -183,3 +183,46 @@ describe("P1-WA-07 — grants financeiros sem escrita para anon", () => {
     }
   });
 });
+
+describe("P0-WA-09 — resolução de chargeback atômica e financeiramente completa", () => {
+  const sql = read(MIGRATION);
+  const page = read("src/pages/AdminChargebacks.tsx");
+  const rpc = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION public.resolve_chargeback_case"));
+
+  it("exige admin e trava o caso na transação", () => {
+    expect(rpc).toMatch(/NOT public\.is_admin_user\(\)/);
+    expect(rpc).toMatch(/pg_advisory_xact_lock\(hashtextextended\('chargeback:'/);
+    expect(rpc).toMatch(/FOR UPDATE/);
+  });
+
+  it("não reabre nem reprocessa caso encerrado (idempotência de estado)", () => {
+    expect(rpc).toMatch(/ALREADY_RESOLVED/);
+    expect(rpc).toMatch(/v_case\.status IN \('won', 'lost'\)/);
+    expect(rpc).toMatch(/NO_CHANGE/);
+  });
+
+  it("ao ganhar, devolve venda, split e reserva (não só o débito)", () => {
+    const won = rpc.slice(rpc.indexOf("IF p_status = 'won'"));
+    expect(won).toMatch(/type = 'sale' AND status = 'canceled'/);
+    expect(won).toMatch(/type = 'chargeback' AND status <> 'canceled'/);
+    expect(won).toMatch(/split_entries[\s\S]{0,200}status = 'refunded'/);
+    expect(won).toMatch(/security_reserves[\s\S]{0,200}status = 'forfeited'/);
+  });
+
+  it("registra trilha de auditoria com as linhas afetadas", () => {
+    expect(rpc).toMatch(/INSERT INTO public\.chargeback_timeline/);
+    expect(rpc).toMatch(/INSERT INTO public\.audit_logs/);
+    expect(rpc).toMatch(/restored_sale_rows/);
+  });
+
+  it("a tela de admin não faz mais writes financeiros sequenciais", () => {
+    expect(page).toMatch(/resolve_chargeback_case/);
+    expect(page).not.toMatch(/from\("wallet_ledger"\)/);
+    expect(page).not.toMatch(/from\("split_entries"\)/);
+    expect(page).not.toMatch(/from\("chargeback_cases"\)[\s\S]{0,60}\.update\(/);
+  });
+
+  it("chargeback_timeline deixa de aceitar escrita do cliente", () => {
+    expect(sql).toMatch(/REVOKE ALL ON TABLE public\.chargeback_timeline FROM anon, authenticated/);
+  });
+});
