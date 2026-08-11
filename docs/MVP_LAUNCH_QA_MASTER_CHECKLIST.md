@@ -1113,3 +1113,115 @@ Legenda: **Cobertura** = automatizada hoje no repositório (arquivos em `src/tes
 Para cada caso executado, preencher: **Responsável**, **Data**, **Status**, **Evidência (link)** e **Bug vinculado**. Recomenda-se espelhar este documento em planilha com as mesmas colunas e IDs, mantendo o Markdown como fonte canônica dos casos e a planilha como registro de execução.
 
 **Total de casos catalogados:** 100 (rotas) + 50 (auth) + 22 (onboarding/planos) + 50 (produtos/curso) + 20 (loja) + 40 (checkout) + 40 (financeiro) + 20 (assinaturas) + 20 (afiliados) + 70 (Circles) + 20 (e-mail/leads) + 20 (integrações) + 12 (ops) + 54 (segurança) + 35 (não funcional) + 14 (financeiro real) + 22 (infra) = **609 itens verificáveis**.
+
+---
+
+## 26. Fechamento da revisão técnica da Onda 0 — 2026-08-11 (UTC)
+
+**HEAD verificado:** `68f2afbd` ("Revisão RPC Security por sig"). Histórico confirmado contendo `529448c2` ("Corrigiu cron_runs e key rotas") e `68f2afbd`. Árvore de trabalho limpa no início da rodada.
+
+### 26.1 Revisão das quatro Edge Functions pendentes (código revisado, NÃO publicado)
+
+| Função | Verificação de código | Status |
+|---|---|---|
+| `create-asaas-account` | Kill-switch ativo: `OPTIONS` responde CORS e qualquer outro método retorna **410 `deprecated`** antes de qualquer chamada ao Asaas. Nenhum caminho cria subconta. Cabeçalho documenta a decisão de custódia + ledger interno. | APROVADO NO CÓDIGO · **AGUARDANDO AUTORIZAÇÃO DE DEPLOY** |
+| `reconcile-asaas` | `startCronRun(req)` no início; `finish("FAILED", …)` no early-return de `ASAAS_API_KEY` ausente, `finish("SUCCESS", …)` com `duration_ms` no caminho felizes e `finish("FAILED", …)` no `catch`. Todos os caminhos de saída instrumentados. | APROVADO NO CÓDIGO · **AGUARDANDO AUTORIZAÇÃO DE DEPLOY** |
+| `release-reserves` | `startCronRun` + `finish` em sucesso (com `summary`) e falha (com `duration_ms`). | APROVADO NO CÓDIGO · **AGUARDANDO AUTORIZAÇÃO DE DEPLOY** |
+| `subscription-health-daily` | `startCronRun` + `finish("SUCCESS", { alerts })` / `finish("FAILED", …, err.message)`. | APROVADO NO CÓDIGO · **AGUARDANDO AUTORIZAÇÃO DE DEPLOY** |
+
+Contrato de regressão que trava esse comportamento: `src/test/cron-audit-contract.test.ts` e `src/test/deprecated-functions-contract.test.ts` (verdes).
+
+### 26.2 Revisão das duas migrations de RPC (preparadas, NÃO aplicadas)
+
+| Arquivo | Conteúdo revisado | Status |
+|---|---|---|
+| `supabase/migrations/20260811052805_…sql` | Etapa 1: `REVOKE EXECUTE` por assinatura exata de `anon, authenticated` nas classes service/cron-only e trigger-only; `GRANT EXECUTE … TO service_role` explícito onde Edge Functions/cron dependem. Preserva RPCs de checkout anônimo e predicados de RLS. | REVISADO · **AGUARDANDO AUTORIZAÇÃO DE APLICAÇÃO** |
+| `supabase/migrations/20260811052931_…sql` | Etapa 2 (necessária): as funções mantinham `GRANT EXECUTE` para `PUBLIC`, então a etapa 1 sozinha não surtia efeito — prova registrada em 21.2 (`cleanup_rate_limits` executável por anon, HTTP 204). Faz `REVOKE … FROM PUBLIC` por assinatura e reconcede só a `authenticated`/`service_role` conforme a classificação. | REVISADO · **AGUARDANDO AUTORIZAÇÃO DE APLICAÇÃO** |
+
+Nenhuma migration foi aplicada nesta rodada. Nenhuma função foi publicada. Nenhum frontend foi publicado.
+
+### 26.3 Baseline reexecutado no HEAD `68f2afbd`
+
+| Verificação | Comando | Resultado |
+|---|---|---|
+| Typecheck | `tsgo --noEmit -p tsconfig.app.json` | 0 erros |
+| Testes específicos da Onda 0 | `vitest run cron-audit-contract deprecated-functions-contract rpc-exposure-contract` | verdes |
+| Suíte completa (antes da Onda 1) | `vitest run` | **36 arquivos / 360 testes** verdes |
+| Suíte completa (depois da Onda 1) | `vitest run` | **37 arquivos / 394 testes** verdes |
+| Build | `vite build` | OK (`built in ~13s`), sem segredo no bundle |
+
+---
+
+## 27. Onda 1 — Fundamentos: rotas, autenticação e onboarding — 2026-08-11 (UTC)
+
+Método: testes automatizados, inspeção read-only de código/config e smoke HTTP no preview local. **Nenhum usuário criado, nenhum e-mail enviado, nenhum dado alterado, nenhuma migration aplicada, nenhum deploy.**
+
+### 27.1 Achado P1 corrigido — open redirect no login do produtor
+
+| Campo | Registro |
+|---|---|
+| ID | **RT-OPENREDIRECT / AU-REDIRECT** |
+| Severidade | **P1** (phishing pós-login: sessão válida e usuário jogado em host externo) |
+| Evidência (sanitizada) | `src/pages/Login.tsx` usava `searchParams.get("redirect")` cru em três pontos (redirecionamento de usuário já logado, pós-`signInWithPassword` e pós-`mfa.verify`) e passava direto para `navigate()`. Alvos protocolo-relativos (`//host-externo`) e com contrabarra saem do domínio. `src/pages/AuthCallback.tsx` filtrava apenas `startsWith("/")` + `//`, sem bloquear `\` nem limitar tamanho. `MemberLogin.tsx` e `VerifyEmail.tsx` já usavam o sanitizador. |
+| Correção | Ambas as páginas passaram a usar `sanitizeReturnTarget()` (`src/lib/authVerification.ts`), único ponto de decisão do destino de retorno. Destino inválido cai no `resolveSmartRedirect` normal. |
+| Regressão | `src/test/wave1-routes-auth-contract.test.ts` — 9 alvos hostis rejeitados (`//evil.com`, `///evil.com`, `https://evil.com`, `javascript:`, `/\evil.com`, `\\evil.com`, `evil.com`, `mailto:`, path > 512) + contrato de código que exige que as 4 páginas de auth não leiam `redirect` sem sanitizar. |
+| Commit | Onda 1 (este diff) |
+| Status | **APROVADO após correção** |
+
+### 27.2 Casos executados
+
+| ID | Caso | Pri | Status | Evidência (sanitizada) |
+|---|---|---|---|---|
+| RT-001 | Catch-all `path="*"` → NotFound registrado | P0 | APROVADO | `src/App.tsx` contém `path="*"`; contrato no teste da Onda 1 |
+| RT-002 | Deep-link/reload de rotas públicas responde 200 (SPA fallback) | P0 | APROVADO | Smoke HTTP local: `/`, `/login`, `/signup`, `/forgot-password`, `/reset-password` → 200 |
+| RT-003 | Rota inexistente é servida pelo SPA (200 + 404 client-side), não 502/erro de build | P1 | APROVADO | `/this-route-does-not-exist-404` → 200; `routes-smoke.test.tsx` renderiza NotFound |
+| RT-004 | Rotas de criador sob `ProtectedRoute` (`/store/editor`, `/products/:id/course-builder`, `/billing/upgrade-flow`) | P0 | APROVADO | contrato de código no teste da Onda 1 |
+| RT-005 | Área admin exige `ProtectedRoute` + `AdminRoute` aninhados | P0 | APROVADO | contrato de código; bloco `<ProtectedRoute><AdminRoute>` |
+| RT-006 | `/login` permanece pública; `/onboarding` com `requireWorkspace={false}` | P1 | APROVADO | contrato de código |
+| RT-007 | Open redirect via `?redirect=` | P1 | APROVADO após correção | ver 27.1 |
+| AU-001 | Sem sessão → `/login` preservando origem (`state.from`) | P0 | APROVADO | `ProtectedRoute.tsx`; contrato |
+| AU-002 | E-mail não confirmado → `/verify-email` | P0 | APROVADO | `ProtectedRoute.tsx`; contrato |
+| AU-003 | Não redireciona para onboarding durante loading nem em `fetchError` de workspace (falso negativo por RLS) | P0 | APROVADO | guard `!workspaceLoading && !fetchError && !currentWorkspace` |
+| AU-004 | `SIGNED_OUT` devolve ao `/login`; listener limpo no unmount (sem leak/loop de sessão) | P0 | APROVADO | `AuthProvider.tsx`; contrato |
+| AU-005 | Rotas donas do próprio pós-login (`/join`, `/member/login`, `/auth/callback`, `/circles/:slug/about`) não sofrem navegação automática | P1 | APROVADO | `shouldSkipAutoRedirect`; contrato |
+| AU-006 | Login/signup sem magic link e sem OTP do Supabase (só código próprio de 4 dígitos) | P0 | APROVADO | contrato: ausência de `signInWithOtp`/`magiclink` em `Login`, `MemberLogin`, `Signup`; `auth-email-code.test.tsx` verde |
+| AU-007 | Login por e-mail+senha: sucesso, credencial inválida e sessão nula (por mock/contrato) | P0 | APROVADO | `src/test/auth.test.tsx` (8 testes) |
+| AU-008 | MFA/TOTP: challenge → verify → destino sanitizado | P1 | APROVADO | leitura de `Login.tsx` + contrato de destino |
+| AU-009 | Recuperação de senha: `resetPasswordForEmail` aponta para `${origin}/reset-password`; a rota exige contexto `recovery` e chama `updateUser` | P0 | APROVADO | contrato sobre `ForgotPassword.tsx` / `ResetPassword.tsx` |
+| ON-001 | `MEMBER` nunca cai no dashboard de criador (destino `/circles`, `/member` ou `/circles/explore`) | P0 | APROVADO | `smartRedirect.ts` + `account-roles.test.tsx` |
+| ON-002 | `PRODUCER` com workspace → `/dashboard`; sem workspace → `/onboarding` | P0 | APROVADO | `account-roles.test.tsx` |
+| ON-003 | Conta legada sem `account_type` usa inferência pelas tabelas reais | P1 | APROVADO | `account-roles.test.tsx` |
+| ON-004 | Conta híbrida (workspace + comunidade) não é tratada como consumidora | P0 | APROVADO | `isConsumerOnly` retorna false com workspace; contrato + teste |
+| ON-005 | Consumidor em área de criador recebe `ProducerUpgradePrompt`, não o onboarding | P0 | APROVADO | `ProtectedRoute.tsx`; contrato |
+| ON-006 | `nav intent` de comunidade tem prioridade máxima no destino pós-login | P1 | APROVADO | `account-roles.test.tsx` |
+| ON-007 | `/onboarding` sai de cena quando o workspace já existe | P1 | APROVADO | `Onboarding.tsx`; contrato |
+
+### 27.3 Bloqueados nesta rodada (exigem ação externa — não simulados)
+
+| ID | Caso | Motivo do bloqueio | Ação externa |
+|---|---|---|---|
+| AU-E2E-01 | Signup real de produtor com recebimento do código de 4 dígitos na caixa de entrada | Exige criar usuário real e enviar e-mail | **EXT-009** |
+| AU-E2E-02 | Recuperação de senha ponta a ponta (link real + troca de senha) | Exige caixa de e-mail real | **EXT-010** |
+| AU-E2E-03 | Login com Google (OAuth real, consentimento no provedor) | Exige conta Google e domínio autorizado | **EXT-011** |
+| AU-E2E-04 | Confirmação de que `ensure_producer_workspace` com advisory lock impede workspace duplicado sob concorrência | Migration ainda não aplicada | **EXT-012** (após autorização de aplicação) |
+| RT-E2E-01 | Deep-link em domínio publicado (`kivohub.com.br`) após deploy | Publicação proibida nesta rodada | **EXT-013** |
+
+### 27.4 Ações externas adicionais do Lucas (Onda 1)
+
+| ID | Instrução exata | Painel/URL | Valor esperado | Risco | Como comprovar |
+|---|---|---|---|---|---|
+| EXT-009 | Criar uma conta de produtor de teste em ambiente DEV e confirmar o código de 4 dígitos recebido | Preview Kivo → `/signup` | Código chega em < 2 min, conta confirmada, destino `/onboarding` | Baixo (usuário de teste) | Print do fluxo com e-mail mascarado + `user_account_types.account_type = PRODUCER` |
+| EXT-010 | Solicitar recuperação de senha para o usuário de teste e trocar a senha em `/reset-password` | Preview Kivo → `/forgot-password` | E-mail recebido, senha alterada, login novo funciona | Baixo | Print do formulário concluído + login posterior |
+| EXT-011 | Executar login com Google no preview e no domínio publicado | Supabase → Auth → Providers | Retorno em `/auth/callback` e destino coerente com o papel | Médio (config de domínio) | Print do callback + URL final |
+| EXT-012 | Autorizar a aplicação das duas migrations de RPC e da migration de advisory lock | Supabase → SQL/Migrations | `cron_secret` inacessível por anon; workspace único sob concorrência | **Alto** (permissões) | Reexecutar smoke anon: `rpc/cron_secret` → 404/403 |
+| EXT-013 | Autorizar deploy das 4 Edge Functions revisadas e publicação do frontend | Lovable → Publish · Supabase → Functions | `create-asaas-account` → 410; jobs com `cron_runs` populado | Médio | Logs das funções + tabela `cron_runs` |
+
+### 27.5 Contagens da Onda 1
+
+- Casos executados: **23** (RT 7 · AU 9 · ON 7) — **23 APROVADOS**, sendo **1 aprovado após correção**.
+- Casos **BLOQUEADOS** por dependência externa: **5** (AU-E2E-01..04, RT-E2E-01).
+- Falhas P0 encontradas: **0**. Falhas P1 encontradas e corrigidas: **1** (open redirect).
+- Testes: **394** verdes em **37** arquivos (+34 novos no contrato da Onda 1). Typecheck 0 erros. Build OK.
+- Arquivos alterados: `src/pages/Login.tsx`, `src/pages/AuthCallback.tsx`, `src/test/wave1-routes-auth-contract.test.ts` (novo), este checklist.
+- **AGUARDANDO AUTORIZAÇÃO DE DEPLOY:** 4 Edge Functions (`create-asaas-account`, `reconcile-asaas`, `release-reserves`, `subscription-health-daily`), 2 migrations de RPC, 1 migration de advisory lock, publicação do frontend.
+- Próximo bloco recomendado: **Onda 2 — produtos, cursos e entrega (PR/CB)**, mantendo pagamentos fora de escopo.
