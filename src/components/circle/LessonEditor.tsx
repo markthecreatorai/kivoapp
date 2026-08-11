@@ -260,13 +260,17 @@ export default function LessonEditor({ lesson, isAdmin, courseId, memberId, onMa
   const handleFileUpload = async (file: globalThis.File) => {
     setUploadingFile(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Sessão expirada"); return; }
       const ext = file.name.split(".").pop();
-      const path = `classroom/${courseId}/${lesson.id}_${Date.now()}.${ext}`;
+      // Bucket privado: primeira pasta precisa ser o `auth.uid()` (RLS).
+      const path = `${user.id}/classroom/${courseId}/${lesson.id}_${Date.now()}.${ext}`;
       const { data, error } = await supabase.storage.from("private-files").upload(path, file);
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("private-files").getPublicUrl(data.path);
       addResource({ type: "file", label: file.name, fileUrl: urlData.publicUrl });
       toast.success("Arquivo enviado!");
+
     } catch (e: any) {
       toast.error("Erro ao enviar arquivo");
     } finally {
