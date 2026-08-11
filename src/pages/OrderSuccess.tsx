@@ -5,6 +5,9 @@ import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, Download, GraduationCap, Calendar, Mail, Clock, XCircle } from "lucide-react";
 import confetti from "canvas-confetti";
+import { toast } from "sonner";
+import { isPrivateFileUrl, getSignedPrivateUrl } from "@/lib/private-files";
+
 
 interface OrderData {
   id: string;
