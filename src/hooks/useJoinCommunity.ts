@@ -174,54 +174,18 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
           : emailCheck.error || "Email inválido");
         throw new Error(emailCheck.error || "Email inválido");
       }
+      if (formData.password.length < 8) {
+        toast.error("A senha precisa ter pelo menos 8 caracteres");
+        throw new Error("Senha muito curta");
+      }
 
       setExistingSignupState(null);
-      const response = await supabase.auth.signUp({
-        email: emailCheck.email,
-        password: formData.password,
-        options: {
-          data: {
-            display_name: formData.display_name,
-            is_creator: false,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      const outcome = resolveAuthSignupOutcome(response as any);
-      try { trackEvent(SIGNUP_OUTCOME_TELEMETRY[outcome.kind], { surface: "community_modal" }); } catch {}
-
-      // Bloqueia caminhos de "já cadastrado" — NÃO redireciona para verify-email.
-      if (outcome.kind === "already_registered_confirmed") {
-        setExistingSignupState({ kind: "confirmed", email: emailCheck.email });
-        toast.error("Este email já está cadastrado. Faça login ou redefina sua senha.");
-        throw new Error(outcome.message);
-      }
-      if (outcome.kind === "already_registered_unconfirmed") {
-        setExistingSignupState({ kind: "unconfirmed", email: emailCheck.email });
-        toast.error("Este email já está cadastrado mas ainda não foi confirmado. Reenvie o email de verificação.");
-        throw new Error(outcome.message);
-      }
-      if (outcome.kind === "invalid_email") {
-        toast.error(outcome.message);
-        throw new Error(outcome.message);
-      }
-      if (outcome.kind === "generic_error") {
-        toast.error(outcome.message);
-        throw new Error(outcome.message);
-      }
-
-      const authData = response.data!;
-      if (!authData.user) throw new Error("Falha ao criar conta");
 
       const status = community.require_approval && !inviteCode ? "PENDING" : "ACTIVE";
-      const displayName = formData.display_name || formData.email.split("@")[0];
+      const displayName = formData.display_name || emailCheck.email.split("@")[0];
+      const returnTarget = status === "PENDING" ? "/circles" : `/circles/${communitySlug}/feed`;
 
-      sessionStorage.setItem(
-        "kivo_nav_intent",
-        JSON.stringify({ origin: "community", community_slug: communitySlug, timestamp: Date.now() })
-      );
-
+      // A entrada na comunidade fica pendente e é concluída após a confirmação.
       savePendingCommunityJoin({
         communityId: community.id,
         communitySlug,
@@ -231,73 +195,82 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
         joinAnswers,
       });
 
-      if (authData.session?.user) {
-        await completePendingCommunityJoin(authData.user.id);
+      const result = await requestVerificationCode({
+        email: emailCheck.email,
+        password: formData.password,
+        fullName: displayName,
+        accountType: "MEMBER",
+        flowOrigin: "circles",
+        returnTarget,
+        mode: "signup",
+      });
 
-        if (memberRefCode && status === "ACTIVE") {
-          const refLink = await validateMemberRef(memberRefCode);
-          if (refLink && refLink.community_id === community.id) {
-            await grantInviteBonus(
-              community.id,
-              refLink.member_id,
-              authData.user.id,
-              refLink.id,
-              "joined"
-            );
-          }
-        }
+      try { trackEvent("auth.verification_code_sent", { surface: "community_modal", kind: result.kind }); } catch {}
 
-        toast.success(
-          status === "PENDING"
-            ? "Conta criada! Sua entrada na comunidade aguarda aprovação."
-            : "Conta criada! Bem-vindo à comunidade."
-        );
-
-        navigate(status === "PENDING" ? "/circles" : `/circles/${communitySlug}/feed`);
+      if (result.kind === "code_sent" || result.kind === "cooldown") {
+        savePendingVerification({
+          email: emailCheck.email,
+          accountType: "MEMBER",
+          flowOrigin: "circles",
+          returnTarget,
+        });
+        setPendingVerification({
+          email: emailCheck.email,
+          password: formData.password,
+          returnTarget,
+          cooldown: result.kind === "code_sent" ? result.cooldownSeconds : result.retryAfterSeconds,
+        });
         return;
       }
 
-      toast.success(
-        status === "PENDING"
-          ? "Conta criada! Confirme seu email para enviar sua solicitação à comunidade."
-          : "Conta criada! Confirme seu email para acessar a comunidade."
-      );
-      navigate(`/verify-email?redirect=/circles/${communitySlug}/feed`);
+      const message =
+        result.kind === "rate_limited"
+          ? "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente."
+          : result.kind === "invalid_email"
+          ? "Confira o endereço de e-mail digitado."
+          : result.kind === "weak_password"
+          ? "A senha precisa ter pelo menos 8 caracteres."
+          : result.message;
+      toast.error(message);
+      throw new Error(message);
     } catch (err: any) {
-      // Toast já mostrado nos branches específicos; aqui evitamos duplicar.
-      if (!err?.message?.match(/já está cadastrado|erro de digitação|Este email/i)) {
-        toast.error(err.message || "Erro ao criar conta. Tente novamente.");
-      }
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const resendCommunityVerification = async () => {
-    if (!existingSignupState || existingSignupState.kind !== "unconfirmed" || resendCooldown > 0) return;
-    setResendingVerification(true);
-    try {
-      trackEvent("auth.resend_clicked", { surface: "community_join", email: existingSignupState.email });
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: existingSignupState.email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
-
-      if (error) {
-        trackEvent("auth.resend_failed", { surface: "community_join", error_message: error.message });
-        toast.error(error.message);
-        return;
-      }
-
-      trackEvent("auth.resend_success", { surface: "community_join" });
-      toast.success("Email reenviado! Verifique sua caixa de entrada e spam.");
-      setResendCooldown(60);
-    } finally {
-      setResendingVerification(false);
+  /** Cria a sessão após o código correto e conclui a entrada na comunidade. */
+  const completeVerifiedSignup = async (next: string | null) => {
+    if (!pendingVerification) return;
+    const { email, password, returnTarget } = pendingVerification;
+    const { data, error } = await signInAfterVerification(email, password);
+    clearPendingVerification();
+    setPendingVerification(null);
+    const dest = next || returnTarget;
+    if (error || !data?.user) {
+      window.location.href = `/member/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(dest)}`;
+      return;
     }
+    try {
+      await completePendingCommunityJoin(data.user.id);
+      if (memberRefCode) {
+        const refLink = await validateMemberRef(memberRefCode);
+        if (refLink) {
+          await grantInviteBonus(refLink.community_id, refLink.member_id, data.user.id, refLink.id, "joined");
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao concluir entrada na comunidade:", e);
+    }
+    window.location.href = dest;
   };
+
+  const resendCommunityVerification = async () => {
+    // Reenvio agora acontece dentro do modal de código de 4 dígitos.
+    return;
+  };
+
 
   const joinAsExistingUser = async (userId: string, community: any, joinAnswers: JoinAnswers = []) => {
     setIsLoading(true);
