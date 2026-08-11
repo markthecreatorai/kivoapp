@@ -1,5 +1,10 @@
 // Valida o código de 4 dígitos e confirma o e-mail via Admin API (idempotente).
 // Nunca cria sessão aqui: o cliente faz signInWithPassword com a senha em memória.
+//
+// Templates nativos do Supabase (Confirm signup / Magic Link) NÃO disparam neste
+// fluxo: a conta é criada por Admin API (email_confirm: false) e o app nunca chama
+// signUp, signInWithOtp nem auth.resend. O único link nativo preservado é o de
+// recuperação de senha (resetPasswordForEmail).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeadersFor } from "../_shared/cors.ts";
 import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
