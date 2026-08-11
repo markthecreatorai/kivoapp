@@ -107,10 +107,10 @@ Deno.serve(async (req) => {
       ledger_released: ledgerReleased,
       ledger_released_amount_cents: ledgerAmount,
       reserves_due: dueReserves?.length || 0,
-      reserves_released: reservesReleased,
-      reserves_released_amount_cents: reservesAmount,
+      reserves_released: 0,
+      reserves_released_amount_cents: 0,
       reserves_held_by_chargeback: reservesHeldByChargeback,
-      reserve_credits_skipped_idempotent: reserveCreditsSkipped,
+      reserves_needs_product_decision: reservesNeedsProductDecision,
     };
     console.log(JSON.stringify(summary));
     await run.finish("SUCCESS", summary);
