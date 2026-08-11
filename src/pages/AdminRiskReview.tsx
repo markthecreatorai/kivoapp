@@ -79,11 +79,20 @@ export default function AdminRiskReview() {
       // A tabela payout_requests é somente leitura para o cliente (RLS só tem SELECT):
       // o UPDATE direto daqui era um no-op silencioso. A decisão de risco roda
       // server-side em uma transação (admin, revisor ≠ solicitante, débito no ledger).
-      const { data, error } = await supabase.rpc("review_payout_request", {
-        p_payout_request_id: payoutId,
-        p_action: action,
-        p_reason: reviewNote || null,
-      });
+      // O cast existe porque a migration 20260811090000 (RPC de revisão) ainda
+      // não foi aplicada, então os tipos gerados não a conhecem.
+      const { data, error } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+        "review_payout_request",
+        {
+          p_payout_request_id: payoutId,
+          p_action: action,
+          p_reason: reviewNote || null,
+        },
+      );
+
       if (error) throw error;
 
       const outcome = String((data as { outcome?: string } | null)?.outcome ?? "");
