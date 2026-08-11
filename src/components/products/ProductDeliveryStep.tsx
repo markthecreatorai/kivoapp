@@ -20,12 +20,20 @@ export function ProductDeliveryStep({ form, updateForm }: Props) {
     if (!files.length) return;
     setUploading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sessão expirada. Entre novamente para enviar arquivos.");
+        return;
+      }
       const uploaded = await Promise.all(
         files.map(async (file) => {
-          const path = `deliveries/${Date.now()}-${file.name}`;
+          // O bucket privado exige o prefixo `auth.uid()` na primeira pasta (RLS).
+          const path = `${user.id}/deliveries/${Date.now()}-${file.name}`;
           const { error } = await supabase.storage.from("private-files").upload(path, file);
           if (error) throw error;
-          return { name: file.name, url: path, size: file.size };
+          // Guardamos o caminho canônico com o bucket para que os consumidores
+          // detectem o arquivo como privado e solicitem URL assinada.
+          return { name: file.name, url: `private-files/${path}`, size: file.size };
         })
       );
       updateForm({ deliveryFiles: [...form.deliveryFiles, ...uploaded] });
@@ -36,6 +44,7 @@ export function ProductDeliveryStep({ form, updateForm }: Props) {
       setUploading(false);
     }
   };
+
 
   const removeFile = (index: number) => {
     updateForm({ deliveryFiles: form.deliveryFiles.filter((_, i) => i !== index) });

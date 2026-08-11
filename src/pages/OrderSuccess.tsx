@@ -5,6 +5,9 @@ import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, Download, GraduationCap, Calendar, Mail, Clock, XCircle } from "lucide-react";
 import confetti from "canvas-confetti";
+import { toast } from "sonner";
+import { isPrivateFileUrl, getSignedPrivateUrl } from "@/lib/private-files";
+
 
 interface OrderData {
   id: string;
@@ -33,6 +36,8 @@ export default function OrderSuccess() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
   const [confettiFired, setConfettiFired] = useState(false);
 
   const fetchOrder = useCallback(async () => {
@@ -229,6 +234,21 @@ export default function OrderSuccess() {
     return null;
   };
 
+  const handleDigitalDownload = async () => {
+    if (!downloadUrl || !product) return;
+    setDownloading(true);
+    try {
+      const target = isPrivateFileUrl(downloadUrl)
+        ? await getSignedPrivateUrl({ path: downloadUrl, productId: product.id })
+        : downloadUrl;
+      window.open(target, "_blank");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível liberar o arquivo");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const renderDeliveryAction = () => {
     if (!product || !isPaid) return null;
 
@@ -238,15 +258,17 @@ export default function OrderSuccess() {
     if (t === "DIGITAL" || t === "DIGITAL_PRODUCT") {
       return (
         <Button
-          onClick={() => downloadUrl && window.open(downloadUrl, "_blank")}
-          disabled={!downloadUrl}
+          onClick={handleDigitalDownload}
+          disabled={!downloadUrl || downloading}
           className="w-full h-14 text-base font-bold bg-green-600 hover:bg-green-700 gap-2"
         >
-          <Download className="w-5 h-5" />
+          {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
           Baixar Arquivo
         </Button>
       );
     }
+
+
 
     // Courses / memberships
     if (t === "COURSE" || t === "ECOURSE" || t === "MEMBERSHIP" || t === "SERVICE") {
