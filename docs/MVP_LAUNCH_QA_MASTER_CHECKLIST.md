@@ -1441,6 +1441,7 @@ Baseline: 622 testes verdes, typecheck limpo, build OK (15.97s).
 | P0-WA-02 | Duas convenções de sinal coexistindo: Edge Function gravava `withdrawal` positivo, `CashOutModal` gravava negativo. Qualquer soma estava errada em um dos caminhos. | `create-payout-request/index.ts` vs `CashOutModal.tsx` | Trigger `fn_wallet_ledger_normalize_sign` normaliza débitos para `abs()` |
 | P0-WA-03 | `withdrawals` (legada) aceitava INSERT direto do cliente, sem validação de saldo, sem posse da conta bancária e sem processador — e o INSERT complementar em `wallet_ledger` era negado pela RLS, deixando saques fantasma sem débito. Nenhum job consome a tabela. | RLS: só `SELECT` em `wallet_ledger`; `withdrawals` tinha política de INSERT | Tabela vira somente leitura; front passa a chamar `create-payout-request` |
 | P0-WA-04 | Criação de saque não transacional (`SELECT` saldo → `INSERT`): duas requisições concorrentes liam o mesmo saldo e criavam dois saques. | `create-payout-request/index.ts` (fluxo antigo) | RPC `create_payout_request_atomic` com `pg_advisory_xact_lock` + débito no mesmo commit |
+| P0-WA-09 | Resolução de chargeback em `AdminChargebacks` era uma sequência de writes do cliente (`chargeback_cases` → `chargeback_timeline` → `split_entries` → `wallet_ledger`), sem atomicidade, sem checagem de admin no servidor, sem transição válida e barrada pela RLS. Pior: ao **ganhar** a disputa o fluxo restaurava o split e cancelava o débito, mas deixava o crédito da venda `canceled` (o webhook o cancela) e a reserva `forfeited` — o produtor vencia a disputa e continuava sem o dinheiro. | `AdminChargebacks.tsx` + `webhook-asaas` (handler de chargeback) | RPC `resolve_chargeback_case`: admin-only, advisory lock, idempotente por estado, devolve venda + split + reserva + transação |
 | P0-WA-08 | `release-reserves` (diário 08:00) e `release-holds` (horário :40) disputavam as mesmas linhas de `reserve_entries`; só `release-holds` creditava o `wallet_ledger`. Quando `release-reserves` vencia a corrida, a reserva era marcada `released` **sem crédito** — o produtor perdia o valor. Pior: `security_reserves` nunca era creditada por ninguém. | `cron.job` + código das duas funções | `release-reserves` passa a cuidar só de `security_reserves`, com crédito idempotente por reserva |
 
 ### 31.2 Achados P1
@@ -1461,6 +1462,6 @@ Baseline: 622 testes verdes, typecheck limpo, build OK (15.97s).
 ### 31.4 Artefatos
 
 - Migration **não aplicada**: `supabase/migrations/20260811090000_wave4_wallet_payout_hardening.sql`
-- Testes: `src/test/wave4-wallet-payout-contract.test.ts` (25 casos)
-- Código: `create-payout-request`, `release-reserves`, `CashOutModal.tsx`, `AdminRiskReview.tsx`
+- Testes: `src/test/wave4-wallet-payout-contract.test.ts` (31 casos)
+- Código: `create-payout-request`, `release-reserves`, `CashOutModal.tsx`, `AdminRiskReview.tsx`, `AdminChargebacks.tsx`
 - Pendência de rollout: aplicar a migration **antes** de fazer deploy das Edge Functions desta onda (a RPC precisa existir).
