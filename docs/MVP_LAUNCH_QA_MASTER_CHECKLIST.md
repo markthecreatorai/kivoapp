@@ -1262,7 +1262,7 @@ Método: testes automatizados, inspeção read-only de código/config e smoke HT
 | ID | Caso | Status | Evidência |
 |---|---|---|---|
 | CB-RLS-001 | RLS de `courses`/`course_modules`/`course_lessons` | APROVADO | Todas as operações condicionadas a `is_workspace_member(courses.workspace_id)`. |
-| CB-REORDER-IDOR | Reordenação autorizada apenas para o dono do curso | **REPROVADO — AGUARDANDO AUTORIZAÇÃO DE MIGRATION** | `pg_get_functiondef` mostra `batch_reorder_lessons/modules` como `SECURITY DEFINER` fazendo `UPDATE ... WHERE id = ...` **sem checagem de dono** → escrita cross-tenant (contorna a RLS). SQL de correção preparada em `docs/pending-sql/onda2-batch-reorder-ownership-guard.sql` (reaplica `is_workspace_member` dentro da função). Não aplicada nesta rodada. |
+| CB-REORDER-IDOR | Reordenação autorizada apenas para o dono do curso | **REPROVADO — AGUARDANDO AUTORIZAÇÃO DE MIGRATION** | `pg_get_functiondef` mostra `batch_reorder_lessons/modules` como `SECURITY DEFINER` fazendo `UPDATE ... WHERE id = ...` **sem checagem de dono** → escrita cross-tenant (contorna a RLS). Correção agora **versionada** em `supabase/migrations/20260811070000_batch_reorder_fail_closed_ownership_guard.sql` (fail-closed e atômica; ver seção 29.1). Ainda **não aplicada**. |
 | CB-PROG-001 | Progresso, retomada, quiz e certificado | APROVADO | Suítes `course-builder.test.ts`, `course-builder-integration.test.tsx` verdes; certificados legíveis só pelo aluno (por e-mail do JWT) ou pelo workspace dono. |
 
 ### 28.5 Regressão adicionada
@@ -1279,5 +1279,71 @@ Método: testes automatizados, inspeção read-only de código/config e smoke HT
 
 | ID | Instrução | Painel | Risco se ignorado |
 |---|---|---|---|
-| EXT-014 | Autorizar aplicação da SQL `docs/pending-sql/onda2-batch-reorder-ownership-guard.sql` (correção de IDOR na reordenação de módulos/aulas) | Lovable → migration tool | ALTO: usuário autenticado de outro workspace pode reordenar aulas de cursos alheios |
+| EXT-014 | Autorizar aplicação da migration `supabase/migrations/20260811070000_batch_reorder_fail_closed_ownership_guard.sql` (correção de IDOR na reordenação de módulos/aulas) | Lovable → migration tool | ALTO: usuário autenticado de outro workspace pode reordenar aulas de cursos alheios |
 | EXT-015 | Autorizar publicação do frontend para que as correções de upload/assinatura de entrega cheguem a produção | Lovable → Publish | ALTO: hoje o upload de entregável de produto digital falha por RLS em produção |
+
+---
+
+## 29. Onda 2 — Revisão técnica complementar — 2026-08-11 (UTC)
+
+| Campo | Valor |
+|---|---|
+| Commit-base da revisão | `52bb8e6d1f7e578f6010ea2a3a29828cd33b928e` |
+| Escopo | Reabertura dos 5 achados da revisão. Sem deploy, sem publicação, sem migration aplicada, sem transação real. |
+
+### 29.1 P0 CB-REORDER-IDOR — migration versionada, fail-closed e atômica
+
+- SQL solto removido: `docs/pending-sql/` **não existe mais** (a pasta era um caminho paralelo ao versionamento e podia ser aplicada fora de ordem).
+- Arquivo canônico: `supabase/migrations/20260811070000_batch_reorder_fail_closed_ownership_guard.sql` — **preparado, não aplicado** (aguarda EXT-014).
+- Semântica **fail-closed**: a função valida o payload (array, `uuid` válido, `position >= 0`, sem ids duplicados), carrega os itens em tabela temporária `ON COMMIT DROP` e compara `count(*)` do payload com o `count(*)` dos itens que passam por `JOIN courses ... WHERE is_workspace_member(c.workspace_id)`. Se **um único** id for inexistente ou de outro workspace, levanta `EXCEPTION 42501` **antes** de qualquer `UPDATE`.
+- **Atomicidade**: o `UPDATE ... FROM` é uma única instrução executada só após a autorização; como a função roda dentro da transação da chamada, qualquer exceção reverte tudo (não existe reordenação parcial).
+- Predicado de autorização = `is_workspace_member`, exatamente o mesmo já vigente nas policies de `course_modules`/`course_lessons` — nenhum papel novo inventado.
+- `anon`/`PUBLIC` sem `EXECUTE`; `authenticated` e `service_role` mantidos.
+
+### 29.2 Entrega em `OrderSuccess` — o comprador convidado NÃO tem sessão (nenhum bypass criado)
+
+| Pergunta | Resposta com evidência |
+|---|---|
+| O comprador convidado tem sessão ao cair em `/order/success/:id`? | **Não.** O checkout aceita compra sem login; nenhuma sessão é criada no sucesso. |
+| Então a leitura do pedido funciona? | **Não.** A RLS de `orders` libera leitura apenas para o comprador autenticado (e-mail do JWT) ou para o workspace dono. Sem sessão, a query retorna vazio → a tela cai em "Pedido não encontrado". |
+| Isso significa que a correção 401 quebrou o fluxo? | O fluxo de download por link cru **já estava quebrado** (403 do bucket privado). A correção não introduziu regressão: ela tornou o estado real explícito. |
+| Como ficou | Sem sessão: tela "Entre para ver seu pedido" + CTA de login com `return_target` sanitizado para `/order/success/:id`. Com sessão e sem URL de arquivo visível (o `file_url` de `digital_assets` só é legível pelo workspace dono): CTA para `/member/library`, que resolve entitlement e gera URL assinada. |
+| Bypass | **Nenhum.** `sign-private-file` continua exigindo `Authorization: Bearer` + `auth.getClaims(token)`; não foi criado token público, nem rota anônima, nem bucket público. |
+| Pendência de produto (não de código) | Para o convidado receber o arquivo é preciso vincular a compra a uma identidade (criação de conta pós-compra por e-mail da ordem ou link assinado enviado por e-mail). Registrado como decisão de produto — fora do escopo desta revisão. |
+
+### 29.3 Integridade em `CreateProduct` — fim do "publicado incompleto"
+
+- Antes: `prices` e `subscription_plans` falhavam apenas com `console.error`, e `product_media`/`digital_assets`/`commission_rules` sem checagem alguma — o produto era criado já `PUBLISHED` e a UI dizia "publicado com sucesso" mesmo sem preço ou entregável.
+- Agora: o produto **nasce sempre `DRAFT`**; dependências obrigatórias (`prices`, `subscription_plans` quando recorrente, `digital_assets` quando há arquivos) **lançam erro** e abortam a publicação; o `status = PUBLISHED` é um `UPDATE` posterior, só com o produto íntegro. Nada de toast de sucesso em caminho de falha.
+- Dependências não essenciais (`product_media`, `commission_rules`) avisam via `toast.warning` e não bloqueiam.
+- Regra nova: publicar `DIGITAL`/`LEAD_MAGNET` exige arquivo **ou** URL de entrega (`hasRequiredDelivery`), evitando produto vendável sem entrega.
+
+### 29.4 Uploads — limite real, blocklist e cleanup de órfãos
+
+| Item | Antes | Agora |
+|---|---|---|
+| Limite anunciado | "Até 2GB por arquivo" (falso) | `MAX_UPLOAD_LABEL` = **50 MB**, o limite global do projeto (nenhum bucket define `file_size_limit`) |
+| Validação client-side | inexistente | `validateUploadFile`: nome válido, sem traversal/separadores, tamanho > 0, `<= 50 MB`, blocklist de extensão |
+| Blocklist | inexistente | `BLOCKED_EXTENSIONS` cobre executáveis (`exe`, `msi`, `bat`, `sh`, `dll`…), scripts (`js`, `php`, `py`, `ps1`…) e ativos que executam no navegador (`html`, `svg`) |
+| Nome do objeto | `Date.now()-file.name` cru | `safeObjectName()`: normalizado, sem caracteres hostis, stem limitado, sufixo único |
+| Órfãos no bucket | remover da lista deixava o arquivo no storage | `removeFile` chama `storage.remove([path])` com `toStorageObjectPath`; o prefixo `auth.uid()` garante que ninguém apaga arquivo de terceiro |
+| Input | mantinha o valor após erro | `e.target.value = ""` sempre, permitindo reenvio do mesmo arquivo |
+
+### 29.5 Regressão comportamental adicionada
+
+- `src/test/wave2-review-behavior.test.ts` (**29 casos**) exercita as funções puras — não só strings: fronteira exata de 50 MB, arquivo vazio, traversal, blocklist inteira iterada, case-insensitive, unicidade e sanitização de `safeObjectName`, extração de path para cleanup, matriz de `hasRequiredDelivery` por tipo, `buildLoginHref` com vetores hostis (`https://evil.com`, `//evil.com`, `javascript:`) e as garantias da migration de reorder.
+
+### 29.6 Baseline da revisão
+
+- Typecheck (`tsgo --noEmit`): **0 erros**.
+- Vitest: **438 testes / 39 arquivos** verdes (era 409/38).
+- Nenhuma migration aplicada, nenhuma Edge Function publicada, frontend não publicado.
+
+### 29.7 Riscos residuais
+
+| Risco | Severidade | Situação |
+|---|---|---|
+| Reordenação cross-tenant continua explorável em produção até EXT-014 | ALTO | Correção pronta e testada, aguardando autorização de migration |
+| Comprador convidado não consegue baixar o entregável sem criar conta | MÉDIO | Decisão de produto pendente; nenhum bypass será criado |
+| Limite de 50 MB pode ser pequeno para vídeo/curso pesado | MÉDIO | Elevar o limite no painel Supabase e atualizar `MAX_UPLOAD_BYTES` juntos (ação externa) |
+| Órfãos anteriores à correção seguem no bucket | BAIXO | Varredura de limpeza a agendar depois do go-live |

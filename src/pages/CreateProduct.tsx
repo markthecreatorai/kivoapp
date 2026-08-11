@@ -43,6 +43,17 @@ export interface ProductFormData {
   billingInterval: "monthly" | "quarterly" | "yearly";
   trialDays: number;
 }
+/**
+ * Regra de produto (Onda 2): DIGITAL e LEAD_MAGNET só podem ser publicados
+ * com entrega válida — pelo menos um arquivo no bucket privado OU uma URL
+ * externa de entrega. Outros tipos entregam por outros meios (curso,
+ * agendamento, comunidade) e não são bloqueados aqui.
+ */
+export function hasRequiredDelivery(form: Pick<ProductFormData, "type" | "deliveryFiles" | "deliveryUrl">): boolean {
+  if (form.type !== "DIGITAL" && form.type !== "LEAD_MAGNET") return true;
+  return form.deliveryFiles.length > 0 || form.deliveryUrl.trim().length > 0;
+}
+
 
 const INITIAL_FORM: ProductFormData = {
   type: "",
@@ -132,6 +143,12 @@ export default function CreateProduct() {
       setStep(2);
       return;
     }
+    // Regra de produto: entregável digital é obrigatório para publicar.
+    if (status === "PUBLISHED" && !hasRequiredDelivery(form)) {
+      toast.error("Adicione o arquivo (ou a URL) de entrega antes de publicar.");
+      setStep(3);
+      return;
+    }
 
     // Plan limit check
     if (!planInfo.canCreateProduct) {
@@ -152,12 +169,15 @@ export default function CreateProduct() {
     try {
       const slug = slugify(form.name) || "produto";
 
+      // O produto nasce SEMPRE como DRAFT. A publicação só acontece depois
+      // que todas as dependências obrigatórias (preço, plano, entregáveis)
+      // forem gravadas com sucesso — nada de publicar estado incompleto.
       const { data: product, error: productError } = await supabase
         .from("products")
         .insert({
           workspace_id: currentWorkspace.id,
           type: form.type as ProductType,
-          status,
+          status: "DRAFT",
           name: form.name,
           slug: slug + "-" + Date.now().toString(36),
           description: form.description || null,
@@ -168,61 +188,87 @@ export default function CreateProduct() {
         .single();
 
       if (productError) throw productError;
+      if (!product) throw new Error("Produto não pôde ser criado.");
 
-      // Create price
-      if (product) {
-        const isMembership = form.type === "COURSE" && form.billingInterval !== undefined && form.price > 0;
-        const priceType = isMembership ? "RECURRING" : "ONE_TIME";
+      const isMembership = form.type === "COURSE" && form.billingInterval !== undefined && form.price > 0;
+      const priceType = isMembership ? "RECURRING" : "ONE_TIME";
 
-        const { error: priceError } = await supabase.from("prices").insert({
+      // ── Dependências OBRIGATÓRIAS (falha = não publica, não diz sucesso) ──
+      const { error: priceError } = await supabase.from("prices").insert({
+        product_id: product.id,
+        amount: form.isFree ? 0 : form.price,
+        compare_at_amount: form.compareAtPrice,
+        pix_discount_percent: form.pixDiscount,
+        max_installments: form.maxInstallments,
+        type: priceType,
+      });
+      if (priceError) {
+        throw new Error(
+          `Rascunho criado, mas o preço não foi salvo (${priceError.message}). Abra o produto e revise o preço.`,
+        );
+      }
+
+      if (isMembership) {
+        const { error: planError } = await supabase.from("subscription_plans").insert({
           product_id: product.id,
-          amount: form.isFree ? 0 : form.price,
-          compare_at_amount: form.compareAtPrice,
-          pix_discount_percent: form.pixDiscount,
-          max_installments: form.maxInstallments,
-          type: priceType,
+          billing_interval: form.billingInterval,
+          trial_days: form.trialDays,
         });
-        if (priceError) console.error("Price error:", priceError);
-
-        // Create subscription plan for memberships
-        if (isMembership) {
-          const { error: planError } = await supabase.from("subscription_plans").insert({
-            product_id: product.id,
-            billing_interval: form.billingInterval,
-            trial_days: form.trialDays,
-          });
-          if (planError) console.error("Plan error:", planError);
-        }
-
-        // Save gallery
-        if (form.galleryUrls.length > 0) {
-          const mediaInserts = form.galleryUrls.map((url, i) => ({
-            product_id: product.id,
-            url,
-            position: i,
-          }));
-          await supabase.from("product_media").insert(mediaInserts);
-        }
-
-        // Save delivery files
-        if (form.deliveryFiles.length > 0) {
-          const assetInserts = form.deliveryFiles.map((f) => ({
-            product_id: product.id,
-            file_name: f.name,
-            file_url: f.url,
-            file_size_bytes: f.size,
-          }));
-          await supabase.from("digital_assets").insert(assetInserts);
+        if (planError) {
+          throw new Error(
+            `Rascunho criado, mas o plano de assinatura não foi salvo (${planError.message}).`,
+          );
         }
       }
 
-      // Save commission rule for affiliates
-      if (product && form.affiliateEnabled && form.affiliateCommission > 0) {
-        await supabase.from("commission_rules").upsert({
+      if (form.deliveryFiles.length > 0) {
+        const assetInserts = form.deliveryFiles.map((f) => ({
+          product_id: product.id,
+          file_name: f.name,
+          file_url: f.url,
+          file_size_bytes: f.size,
+        }));
+        const { error: assetError } = await supabase.from("digital_assets").insert(assetInserts);
+        if (assetError) {
+          throw new Error(
+            `Rascunho criado, mas os arquivos de entrega não foram vinculados (${assetError.message}).`,
+          );
+        }
+      }
+
+      // ── Dependências OPCIONAIS (avisam, não bloqueiam) ──
+      if (form.galleryUrls.length > 0) {
+        const mediaInserts = form.galleryUrls.map((url, i) => ({
+          product_id: product.id,
+          url,
+          position: i,
+        }));
+        const { error: mediaError } = await supabase.from("product_media").insert(mediaInserts);
+        if (mediaError) toast.warning("Galeria não foi salva. Você pode reenviar no editor.");
+      }
+
+      if (form.affiliateEnabled && form.affiliateCommission > 0) {
+        const { error: commissionError } = await supabase.from("commission_rules").upsert({
           product_id: product.id,
           percent: Math.min(Math.max(form.affiliateCommission, 1), 80),
           is_active: true,
         }, { onConflict: "product_id" });
+        if (commissionError) {
+          toast.warning("Regra de afiliados não foi salva. Configure no editor do produto.");
+        }
+      }
+
+      // ── Publicação só agora, com o produto íntegro ──
+      if (status === "PUBLISHED") {
+        const { error: publishError } = await supabase
+          .from("products")
+          .update({ status: "PUBLISHED" })
+          .eq("id", product.id);
+        if (publishError) {
+          throw new Error(
+            `Rascunho salvo, mas a publicação falhou (${publishError.message}). Publique novamente pelo editor.`,
+          );
+        }
       }
 
       trackEvent("product_created", { type: form.type, status }, currentWorkspace.id);
@@ -242,6 +288,8 @@ export default function CreateProduct() {
       setSaving(false);
     }
   };
+
+
 
   const renderStep = () => {
     switch (step) {
