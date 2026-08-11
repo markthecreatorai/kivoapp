@@ -156,6 +156,15 @@ export default function Signup() {
       return;
     }
 
+    if (password.length < 8) {
+      toast({
+        title: "Senha muito curta",
+        description: "Use pelo menos 8 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (passwordStrength && passwordStrength.score < 2) {
       toast({
         title: "Senha muito fraca",
@@ -166,72 +175,57 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-    setExistingAccount(null);
     trackEvent("signup_started", { creator_type: creatorType });
 
-    const referralCode = getReferralCode();
-
     try {
-      const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
-      const response = await supabase.auth.signUp({
+      const result = await requestVerificationCode({
         email: emailCheck.email,
         password,
-        options: {
-          data: {
-            full_name: fullName,
-            account_type: "CREATOR",
-            is_creator: true,
-            creator_type: creatorType,
-            utm_source: utmData.utm_source || searchParams.get("utm_source") || "",
-            utm_medium: utmData.utm_medium || searchParams.get("utm_medium") || "",
-            utm_campaign: utmData.utm_campaign || searchParams.get("utm_campaign") || "",
-            ...(referralCode ? { referral_code: referralCode } : {}),
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        fullName,
+        accountType: "CREATOR",
+        flowOrigin: "producer",
+        returnTarget: null,
+        mode: "signup",
       });
 
-      const outcome = resolveAuthSignupOutcome(response as any);
-      try { trackEvent(SIGNUP_OUTCOME_TELEMETRY[outcome.kind], { creator_type: creatorType }); } catch {}
-
-      switch (outcome.kind) {
-        case "already_registered_confirmed":
-          setExistingAccount({ kind: "confirmed", email: emailCheck.email });
-          // NÃO redireciona para verify-email
+      switch (result.kind) {
+        case "code_sent":
+          savePendingVerification({
+            email: emailCheck.email,
+            accountType: "CREATOR",
+            flowOrigin: "producer",
+            returnTarget: null,
+          });
+          setCodeCooldown(result.cooldownSeconds);
+          setVerifying(true);
+          trackEvent("auth.verification_code_sent", { surface: "signup" });
           return;
-        case "already_registered_unconfirmed":
-          setExistingAccount({ kind: "unconfirmed", email: emailCheck.email });
+        case "cooldown":
+          savePendingVerification({
+            email: emailCheck.email,
+            accountType: "CREATOR",
+            flowOrigin: "producer",
+            returnTarget: null,
+          });
+          setCodeCooldown(result.retryAfterSeconds);
+          setVerifying(true);
+          return;
+        case "rate_limited":
+          toast({
+            title: "Muitas tentativas",
+            description: "Aguarde alguns minutos antes de tentar novamente.",
+            variant: "destructive",
+          });
           return;
         case "invalid_email":
-          toast({ title: "Email inválido", description: outcome.message, variant: "destructive" });
+          toast({ title: "Email inválido", description: "Confira o endereço digitado.", variant: "destructive" });
           return;
-        case "generic_error":
-          toast({ title: "Erro no cadastro", description: outcome.message, variant: "destructive" });
+        case "weak_password":
+          toast({ title: "Senha muito fraca", description: "Use pelo menos 8 caracteres.", variant: "destructive" });
           return;
-        case "success_active":
-        case "success_pending_verification": {
-          trackEvent("signup_completed", { creator_type: creatorType });
-          if (referralCode && outcome.userId) {
-            createReferralAttribution(referralCode, outcome.userId);
-          }
-          // Fonte da verdade: só existe login imediato quando o Auth devolve session.
-          const hasSession = Boolean(response.data?.session);
-          toast({
-            title: "Conta criada!",
-            description: hasSession
-              ? "Vamos começar!"
-              : "Enviamos um link de confirmação para o seu email",
-          });
-          if (hasSession) {
-            navigate("/onboarding", { replace: true });
-          } else {
-            navigate(`/verify-email?email=${encodeURIComponent(emailCheck.email)}`, {
-              replace: true,
-              state: { email: emailCheck.email },
-            });
-          }
+        default:
+          toast({ title: "Erro no cadastro", description: result.message, variant: "destructive" });
           return;
-        }
       }
     } catch (error) {
       toast({
@@ -243,6 +237,27 @@ export default function Signup() {
       setIsLoading(false);
     }
   };
+
+  const handleVerified = async () => {
+    trackEvent("signup_completed", { creator_type: creatorType });
+    const referralCode = getReferralCode();
+    // A senha nunca sai da memória: usamos o state atual para criar a sessão.
+    const { data, error } = await signInAfterVerification(email, password);
+    clearPendingVerification();
+    if (error || !data?.user) {
+      toast({
+        title: "E-mail confirmado!",
+        description: "Entre com seu e-mail e senha para continuar.",
+      });
+      window.location.href = `/login?email=${encodeURIComponent(email)}`;
+      return;
+    }
+    if (referralCode) {
+      await createReferralAttribution(referralCode, data.user.id);
+    }
+    window.location.href = "/dashboard";
+  };
+
 
   const handleGoogleSignup = async () => {
     // Persist referral code before OAuth redirect
