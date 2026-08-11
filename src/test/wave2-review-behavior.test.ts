@@ -199,7 +199,7 @@ describe("Onda 2/revisão — migration P0 de reorder versionada e fail-closed",
 
   it("nega anon e PUBLIC", () => {
     expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.batch_reorder_lessons\(jsonb\) FROM PUBLIC/);
-    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.batch_reorder_modules\(jsonb\) TO authenticated, service_role/);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.batch_reorder_modules\(jsonb\) TO authenticated;/);
   });
 
   it("o SQL solto em docs/pending-sql foi removido", () => {
