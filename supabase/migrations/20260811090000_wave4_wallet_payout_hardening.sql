@@ -699,3 +699,175 @@ GRANT EXECUTE ON FUNCTION public.resolve_chargeback_case(uuid, text, text) TO au
 REVOKE ALL ON TABLE public.chargeback_timeline FROM anon, authenticated;
 GRANT SELECT ON TABLE public.chargeback_timeline TO authenticated;
 GRANT ALL ON TABLE public.chargeback_timeline TO service_role;
+
+-- ---------------------------------------------------------------------------
+-- 10. Reserva de segurança — liberação ATÔMICA e contabilmente honesta
+--
+-- EVIDÊNCIA (queries read-only em produção, 2026):
+--   * public.security_reserves NÃO tem coluna `order_id` (apenas transaction_id,
+--     NOT NULL) — logo release-reserves/webhook-asaas, que faziam
+--     select/insert com `order_id`, quebravam em runtime (PostgREST 400).
+--   * COUNT(security_reserves) = 0 e COUNT(wallet_ledger de liberação) = 0:
+--     nunca houve reserva real nem crédito de liberação. Nenhum saldo histórico
+--     é afetado por esta migration.
+--   * O settlement do webhook credita `creator_net` INTEGRAL no wallet_ledger,
+--     sem debitar os 10%. Portanto o valor "retido" exibido na UI NÃO está
+--     segregado do disponível: creditar na liberação inventaria dinheiro.
+--
+-- DECISÃO FAIL-CLOSED: a liberação só credita a carteira quando existir o
+-- débito de segregação correspondente (security_reserves.ledger_debit_id). Sem
+-- ele, a RPC devolve outcome NEEDS_PRODUCT_DECISION e MANTÉM a reserva 'held' —
+-- não libera, não credita, não inventa saldo. A segregação na origem
+-- (debitar 10% no settlement) é o próximo bloco, com decisão de produto.
+-- ---------------------------------------------------------------------------
+ALTER TABLE public.security_reserves
+  ADD COLUMN IF NOT EXISTS order_id uuid,
+  ADD COLUMN IF NOT EXISTS ledger_debit_id uuid,
+  ALTER COLUMN transaction_id DROP NOT NULL;
+
+DO $mig$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'security_reserves_order_fk') THEN
+    ALTER TABLE public.security_reserves
+      ADD CONSTRAINT security_reserves_order_fk
+      FOREIGN KEY (order_id) REFERENCES public.orders(id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'security_reserves_ledger_debit_fk') THEN
+    ALTER TABLE public.security_reserves
+      ADD CONSTRAINT security_reserves_ledger_debit_fk
+      FOREIGN KEY (ledger_debit_id) REFERENCES public.wallet_ledger(id);
+  END IF;
+END;
+$mig$;
+
+-- Chave idempotente estruturada do crédito de liberação (não mais a description).
+ALTER TABLE public.wallet_ledger
+  ADD COLUMN IF NOT EXISTS security_reserve_id uuid;
+
+DO $mig$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'wallet_ledger_security_reserve_fk') THEN
+    ALTER TABLE public.wallet_ledger
+      ADD CONSTRAINT wallet_ledger_security_reserve_fk
+      FOREIGN KEY (security_reserve_id) REFERENCES public.security_reserves(id);
+  END IF;
+END;
+$mig$;
+
+-- PREFLIGHT FAIL-CLOSED: duplicidade histórica impediria o índice único.
+DO $mig$
+DECLARE v_dups integer;
+BEGIN
+  SELECT COUNT(*) INTO v_dups FROM (
+    SELECT security_reserve_id FROM public.wallet_ledger
+     WHERE security_reserve_id IS NOT NULL AND status <> 'canceled'
+     GROUP BY security_reserve_id HAVING COUNT(*) > 1) d;
+  IF v_dups > 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT: % reserva(s) com crédito duplicado em wallet_ledger.', v_dups;
+  END IF;
+END;
+$mig$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_ledger_reserve_release
+  ON public.wallet_ledger (security_reserve_id)
+  WHERE security_reserve_id IS NOT NULL AND status <> 'canceled';
+
+CREATE INDEX IF NOT EXISTS idx_security_reserves_due
+  ON public.security_reserves (status, release_at);
+
+CREATE OR REPLACE FUNCTION public.release_security_reserve(p_reserve_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_res public.security_reserves;
+  v_debit public.wallet_ledger;
+  v_credit_id uuid;
+BEGIN
+  -- Trava a reserva: dois workers concorrentes não processam a mesma linha.
+  SELECT * INTO v_res FROM public.security_reserves
+   WHERE id = p_reserve_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('outcome', 'NOT_FOUND');
+  END IF;
+
+  IF v_res.status <> 'held' THEN
+    RETURN jsonb_build_object('outcome', 'ALREADY_PROCESSED', 'status', v_res.status);
+  END IF;
+
+  IF v_res.release_at > now() THEN
+    RETURN jsonb_build_object('outcome', 'NOT_DUE', 'release_at', v_res.release_at);
+  END IF;
+
+  -- Chargeback ativo → prorroga 30 dias e mantém retido.
+  IF v_res.order_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.chargeback_cases cc
+     WHERE cc.order_id = v_res.order_id
+       AND cc.status IN ('new', 'evidence_pending', 'submitted')
+  ) THEN
+    UPDATE public.security_reserves
+       SET release_at = now() + interval '30 days', updated_at = now()
+     WHERE id = v_res.id;
+    RETURN jsonb_build_object('outcome', 'HELD_CHARGEBACK', 'reserve_id', v_res.id);
+  END IF;
+
+  -- Reembolso total da venda → a reserva não volta para o produtor.
+  IF v_res.order_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.orders o
+     WHERE o.id = v_res.order_id AND o.status IN ('REFUNDED', 'CANCELED', 'CHARGEBACK')
+  ) THEN
+    UPDATE public.security_reserves
+       SET status = 'forfeited', released_at = now(), updated_at = now()
+     WHERE id = v_res.id;
+    RETURN jsonb_build_object('outcome', 'FORFEITED', 'reserve_id', v_res.id);
+  END IF;
+
+  -- Prova de segregação na origem: sem débito vinculado, NÃO credita e NÃO
+  -- libera (o "retido" hoje já está no disponível; creditar duplicaria saldo).
+  IF v_res.ledger_debit_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'outcome', 'NEEDS_PRODUCT_DECISION',
+      'reserve_id', v_res.id,
+      'reason', 'reserva sem debito de segregacao no wallet_ledger');
+  END IF;
+
+  SELECT * INTO v_debit FROM public.wallet_ledger WHERE id = v_res.ledger_debit_id;
+  IF NOT FOUND OR v_debit.status = 'canceled' OR v_debit.workspace_id <> v_res.workspace_id THEN
+    RETURN jsonb_build_object('outcome', 'NEEDS_PRODUCT_DECISION',
+      'reserve_id', v_res.id, 'reason', 'debito de segregacao invalido');
+  END IF;
+
+  -- Crédito + transição na MESMA transação (idempotente pelo índice único).
+  INSERT INTO public.wallet_ledger (
+    workspace_id, order_id, type, amount, currency, status, available_at,
+    description, security_reserve_id
+  ) VALUES (
+    v_res.workspace_id, v_res.order_id, 'adjustment', v_res.amount, 'BRL',
+    'available', now(),
+    'Liberação de reserva de segurança (security_reserve:' || v_res.id::text || ')',
+    v_res.id
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO v_credit_id;
+
+  UPDATE public.security_reserves
+     SET status = 'released', released_at = now(), updated_at = now()
+   WHERE id = v_res.id AND status = 'held';
+
+  RETURN jsonb_build_object(
+    'outcome', 'RELEASED',
+    'reserve_id', v_res.id,
+    'workspace_id', v_res.workspace_id,
+    'amount_cents', v_res.amount,
+    'credit_ledger_id', v_credit_id,
+    'credit_replayed', v_credit_id IS NULL);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.release_security_reserve(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.release_security_reserve(uuid) TO service_role;
+
+COMMENT ON FUNCTION public.release_security_reserve(uuid) IS
+  'Libera uma reserva de segurança vencida em UMA transação. Só credita quando há débito de segregação (ledger_debit_id); caso contrário devolve NEEDS_PRODUCT_DECISION e mantém held.';
