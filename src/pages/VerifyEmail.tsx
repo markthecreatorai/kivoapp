@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, CheckCircle, RefreshCw, ArrowLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Mail, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { resolveSmartRedirect } from "@/lib/smartRedirect";
-import { trackEvent } from "@/lib/tracking";
-import { validateAuthEmail } from "@/lib/authEmailGuard";
+import EmailCodeVerificationModal from "@/components/auth/EmailCodeVerificationModal";
+import {
+  clearPendingVerification,
+  getPendingVerification,
+  sanitizeReturnTarget,
+} from "@/lib/authVerification";
 
 export default function VerifyEmail() {
   const { user, signOut } = useAuth();
@@ -16,100 +19,29 @@ export default function VerifyEmail() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const [resending, setResending] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+  const [showModal, setShowModal] = useState(false);
 
-  // A tela precisa funcionar SEM sessão: o email chega via state (navigate) ou query param.
+  const pending = getPendingVerification();
   const stateEmail = (location.state as { email?: string } | null)?.email;
-  const pendingEmail = stateEmail || searchParams.get("email") || user?.email || "";
-
-  const redirectAfterVerification = async (userId: string) => {
-    const explicit = searchParams.get("redirect");
-    if (explicit && explicit.startsWith("/") && !explicit.startsWith("//")) {
-      navigate(explicit, { replace: true });
-      return;
-    }
-    const destination = await resolveSmartRedirect(userId);
-    navigate(destination, { replace: true });
-  };
-
+  const pendingEmail = stateEmail || searchParams.get("email") || pending?.email || user?.email || "";
+  const returnTarget =
+    sanitizeReturnTarget(searchParams.get("redirect")) || pending?.returnTarget || null;
+  const accountType = pending?.accountType || "MEMBER";
+  const flowOrigin = pending?.flowOrigin || "circles";
 
   useEffect(() => {
     if (user?.email_confirmed_at) {
-      void redirectAfterVerification(user.id);
+      void resolveSmartRedirect(user.id).then((dest) =>
+        navigate(returnTarget || dest, { replace: true })
+      );
     }
-  }, [user, navigate]);
+  }, [user, navigate, returnTarget]);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setInterval(() => setCooldown((c) => c - 1), 1000);
-    return () => clearInterval(timer);
-  }, [cooldown]);
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return; // usuário deslogado: nada para verificar
-      const { data: { user: freshUser } } = await supabase.auth.getUser();
-      if (freshUser?.email_confirmed_at) {
-        toast({
-          title: "Email verificado!",
-          description: "Sua conta foi confirmada com sucesso.",
-        });
-        await redirectAfterVerification(freshUser.id);
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [navigate, toast]);
-
-  const handleResend = async () => {
-    if (!pendingEmail || cooldown > 0) return;
-    setResending(true);
-
-    try {
-      const emailCheck = validateAuthEmail(pendingEmail);
-      if (!emailCheck.ok) {
-        toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
-        return;
-      }
-      trackEvent("auth.resend_clicked", { surface: "verify_email" });
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: emailCheck.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        trackEvent("auth.resend_failed", { surface: "verify_email", error_message: error.message });
-        toast({
-          title: "Erro ao reenviar",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        trackEvent("auth.resend_success", { surface: "verify_email" });
-        toast({
-          title: "Email reenviado!",
-          description: "Verifique sua caixa de entrada e spam.",
-        });
-        setCooldown(60);
-      }
-    } catch {
-      toast({
-        title: "Erro ao reenviar",
-        description: "Ocorreu um erro inesperado.",
-        variant: "destructive",
-      });
-    } finally {
-      setResending(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/login");
+  const handleVerified = (result: { next: string | null }) => {
+    clearPendingVerification();
+    toast({ title: "E-mail confirmado!", description: "Faça login para continuar." });
+    const dest = result.next || returnTarget || "/login";
+    window.location.href = `/login?email=${encodeURIComponent(pendingEmail)}&redirect=${encodeURIComponent(dest)}`;
   };
 
   return (
@@ -124,47 +56,46 @@ export default function VerifyEmail() {
             <div className="mx-auto p-4 rounded-full bg-primary/10 w-fit">
               <Mail className="w-8 h-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Verifique seu email</CardTitle>
+            <CardTitle className="text-2xl">Confirme seu e-mail</CardTitle>
             <CardDescription>
-              Enviamos um link de confirmação para <span className="font-medium text-foreground">{pendingEmail || "seu email"}</span>
+              Enviamos um código de 4 dígitos para{" "}
+              <span className="font-medium text-foreground">{pendingEmail || "seu e-mail"}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm text-muted-foreground">
               <p className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                Abra o email e clique no link de confirmação
+                <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                O código tem 4 dígitos e expira em 10 minutos
               </p>
               <p className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 Verifique também a pasta de spam
               </p>
               <p className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                O link expira em 24 horas
+                <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                Nunca compartilhe o código com ninguém
               </p>
             </div>
 
             <div className="space-y-3">
               <Button
-                variant="outline"
                 className="w-full gap-2"
-                onClick={handleResend}
-                disabled={resending || cooldown > 0 || !pendingEmail}
+                onClick={() => setShowModal(true)}
+                disabled={!pendingEmail}
               >
-                <RefreshCw className={`w-4 h-4 ${resending ? "animate-spin" : ""}`} />
-                {cooldown > 0
-                  ? `Reenviar em ${cooldown}s`
-                  : resending
-                    ? "Reenviando..."
-                    : "Reenviar email de verificação"}
+                <ShieldCheck className="w-4 h-4" />
+                Digitar código de verificação
               </Button>
 
               {user ? (
                 <Button
                   variant="ghost"
                   className="w-full gap-2 text-muted-foreground"
-                  onClick={handleLogout}
+                  onClick={async () => {
+                    await signOut();
+                    navigate("/login");
+                  }}
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Voltar para o login
@@ -180,11 +111,25 @@ export default function VerifyEmail() {
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
-              Se você não recebeu o email, tente reenviar ou entre em contato com o suporte.
+              Não recebeu o código? Abra a digitação acima para reenviar.
             </p>
           </CardContent>
         </Card>
       </div>
+
+      <EmailCodeVerificationModal
+        open={showModal && !!pendingEmail}
+        email={pendingEmail}
+        accountType={accountType}
+        flowOrigin={flowOrigin}
+        returnTarget={returnTarget}
+        initialCooldown={0}
+        onVerified={handleVerified}
+        onUseAnotherEmail={() => {
+          clearPendingVerification();
+          setShowModal(false);
+        }}
+      />
     </div>
   );
 }

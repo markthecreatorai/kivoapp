@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import { useJoinCommunity } from "@/hooks/useJoinCommunity";
 import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
 import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
+import EmailCodeVerificationModal from "@/components/auth/EmailCodeVerificationModal";
+
 
 type AuthView = "signup" | "login" | "forgot-password" | "forgot-success";
 
@@ -42,11 +44,12 @@ export default function CommunityAuthModal({
   const {
     signupAndJoin,
     existingSignupState,
-    resendCommunityVerification,
-    resendCooldown,
-    resendingVerification,
     clearExistingSignupState,
+    pendingVerification,
+    completeVerifiedSignup,
+    cancelVerification,
   } = useJoinCommunity(slug || "");
+
   const { emailError, suggestion, guard, reset } = useAuthEmailGuard("community_auth_modal");
 
   const resetFields = () => {
@@ -85,7 +88,7 @@ export default function CommunityAuthModal({
         { display_name: displayName, email, password },
         community
       );
-      onOpenChange(false);
+
     } catch {
       // signupAndJoin already shows toast
     } finally {
@@ -192,8 +195,10 @@ export default function CommunityAuthModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <>
+    <Dialog open={open && !pendingVerification} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[420px] p-0 gap-0 overflow-hidden">
+
         {/* Header with community branding */}
         <div className="px-6 pt-6 pb-4 text-center space-y-3">
           {community?.icon_url ? (
@@ -222,35 +227,15 @@ export default function CommunityAuthModal({
         <div className="px-6 pb-6">
           {existingSignupState && view === "signup" && (
             <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2" role="alert">
-              <p className="text-sm font-medium text-foreground">
-                {existingSignupState.kind === "confirmed"
-                  ? "Este email já está cadastrado."
-                  : "Este email já está cadastrado mas ainda não foi confirmado."}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {existingSignupState.kind === "confirmed"
-                  ? "Faça login ou redefina sua senha para continuar."
-                  : "Reenvie o email de verificação para ativar sua conta."}
-              </p>
+              <p className="text-sm font-medium text-foreground">Este email já está cadastrado.</p>
+              <p className="text-xs text-muted-foreground">Faça login ou redefina sua senha para continuar.</p>
               <div className="flex flex-wrap gap-2">
-                {existingSignupState.kind === "confirmed" ? (
-                  <>
-                    <Button type="button" size="sm" onClick={() => switchView("login")}>Entrar</Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => switchView("forgot-password")}>Esqueci minha senha</Button>
-                  </>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={resendCommunityVerification}
-                    disabled={resendingVerification || resendCooldown > 0}
-                  >
-                    {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : resendingVerification ? "Reenviando..." : "Reenviar verificação"}
-                  </Button>
-                )}
+                <Button type="button" size="sm" onClick={() => switchView("login")}>Entrar</Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => switchView("forgot-password")}>Esqueci minha senha</Button>
               </div>
             </div>
           )}
+
 
           {/* ── SIGNUP VIEW ── */}
           {view === "signup" && (
@@ -426,5 +411,21 @@ export default function CommunityAuthModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <EmailCodeVerificationModal
+      open={!!pendingVerification}
+      email={pendingVerification?.email || ""}
+      accountType="MEMBER"
+      flowOrigin="circles"
+      returnTarget={pendingVerification?.returnTarget || null}
+      initialCooldown={pendingVerification?.cooldown ?? 60}
+      onVerified={(result) => completeVerifiedSignup(result.next)}
+      onUseAnotherEmail={() => {
+        cancelVerification();
+        switchView("signup");
+      }}
+    />
+    </>
   );
+
 }

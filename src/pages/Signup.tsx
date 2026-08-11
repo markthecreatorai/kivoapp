@@ -1,8 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { resolveAuthSignupOutcome, SIGNUP_OUTCOME_TELEMETRY } from "@/lib/authSignupOutcome";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import EmailCodeVerificationModal from "@/components/auth/EmailCodeVerificationModal";
+import {
+  clearPendingVerification,
+  getPendingVerification,
+  requestVerificationCode,
+  savePendingVerification,
+  signInAfterVerification,
+} from "@/lib/authVerification";
+
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,50 +81,22 @@ export default function Signup() {
   const [creatorType, setCreatorType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const [existingAccount, setExistingAccount] = useState<null | {
-    kind: "confirmed" | "unconfirmed";
-    email: string;
-  }>(null);
-  const [resending, setResending] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const [codeCooldown, setCodeCooldown] = useState(60);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { emailError, suggestion, guard, reset } = useAuthEmailGuard("signup");
 
+  // Reabre o modal após refresh, quando o contexto pendente ainda é válido.
   useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((c) => c - 1), 1000);
-    return () => clearInterval(t);
-  }, [resendCooldown]);
-
-  const handleResendVerification = async () => {
-    if (!existingAccount || resendCooldown > 0) return;
-    setResending(true);
-    try {
-      const emailCheck = guard(existingAccount.email);
-      if (!emailCheck.ok) {
-        toast({ title: "Email inválido", description: emailCheck.error, variant: "destructive" });
-        return;
-      }
-      trackEvent("auth.resend_clicked", { surface: "signup", email: emailCheck.email });
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: emailCheck.email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (error) {
-        trackEvent("auth.resend_failed", { surface: "signup", error_message: error.message });
-        toast({ title: "Erro ao reenviar", description: error.message, variant: "destructive" });
-      } else {
-        trackEvent("auth.resend_success", { surface: "signup" });
-        toast({ title: "Email reenviado!", description: "Verifique sua caixa de entrada e spam." });
-        setResendCooldown(60);
-      }
-    } finally {
-      setResending(false);
+    const pending = getPendingVerification();
+    if (pending && pending.flowOrigin === "producer") {
+      setEmail(pending.email);
+      setVerifying(true);
     }
-  };
+  }, []);
+
 
   // Handle OAuth error callback
   useEffect(() => {
@@ -156,6 +136,15 @@ export default function Signup() {
       return;
     }
 
+    if (password.length < 8) {
+      toast({
+        title: "Senha muito curta",
+        description: "Use pelo menos 8 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (passwordStrength && passwordStrength.score < 2) {
       toast({
         title: "Senha muito fraca",
@@ -166,72 +155,57 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-    setExistingAccount(null);
     trackEvent("signup_started", { creator_type: creatorType });
 
-    const referralCode = getReferralCode();
-
     try {
-      const utmData = JSON.parse(sessionStorage.getItem("kivo_utm") || "{}");
-      const response = await supabase.auth.signUp({
+      const result = await requestVerificationCode({
         email: emailCheck.email,
         password,
-        options: {
-          data: {
-            full_name: fullName,
-            account_type: "CREATOR",
-            is_creator: true,
-            creator_type: creatorType,
-            utm_source: utmData.utm_source || searchParams.get("utm_source") || "",
-            utm_medium: utmData.utm_medium || searchParams.get("utm_medium") || "",
-            utm_campaign: utmData.utm_campaign || searchParams.get("utm_campaign") || "",
-            ...(referralCode ? { referral_code: referralCode } : {}),
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        fullName,
+        accountType: "CREATOR",
+        flowOrigin: "producer",
+        returnTarget: null,
+        mode: "signup",
       });
 
-      const outcome = resolveAuthSignupOutcome(response as any);
-      try { trackEvent(SIGNUP_OUTCOME_TELEMETRY[outcome.kind], { creator_type: creatorType }); } catch {}
-
-      switch (outcome.kind) {
-        case "already_registered_confirmed":
-          setExistingAccount({ kind: "confirmed", email: emailCheck.email });
-          // NÃO redireciona para verify-email
+      switch (result.kind) {
+        case "code_sent":
+          savePendingVerification({
+            email: emailCheck.email,
+            accountType: "CREATOR",
+            flowOrigin: "producer",
+            returnTarget: null,
+          });
+          setCodeCooldown(result.cooldownSeconds);
+          setVerifying(true);
+          trackEvent("auth.verification_code_sent", { surface: "signup" });
           return;
-        case "already_registered_unconfirmed":
-          setExistingAccount({ kind: "unconfirmed", email: emailCheck.email });
+        case "cooldown":
+          savePendingVerification({
+            email: emailCheck.email,
+            accountType: "CREATOR",
+            flowOrigin: "producer",
+            returnTarget: null,
+          });
+          setCodeCooldown(result.retryAfterSeconds);
+          setVerifying(true);
+          return;
+        case "rate_limited":
+          toast({
+            title: "Muitas tentativas",
+            description: "Aguarde alguns minutos antes de tentar novamente.",
+            variant: "destructive",
+          });
           return;
         case "invalid_email":
-          toast({ title: "Email inválido", description: outcome.message, variant: "destructive" });
+          toast({ title: "Email inválido", description: "Confira o endereço digitado.", variant: "destructive" });
           return;
-        case "generic_error":
-          toast({ title: "Erro no cadastro", description: outcome.message, variant: "destructive" });
+        case "weak_password":
+          toast({ title: "Senha muito fraca", description: "Use pelo menos 8 caracteres.", variant: "destructive" });
           return;
-        case "success_active":
-        case "success_pending_verification": {
-          trackEvent("signup_completed", { creator_type: creatorType });
-          if (referralCode && outcome.userId) {
-            createReferralAttribution(referralCode, outcome.userId);
-          }
-          // Fonte da verdade: só existe login imediato quando o Auth devolve session.
-          const hasSession = Boolean(response.data?.session);
-          toast({
-            title: "Conta criada!",
-            description: hasSession
-              ? "Vamos começar!"
-              : "Enviamos um link de confirmação para o seu email",
-          });
-          if (hasSession) {
-            navigate("/onboarding", { replace: true });
-          } else {
-            navigate(`/verify-email?email=${encodeURIComponent(emailCheck.email)}`, {
-              replace: true,
-              state: { email: emailCheck.email },
-            });
-          }
+        default:
+          toast({ title: "Erro no cadastro", description: result.message, variant: "destructive" });
           return;
-        }
       }
     } catch (error) {
       toast({
@@ -243,6 +217,27 @@ export default function Signup() {
       setIsLoading(false);
     }
   };
+
+  const handleVerified = async () => {
+    trackEvent("signup_completed", { creator_type: creatorType });
+    const referralCode = getReferralCode();
+    // A senha nunca sai da memória: usamos o state atual para criar a sessão.
+    const { data, error } = await signInAfterVerification(email, password);
+    clearPendingVerification();
+    if (error || !data?.user) {
+      toast({
+        title: "E-mail confirmado!",
+        description: "Entre com seu e-mail e senha para continuar.",
+      });
+      window.location.href = `/login?email=${encodeURIComponent(email)}`;
+      return;
+    }
+    if (referralCode) {
+      await createReferralAttribution(referralCode, data.user.id);
+    }
+    window.location.href = "/dashboard";
+  };
+
 
   const handleGoogleSignup = async () => {
     // Persist referral code before OAuth redirect
@@ -317,53 +312,10 @@ export default function Signup() {
               </div>
             </div>
 
-            {existingAccount && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2" role="alert">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                  <div className="text-sm text-foreground space-y-1">
-                    <p className="font-medium">
-                      {existingAccount.kind === "confirmed"
-                        ? "Este email já está cadastrado."
-                        : "Este email já está cadastrado mas ainda não foi confirmado."}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {existingAccount.kind === "confirmed"
-                        ? "Faça login ou redefina sua senha para continuar."
-                        : "Reenvie o email de verificação para ativar sua conta."}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {existingAccount.kind === "confirmed" ? (
-                    <>
-                      <Button asChild size="sm" variant="default" className="h-8">
-                        <Link to={`/login?email=${encodeURIComponent(existingAccount.email)}`}>Entrar</Link>
-                      </Button>
-                      <Button asChild size="sm" variant="outline" className="h-8">
-                        <Link to="/forgot-password">Esqueci minha senha</Link>
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="default"
-                      className="h-8 gap-1.5"
-                      onClick={handleResendVerification}
-                      disabled={resending || resendCooldown > 0}
-                    >
-                      <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} />
-                      {resendCooldown > 0
-                        ? `Reenviar em ${resendCooldown}s`
-                        : resending
-                        ? "Reenviando..."
-                        : "Reenviar verificação"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
+            <p className="text-xs text-center text-muted-foreground">
+              Você receberá um código de 4 dígitos por e-mail para confirmar sua conta.
+            </p>
+
 
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
@@ -403,7 +355,7 @@ export default function Signup() {
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); reset(); if (existingAccount) setExistingAccount(null); }}
+                  onChange={(e) => { setEmail(e.target.value); reset(); }}
                   className="input-radius"
                   required
                 />
@@ -483,6 +435,21 @@ export default function Signup() {
           </CardContent>
         </Card>
       </div>
+
+      <EmailCodeVerificationModal
+        open={verifying}
+        email={email}
+        accountType="CREATOR"
+        flowOrigin="producer"
+        returnTarget={null}
+        initialCooldown={codeCooldown}
+        onVerified={handleVerified}
+        onUseAnotherEmail={() => {
+          clearPendingVerification();
+          setVerifying(false);
+        }}
+      />
     </div>
+
   );
 }

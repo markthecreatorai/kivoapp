@@ -639,6 +639,60 @@ export type Database = {
           },
         ]
       }
+      auth_verification_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          flow_origin: string | null
+          id: string
+          invalidated_at: string | null
+          ip_hash: string | null
+          max_attempts: number
+          purpose: string
+          return_target: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          flow_origin?: string | null
+          id?: string
+          invalidated_at?: string | null
+          ip_hash?: string | null
+          max_attempts?: number
+          purpose?: string
+          return_target?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          flow_origin?: string | null
+          id?: string
+          invalidated_at?: string | null
+          ip_hash?: string | null
+          max_attempts?: number
+          purpose?: string
+          return_target?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       availability_slots: {
         Row: {
           created_at: string
@@ -9163,6 +9217,7 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: Json
       }
+      cleanup_auth_verification_codes: { Args: never; Returns: number }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       complete_checkout_session: {
         Args: { p_recovered?: boolean; p_session_id: string }
@@ -9218,6 +9273,10 @@ export type Database = {
       cron_runs_sweep: { Args: never; Returns: number }
       cron_secret: { Args: never; Returns: string }
       ensure_producer_workspace: { Args: never; Returns: string }
+      ensure_producer_workspace_for: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       expire_overdue_workspace_plans: {
         Args: never
         Returns: {
