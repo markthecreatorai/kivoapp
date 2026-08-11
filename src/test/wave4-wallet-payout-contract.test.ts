@@ -134,11 +134,12 @@ describe("P1-WA-05 — revisão de saque server-side", () => {
 describe("P1-WA-06 — risco de saque usa os status reais", () => {
   it("calculate_payout_risk não filtra por status inexistentes", () => {
     const sql = read(MIGRATION);
-    const fn = sql.slice(sql.indexOf("calculate_payout_risk"));
+    const fn = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION public.calculate_payout_risk"));
     const body = fn.slice(0, fn.indexOf("uniq_wallet_ledger_withdrawal_description"));
     expect(body).not.toMatch(/'requested'/);
     expect(body).toMatch(/status IN \('pending','in_review','approved','processing','completed'\)/);
   });
+
 });
 
 describe("P0-WA-08 — liberação de reservas credita a carteira", () => {
