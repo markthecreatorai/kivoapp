@@ -413,6 +413,8 @@ DECLARE
   v_uid uuid := auth.uid();
   v_req public.payout_requests;
   v_desc text;
+  v_available bigint;
+  v_locked bigint;
 BEGIN
   IF v_uid IS NULL OR NOT public.is_admin_user() THEN
     RAISE EXCEPTION 'Acesso negado';
@@ -421,12 +423,16 @@ BEGIN
     RETURN jsonb_build_object('outcome', 'INVALID_ACTION');
   END IF;
 
-  PERFORM pg_advisory_xact_lock(hashtextextended('payout_review:' || p_payout_request_id::text, 0));
-
-  SELECT * INTO v_req FROM public.payout_requests WHERE id = p_payout_request_id FOR UPDATE;
+  -- Lê primeiro (sem lock de saldo) só para descobrir o workspace, então trava
+  -- o MESMO advisory lock usado na criação: aprovação e criação concorrentes não
+  -- podem somar débitos acima do saldo.
+  SELECT * INTO v_req FROM public.payout_requests WHERE id = p_payout_request_id;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('outcome', 'NOT_FOUND');
   END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended('payout:' || v_req.workspace_id::text, 0));
+  SELECT * INTO v_req FROM public.payout_requests WHERE id = p_payout_request_id FOR UPDATE;
 
   -- Segregação de função: quem pediu não aprova.
   IF v_req.requested_by = v_uid THEN
@@ -440,6 +446,30 @@ BEGIN
   v_desc := 'Saque ' || v_req.id::text;
 
   IF p_action = 'approve' THEN
+    -- Revalida o saldo AGORA: o disponível pode ter caído (refund, chargeback,
+    -- outro saque) depois da solicitação. Aprovar sem isso criaria saldo negativo.
+    SELECT available_balance INTO v_available FROM public.get_wallet_balance(v_req.workspace_id);
+    v_available := COALESCE(v_available, 0);
+
+    -- Débitos de outros saques abertos ainda não lançados também travam saldo.
+    SELECT COALESCE(SUM(pr.amount), 0)::bigint INTO v_locked
+      FROM public.payout_requests pr
+     WHERE pr.workspace_id = v_req.workspace_id
+       AND pr.id <> v_req.id
+       AND pr.status IN ('pending','in_review','approved','processing')
+       AND NOT EXISTS (
+         SELECT 1 FROM public.wallet_ledger wl
+          WHERE wl.type = 'withdrawal' AND wl.payout_request_id = pr.id AND wl.status <> 'canceled');
+
+    IF v_req.amount > v_available - COALESCE(v_locked, 0) THEN
+      RETURN jsonb_build_object(
+        'outcome', 'INSUFFICIENT_BALANCE',
+        'payout_request_id', v_req.id,
+        'available_balance_cents', v_available,
+        'locked_in_review_cents', COALESCE(v_locked, 0),
+        'spendable_cents', GREATEST(v_available - COALESCE(v_locked, 0), 0));
+    END IF;
+
     UPDATE public.payout_requests
        SET status = 'approved',
            reviewed_at = now(),
@@ -447,21 +477,25 @@ BEGIN
            review_reason = COALESCE(p_reason, review_reason)
      WHERE id = v_req.id;
 
-    -- Débito idempotente (índice único cobre concorrência).
+    -- Débito idempotente por chave estruturada (índice único cobre concorrência).
     IF NOT EXISTS (
       SELECT 1 FROM public.wallet_ledger
-       WHERE workspace_id = v_req.workspace_id
-         AND type = 'withdrawal'
-         AND description = v_desc
+       WHERE type = 'withdrawal'
+         AND payout_request_id = v_req.id
          AND status <> 'canceled'
     ) THEN
       INSERT INTO public.wallet_ledger (
-        workspace_id, type, amount, currency, status, available_at, description
+        workspace_id, type, amount, currency, status, available_at, description, payout_request_id
       ) VALUES (
-        v_req.workspace_id, 'withdrawal', v_req.amount, 'BRL', 'available', now(), v_desc
+        v_req.workspace_id, 'withdrawal', v_req.amount, 'BRL', 'available', now(), v_desc, v_req.id
       )
       ON CONFLICT DO NOTHING;
     END IF;
+
+    INSERT INTO public.audit_logs (workspace_id, user_id, action, entity_type, entity_id, metadata)
+    VALUES (v_req.workspace_id, v_uid, 'payout_request.approved', 'payout_request', v_req.id,
+            jsonb_build_object('amount_cents', v_req.amount, 'available_before_cents', v_available,
+                               'reason', p_reason));
 
     RETURN jsonb_build_object('outcome', 'APPROVED', 'payout_request_id', v_req.id);
   END IF;
@@ -477,10 +511,13 @@ BEGIN
   -- Rejeição devolve o saldo: cancela qualquer débito já lançado.
   UPDATE public.wallet_ledger
      SET status = 'canceled'
-   WHERE workspace_id = v_req.workspace_id
-     AND type = 'withdrawal'
-     AND description = v_desc
+   WHERE type = 'withdrawal'
+     AND payout_request_id = v_req.id
      AND status <> 'canceled';
+
+  INSERT INTO public.audit_logs (workspace_id, user_id, action, entity_type, entity_id, metadata)
+  VALUES (v_req.workspace_id, v_uid, 'payout_request.rejected', 'payout_request', v_req.id,
+          jsonb_build_object('amount_cents', v_req.amount, 'reason', p_reason));
 
   RETURN jsonb_build_object('outcome', 'REJECTED', 'payout_request_id', v_req.id);
 END;
@@ -517,6 +554,19 @@ GRANT ALL ON TABLE public.chargeback_cases TO service_role;
 REVOKE ALL ON TABLE public.payout_items FROM anon, authenticated;
 GRANT SELECT ON TABLE public.payout_items TO authenticated;
 GRANT ALL ON TABLE public.payout_items TO service_role;
+
+-- payout_items tinha policy FOR ALL concedida ao role `public` (isto é, também
+-- anon). O escopo por workspace estava correto, mas o comando não: vira SELECT
+-- explícito para `authenticated`. RLS confirmada ligada nas três tabelas.
+ALTER TABLE public.payout_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Workspace owners can manage payout items" ON public.payout_items;
+CREATE POLICY payout_items_select_own_workspace ON public.payout_items
+  FOR SELECT TO authenticated
+  USING (
+    payout_id IN (
+      SELECT p.id FROM public.payouts p WHERE public.is_workspace_member(p.workspace_id)
+    )
+  );
 
 
 -- ---------------------------------------------------------------------------
