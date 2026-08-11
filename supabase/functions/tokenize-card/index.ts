@@ -1,11 +1,13 @@
 // Tokenização de cartão — o PAN/CVV nunca é persistido, logado ou repassado
 // para outras funções. Esta função troca os dados do cartão por um
 // creditCardToken do gateway (Asaas) e devolve apenas token + last4 + brand.
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { corsHeadersFor } from "../_shared/cors.ts";
+import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
+
+// Tokenização é o alvo clássico de card testing: teto agressivo por IP.
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 function getAsaasBase() {
   const env = (Deno.env.get("ASAAS_ENV") || "sandbox").trim().toLowerCase();
@@ -30,6 +32,9 @@ async function callAsaas(path: string, body: unknown, apiKey: string, method = "
 }
 
 Deno.serve(async (req) => {
+  // CORS restrito: apenas a origem da Kivo (e hosts de preview) podem tokenizar.
+  const corsHeaders = corsHeadersFor(req);
+
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const apiKey = (Deno.env.get("ASAAS_API_KEY") || "").trim();
@@ -41,6 +46,25 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { autoRefreshToken: false, persistSession: false } },
+    );
+    const rate = await checkRateLimit(
+      supabase,
+      "tokenize-card",
+      getClientIp(req),
+      RATE_LIMIT_MAX,
+      RATE_LIMIT_WINDOW_SECONDS,
+    );
+    if (!rate.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Muitas tentativas de cartão. Aguarde um minuto e tente novamente." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const body = await req.json();
     const { customer, card } = body ?? {};
 
