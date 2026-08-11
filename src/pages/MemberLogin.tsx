@@ -30,7 +30,7 @@ export default function MemberLogin() {
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [codeCooldown, setCodeCooldown] = useState(60);
-  const [tab, setTab] = useState("password");
+  const [tab, setTab] = useState(searchParams.get("tab") === "signup" ? "signup" : "password");
   const { emailError, suggestion, guard, reset } = useAuthEmailGuard("member_login");
 
   // Reabre o modal após refresh, quando o contexto pendente ainda é válido.

@@ -83,11 +83,10 @@ describe("MemberLogin — cadastro de membro com código de 4 dígitos", () => {
 
   it("recusa senha com menos de 8 caracteres antes de chamar o backend", async () => {
     render(
-      <MemoryRouter initialEntries={["/member/login"]}>
+      <MemoryRouter initialEntries={["/member/login?tab=signup"]}>
         <MemberLogin />
       </MemoryRouter>
     );
-    fireEvent.click(screen.getByRole("tab", { name: /criar conta/i }));
     typeInto("seu@email.com", "novo@membro.com");
     typeInto("Mínimo 8 caracteres", "123");
     fireEvent.click(screen.getByRole("button", { name: /criar conta de membro/i }));
@@ -97,11 +96,10 @@ describe("MemberLogin — cadastro de membro com código de 4 dígitos", () => {
 
   it("dispara o código e abre o modal de 4 dígitos", async () => {
     render(
-      <MemoryRouter initialEntries={["/member/login?redirect=/circles/abc/feed"]}>
+      <MemoryRouter initialEntries={["/member/login?tab=signup&redirect=/circles/abc/feed"]}>
         <MemberLogin />
       </MemoryRouter>
     );
-    fireEvent.click(screen.getByRole("tab", { name: /criar conta/i }));
     typeInto("seu@email.com", "novo@membro.com");
     typeInto("Mínimo 8 caracteres", "senhaforte1");
     fireEvent.click(screen.getByRole("button", { name: /criar conta de membro/i }));
@@ -167,7 +165,7 @@ describe("EmailCodeVerificationModal", () => {
 
   it("mostra erro em código inválido e não confirma", async () => {
     const onVerified = vi.fn();
-    mocks.verifyEmailCode.mockResolvedValue({ kind: "invalid_code", attemptsLeft: 4 });
+    mocks.verifyEmailCode.mockResolvedValue({ kind: "invalid", attemptsLeft: 4 });
     render(<EmailCodeVerificationModal {...baseProps} onVerified={onVerified} />);
     fillCode("9999");
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
@@ -182,7 +180,7 @@ describe("EmailCodeVerificationModal", () => {
   });
 
   it("bloqueia após exceder tentativas", async () => {
-    mocks.verifyEmailCode.mockResolvedValue({ kind: "too_many_attempts" });
+    mocks.verifyEmailCode.mockResolvedValue({ kind: "blocked" });
     render(<EmailCodeVerificationModal {...baseProps} onVerified={vi.fn()} />);
     fillCode("2222");
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/tentativas/i));
