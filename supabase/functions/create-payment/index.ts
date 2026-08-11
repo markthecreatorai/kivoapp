@@ -65,9 +65,13 @@ async function findOrCreateAsaasCustomer(
 }
 
 Deno.serve(async (req) => {
+  // CORS restrito: só a origem da Kivo (e hosts de preview) podem chamar o checkout.
+  const corsHeaders = corsHeadersFor(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
 
   // ── Gateway guardrail: never process/deliver anything without a real gateway ──
   const gatewayApiKey = (Deno.env.get("ASAAS_API_KEY") || "").trim();
