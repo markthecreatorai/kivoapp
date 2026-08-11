@@ -213,18 +213,17 @@ Deno.serve(async (req) => {
         .eq("id", order.checkout_session_id);
     }
 
-    // 6. SPLIT + CARTEIRA + COMISSÃO DE AFILIADO
-    // Fonte única de verdade: RPC transacional, idempotente, service_role only.
-    // Nunca recalcular aqui — a base é orders.total_amount (já líquida de descontos)
-    // e a comissão sai de affiliate_programs, reservada dentro do creator_net.
-    const { data: financials, error: finErr } = await supabase.rpc("process_order_financials", {
+    // 6. SPLIT + CARTEIRA + COMISSÃO DE AFILIADO + RESERVA (QA-4A-V6)
+    // Fonte única de verdade: RPC transacional settle_order_atomic, idempotente,
+    // service_role only. Split/ledger e segregação da reserva ocorrem no MESMO
+    // commit — nunca existe janela com creator_net integral disponível.
+    const { data: financials, error: finErr } = await supabase.rpc("settle_order_atomic", {
       p_order_id: order.id,
       p_gateway_fee_cents: 0,
-      p_settle: true,
     });
 
     if (finErr) {
-      console.error(`post-purchase: process_order_financials falhou para ${order.id}:`, JSON.stringify(finErr));
+      console.error(`post-purchase: settle_order_atomic falhou para ${order.id}:`, JSON.stringify(finErr));
       return new Response(JSON.stringify({ error: "Falha ao processar repasse do pedido" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

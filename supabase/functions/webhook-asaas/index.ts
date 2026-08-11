@@ -399,37 +399,38 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     const holdDays = Number(rule.hold_days ?? 30);
     const splitAvailableAt = new Date(Date.now() + holdDays * 86400000).toISOString();
 
-    // 2) FONTE ÚNICA DE VERDADE: RPC transacional process_order_commission.
-    //    Ela trava o pedido (FOR UPDATE), valida COMPLETED + paid_at, resolve
-    //    link/programa/afiliado, e grava split_entries + wallet_ledger +
-    //    commissions de forma idempotente (ON CONFLICT). Nenhum cálculo de
-    //    comissão é duplicado aqui.
+    // 2) FONTE ÚNICA DE VERDADE (QA-4A-V6): RPC transacional settle_order_atomic.
+    //    Ela executa, NO MESMO COMMIT: process_order_commission (split +
+    //    wallet_ledger + commissions) e settle_order_reserve (reserve_entries +
+    //    débito 'segregation_debit'). Não existe janela em que creator_net
+    //    integral fique disponível; qualquer falha faz rollback de tudo.
+    //    Serializada por advisory lock por pedido → replay/concorrência seguros.
     let creatorNet = 0;
     let splitId: string | null = null;
 
-    const { data: commResult, error: commRpcErr } = await supabase.rpc("process_order_commission", {
+    const { data: settleResult, error: settleErr } = await supabase.rpc("settle_order_atomic", {
       p_order_id: paymentRecord.order_id,
       p_gateway_fee_cents: netFee > 0 ? netFee : null,
-      p_settle: true,
     });
 
-    // Falha aqui NÃO pode ser silenciada: sem split/comissão o webhook precisa
-    // ficar FAILED/retryable para o provedor (ou retry-webhooks) reenviar.
-    if (commRpcErr) {
-      console.error("[webhook-asaas][ALERTA] process_order_commission falhou:", JSON.stringify(commRpcErr));
-      throw new Error(`process_order_commission falhou: ${commRpcErr.message || JSON.stringify(commRpcErr)}`);
+    // Falha aqui NÃO pode ser silenciada: sem split/comissão/reserva o webhook
+    // precisa ficar FAILED/retryable para o provedor (ou retry-webhooks) reenviar.
+    if (settleErr) {
+      console.error("[webhook-asaas][ALERTA] settle_order_atomic falhou:", JSON.stringify(settleErr));
+      throw new Error(`settle_order_atomic falhou: ${settleErr.message || JSON.stringify(settleErr)}`);
     }
-    if (!commResult || (commResult as any).ok !== true) {
+    if (!settleResult || (settleResult as any).ok !== true) {
       console.error(
-        "[webhook-asaas][ALERTA] process_order_commission recusou o pedido:",
-        JSON.stringify(commResult),
+        "[webhook-asaas][ALERTA] settle_order_atomic recusou o pedido:",
+        JSON.stringify(settleResult),
       );
       throw new Error(
-        `process_order_commission não confirmou o processamento: ${JSON.stringify(commResult ?? null)}`,
+        `settle_order_atomic não confirmou a liquidação: ${JSON.stringify(settleResult ?? null)}`,
       );
     }
-    creatorNet = Number((commResult as any).creator_net_cents || 0);
-    console.log("[webhook-asaas] split/comissão processados:", JSON.stringify(commResult));
+    const commResult = (settleResult as any).financials || {};
+    creatorNet = Number(commResult.creator_net_cents || 0);
+    console.log("[webhook-asaas] liquidação atômica (split + reserva):", JSON.stringify(settleResult));
 
     const { data: settledSplit } = await supabase
       .from("split_entries")
@@ -459,25 +460,10 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       `[webhook-asaas] liquidação order ${paymentRecord.order_id}: creator_net=${creatorNet} liberação=${ledgerAvailableAt} (${paymentMethod}, ${holdDays}d)`,
     );
 
-    // 4) Reserva de segurança — FONTE ÚNICA: RPC public.settle_order_reserve.
-    //    Ela recalcula a reserva como 10% de split_entries.creator_net em
-    //    centavos (floor determinístico), cria/vincula reserve_entries a
-    //    (order_id, split_entry_id, workspace_id) e grava o débito de
-    //    segregação no wallet_ledger no MESMO commit. Logo:
-    //        available(creator) = creator_net - reserve   e   soma = creator_net.
-    //    Idempotente por unicidade estrutural (order_id / reserve_entry_id+role).
-    if (creatorNet > 0) {
-      const { data: reserveResult, error: reserveErr } = await supabase.rpc(
-        "settle_order_reserve",
-        { p_order_id: paymentRecord.order_id },
-      );
-      if (reserveErr) {
-        // Fail-closed: sem segregação o produtor ficaria com 100% disponível.
-        console.error("[webhook-asaas][ALERTA] settle_order_reserve falhou:", JSON.stringify(reserveErr));
-        throw new Error(`settle_order_reserve falhou: ${reserveErr.message || JSON.stringify(reserveErr)}`);
-      }
-      console.log("[webhook-asaas] settle_order_reserve:", JSON.stringify(reserveResult));
-    }
+    // 4) Reserva de segurança: NÃO há chamada separada. A segregação já ocorreu
+    //    dentro de settle_order_atomic (mesma transação do crédito), com
+    //    release_at = settled_at + reserve_hold_days e
+    //        available(creator) = creator_net - reserve  ⇒ soma = creator_net.
   }
 
   // Comissões de afiliado: NÃO são calculadas aqui.

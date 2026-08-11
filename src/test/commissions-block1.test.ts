@@ -16,8 +16,8 @@ const resolveCode = read("supabase/functions/resolve-affiliate-code/index.ts");
 const commissionsRelease = read("supabase/functions/commissions-release/index.ts");
 
 describe("post-purchase: fonte única de verdade financeira", () => {
-  it("chama process_order_financials", () => {
-    expect(postPurchase).toContain('rpc("process_order_financials"');
+  it("chama a RPC transacional única de liquidação (V6)", () => {
+    expect(postPurchase).toContain('rpc("settle_order_atomic"');
   });
 
   it("propaga erro do RPC em vez de logar sucesso", () => {

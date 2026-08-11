@@ -1622,3 +1622,43 @@ Base: HEAD `88cbc84a`. **Zero deploy, zero migration aplicada, zero chamada exte
 - ⏳ **Deploy PENDENTE** de `webhook-asaas`, `create-payment`, `release-holds`, `release-reserves` e do frontend.
 - ⏳ Remoção física de `security_reserves` (DROP) fica para depois do período de retenção fiscal; remover também do agendamento `pg_cron` a função `release-reserves`.
 - ⛔ **E2E financeiro real NÃO executado** (sem transação Asaas, sem dinheiro real). Nenhum item E2E externo marcado como aprovado.
+
+### 31.9 — QA-4A-V6-RESERVE-ATOMICITY (repositório, NÃO aplicado)
+
+Base efetiva: estado versionado que contém integralmente o V5 (wiring `9ff38535`).
+Migration criada (NÃO aplicada): `supabase/migrations/20260811110000_wave6_reserve_atomicity.sql`.
+
+P0 corrigidos:
+
+1. **Reversão cumulativa (P0-1)** — `reverse_reserve_entry` grava o crédito
+   ACUMULADO (`original_amount - reserva_alvo`), monotônico
+   (`greatest(v_base - v_target, v_prev)`), nunca o delta isolado.
+   Prova: reserva 100 → 80 → 60 ⇒ crédito acumulado 40, retido 60, sem centavo preso.
+2. **Atomicidade do settlement (P0-2)** — nova RPC `settle_order_atomic(uuid, integer)`
+   executa `process_order_commission` + `settle_order_reserve` no MESMO commit, sob
+   `pg_advisory_xact_lock` por pedido. Qualquer desfecho estrutural inválido
+   (`SPLIT_NOT_FOUND`, `OWNERSHIP_MISMATCH`, `SALE_LEDGER_MISSING`, `UNKNOWN`) levanta
+   exceção ⇒ rollback integral. Não existe janela com `creator_net` integral disponível.
+   Call sites migrados: `webhook-asaas` e `post-purchase` (caminhos reais de liquidação).
+3. **Relógio do hold (P0-3)** — `reserve_entries.settled_at` passa a marcar o instante
+   econômico do settlement; `release_at = settled_at + reserve_hold_days`.
+   Removido o uso de `split_entries.created_at`.
+
+Invariantes mantidos: `reserve = floor(creator_net * 1000 / 10000)`;
+`available = creator_net - reserve`; `available + reserve = creator_net`;
+FREE = 10% / 30 dias; `security_reserves` permanece congelada (sem fonte concorrente).
+
+Segurança: todas as funções novas/alteradas com `search_path` fixo,
+`REVOKE ALL ... FROM PUBLIC, anon, authenticated` e `GRANT EXECUTE ... TO service_role`.
+
+Evidência desta rodada: suíte completa **789/789 PASS** (48 arquivos), incluindo
+`src/test/wave6-reserve-atomicity.test.ts` (41 casos: arredondamento, 90/10,
+30 dias desde `settled_at`, rollback, replay/concorrência, 100→80→60 ⇒ 40,
+parcial→total ⇒ 0, refund/chargeback antes e depois do release, IDOR, privilégios).
+Typecheck limpo; build Vite OK (16.18s).
+
+Pendências honestas (NÃO executadas nesta rodada):
+- Migration `20260811110000` **não aplicada**; deve ir junto/depois do deploy do código.
+- Deploy das Edge Functions `webhook-asaas` e `post-purchase` pendente.
+- E2E financeiro real (Asaas: pagamento, refund parcial/total, chargeback, saque)
+  **NÃO executado** — permanece BLOQUEADO/EXT.
