@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Mail, RefreshCw, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/tracking";
 import { validateAuthEmail } from "@/lib/authEmailGuard";
@@ -44,10 +43,10 @@ export function EmailVerificationBanner() {
         </div>
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">
-            Confirme seu email para continuar usando a plataforma
+            Confirme seu e-mail com o código de 4 dígitos
           </p>
           <p className="text-xs text-muted-foreground truncate">
-            Enviamos um link de verificação para {user.email}
+            Enviamos um código de verificação para {user.email}
           </p>
         </div>
       </div>
@@ -60,7 +59,7 @@ export function EmailVerificationBanner() {
           disabled={resending || cooldown > 0}
         >
           <RefreshCw className={`w-3 h-3 ${resending ? "animate-spin" : ""}`} />
-          {cooldown > 0 ? `${cooldown}s` : "Reenviar"}
+          {cooldown > 0 ? `${cooldown}s` : "Confirmar"}
         </Button>
         <Button
           size="sm"
