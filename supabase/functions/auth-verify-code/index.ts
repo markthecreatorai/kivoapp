@@ -82,6 +82,18 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
+    // ORDEM IMPORTA: confirmamos o e-mail ANTES de consumir o código.
+    // A confirmação via Admin API é idempotente; se ela falhar por motivo
+    // transitório, o código NÃO é consumido nem invalidado e o usuário pode
+    // simplesmente tentar de novo com o mesmo código.
+    const { error: updErr } = await supabase.auth.admin.updateUserById(record.user_id, {
+      email_confirm: true,
+    });
+    if (updErr) {
+      console.error("[auth-verify-code] confirm failed (retryable):", updErr.message);
+      return json({ ok: false, reason: "temporarily_unavailable" }, 503);
+    }
+
     // Uso único (proteção contra corrida: só consome se ainda estava livre).
     const { data: consumed } = await supabase
       .from("auth_verification_codes")
@@ -90,16 +102,6 @@ Deno.serve(async (req) => {
       .is("consumed_at", null)
       .select("id")
       .maybeSingle();
-    if (!consumed) return json({ ok: false, reason: "expired" }, 400);
-
-    // Confirma o e-mail — idempotente.
-    const { error: updErr } = await supabase.auth.admin.updateUserById(record.user_id, {
-      email_confirm: true,
-    });
-    if (updErr) {
-      console.error("[auth-verify-code] confirm failed:", updErr.message);
-      return json({ ok: false, reason: "internal_error" }, 500);
-    }
 
     // Tipo de conta é lido do banco (nunca de metadado enviado pelo cliente).
     const { data: accountRow } = await supabase
@@ -110,7 +112,9 @@ Deno.serve(async (req) => {
 
     const accountType = accountRow?.account_type ?? "MEMBER";
 
-    if (accountType === "PRODUCER") {
+    // Efeitos colaterais só na requisição que ganhou a corrida do consumo.
+    // Um replay concorrente devolve o mesmo resultado sem duplicar nada.
+    if (consumed && accountType === "PRODUCER") {
       const { error: wsErr } = await supabase.rpc("ensure_producer_workspace_for", {
         p_user_id: record.user_id,
       });
