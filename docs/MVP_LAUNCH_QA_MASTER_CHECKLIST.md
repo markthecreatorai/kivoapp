@@ -1403,4 +1403,5 @@ Método: testes automatizados, inspeção read-only de código/config e smoke HT
 ### 30.5 BLOQUEADO / EXT (exige ação externa do Lucas)
 - **EXT-009** — E2E financeiro real (cartão aprovado/recusado, PIX pago, boleto, reembolso total e parcial, chargeback) em sandbox Asaas. Requer secret e transação real: fora do escopo autorizado.
 - **EXT-010** — Configurar `ASAAS_WEBHOOK_TOKEN` no ambiente de homologação (já registrado na Onda 0); sem ele o webhook responde 500 por desenho.
-- **EXT-011** — Deploy das funções alteradas nesta onda (`create-payment`, `tokenize-card`, `simulate-installments`, `check-payment-status`, `test-asaas`, `webhook-asaas`) — pendente de autorização explícita de produção.
+- **EXT-011** — Deploy das funções alteradas nesta onda (`create-payment`, `tokenize-card`, `simulate-installments`, `check-payment-status`, `test-asaas`, `webhook-asaas` + novo módulo `_shared/refunds.ts`) — pendente de autorização explícita de produção.
+- **EXT-013** — Aplicar `docs/pending-migrations/20260811064500_process_refund_increment_atomic.sql`. Ordem obrigatória: **migration primeiro**, deploy do `webhook-asaas` depois. Sem ela o reembolso é fail-closed (500/retry) e nada é processado pela metade.
