@@ -1465,3 +1465,20 @@ Baseline: 622 testes verdes, typecheck limpo, build OK (15.97s).
 - Testes: `src/test/wave4-wallet-payout-contract.test.ts` (31 casos)
 - Código: `create-payout-request`, `release-reserves`, `CashOutModal.tsx`, `AdminRiskReview.tsx`, `AdminChargebacks.tsx`
 - Pendência de rollout: aplicar a migration **antes** de fazer deploy das Edge Functions desta onda (a RPC precisa existir).
+
+### 31.5 Hardening QA-4A-V2 (revisão do diff 794f33e..2c26bb8) — 2026-08-11 (UTC)
+
+Sem deploy, sem migration aplicada, sem API externa, sem transação real.
+
+| # | Achado da revisão | Correção | Status |
+|---|---|---|---|
+| 1 | `release-reserves` marcava `security_reserves='released'` e só depois inseria o crédito: falha no insert = reserva liberada sem dinheiro | RPC `release_security_reserve(uuid)` na migration canônica `20260811090000`: `FOR UPDATE`, valida `held`/vencimento/chargeback/refund, crédito idempotente + transição no MESMO commit, outcomes discriminados, `SECURITY DEFINER` com `search_path` fixo, `REVOKE` PUBLIC/anon/authenticated e `GRANT` só `service_role`. A Edge Function apenas chama a RPC | PASS (contrato+comportamento) / NEEDS_E2E (lock real) |
+| 2 | Reserva podia ser creditada sem ter sido debitada na origem (inflação de saldo) | Evidência read-only: `security_reserves` **não tinha** coluna `order_id` (EF quebrava em runtime), `transaction_id` era NOT NULL, `COUNT(*)=0` reservas e `0` créditos de liberação; settlement credita `creator_net` integral. Migration adiciona `order_id`, `ledger_debit_id` (FK) e `wallet_ledger.security_reserve_id` + índice único parcial. Sem `ledger_debit_id` a RPC devolve `NEEDS_PRODUCT_DECISION` e **mantém retido** — não credita, não libera | NEEDS_PRODUCT_DECISION (segregar 10% no settlement é bloco próprio) |
+| 3 | Divergência de commit: `AdminChargebacks.tsx` / `resolve_chargeback_case` reportados mas ausentes do diff | Ambos estão versionados na migration `20260811090000` (§9) e em `src/pages/AdminChargebacks.tsx`, cobertos por testes de contrato | PASS |
+| 4 | `create_payout_request_atomic` / `review_payout_request` frouxas | `p_requested_by` revalidado como OWNER/ADMIN no banco (`REQUESTER_NOT_ALLOWED`); `p_fee >= 0` (`INVALID_FEE`) e `p_amount = p_fee + p_net_amount` (`AMOUNT_MISMATCH`); aprovação usa o MESMO `pg_advisory_xact_lock('payout:'||workspace)` e revalida saldo (`INSUFFICIENT_BALANCE`); idempotência por `wallet_ledger.payout_request_id` (FK) com índice único que **ignora** `canceled`; preflight fail-closed contra duplicidade histórica; `audit_logs` transacional em aprovação/rejeição/auto-aprovação | PASS (contrato) / NEEDS_E2E (concorrência real) |
+| 5 | `GRANT SELECT` amplo podia permitir leitura cross-workspace | RLS confirmada ligada em `refunds`, `chargeback_cases`, `payout_items`, `security_reserves`, `wallet_ledger`, `payout_requests`, `withdrawals`; policies de SELECT escopadas por `workspace_members`. `payout_items` tinha policy `FOR ALL` para o role `public` → substituída por SELECT para `authenticated` via `is_workspace_member`. Nenhuma policy usa `auth.role()` | PASS |
+| 6 | Testes só por regex | `src/test/wave4-reserve-release-behavior.test.ts` (25 casos, model-based): venda 100 / reserva 10 antes-durante-depois, hold sem disponível negativo, refund e chargeback antes da liberação, replay, dois workers, falha simulada de crédito | PASS |
+
+Suíte: **653/653** ✓ · typecheck limpo ✓ · build ✓
+
+Ordem de rollout (quando autorizado): (1) aplicar `20260811090000` (preflights abortam se houver duplicidade histórica); (2) deploy `release-reserves` e `create-payout-request`; (3) regenerar types; (4) decidir a segregação da reserva no settlement antes de qualquer crédito de liberação.
