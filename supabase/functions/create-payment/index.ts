@@ -131,6 +131,23 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Rate limit por IP: aplicado ANTES de qualquer escrita (cliente, pedido, cobrança).
+    const rate = await checkRateLimit(
+      supabase,
+      "create-payment",
+      getClientIp(req),
+      RATE_LIMIT_MAX,
+      RATE_LIMIT_WINDOW_SECONDS,
+    );
+    if (!rate.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Muitas tentativas de pagamento. Aguarde um minuto e tente novamente." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+
+
     // Idempotency check
     if (idempotency_key) {
       const { data: existingOrder } = await supabase
