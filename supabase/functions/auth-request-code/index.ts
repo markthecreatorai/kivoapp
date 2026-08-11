@@ -138,8 +138,9 @@ Deno.serve(async (req) => {
       user = created.user as AuthUser;
     } else if (mode === "signup") {
       // Cadastro pendente (conta existe e NUNCA foi confirmada): o usuário está
-      // recomeçando o cadastro, possivelmente com outra senha. Sincronizamos a
-      // senha e os metadados para que o signInWithPassword posterior funcione.
+      // recomeçando o cadastro, possivelmente com outra senha/papel. Sincronizamos
+      // senha, metadados E a fonte autorizada (public.user_account_types) para que
+      // o signInWithPassword e a confirmação posteriores funcionem corretamente.
       // Nunca ocorre em mode=resend nem em conta já confirmada (tratada acima).
       const { error: syncErr } = await supabase.auth.admin.updateUserById(user.id, {
         password,
@@ -153,6 +154,17 @@ Deno.serve(async (req) => {
       });
       if (syncErr) {
         console.error("[auth-request-code] pending signup sync failed:", syncErr.message);
+        return json({ error: "internal_error" }, 500);
+      }
+
+      const { error: accountTypeErr } = await supabase
+        .from("user_account_types")
+        .upsert(
+          { user_id: user.id, account_type: isCreator ? "PRODUCER" : "MEMBER" },
+          { onConflict: "user_id" },
+        );
+      if (accountTypeErr) {
+        console.error("[auth-request-code] account type sync failed:", accountTypeErr.message);
         return json({ error: "internal_error" }, 500);
       }
     }
