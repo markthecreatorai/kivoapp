@@ -1508,3 +1508,73 @@ liberação de reserva   : debito(-10, estágio X) + credito(+10, estágio X) = 
 Testes: `src/test/wave4-reserve-release-behavior.test.ts` (50 casos, model-based + contrato) · suíte **678/678** ✓ · typecheck limpo ✓ · build ✓
 
 Ordem de rollout (quando autorizado): (1) aplicar `20260811090000` — os preflights abortam com duplicidade histórica de crédito de liberação ou débito reutilizado; (2) deploy `release-reserves` e `create-payout-request`; (3) regenerar types; (4) só então decidir a segregação dos 10% no settlement — sem ela toda liberação permanece `NEEDS_PRODUCT_DECISION`.
+
+### 31.7 Auditoria QA-4A-V4-RESERVE-ORIGIN (HEAD `8872d36f`) — 2026-08-11 (UTC)
+
+Sem deploy, sem migration aplicada, sem Asaas/API externa, sem transação real. Verificação de schema/dados **somente read-only**.
+
+**1) Fonte canônica da política (descoberta, não inventada)**
+
+| Dimensão | Fonte canônica | Valor real em produção | Status |
+|---|---|---|---|
+| Percentual | `public.fee_config.reserve_percent` por `plan_type` | `creator = 10`, `creator_pro = 10` | PASS (inequívoco) |
+| Janela de liberação | `public.fee_config.reserve_hold_days` | `creator = 30`, `creator_pro = 15` (D+N absoluto da venda) | PASS (inequívoco) |
+| Elegibilidade | código de `create-payment` e `webhook-asaas` + memória do projeto | **somente cartão** (PIX/boleto sem reserva) | PASS (inequívoco) |
+| Plano FREE | `fee_config` | **não existe linha `free`** → `reserve_percent` cai para `0` no código | NEEDS_PRODUCT_DECISION |
+| **Base de cálculo** | conflito real entre caminhos | `security_reserves` usa `transactions.net_amount`; `reserve_entries` usa `split_entries.creator_net` | **FAIL / NEEDS_PRODUCT_DECISION** |
+| **Modelo vigente** | conflito real | dois modelos coexistem (`security_reserves` e `reserve_entries`) | **FAIL / NEEDS_PRODUCT_DECISION** |
+
+**2) Caminhos que criam crédito do produtor / reserva (mapeamento completo)**
+
+| Caminho | O que grava | Achado |
+|---|---|---|
+| `create-payment` (pré-pagamento) | `split_entries` + `security_reserves` (base `net_amount`) | insere `order_id` em `security_reserves`, **coluna inexistente no schema aplicado** → insert falha |
+| `webhook-asaas` bloco `transactions` | `security_reserves` (base `net_amount` final) | mesmo defeito de coluna; silenciado por `catch` "non-fatal" |
+| `webhook-asaas` liquidação | `process_order_commission` (fonte única de `split_entries` + `wallet_ledger`) + `reserve_entries` (base `creator_net`) | `process_order_commission` **não** contém nenhuma referência a reserva (verificado via `pg_proc.prosrc`) → credita `creator_net` **integral** |
+| `release-holds` (cron ativo) | liberava `reserve_entries` + inseria `adjustment` positivo | **P0: criação de dinheiro** — creditava 10% sem débito de origem |
+| `release-reserves` (cron) | RPC `release_security_reserve` | já fail-closed desde o v3 (`NEEDS_PRODUCT_DECISION`) |
+| `reconcile-asaas` / renovação de assinatura | reutilizam o mesmo webhook/RPC de liquidação | sem caminho alternativo de crédito |
+
+**3) Evidência read-only (banco real, 2026-08-11)**
+
+```text
+fee_config                : creator 10%/30d · creator_pro 10%/15d
+security_reserves         : 0 linhas · sem coluna order_id · sem ledger_debit_id
+reserve_entries           : 1 linha  · amount=437 · reserve_percent=10 · held · release_at 2026-09-07
+wallet_ledger (order 52d06af2) : sale +4850 pending (available_at D+14) · fee -140 settled
+migration 20260811090000  : 0 colunas novas e 0 RPCs presentes → NÃO aplicada
+```
+
+Equação atual (P0 corrigido nesta rodada):
+
+```text
+origem      : sale = +4850           (creator_net INTEGRAL, nenhum débito de 437)
+release-holds (antes) : + adjustment 437  → saldo 5287  = creator_net + 10%  (dinheiro inventado)
+release-holds (agora) : nenhum crédito    → saldo 4850  = creator_net        (fail-closed)
+modelo correto (após decisão) : sale 4850 - segregacao 437 = 4413 ; após liberação = 4850
+```
+
+**4) Correção aplicada (única, fail-closed, sem inventar política)**
+
+`supabase/functions/release-holds/index.ts` deixou de creditar `wallet_ledger` na liberação de `reserve_entries`. Reservas vencidas permanecem `held`, a prorrogação por chargeback ativo é preservada, e o resumo do job passa a reportar `reserves_needs_product_decision`. Nada do bloco 1 (liberação normal de `wallet_ledger` pending vencido) foi alterado. Nenhuma alteração em `process_order_commission`, `create-payment`, `webhook-asaas` ou na migration canônica — corrigir a segregação exige a decisão de produto abaixo.
+
+**5) Decisão que Lucas precisa tomar (bloqueia o encerramento do 4A-reserva)**
+
+1. Modelo único: `security_reserves` (novo, com RPC atômica e prova estruturada) **ou** `reserve_entries` (legado, hoje o único com dados)? Manter os dois duplica reserva na mesma venda.
+2. Base de cálculo dos 10%: `transactions.net_amount` (antes do split de afiliado/plataforma) **ou** `split_entries.creator_net` (o que é efetivamente creditado)? Só a segunda é segregável do saldo do produtor.
+3. Plano FREE: criar linha em `fee_config` (`plan_type='free'`) ou aceitar 0% de reserva explicitamente?
+4. Reservas legadas já vencidas (`reserve_entries` `held` sem débito de origem): liberar sem crédito (produtor perde 10%) ou reprocessar contabilmente com débito retroativo?
+
+**6) Estado dos demais itens da Onda 4A (podem fechar sem essa decisão)**
+
+| Item | Status |
+|---|---|
+| Saques: `create_payout_request_atomic` / `review_payout_request` (advisory lock, `p_amount = p_fee + p_net_amount`, revalidação de saldo na aprovação, `audit_logs` transacional, idempotência por `payout_request_id`) | PASS (contrato+comportamento) / NEEDS_E2E (lock e índices em banco real) · **pendente aplicar `20260811090000`** |
+| RLS/grants financeiros (`payout_items` sem policy `FOR ALL`, `REVOKE` de `anon`, SELECT por workspace) | PASS no SQL versionado / NEEDS_E2E (isolamento cross-workspace em banco real) |
+| Chargeback (`resolve_chargeback_case`, convergência única, guard de refund) | PASS (model-based) / NEEDS_E2E |
+| Transferência real Asaas (payout efetivo) | EXTERNAL |
+| Reserva de segurança ponta a ponta | **NEEDS_PRODUCT_DECISION** (fail-closed em `release-holds` e `release-reserves`) |
+
+Testes: `src/test/wave4-reserve-origin-behavior.test.ts` (10 casos: origem integral, inflação detectada, fail-closed, modelo correto, hold sem antecipação, replay + 4 contratos do job).
+
+Rollout: (1) decisão de produto dos itens 5.1–5.4; (2) migration de segregação na origem (`process_order_commission`) + `20260811090000`; (3) deploy de `release-holds`/`release-reserves`; (4) reprocessar reservas legadas.
