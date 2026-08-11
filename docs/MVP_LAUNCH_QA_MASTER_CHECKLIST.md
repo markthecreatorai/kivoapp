@@ -1262,8 +1262,21 @@ Método: testes automatizados, inspeção read-only de código/config e smoke HT
 | ID | Caso | Status | Evidência |
 |---|---|---|---|
 | CB-RLS-001 | RLS de `courses`/`course_modules`/`course_lessons` | APROVADO | Todas as operações condicionadas a `is_workspace_member(courses.workspace_id)`. |
-| CB-REORDER-IDOR | Reordenação autorizada apenas para o dono do curso | **REPROVADO — AGUARDANDO AUTORIZAÇÃO DE MIGRATION** | `pg_get_functiondef` mostra `batch_reorder_lessons/modules` como `SECURITY DEFINER` fazendo `UPDATE ... WHERE id = ...` **sem checagem de dono** → escrita cross-tenant (contorna a RLS). Correção agora **versionada** em `supabase/migrations/20260811070000_batch_reorder_fail_closed_ownership_guard.sql` (fail-closed e atômica; ver seção 29.1). Ainda **não aplicada**. |
+| CB-REORDER-IDOR | Reordenação autorizada apenas para o dono do curso | **CORRIGIDO EM MIGRATION VERSIONADA — AGUARDANDO AUTORIZAÇÃO PARA APLICAR** | `pg_get_functiondef` mostrava `batch_reorder_lessons/modules` como `SECURITY DEFINER` fazendo `UPDATE ... WHERE id = ...` **sem checagem de dono** → escrita cross-tenant (contorna a RLS). Correção agora versionada em `supabase/migrations/20260811070000_batch_reorder_fail_closed_ownership_guard.sql` (Bloco A, ver 28.4.1). `docs/pending-sql/` eliminado. **Migration NÃO aplicada nesta rodada.** |
 | CB-PROG-001 | Progresso, retomada, quiz e certificado | APROVADO | Suítes `course-builder.test.ts`, `course-builder-integration.test.tsx` verdes; certificados legíveis só pelo aluno (por e-mail do JWT) ou pelo workspace dono. |
+
+#### 28.4.1 Bloco A — migration versionada, fail-closed e atômica (2026-08-11, HEAD `52bb8e6d`)
+
+- **Arquivo**: `supabase/migrations/20260811070000_batch_reorder_fail_closed_ownership_guard.sql` (timestamp posterior ao HEAD; **não aplicada**, aguarda EXT-014). O SQL solto em `docs/pending-sql/` foi removido para não existir caminho de aplicação fora do versionamento.
+- **Autenticação**: `auth.uid() IS NULL` → `EXCEPTION 28000`, antes de qualquer outra coisa.
+- **Estrutura do payload**: exige array `jsonb`; cada item precisa ser objeto com as chaves `id` e `position` não nulas; casts estritos `::uuid` e `::int`; rejeita array vazio, ids duplicados e `position < 0` (`22023`).
+- **Autorização total (fail-closed)**: compara `count(*)` do payload com `count(*)` dos ids que passam por `JOIN courses ... WHERE public.is_workspace_member(c.workspace_id)` — o **mesmo predicado das policies já vigentes** de `course_lessons`/`course_modules`, sem inventar papel novo. Divergência → `EXCEPTION 42501` ("unauthorized or unknown lesson/module in payload").
+- **Sem subset silencioso**: payload misto (ids próprios + ids de outro workspace, ou id inexistente) aborta a chamada **antes** do `UPDATE`. Há exatamente **um** `UPDATE` por função, executado só após a checagem, e a função roda na transação da chamada — não existe reordenação parcial.
+- **Sem tabela temporária**: a validação roda sobre o próprio payload, mantendo a função reentrante dentro de uma mesma transação.
+- **Preservado**: `SECURITY DEFINER`, `SET search_path TO 'public'`, `CREATE OR REPLACE` (sem `DROP FUNCTION`, sem quebra de dependências) e nenhum `EXCEPTION WHEN` que engula erro.
+- **Grants mínimos por assinatura exata**: `REVOKE EXECUTE` de `PUBLIC` e `anon`; `GRANT EXECUTE` apenas para `authenticated` e `service_role`, sempre com `(jsonb)` explícito.
+- **Regressão**: `src/test/wave2-batch-reorder-guard-contract.test.ts` (**28 casos**) cobre payload misto, ausência de update parcial, ordem guard→update, validação de estrutura/uuid/position, `SECURITY DEFINER`/`search_path` e a matriz de grants por assinatura.
+- **Baseline do Bloco A**: typecheck **0 erros**, Vitest **466 testes / 40 arquivos** verdes, build de produção OK. Nenhuma migration aplicada, nenhum deploy, nenhuma publicação, nenhuma ação externa executada.
 
 ### 28.5 Regressão adicionada
 
