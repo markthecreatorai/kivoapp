@@ -1,7 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { resolveAuthSignupOutcome, SIGNUP_OUTCOME_TELEMETRY } from "@/lib/authSignupOutcome";
+import EmailCodeVerificationModal from "@/components/auth/EmailCodeVerificationModal";
+import {
+  clearPendingVerification,
+  getPendingVerification,
+  requestVerificationCode,
+  savePendingVerification,
+  signInAfterVerification,
+} from "@/lib/authVerification";
+
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
