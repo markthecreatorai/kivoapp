@@ -750,6 +750,14 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
   // 3b. Cancela comissões de afiliado do pedido contestado
   await cancelOrderCommissions(supabase, paymentRecord.order_id, "Chargeback aberto");
 
+  // Cancela comissão de indicação deste pagamento (idempotente)
+  if (paymentData?.id) {
+    const { error: refCancelErr } = await supabase.rpc("cancel_referral_commissions_for_payment", {
+      p_payment_id: String(paymentData.id),
+    });
+    if (refCancelErr) console.error("[Referral] Falha ao cancelar comissão:", JSON.stringify(refCancelErr));
+  }
+
   // 4. Reverse split entry (freeze creator balance)
   await supabase.from("split_entries").update({
     status: "refunded",
