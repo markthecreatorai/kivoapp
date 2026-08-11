@@ -12,7 +12,7 @@ const webhook = readFileSync(
   "utf-8",
 );
 const migration = readFileSync(
-  resolve(process.cwd(), "supabase/migrations-pending/20260811074500_process_refund_increment_atomic.sql"),
+  resolve(process.cwd(), "supabase/migrations/20260811074500_process_refund_increment_atomic.sql"),
   "utf-8",
 );
 

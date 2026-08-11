@@ -17,19 +17,19 @@ import { resolve } from "path";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MIGRATION_PATH =
-  "supabase/migrations-pending/20260811074500_process_refund_increment_atomic.sql";
+  "supabase/migrations/20260811074500_process_refund_increment_atomic.sql";
 const migration = readFileSync(resolve(process.cwd(), MIGRATION_PATH), "utf-8");
 
 // ═══ 1. Especificação no SQL ════════════════════════════════════════════════
 
 describe("FI-REFUND-V2 / migration — fonte única e guardas de aplicação", () => {
-  it("é a única fonte versionada; docs/pending-migrations não existe mais", () => {
+  it("é a única fonte versionada no caminho canônico; pastas pending removidas", () => {
     let removed = false;
     try {
       readFileSync(
         resolve(
           process.cwd(),
-          "docs/pending-migrations/20260811064500_process_refund_increment_atomic.sql",
+          "supabase/migrations-pending/20260811074500_process_refund_increment_atomic.sql",
         ),
       );
     } catch {
