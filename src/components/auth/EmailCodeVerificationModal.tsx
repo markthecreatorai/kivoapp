@@ -76,8 +76,6 @@ export default function EmailCodeVerificationModal({
       setError('Instabilidade momentânea ao confirmar. Toque em "Confirmar código" novamente.');
       return;
     }
-      return;
-    }
     setStatus("idle");
     setDigits(Array(CODE_LENGTH).fill(""));
     submittedRef.current = "";
