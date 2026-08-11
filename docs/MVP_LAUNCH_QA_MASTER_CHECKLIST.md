@@ -1360,3 +1360,42 @@ Método: testes automatizados, inspeção read-only de código/config e smoke HT
 | Comprador convidado não consegue baixar o entregável sem criar conta | MÉDIO | Decisão de produto pendente; nenhum bypass será criado |
 | Limite de 50 MB pode ser pequeno para vídeo/curso pesado | MÉDIO | Elevar o limite no painel Supabase e atualizar `MAX_UPLOAD_BYTES` juntos (ação externa) |
 | Órfãos anteriores à correção seguem no bucket | BAIXO | Varredura de limpeza a agendar depois do go-live |
+
+---
+
+## 30. Onda 3 — Checkout, Pagamentos, Assinaturas e Financeiro — 2026-08-11 (UTC)
+
+**HEAD base:** `58e14d7e5d3d72edba431c5b8ce610bdc26b1336`
+**Modo:** auditoria de código + testes de contrato. **Sem** deploy, publicação, migration aplicada, secret, criação de usuário, e-mail ou chamada real a Asaas/Resend/WhatsApp.
+**Baseline de entrada:** 466 testes verdes / 40 arquivos. **Saída:** **539 testes verdes / 41 arquivos**, typecheck 0 erros, build OK.
+
+### 30.1 Evidência automatizada
+- Arquivo novo: `src/test/wave3-payments-financial-contract.test.ts` (**73 casos**) cobrindo CORS, rate limit, adulteração de payload, webhook, split, carteira, reembolso e saque.
+- Comandos: `bunx vitest run src/test/wave3-payments-financial-contract.test.ts` → 73/73; `bunx vitest run` → 539/539; `bunx tsgo --noEmit` → limpo; `bun run build` → `built in 13.98s`.
+
+### 30.2 Achados corrigidos nesta rodada
+
+| ID | Sev | Achado | Correção |
+|---|---|---|---|
+| FI-ASAAS-PROXY | **P0** | `test-asaas` aceitava `api_key`/`environment` do corpo, sem JWT e com CORS `*`: oráculo de validação de chaves Asaas roubadas e forçamento de `production`. | Reescrita: exige JWT + `is_admin_user`, usa somente `ASAAS_API_KEY`/`ASAAS_ENV` do ambiente, CORS restrito, nunca ecoa o corpo do gateway. |
+| FI-REFUND-PARTIAL | **P0** | `handleRefunded` tratava `paymentData.value` (valor da **cobrança**) como valor devolvido e cancelava a venda inteira no ledger + lançava débito: reembolso parcial zerava o pedido (dupla contagem contra o produtor). | Valor devolvido passa a vir da soma de `refunds[]`; parcial debita só o devolvido (`available`), **não** cancela a venda, **não** revoga acesso/comissão/reserva; total mantém o comportamento anterior (débito `settled` como trilha). Idempotência por `gateway_refund_id`. |
+| CO-CORS-WILDCARD | P1 | `create-payment`, `tokenize-card`, `simulate-installments`, `check-payment-status` respondiam com `Access-Control-Allow-Origin: *`. | Todas passam a derivar CORS por requisição via `_shared/cors.ts` (`corsHeadersFor(req)`). |
+| CO-NO-RATELIMIT | P1 | Endpoints públicos sem teto: fábrica de pedidos/cobranças e *card testing* / BIN enumeration. | `checkRateLimit` por IP: `create-payment` 10/min (aplicado **antes** de qualquer escrita), `tokenize-card` 5/min, `simulate-installments` 30/min; resposta 429 em PT-BR. |
+
+### 30.3 Verificado sem defeito (evidência em teste)
+- **Adulteração de checkout:** `workspace_id` derivado do produto; `price_id` obrigado a pertencer ao `product_id`; produto precisa estar `PUBLISHED` e não deletado; order bump validado contra `order_bumps` ativo do produto principal; valor/desconto nunca vêm do cliente; parcelas limitadas por `prices.max_installments`; pedido zerado bloqueado; PAN/CVV nunca trafegam (só `card_token`).
+- **Idempotência e falha de gateway:** `idempotency_key` reaproveita pedido; erro de gateway → 502, pedido `FAILED` e cupom liberado.
+- **Webhook Asaas:** fail-closed sem `ASAAS_WEBHOOK_TOKEN`; comparação em tempo constante → 401; chave de idempotência inclui o tipo do evento; `PROCESSED` → duplicate; `PAYMENT_MISMATCH`, `ALREADY_COMPLETED`, `TEST_IGNORED`; evento desconhecido sem efeito financeiro; `FAILED`/`DEAD_LETTER` com backoff e 500 para retry.
+- **Split:** invariante `bruto = gateway + plataforma + afiliado + produtor` fecha ao centavo em 6 cenários; comissão maior que o líquido não gera `creator_net` negativo.
+- **Carteira:** hold conta como `pending`; hold vencido migra sem alterar o total; saque/chargeback sempre debitam em módulo; `settled`/`canceled` não movem saldo.
+- **Taxas e reserva:** boleto com taxa fixa em centavos; reserva de segurança **apenas** em cartão; `create-payment` não escreve em `wallet_ledger` (só a confirmação escreve); `split_entries` nasce `pending` com `available_at` nulo.
+- **Paridade de desconto:** ordem subtotal → cupom → PIX idêntica no front (`src/lib/checkout-totals.ts`) e no back (`_shared/coupon.ts`); PIX nunca incide sobre o subtotal cheio.
+- **Saque:** exige JWT (`verify_jwt = true`), workspace vem de `workspace_members`, só `OWNER`/`ADMIN`, conta bancária obrigada ao workspace, saldo recalculado no servidor pela regra compartilhada, mínimo por `fee_config`, `idempotency_key`.
+
+### 30.4 Superfície morta / sem consumidor no frontend
+- `test-asaas`: nenhum `supabase.functions.invoke("test-asaas")` no `src/`. Mantida como diagnóstico administrativo (agora fechada), não removida para não alterar contrato de deploy nesta rodada.
+
+### 30.5 BLOQUEADO / EXT (exige ação externa do Lucas)
+- **EXT-009** — E2E financeiro real (cartão aprovado/recusado, PIX pago, boleto, reembolso total e parcial, chargeback) em sandbox Asaas. Requer secret e transação real: fora do escopo autorizado.
+- **EXT-010** — Configurar `ASAAS_WEBHOOK_TOKEN` no ambiente de homologação (já registrado na Onda 0); sem ele o webhook responde 500 por desenho.
+- **EXT-011** — Deploy das funções alteradas nesta onda (`create-payment`, `tokenize-card`, `simulate-installments`, `check-payment-status`, `test-asaas`, `webhook-asaas`) — pendente de autorização explícita de produção.

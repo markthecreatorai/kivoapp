@@ -7,13 +7,14 @@ import {
   computeCommissionBrl,
   computeSplitCents,
 } from "../_shared/commissions.ts";
+import { corsHeadersFor } from "../_shared/cors.ts";
+import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
 
+// Limite anti-abuso: criação de pedido é pública por natureza (checkout de convidado),
+// portanto precisa de teto por IP para não virar fábrica de pedidos/cobranças.
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
 
 // ── Asaas API ──
 
@@ -64,9 +65,13 @@ async function findOrCreateAsaasCustomer(
 }
 
 Deno.serve(async (req) => {
+  // CORS restrito: só a origem da Kivo (e hosts de preview) podem chamar o checkout.
+  const corsHeaders = corsHeadersFor(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
 
   // ── Gateway guardrail: never process/deliver anything without a real gateway ──
   const gatewayApiKey = (Deno.env.get("ASAAS_API_KEY") || "").trim();
@@ -125,6 +130,23 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Rate limit por IP: aplicado ANTES de qualquer escrita (cliente, pedido, cobrança).
+    const rate = await checkRateLimit(
+      supabase,
+      "create-payment",
+      getClientIp(req),
+      RATE_LIMIT_MAX,
+      RATE_LIMIT_WINDOW_SECONDS,
+    );
+    if (!rate.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Muitas tentativas de pagamento. Aguarde um minuto e tente novamente." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+
 
     // Idempotency check
     if (idempotency_key) {
