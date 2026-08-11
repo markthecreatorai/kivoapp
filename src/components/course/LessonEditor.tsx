@@ -161,10 +161,16 @@ export function LessonEditor({
 
     setUploading(true);
     try {
-      // Generate unique filename
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sessão expirada. Entre novamente para enviar arquivos.");
+        return;
+      }
+
+      // Generate unique filename — o bucket privado exige o prefixo `auth.uid()`
       const fileExt = file.name.split('.').pop();
       const fileName = `${lesson.id}_${Date.now()}.${fileExt}`;
-      const filePath = `courses/${productId}/${fileName}`;
+      const filePath = `${user.id}/courses/${productId}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
@@ -173,10 +179,12 @@ export function LessonEditor({
 
       if (error) throw error;
 
-      // Get public URL
+      // A URL guardada contém o marcador do bucket privado; o player pede
+      // uma URL assinada de curta duração ao abrir a aula.
       const { data: urlData } = supabase.storage
         .from("private-files")
         .getPublicUrl(data.path);
+
 
       setMediaUrl(urlData.publicUrl);
       toast.success("Arquivo enviado!");
