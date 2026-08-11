@@ -447,3 +447,65 @@ describe("Onda 3 / FI — saque: autorização, saldo e idempotência", () => {
     expect(payoutRequest).toContain("idempotency_key");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FI — Reembolso total x parcial (P0 corrigido nesta onda)
+// ─────────────────────────────────────────────────────────────────────────────
+describe("Onda 3 / FI — reembolso parcial não dobra o débito", () => {
+  it("valor devolvido vem de refunds[], não de paymentData.value", () => {
+    expect(webhookAsaas).toContain("Array.isArray(paymentData?.refunds)");
+    expect(webhookAsaas).toContain("refundedFromList > 0 ? refundedFromList : chargeAmount");
+  });
+
+  it("classifica parcial por status do gateway ou por valor menor que a cobrança", () => {
+    expect(webhookAsaas).toContain('asaasStatus === "PARTIALLY_REFUNDED"');
+    expect(webhookAsaas).toContain("refundCents < chargeCents");
+  });
+
+  it("parcial não cancela o crédito da venda no ledger", () => {
+    expect(webhookAsaas).toContain('if (!isPartial) {\n    await supabase.from("wallet_ledger").update({ status: "canceled" })');
+  });
+
+  it("parcial preserva acesso, comissões e reserva do pedido", () => {
+    const partialIdx = webhookAsaas.indexOf('return "PARTIALLY_REFUNDED"');
+    const revokeIdx = webhookAsaas.indexOf('.from("entitlements").update({ revoked_at');
+    const commissionIdx = webhookAsaas.indexOf('cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado")');
+    const forfeitIdx = webhookAsaas.indexOf('status: "forfeited"');
+    expect(partialIdx).toBeGreaterThan(0);
+    // Todos os efeitos destrutivos ficam DEPOIS do early-return do parcial.
+    expect(revokeIdx).toBeGreaterThan(partialIdx);
+    expect(commissionIdx).toBeGreaterThan(partialIdx);
+    expect(forfeitIdx).toBeGreaterThan(partialIdx);
+  });
+
+  it("parcial não rebaixa orders.status (respeita o CHECK existente)", () => {
+    expect(webhookAsaas).not.toContain('status: "PARTIALLY_REFUNDED" })');
+    expect(webhookAsaas).toContain("order status preserved");
+  });
+
+  it("débito parcial entra como available (move saldo) e total como settled (trilha)", () => {
+    expect(webhookAsaas).toContain('const ledgerStatus = isPartial ? "available" : "settled"');
+  });
+
+  it("é idempotente por gateway_refund_id", () => {
+    expect(webhookAsaas).toContain('.eq("gateway_refund_id", gatewayRefundId)');
+    expect(webhookAsaas).toContain('"ALREADY_PARTIALLY_REFUNDED"');
+  });
+
+  it("saldo: venda 100 + reembolso parcial de 30 resulta em 70", () => {
+    const b = computeBalances([
+      { amount: 10000, status: "available", type: "sale" },
+      { amount: -3000, status: "available", type: "refund" },
+    ]);
+    expect(b.available).toBe(7000);
+  });
+
+  it("saldo: reembolso total não debita além do cancelamento da venda", () => {
+    const b = computeBalances([
+      { amount: 10000, status: "canceled", type: "sale" },
+      { amount: -10000, status: "settled", type: "refund" },
+    ]);
+    expect(b.available).toBe(0);
+    expect(b.total).toBe(0);
+  });
+});
