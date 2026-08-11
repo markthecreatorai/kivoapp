@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import kivoLogo from "@/assets/kivo-logo.svg";
 import { clearReferralCode } from "@/hooks/useReferralTracking";
 import { resolveSmartRedirect } from "@/lib/smartRedirect";
+import { sanitizeReturnTarget } from "@/lib/authVerification";
 
 
 type Status = "loading" | "success" | "error";
@@ -84,8 +85,8 @@ export default function AuthCallback() {
 
     /** Destino: ?redirect interno tem prioridade; senão resolve pelo tipo de conta. */
     const resolveDestination = async (userId: string) => {
-      const explicit = searchParams.get("redirect");
-      if (explicit && explicit.startsWith("/") && !explicit.startsWith("//")) {
+      const explicit = sanitizeReturnTarget(searchParams.get("redirect"));
+      if (explicit) {
         setDestination(explicit);
         return;
       }

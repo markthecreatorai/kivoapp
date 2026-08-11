@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { resolveSmartRedirect } from "@/lib/smartRedirect";
 import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
 import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
+import { sanitizeReturnTarget } from "@/lib/authVerification";
 
 type LoginStep = "credentials" | "mfa";
 
@@ -37,7 +38,8 @@ export default function Login() {
   // Redirect authenticated users away from login — smart routing
   useEffect(() => {
     if (!authLoading && user) {
-      const redirect = searchParams.get("redirect");
+      // QA Onda 1 (RT/AU): destino sempre sanitizado — bloqueia open redirect (//host, \\host, URL absoluta).
+      const redirect = sanitizeReturnTarget(searchParams.get("redirect"));
       if (redirect) {
         navigate(redirect, { replace: true });
         return;
@@ -98,7 +100,8 @@ export default function Login() {
         setLoginStep("mfa");
         setIsLoading(false);
       } else {
-        const redirect = searchParams.get("redirect");
+        // QA Onda 1 (RT/AU): destino sempre sanitizado — bloqueia open redirect (//host, \\host, URL absoluta).
+      const redirect = sanitizeReturnTarget(searchParams.get("redirect"));
         if (redirect) {
           navigate(redirect);
         } else {
@@ -134,7 +137,8 @@ export default function Login() {
 
       if (verifyError) throw verifyError;
 
-      const redirect = searchParams.get("redirect");
+      // QA Onda 1 (RT/AU): destino sempre sanitizado — bloqueia open redirect (//host, \\host, URL absoluta).
+      const redirect = sanitizeReturnTarget(searchParams.get("redirect"));
       if (redirect) {
         navigate(redirect);
       } else {
