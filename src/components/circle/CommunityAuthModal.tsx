@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import { useJoinCommunity } from "@/hooks/useJoinCommunity";
 import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
 import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
+import EmailCodeVerificationModal from "@/components/auth/EmailCodeVerificationModal";
+
 
 type AuthView = "signup" | "login" | "forgot-password" | "forgot-success";
 
@@ -193,8 +195,10 @@ export default function CommunityAuthModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <>
+    <Dialog open={open && !pendingVerification} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[420px] p-0 gap-0 overflow-hidden">
+
         {/* Header with community branding */}
         <div className="px-6 pt-6 pb-4 text-center space-y-3">
           {community?.icon_url ? (
@@ -407,5 +411,21 @@ export default function CommunityAuthModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <EmailCodeVerificationModal
+      open={!!pendingVerification}
+      email={pendingVerification?.email || ""}
+      accountType="MEMBER"
+      flowOrigin="circles"
+      returnTarget={pendingVerification?.returnTarget || null}
+      initialCooldown={pendingVerification?.cooldown ?? 60}
+      onVerified={(result) => completeVerifiedSignup(result.next)}
+      onUseAnotherEmail={() => {
+        cancelVerification();
+        switchView("signup");
+      }}
+    />
+    </>
   );
+
 }
