@@ -4,7 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/tracking";
 import { completePendingCommunityJoin, savePendingCommunityJoin } from "@/lib/pendingCommunityJoin";
-import { resolveAuthSignupOutcome, SIGNUP_OUTCOME_TELEMETRY } from "@/lib/authSignupOutcome";
+import {
+  clearPendingVerification,
+  requestVerificationCode,
+  savePendingVerification,
+  signInAfterVerification,
+} from "@/lib/authVerification";
+
 import { validateAuthEmail } from "@/lib/authEmailGuard";
 
 interface JoinFormData {
