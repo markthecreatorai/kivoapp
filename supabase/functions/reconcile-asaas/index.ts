@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
   }
 
   const startedAt = Date.now();
+  const cronRun = await startCronRun(req);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -48,6 +49,7 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   if (!asaasKey) {
+    await cronRun.finish("FAILED", {}, "ASAAS_API_KEY not configured");
     return new Response(JSON.stringify({
       error: "ASAAS_API_KEY not configured",
       summary: { reconciled: 0, divergences_fixed: 0, manual_review: 0 },
