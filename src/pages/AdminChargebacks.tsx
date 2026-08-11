@@ -75,49 +75,31 @@ export default function AdminChargebacks() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const updateData: Record<string, any> = { status };
-      if (status === "won" || status === "lost") {
-        updateData.resolved_at = new Date().toISOString();
-      }
+      // Era uma sequência de writes do cliente (caso → timeline → split → ledger),
+      // sem atomicidade e barrada pela RLS. Agora uma única transação server-side
+      // resolve o caso e devolve venda, split e reserva quando a disputa é ganha.
+      // Cast: a migration 20260811090000 ainda não foi aplicada, então os tipos
+      // gerados não conhecem a RPC.
+      const { data, error } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+        "resolve_chargeback_case",
+        { p_case_id: caseId, p_status: status, p_note: noteText || null },
+      );
+      if (error) throw error;
 
-      const { error: updateErr } = await supabase.from("chargeback_cases").update(updateData as any).eq("id", caseId);
-      if (updateErr) throw updateErr;
-
-      const { error: tlErr } = await supabase.from("chargeback_timeline").insert({
-        case_id: caseId,
-        action: `status_changed_to_${status}`,
-        actor_id: user.id,
-        note: noteText || `Status alterado para ${statusConfig[status]?.label || status}`,
-      });
-      if (tlErr) throw tlErr;
-
-      // If case won → reverse the chargeback impact
-      if (status === "won" && selectedCase) {
-        await supabase.from("split_entries").update({
-          status: "available",
-          refunded_at: null,
-        }).eq("order_id", selectedCase.order_id).eq("status", "refunded");
-
-        await supabase.from("wallet_ledger").update({ status: "canceled" })
-          .eq("order_id", selectedCase.order_id).eq("type", "chargeback");
-
-        await supabase.from("chargeback_timeline").insert({
-          case_id: caseId,
-          action: "financial_reversed",
-          actor_id: user.id,
-          note: "Chargeback ganho — split e ledger restaurados",
-        });
-      }
-
-      await supabase.from("audit_logs").insert({
-        workspace_id: selectedCase.workspace_id,
-        entity_type: "chargeback_case",
-        entity_id: caseId,
-        action: `chargeback_${status}`,
-        user_id: user.id,
-        metadata: { note: noteText, previous_status: selectedCase.status },
-      });
+      const outcome = String((data as { outcome?: string } | null)?.outcome ?? "");
+      const messages: Record<string, string> = {
+        NOT_FOUND: "Caso de chargeback não encontrado",
+        ALREADY_RESOLVED: "Este caso já foi encerrado e não pode ser reprocessado",
+        NO_CHANGE: "O caso já está neste status",
+        INVALID_STATUS: "Status inválido",
+      };
+      if (outcome in messages) throw new Error(messages[outcome]);
+      if (outcome !== "UPDATED") throw new Error("Não foi possível atualizar o caso");
     },
+
     onSuccess: () => {
       toast.success("Status atualizado");
       queryClient.invalidateQueries({ queryKey: ["admin-chargeback-cases"] });
