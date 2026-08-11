@@ -33,15 +33,16 @@ export default function JoinCommunity() {
     joinAsExistingUser,
     isLoading,
     existingSignupState,
-    resendCommunityVerification,
-    resendCooldown,
-    resendingVerification,
     clearExistingSignupState,
+    pendingVerification,
+    completeVerifiedSignup,
+    cancelVerification,
   } = useJoinCommunity(
     slug || "",
     inviteCode,
     memberRefCode
   );
+
   const { emailError, suggestion, guard, reset } = useAuthEmailGuard("join_community_page");
 
   const [showForm, setShowForm] = useState(false);
@@ -335,39 +336,19 @@ export default function JoinCommunity() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {existingSignupState && (
                     <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2" role="alert">
-                      <p className="text-sm font-medium text-foreground">
-                        {existingSignupState.kind === "confirmed"
-                          ? "Este email já está cadastrado."
-                          : "Este email já está cadastrado mas ainda não foi confirmado."}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {existingSignupState.kind === "confirmed"
-                          ? "Faça login ou redefina sua senha para continuar."
-                          : "Reenvie o email de verificação para ativar sua conta."}
-                      </p>
+                      <p className="text-sm font-medium text-foreground">Este email já está cadastrado.</p>
+                      <p className="text-xs text-muted-foreground">Faça login ou redefina sua senha para continuar.</p>
                       <div className="flex flex-wrap gap-2">
-                        {existingSignupState.kind === "confirmed" ? (
-                          <>
-                            <Button type="button" size="sm" onClick={() => navigate(`/member/login?redirect=/join/${slug}${inviteCode ? `?invite=${inviteCode}` : ""}&email=${encodeURIComponent(existingSignupState.email)}`)}>
-                              Entrar
-                            </Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => navigate(`/forgot-password?email=${encodeURIComponent(existingSignupState.email)}`)}>
-                              Esqueci minha senha
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={resendCommunityVerification}
-                            disabled={resendingVerification || resendCooldown > 0}
-                          >
-                            {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : resendingVerification ? "Reenviando..." : "Reenviar verificação"}
-                          </Button>
-                        )}
+                        <Button type="button" size="sm" onClick={() => navigate(`/member/login?redirect=/join/${slug}${inviteCode ? `?invite=${inviteCode}` : ""}&email=${encodeURIComponent(existingSignupState.email)}`)}>
+                          Entrar
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={() => navigate(`/forgot-password?email=${encodeURIComponent(existingSignupState.email)}`)}>
+                          Esqueci minha senha
+                        </Button>
                       </div>
                     </div>
                   )}
+
 
                   <div className="flex items-center gap-2 mb-2">
                     <button
