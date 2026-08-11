@@ -433,94 +433,59 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     const holdDays = Number(rule.hold_days ?? 30);
     const splitAvailableAt = new Date(Date.now() + holdDays * 86400000).toISOString();
 
-    // 2) split_entries: deveria existir (criado em create-payment). Se não existir é erro grave.
-    const { data: existingSplit } = await supabase
-      .from("split_entries")
-      .select("id, status, creator_net, gross_amount, gateway_fee, platform_fee, affiliate_fee")
-      .eq("order_id", paymentRecord.order_id)
-      .maybeSingle();
-
-    if (!existingSplit) {
-      console.error(
-        `[webhook-asaas][ALERTA] Pedido pago SEM split calculado — order_id=${paymentRecord.order_id}, workspace_id=${order.workspace_id}. Recriando split na confirmação.`,
-      );
-    }
-
-    let splitId: string | null = existingSplit?.id || null;
+    // 2) FONTE ÚNICA DE VERDADE: RPC transacional process_order_commission.
+    //    Ela trava o pedido (FOR UPDATE), valida COMPLETED + paid_at, resolve
+    //    link/programa/afiliado, e grava split_entries + wallet_ledger +
+    //    commissions de forma idempotente (ON CONFLICT). Nenhum cálculo de
+    //    comissão é duplicado aqui.
     let creatorNet = 0;
+    let splitId: string | null = null;
 
-    if (totalAmount > 0) {
-      const gatewayFee = netFee > 0 ? netFee : (existingSplit?.gateway_fee ?? Math.round(totalAmount * 3.49 / 100));
-      const netAfterGw = Math.max(0, totalAmount - gatewayFee);
-      const platformFee = Math.round(netAfterGw * Number(rule.platform_percent) / 100);
-      const affiliateFee = existingSplit?.affiliate_fee ?? Math.round(netAfterGw * Number(rule.affiliate_percent) / 100);
-      creatorNet = netAfterGw - platformFee - affiliateFee;
+    const { data: commResult, error: commRpcErr } = await supabase.rpc("process_order_commission", {
+      p_order_id: paymentRecord.order_id,
+      p_gateway_fee_cents: netFee > 0 ? netFee : null,
+      p_settle: true,
+    });
 
-      const splitPayload = {
-        workspace_id: order.workspace_id,
-        order_id: paymentRecord.order_id,
-        split_rule_id: (rule as any).id || null,
-        gross_amount: totalAmount,
-        gateway_fee: gatewayFee,
-        platform_fee: platformFee,
-        affiliate_fee: affiliateFee,
-        creator_net: creatorNet,
-        status: "settled",
-        settled_at: nowIso,
-        available_at: splitAvailableAt,
-      };
-
-      if (existingSplit && existingSplit.status === "settled") {
-        // Já liquidado — mantém valores originais (idempotência)
-        creatorNet = Number(existingSplit.creator_net || 0);
-      } else {
-        const { data: splitEntry, error: splitErr } = existingSplit
-          ? await supabase.from("split_entries").update(splitPayload).eq("id", existingSplit.id).select("id").single()
-          : await supabase.from("split_entries").insert(splitPayload).select("id").single();
-        if (splitErr) {
-          // Falha no split não deve bloquear a confirmação do pedido
-          console.error("[webhook-asaas][ALERTA] Falha ao liquidar split entry:", splitErr);
-        } else {
-          splitId = splitEntry?.id || splitId;
-        }
-      }
+    if (commRpcErr) {
+      console.error("[webhook-asaas][ALERTA] process_order_commission falhou:", JSON.stringify(commRpcErr));
+    } else if (commResult && (commResult as any).ok !== true) {
+      console.error(
+        "[webhook-asaas][ALERTA] process_order_commission recusou o pedido:",
+        JSON.stringify(commResult),
+      );
+    } else if (commResult) {
+      creatorNet = Number((commResult as any).creator_net_cents || 0);
+      console.log("[webhook-asaas] split/comissão processados:", JSON.stringify(commResult));
     }
 
-    // 3) wallet_ledger: crédito do creator_net (idempotente por order_id + type)
-    const { data: existingLedger } = await supabase
-      .from("wallet_ledger")
-      .select("id")
+    const { data: settledSplit } = await supabase
+      .from("split_entries")
+      .select("id, creator_net, available_at")
       .eq("order_id", paymentRecord.order_id)
-      .eq("type", "sale")
       .maybeSingle();
+    splitId = settledSplit?.id || null;
+    if (!creatorNet) creatorNet = Number(settledSplit?.creator_net || 0);
+    const ledgerAvailableAt = settledSplit?.available_at || splitAvailableAt;
 
-    if (!existingLedger && creatorNet > 0) {
-      const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
+    // 3) Taxa do gateway no ledger (idempotente por order_id + type via índice único)
+    if (netFee > 0) {
+      const { error: feeErr } = await supabase.from("wallet_ledger").insert({
         workspace_id: order.workspace_id,
         order_id: paymentRecord.order_id,
-        type: "sale",
-        amount: creatorNet,
+        type: "fee",
+        amount: -netFee,
         currency: (order as any).currency || "BRL",
-        status: "pending",
-        available_at: splitAvailableAt,
-        description: `Venda #${paymentRecord.order_id.slice(0, 8)} — liberação em ${holdDays}d (${paymentMethod})`,
+        status: "settled",
+        description: `Taxa Asaas #${paymentRecord.order_id.slice(0, 8)}`,
       });
-      if (ledgerErr) console.error("Failed to insert wallet_ledger sale:", ledgerErr);
-
-      if (netFee > 0) {
-        await supabase.from("wallet_ledger").insert({
-          workspace_id: order.workspace_id,
-          order_id: paymentRecord.order_id,
-          type: "fee",
-          amount: -netFee,
-          currency: (order as any).currency || "BRL",
-          status: "settled",
-          description: `Taxa Asaas #${paymentRecord.order_id.slice(0, 8)}`,
-        });
+      if (feeErr && (feeErr as any).code !== "23505") {
+        console.error("Failed to insert wallet_ledger fee:", feeErr);
       }
-    } else if (existingLedger) {
-      console.log(`[webhook-asaas] wallet_ledger já possui crédito para order ${paymentRecord.order_id} — skip`);
     }
+    console.log(
+      `[webhook-asaas] liquidação order ${paymentRecord.order_id}: creator_net=${creatorNet} liberação=${ledgerAvailableAt} (${paymentMethod}, ${holdDays}d)`,
+    );
 
     // 4) Reserva de segurança (só cartão, % do creator_net, idempotente por order)
     if (creatorNet > 0 && isCard) {
@@ -568,105 +533,12 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
     }
   }
 
-  // Affiliate commissions
-  try {
-    if (order) {
-      // 1. affiliate_link_id do pedido é a fonte primária; sessão de checkout é fallback
-      let affiliateLinkId: string | null = order.affiliate_link_id || null;
-      if (!affiliateLinkId && order.checkout_session_id) {
-        const { data: session } = await supabase
-          .from("checkout_sessions")
-          .select("affiliate_link_id")
-          .eq("id", order.checkout_session_id)
-          .maybeSingle();
-        affiliateLinkId = session?.affiliate_link_id || null;
-      }
+  // Comissões de afiliado: NÃO são calculadas aqui.
+  // Fonte única = RPC public.process_order_commission (chamada acima), que grava
+  // split_entries.affiliate_fee e commissions.amount no mesmo cálculo, valida a
+  // atribuição por link+sessão e é idempotente por (order_id, affiliate_id).
 
-      if (affiliateLinkId) {
-        // 2. Resolve affiliate_id + taxa de comissão
-        const { data: affLink } = await supabase
-          .from("affiliate_links")
-          .select("id, affiliate_id, product_id")
-          .eq("id", affiliateLinkId)
-          .maybeSingle();
 
-        if (affLink?.affiliate_id) {
-          const { data: prog } = await supabase
-            .from("affiliate_programs")
-            .select("is_enabled, default_commission_percent, hold_days")
-            .eq("workspace_id", order.workspace_id)
-            .maybeSingle();
-
-          if (prog?.is_enabled === false) {
-            console.log(`[Affiliate] Programa desabilitado para workspace ${order.workspace_id} — comissão ignorada`);
-          } else {
-            // Regra por produto tem prioridade sobre o percentual padrão do programa
-            let commissionPercent: number | null = null;
-            let fixedAmount: number | null = null;
-            const ruleProductIds = [
-              ...(affLink.product_id ? [affLink.product_id] : []),
-              ...(orderItems || []).map((i: any) => i.product_id),
-            ];
-            for (const productId of ruleProductIds) {
-              const { data: rule } = await supabase
-                .from("commission_rules")
-                .select("percent, fixed_amount")
-                .eq("product_id", productId)
-                .eq("is_active", true)
-                .maybeSingle();
-              if (rule) {
-                commissionPercent = rule.percent !== null ? Number(rule.percent) : null;
-                fixedAmount = rule.fixed_amount !== null ? Number(rule.fixed_amount) : null;
-                break;
-              }
-            }
-            if (commissionPercent === null && fixedAmount === null) {
-              commissionPercent = prog?.default_commission_percent !== undefined && prog?.default_commission_percent !== null
-                ? Number(prog.default_commission_percent)
-                : 20;
-            }
-
-            // 3. Comissão sobre o valor líquido (total menos descontos)
-            const gross = Number(order.total_amount || 0);
-            const discount = Number(order.discount_amount || 0);
-            const netAmount = Math.max(gross - discount, 0);
-            const rawCommission = fixedAmount !== null
-              ? fixedAmount
-              : netAmount * ((commissionPercent ?? 0) / 100);
-            const commissionAmount = Math.max(Math.round(rawCommission * 100) / 100, 0);
-
-            // Prazo de garantia antes de liberar o pagamento da comissão
-            const holdDays = prog?.hold_days ?? 14;
-            const holdUntil = new Date(Date.now() + holdDays * 86400000).toISOString();
-
-            if (commissionAmount > 0) {
-              // 5. Idempotente via UNIQUE (order_id, affiliate_id)
-              const { error: commErr } = await supabase.from("commissions").upsert({
-                affiliate_id: affLink.affiliate_id,
-                order_id: paymentRecord.order_id,
-                amount: commissionAmount,
-                status: "PENDING",
-                hold_until: holdUntil,
-              }, { onConflict: "order_id,affiliate_id", ignoreDuplicates: true });
-
-              if (commErr) {
-                console.error("[Affiliate] Falha ao inserir comissão:", commErr);
-              } else {
-                console.log(`[Affiliate] Comissão de ${commissionAmount} (líquido ${netAmount}) para afiliado ${affLink.affiliate_id} no pedido ${paymentRecord.order_id}`);
-              }
-            }
-
-            await supabase.from("affiliate_attributions")
-              .update({ converted_at: new Date().toISOString() })
-              .eq("affiliate_link_id", affiliateLinkId)
-              .is("converted_at", null);
-          }
-        }
-      }
-    }
-  } catch (affErr) {
-    console.error("Affiliate commission error (non-fatal):", affErr);
-  }
 
 
   // Transactional emails
@@ -786,6 +658,14 @@ async function handleRefunded(supabase: any, paymentRecord: any, paymentData: an
   // Cancela comissões de afiliado (não entram no saldo a pagar)
   await cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado");
 
+  // Cancela comissão de indicação deste pagamento (idempotente)
+  if (paymentData?.id) {
+    const { error: refCancelErr } = await supabase.rpc("cancel_referral_commissions_for_payment", {
+      p_payment_id: String(paymentData.id),
+    });
+    if (refCancelErr) console.error("[Referral] Falha ao cancelar comissão:", JSON.stringify(refCancelErr));
+  }
+
   // Ledger — cancela o crédito da venda e registra o reembolso.
   // ATENÇÃO: wallet_ledger é em CENTAVOS; paymentData.value vem em REAIS.
   const refundCents = Math.round(Number(refundAmount || 0) * 100);
@@ -869,6 +749,14 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
 
   // 3b. Cancela comissões de afiliado do pedido contestado
   await cancelOrderCommissions(supabase, paymentRecord.order_id, "Chargeback aberto");
+
+  // Cancela comissão de indicação deste pagamento (idempotente)
+  if (paymentData?.id) {
+    const { error: refCancelErr } = await supabase.rpc("cancel_referral_commissions_for_payment", {
+      p_payment_id: String(paymentData.id),
+    });
+    if (refCancelErr) console.error("[Referral] Falha ao cancelar comissão:", JSON.stringify(refCancelErr));
+  }
 
   // 4. Reverse split entry (freeze creator balance)
   await supabase.from("split_entries").update({
@@ -1203,115 +1091,101 @@ async function handleSubscriptionPaid(supabase: any, paymentData: any): Promise<
 }
 
 // ── Referral Commission Helpers ──
-
-const REFERRAL_COMMISSION_RATE = 0.20; // 20% lifetime
+// Fonte única = RPC public.record_subscription_referral_commission:
+// idempotente por (payment_id, event_type), payment_id TEXTUAL (pay_...),
+// valida a atribuição travada do usuário indicado e atualiza first_paid_at.
 
 async function processReferralCommission(supabase: any, wsSub: any, paymentData: any) {
-  // Find workspace owner user_id
-  const { data: wsOwner } = await supabase
+  const { data: wsOwner, error: ownerErr } = await supabase
     .from("workspace_members")
     .select("user_id")
     .eq("workspace_id", wsSub.workspace_id)
     .eq("role", "OWNER")
     .maybeSingle();
 
+  if (ownerErr) {
+    console.error("[Referral] Falha ao buscar owner do workspace:", JSON.stringify(ownerErr));
+    return;
+  }
   if (!wsOwner?.user_id) return;
 
   const referredUserId = wsOwner.user_id;
-  const providerEventId = String(paymentData?.id || "");
+  const providerEventId = paymentData?.id ? String(paymentData.id) : "";
+  const paymentAmount = Number(paymentData?.value || 0);
 
-  // Idempotency: check if this payment event was already processed
-  if (providerEventId) {
-    const { data: existing } = await supabase
-      .from("referral_commissions")
-      .select("id")
-      .eq("payment_id", providerEventId)
-      .maybeSingle();
-    if (existing) {
-      console.log(`[Referral] Duplicate payment event ${providerEventId}, skipping`);
-      return;
-    }
+  if (!providerEventId) {
+    console.error("[Referral] Evento sem payment id — comissão não registrada");
+    return;
   }
-
-  // Find referral attribution for this user
-  const { data: attribution } = await supabase
-    .from("referral_attributions")
-    .select("id, referrer_user_id, referral_status, first_paid_subscription_at")
-    .eq("referred_user_id", referredUserId)
-    .in("referral_status", ["pending_subscription", "active"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!attribution) {
-    // Check if terminated — log resubscription without referral
-    const { data: terminated } = await supabase
-      .from("referral_attributions")
-      .select("id, referrer_user_id")
-      .eq("referred_user_id", referredUserId)
-      .eq("referral_status", "terminated")
-      .maybeSingle();
-
-    if (terminated) {
-      await supabase.from("referral_audit_log").insert({
-        referrer_user_id: terminated.referrer_user_id,
-        referred_user_id: referredUserId,
-        event_type: "resubscription_without_referral",
-        subscription_id: wsSub.id,
-        plan_id: wsSub.plan_code,
-        payment_provider_event_id: providerEventId,
-      });
-    }
+  if (paymentAmount <= 0) {
+    console.error(`[Referral] Valor inválido (${paymentAmount}) no evento ${providerEventId}`);
     return;
   }
 
-  const paymentAmount = Number(paymentData?.value || 0);
-  const commissionAmount = Math.round(paymentAmount * REFERRAL_COMMISSION_RATE * 100) / 100;
+  const { data: result, error: rpcErr } = await supabase.rpc(
+    "record_subscription_referral_commission",
+    {
+      p_referred_user_id: referredUserId,
+      p_payment_id: providerEventId,
+      p_amount: paymentAmount,
+      p_event_type: null,
+      p_subscription_id: wsSub.id,
+    },
+  );
 
-  const isFirstPayment = attribution.referral_status === "pending_subscription";
+  if (rpcErr) {
+    console.error("[Referral] RPC de comissão falhou:", JSON.stringify(rpcErr));
+    return;
+  }
 
-  if (isFirstPayment) {
-    // Activate the referral
-    await supabase
-      .from("referral_attributions")
-      .update({
-        referral_status: "active",
-        first_paid_subscription_at: new Date().toISOString(),
-        subscription_id: wsSub.id,
-        plan_id: wsSub.plan_code,
-        payment_provider_event_id: providerEventId,
-        first_paid_at: new Date().toISOString(),
-      })
-      .eq("id", attribution.id);
+  if (!result?.ok) {
+    // Sem atribuição válida: registra reassinatura sem indicação, se houver histórico
+    if (result?.error === "no_attribution") {
+      const { data: terminated } = await supabase
+        .from("referral_attributions")
+        .select("id, referrer_user_id")
+        .eq("referred_user_id", referredUserId)
+        .eq("referral_status", "terminated")
+        .maybeSingle();
 
-    await supabase.from("referral_audit_log").insert({
-      referrer_user_id: attribution.referrer_user_id,
+      if (terminated) {
+        const { error: auditErr } = await supabase.from("referral_audit_log").insert({
+          referrer_user_id: terminated.referrer_user_id,
+          referred_user_id: referredUserId,
+          event_type: "resubscription_without_referral",
+          subscription_id: wsSub.id,
+          plan_id: wsSub.plan_code,
+          payment_provider_event_id: providerEventId,
+        });
+        if (auditErr) console.error("[Referral] Falha no audit log:", JSON.stringify(auditErr));
+      }
+      return;
+    }
+    console.error("[Referral] Comissão não registrada:", JSON.stringify(result));
+    return;
+  }
+
+  if (result.duplicate) {
+    console.log(`[Referral] Evento ${providerEventId} já processado — nada duplicado`);
+    return;
+  }
+
+  if (result.first_payment) {
+    const { error: auditErr } = await supabase.from("referral_audit_log").insert({
+      referrer_user_id: result.referrer_user_id,
       referred_user_id: referredUserId,
       event_type: "first_subscription_paid",
       subscription_id: wsSub.id,
       plan_id: wsSub.plan_code,
       payment_provider_event_id: providerEventId,
-      metadata: { amount: paymentAmount, commission: commissionAmount },
+      metadata: { amount: paymentAmount, commission: result.amount },
     });
+    if (auditErr) console.error("[Referral] Falha no audit log:", JSON.stringify(auditErr));
   }
 
-  // Create commission (both first and recurring)
-  if (commissionAmount > 0) {
-    await supabase.from("referral_commissions").insert({
-      referrer_user_id: attribution.referrer_user_id,
-      referred_user_id: referredUserId,
-      subscription_id: wsSub.id,
-      payment_id: providerEventId,
-      commission_rate: REFERRAL_COMMISSION_RATE,
-      gross_base_amount: paymentAmount,
-      commission_amount: commissionAmount,
-      currency: "BRL",
-      status: "pending",
-      event_type: isFirstPayment ? "first_payment" : "recurring_payment",
-    });
-  }
-
-  console.log(`[Referral] Commission created: R$${commissionAmount} for referrer ${attribution.referrer_user_id} (${isFirstPayment ? "first" : "recurring"})`);
+  console.log(
+    `[Referral] Comissão R$${result.amount} registrada para ${result.referrer_user_id} (${result.first_payment ? "primeira" : "recorrente"})`,
+  );
 }
 
 async function terminateReferralOnCancel(supabase: any, sub: any) {

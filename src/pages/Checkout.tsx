@@ -246,10 +246,10 @@ export default function Checkout() {
   const utmMedium = searchParams.get("utm_medium") || sessionStorage.getItem("kivo_utm_medium") || undefined;
   const utmCampaign = searchParams.get("utm_campaign") || sessionStorage.getItem("kivo_utm_campaign") || undefined;
   // Get affiliate link from localStorage (cookie-based) or sessionStorage fallback
-  const affiliateLinkId = (() => {
-    const stored = getStoredAffiliateLink();
-    return stored?.linkId || undefined;
-  })();
+  const storedAffiliate = getStoredAffiliateLink();
+  const affiliateLinkId = storedAffiliate?.linkId || undefined;
+  // The backend only accepts the link when a live attribution exists for this session
+  const affiliateSessionId = storedAffiliate?.sessionId || undefined;
 
   // Bump toggle
   const toggleBump = useCallback((bumpProductId: string) => {
@@ -388,6 +388,7 @@ export default function Checkout() {
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
+          affiliate_session_id: affiliateSessionId,
           bump_product_ids: selectedBumpIds,
         },
       });
@@ -433,6 +434,7 @@ export default function Checkout() {
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
+          affiliate_session_id: affiliateSessionId,
           bump_product_ids: selectedBumpIds,
         },
       });
@@ -490,6 +492,7 @@ export default function Checkout() {
           checkout_session_id: sessionId,
           coupon_code: appliedCoupon?.code,
           affiliate_link_id: affiliateLinkId,
+          affiliate_session_id: affiliateSessionId,
           bump_product_ids: selectedBumpIds,
         },
       });

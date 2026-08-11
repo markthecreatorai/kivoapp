@@ -8,6 +8,8 @@ const SESSION_KEY = "kivo_session_id";
 /**
  * Tracks affiliate referral from ?ref= query param.
  * Stores affiliate_link_id in localStorage (persists across sessions for cookie duration).
+ * The tracking session id is stored too: the backend only accepts an affiliate link
+ * when there is a live attribution for that exact (link, session) pair.
  */
 export function useAffiliateTracking() {
   const [searchParams] = useSearchParams();
@@ -33,6 +35,7 @@ export function useAffiliateTracking() {
           JSON.stringify({
             linkId: data.affiliate_link_id,
             affiliateId: "",
+            sessionId,
             expiresAt: data.expires_at,
           }),
         );
@@ -45,22 +48,37 @@ export function useAffiliateTracking() {
 }
 
 /**
- * Returns the stored affiliate link ID if cookie is still valid.
+ * Returns the stored affiliate link ID (and the tracking session that generated
+ * the attribution) if the cookie is still valid.
  */
-export function getStoredAffiliateLink(): { linkId: string; affiliateId: string } | null {
+export function getStoredAffiliateLink():
+  | { linkId: string; affiliateId: string; sessionId: string | null }
+  | null {
+  const sessionId = (() => {
+    try {
+      return sessionStorage.getItem(SESSION_KEY);
+    } catch {
+      return null;
+    }
+  })();
+
   try {
     const raw = localStorage.getItem(COOKIE_KEY);
     if (!raw) {
       // Fallback to sessionStorage
       const sessionVal = sessionStorage.getItem("kivo_affiliate_link_id");
-      return sessionVal ? { linkId: sessionVal, affiliateId: "" } : null;
+      return sessionVal ? { linkId: sessionVal, affiliateId: "", sessionId } : null;
     }
     const data = JSON.parse(raw);
     if (new Date(data.expiresAt) < new Date()) {
       localStorage.removeItem(COOKIE_KEY);
       return null;
     }
-    return { linkId: data.linkId, affiliateId: data.affiliateId };
+    return {
+      linkId: data.linkId,
+      affiliateId: data.affiliateId,
+      sessionId: data.sessionId || sessionId,
+    };
   } catch {
     return null;
   }

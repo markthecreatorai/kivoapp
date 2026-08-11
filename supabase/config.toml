@@ -133,3 +133,7 @@ verify_jwt = true
 
 [functions.create-payout-request]
 verify_jwt = true
+
+# Internal-only: exige X-Kivo-Internal-Token. Não agendada.
+[functions.commissions-release]
+verify_jwt = false

@@ -1130,6 +1130,7 @@ export type Database = {
         Row: {
           abandoned_at: string | null
           affiliate_link_id: string | null
+          affiliate_session_id: string | null
           completed_at: string | null
           coupon_code: string | null
           created_at: string
@@ -1153,6 +1154,7 @@ export type Database = {
         Insert: {
           abandoned_at?: string | null
           affiliate_link_id?: string | null
+          affiliate_session_id?: string | null
           completed_at?: string | null
           coupon_code?: string | null
           created_at?: string
@@ -1176,6 +1178,7 @@ export type Database = {
         Update: {
           abandoned_at?: string | null
           affiliate_link_id?: string | null
+          affiliate_session_id?: string | null
           completed_at?: string | null
           coupon_code?: string | null
           created_at?: string
@@ -6202,6 +6205,7 @@ export type Database = {
       orders: {
         Row: {
           affiliate_link_id: string | null
+          affiliate_session_id: string | null
           checkout_session_id: string | null
           community_id: string | null
           created_at: string
@@ -6229,6 +6233,7 @@ export type Database = {
         }
         Insert: {
           affiliate_link_id?: string | null
+          affiliate_session_id?: string | null
           checkout_session_id?: string | null
           community_id?: string | null
           created_at?: string
@@ -6256,6 +6261,7 @@ export type Database = {
         }
         Update: {
           affiliate_link_id?: string | null
+          affiliate_session_id?: string | null
           checkout_session_id?: string | null
           community_id?: string | null
           created_at?: string
@@ -6282,6 +6288,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_affiliate_link_id_fkey"
+            columns: ["affiliate_link_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_links"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_checkout_session_id_fkey"
             columns: ["checkout_session_id"]
@@ -9098,6 +9111,11 @@ export type Database = {
       }
     }
     Functions: {
+      approve_due_commissions: { Args: never; Returns: Json }
+      attach_referral_attribution: {
+        Args: { p_referral_code: string; p_referred_user_id: string }
+        Returns: Json
+      }
       batch_reorder_lessons: { Args: { items: Json }; Returns: undefined }
       batch_reorder_modules: { Args: { items: Json }; Returns: undefined }
       calculate_payout_risk: {
@@ -9136,6 +9154,14 @@ export type Database = {
       can_moderate_community: {
         Args: { _community_id: string }
         Returns: boolean
+      }
+      cancel_order_commission: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: Json
+      }
+      cancel_referral_commissions_for_payment: {
+        Args: { p_payment_id: string }
+        Returns: Json
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       complete_checkout_session: {
@@ -9444,6 +9470,29 @@ export type Database = {
         Returns: undefined
       }
       plan_max_products: { Args: { _plan: string }; Returns: number }
+      prepare_affiliate_payouts: {
+        Args: { p_workspace_id?: string }
+        Returns: Json
+      }
+      prepare_referral_payouts: { Args: never; Returns: Json }
+      process_order_commission: {
+        Args: {
+          p_gateway_fee_cents?: number
+          p_order_id: string
+          p_settle?: boolean
+        }
+        Returns: Json
+      }
+      record_subscription_referral_commission: {
+        Args: {
+          p_amount: number
+          p_event_type?: string
+          p_payment_id: string
+          p_referred_user_id: string
+          p_subscription_id?: string
+        }
+        Returns: Json
+      }
       redeem_coupon:
         | {
             Args: {
@@ -9465,11 +9514,19 @@ export type Database = {
             }
             Returns: Json
           }
+      register_affiliate_click: {
+        Args: { p_code: string; p_product_id?: string; p_session_id: string }
+        Returns: Json
+      }
       release_coupon: {
         Args: { p_coupon_id: string; p_order_id: string }
         Returns: boolean
       }
       reserved_slugs: { Args: never; Returns: string[] }
+      resolve_affiliate_for_order: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       resolve_member_tiers: {
         Args: { p_community_id: string; p_user_id: string }
         Returns: {

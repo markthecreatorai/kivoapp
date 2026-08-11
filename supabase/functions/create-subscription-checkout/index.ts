@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
       customer_name,
       payment_method, // "card" | "pix"
       credit_card,    // { holderName, number, expiryMonth, expiryYear, ccv }
+      referral_code,  // capturado no frontend (cookie/localStorage)
     } = body;
 
     if (!workspace_id || !plan_code) {
@@ -73,6 +74,28 @@ Deno.serve(async (req) => {
 
     if (!membership) {
       return new Response(JSON.stringify({ error: "Você não pertence a este workspace" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ─── Indicação (referral): atribuição travada na primeira válida ─────────
+    // O código vem do frontend (cookie/localStorage), mas a validação é toda
+    // server-side: indicador ativo, sem autoindicação e idempotente por usuário.
+    let referralAttached = false;
+    let referralReason: string | null = null;
+    if (typeof referral_code === "string" && referral_code.trim().length > 0) {
+      const { data: refResult, error: refErr } = await adminClient.rpc("attach_referral_attribution", {
+        p_referral_code: referral_code.trim().slice(0, 64),
+        p_referred_user_id: userId,
+      });
+      if (refErr) {
+        console.error("[Referral] attach_referral_attribution falhou:", JSON.stringify(refErr));
+        referralReason = "error";
+      } else if (refResult?.ok) {
+        referralAttached = true;
+        referralReason = refResult.locked ? "already_locked" : "attached";
+      } else {
+        referralReason = refResult?.error || "rejected";
+        console.log("[Referral] código recusado:", referralReason);
+      }
     }
 
     const valueCents = billing_cycle === "annual" ? planConfig.annual_cents : planConfig.monthly_cents;
@@ -236,6 +259,8 @@ Deno.serve(async (req) => {
         subscription_id: subData.id,
         payment_id: firstCardPaymentId,
         provider: "asaas",
+        referral_attached: referralAttached,
+        referral_reason: referralReason,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -251,6 +276,8 @@ Deno.serve(async (req) => {
         subscription_id: subData.id,
         provider: "asaas",
         pix: null,
+        referral_attached: referralAttached,
+        referral_reason: referralReason,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -272,6 +299,8 @@ Deno.serve(async (req) => {
         copy_paste: qrData.payload || null,
         expiration_date: qrData.expirationDate || null,
       },
+      referral_attached: referralAttached,
+      referral_reason: referralReason,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {

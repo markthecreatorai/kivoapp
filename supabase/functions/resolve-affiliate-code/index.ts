@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const code = typeof body.code === "string" ? body.code.trim() : "";
     const sessionId = typeof body.session_id === "string" ? body.session_id.slice(0, 100) : null;
+    const productId = typeof body.product_id === "string" ? body.product_id : null;
 
     if (!code || code.length > 64) {
       return json({ error: "code inválido" }, 400);
@@ -52,48 +53,28 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: link } = await supabase
-      .from("affiliate_links")
-      .select("id, affiliate_id, click_count")
-      .eq("code", code)
-      .maybeSingle();
+    // Toda a validação (afiliado aprovado, programa habilitado, produto do link),
+    // o incremento atômico do clique e a atribuição idempotente por
+    // (link, sessão) acontecem dentro do RPC — nunca no client.
+    const { data, error } = await supabase.rpc("register_affiliate_click", {
+      p_code: code,
+      p_session_id: sessionId,
+      p_product_id: productId,
+    });
 
-    if (!link) return json({ error: "Código não encontrado" }, 404);
-
-    // Duração do cookie do programa do workspace do afiliado
-    let cookieDays = 30;
-    const { data: aff } = await supabase
-      .from("affiliates")
-      .select("workspace_id")
-      .eq("id", link.affiliate_id)
-      .maybeSingle();
-    if (aff?.workspace_id) {
-      const { data: prog } = await supabase
-        .from("affiliate_programs")
-        .select("cookie_duration_days")
-        .eq("workspace_id", aff.workspace_id)
-        .maybeSingle();
-      if (prog?.cookie_duration_days) cookieDays = prog.cookie_duration_days;
+    if (error) {
+      console.error("register_affiliate_click error:", error.message);
+      return json({ error: "Erro interno" }, 500);
     }
 
-    const expiresAt = new Date(Date.now() + cookieDays * 86_400_000).toISOString();
-
-    // Clique + atribuição (server-side, tabela nunca exposta ao client)
-    await supabase
-      .from("affiliate_links")
-      .update({ click_count: (link.click_count || 0) + 1 })
-      .eq("id", link.id);
-
-    if (sessionId) {
-      const { error: attrError } = await supabase.from("affiliate_attributions").insert({
-        affiliate_link_id: link.id,
-        session_id: sessionId,
-        expires_at: expiresAt,
-      });
-      if (attrError) console.error("attribution insert failed", attrError.message);
+    if (!data?.ok) {
+      return json({ error: data?.error || "Código inválido" }, 404);
     }
 
-    return json({ affiliate_link_id: link.id, expires_at: expiresAt });
+    return json({
+      affiliate_link_id: data.affiliate_link_id,
+      expires_at: data.expires_at,
+    });
   } catch (err) {
     console.error("resolve-affiliate-code error:", err);
     return json({ error: "Erro interno" }, 500);
