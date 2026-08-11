@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
       product_id, price_id, method, customer,
       checkout_session_id, card_token, card_last4, card_brand,
       installments, coupon_code,
-      affiliate_link_id, idempotency_key, bump_product_ids,
+      affiliate_link_id, affiliate_session_id, idempotency_key, bump_product_ids,
     } = body;
 
     if (!product_id || !price_id || !method || !customer?.email || !customer?.name || !customer?.cpf) {
@@ -355,6 +355,79 @@ Deno.serve(async (req) => {
       customerId = newCust.id;
     }
 
+    // ─── SECURITY: affiliate link is never trusted from the client ───────────
+    // The link must exist, belong to an APPROVED affiliate of THIS workspace,
+    // have an enabled program, match the product, and have a live attribution
+    // for the very session the buyer is checking out with.
+    let affiliateContext: ReturnType<typeof validateAffiliateContext> | null = null;
+    if (affiliate_link_id) {
+      const sessionKey = typeof affiliate_session_id === "string"
+        ? affiliate_session_id.slice(0, 100)
+        : null;
+
+      const { data: affLink } = await supabase
+        .from("affiliate_links")
+        .select("id, affiliate_id, product_id")
+        .eq("id", affiliate_link_id)
+        .maybeSingle();
+
+      const { data: affiliate } = affLink?.affiliate_id
+        ? await supabase
+            .from("affiliates")
+            .select("id, workspace_id, status")
+            .eq("id", affLink.affiliate_id)
+            .maybeSingle()
+        : { data: null };
+
+      const { data: program } = affiliate?.workspace_id
+        ? await supabase
+            .from("affiliate_programs")
+            .select("is_enabled, default_commission_percent, hold_days")
+            .eq("workspace_id", affiliate.workspace_id)
+            .maybeSingle()
+        : { data: null };
+
+      const { data: attribution } = sessionKey
+        ? await supabase
+            .from("affiliate_attributions")
+            .select("id, affiliate_link_id, session_id, expires_at, converted_at")
+            .eq("affiliate_link_id", affiliate_link_id)
+            .eq("session_id", sessionKey)
+            .maybeSingle()
+        : { data: null };
+
+      const { data: productRule } = await supabase
+        .from("commission_rules")
+        .select("percent, fixed_amount, is_active")
+        .eq("product_id", product.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      affiliateContext = validateAffiliateContext({
+        affiliateLinkId: affiliate_link_id,
+        affiliateSessionId: sessionKey,
+        orderWorkspaceId: workspace_id,
+        orderProductId: product.id,
+        link: affLink as any,
+        affiliate: affiliate as any,
+        program: program as any,
+        attribution: attribution as any,
+        productRule: productRule as any,
+      });
+
+      if (!affiliateContext.ok) {
+        console.warn("[create-payment] affiliate link rejeitado:", affiliateContext.reason);
+        return new Response(
+          JSON.stringify({ error: "Link de afiliado inválido para este checkout", reason: affiliateContext.reason }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+    const validAffiliateLinkId = affiliateContext?.ok ? affiliateContext.affiliateLinkId : null;
+    const validAffiliateSessionId = affiliateContext?.ok
+      ? String(affiliate_session_id).slice(0, 100)
+      : null;
+
     // Create order
     const { data: order, error: orderErr } = await supabase
       .from("orders")
@@ -371,7 +444,8 @@ Deno.serve(async (req) => {
         status: "PENDING",
         idempotency_key: idempotency_key || null,
         checkout_session_id: checkout_session_id || null,
-        affiliate_link_id: affiliate_link_id || null,
+        affiliate_link_id: validAffiliateLinkId,
+        affiliate_session_id: validAffiliateSessionId,
       })
       .select("id")
       .single();
@@ -431,7 +505,8 @@ Deno.serve(async (req) => {
         discount_amount: discountAmount,
         total_amount: totalAmount,
         coupon_code: coupon_code || null,
-        affiliate_link_id: affiliate_link_id || null,
+        affiliate_link_id: validAffiliateLinkId,
+        affiliate_session_id: validAffiliateSessionId,
       }).eq("id", checkout_session_id);
     }
 
@@ -779,25 +854,29 @@ Deno.serve(async (req) => {
           });
           const rule = ruleRows?.[0] || null;
           const platformPercent = Number(rule?.platform_percent ?? 8);
-          const affiliatePercent = Number(rule?.affiliate_percent ?? 0);
 
-          // Affiliate: only charge the affiliate slice when the order actually
-          // carries an affiliate link resolvable to an affiliate.
-          let affiliateId: string | null = null;
-          if (affiliate_link_id) {
-            const { data: affLink } = await supabase
-              .from("affiliate_links")
-              .select("affiliate_id")
-              .eq("id", affiliate_link_id)
-              .maybeSingle();
-            affiliateId = affLink?.affiliate_id || null;
-          }
-
-          const splitPlatformFee = Math.round(grossAmount * platformPercent / 100);
-          const splitAffiliateFee = affiliateId
-            ? Math.round(grossAmount * affiliatePercent / 100)
+          // Affiliate slice: real rate from affiliate_programs / commission_rules,
+          // reserved in the SAME calculation as the split so that
+          // split_entries.affiliate_fee === commissions.amount.
+          const affiliateId = affiliateContext?.ok ? affiliateContext.affiliateId : null;
+          const affiliatePercent = affiliateContext?.ok ? affiliateContext.commissionPercent : 0;
+          const commissionBrl = affiliateContext?.ok
+            ? computeCommissionBrl(
+                commissionBase({ total_amount: totalAmount }),
+                affiliateContext.commissionPercent,
+                affiliateContext.fixedAmount,
+              )
             : 0;
-          const creatorNet = grossAmount - gatewayFee - splitPlatformFee - splitAffiliateFee;
+
+          const splitCalc = computeSplitCents({
+            grossCents: grossAmount,
+            gatewayFeeCents: gatewayFee,
+            platformPercent,
+            commissionBrl,
+          });
+          const splitPlatformFee = splitCalc.platformFeeCents;
+          const splitAffiliateFee = splitCalc.affiliateFeeCents;
+          const creatorNet = splitCalc.creatorNetCents;
 
           console.log("[create-payment] split_entry (pending)", JSON.stringify({
             order_id: order.id,
