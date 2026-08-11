@@ -1,7 +1,9 @@
 // release-holds — libera saldos retidos (hold) do produtor.
 // Roda a cada hora via pg_cron (public.cron_invoke → X-Kivo-Cron-Secret).
 // 1) wallet_ledger pending com available_at <= now() → "available"
-// 2) reserve_entries vencidas sem chargeback ativo → "released" + crédito no wallet_ledger
+// 2) reserve_entries vencidas: NÃO são creditadas (fail-closed) — a origem não
+//    debita a fatia reservada, então creditar aqui duplicaria saldo. Enquanto a
+//    decisão de produto não existir, permanecem `held` (ver §31.7 do checklist).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
