@@ -355,5 +355,12 @@ export function useJoinCommunity(communitySlug: string, inviteCode?: string, mem
     resendCooldown,
     resendingVerification,
     clearExistingSignupState: () => setExistingSignupState(null),
+    pendingVerification,
+    completeVerifiedSignup,
+    cancelVerification: () => {
+      clearPendingVerification();
+      setPendingVerification(null);
+    },
+
   };
 }
