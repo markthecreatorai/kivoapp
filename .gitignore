@@ -29,3 +29,7 @@ dist-ssr
 .env.local
 .env.*.local
 *.tsbuildinfo
+
+# Build/verification artifacts
+build_out.txt
+build_log.txt
