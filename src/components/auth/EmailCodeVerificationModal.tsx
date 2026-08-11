@@ -161,7 +161,7 @@ export default function EmailCodeVerificationModal({
 
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md [&>button]:hidden">
         <DialogHeader className="text-center space-y-3">
           <div className="mx-auto p-3 rounded-full bg-primary/10 w-fit">
             <Mail className="w-6 h-6 text-primary" />
