@@ -6,43 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-interface SplitRule {
-  id: string;
-  platform_percent: number;
-  creator_percent: number;
-  affiliate_percent: number;
-  hold_days: number;
-}
+// Cálculo de split/comissão vive exclusivamente no RPC process_order_financials.
+// Nenhuma lógica financeira duplicada nesta função.
 
-async function getSplitRule(supabase: any, workspaceId: string, productId: string | null, paymentMethod: string | null = null): Promise<SplitRule> {
-  // Try product-specific first, then default
-  const { data } = await supabase.rpc("get_split_rule", {
-    p_workspace_id: workspaceId,
-    p_product_id: productId,
-    p_payment_method: paymentMethod,
-  });
-
-  if (data && data.length > 0) return data[0];
-
-  // Fallback: 10% platform, 90% creator
-  return {
-    id: "",
-    platform_percent: 10,
-    creator_percent: 90,
-    affiliate_percent: 0,
-    hold_days: 14,
-  };
-}
-
-function calculateSplit(grossAmount: number, rule: SplitRule, gatewayFeePercent = 3.49) {
-  const gatewayFee = Math.round(grossAmount * gatewayFeePercent / 100);
-  const netAfterGateway = grossAmount - gatewayFee;
-  const platformFee = Math.round(netAfterGateway * rule.platform_percent / 100);
-  const affiliateFee = Math.round(netAfterGateway * rule.affiliate_percent / 100);
-  const creatorNet = netAfterGateway - platformFee - affiliateFee;
-
-  return { gatewayFee, platformFee, affiliateFee, creatorNet };
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
