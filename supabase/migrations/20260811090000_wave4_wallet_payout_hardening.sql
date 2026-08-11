@@ -628,7 +628,33 @@ BEGIN
     COALESCE(p_note, 'Status alterado para ' || p_status)
   );
 
-  IF p_status = 'won' AND v_case.order_id IS NOT NULL THEN
+  -- QA-4A-V3 — EQUAÇÃO REAL DO CHARGEBACK, mapeada linha a linha de
+  -- supabase/functions/webhook-asaas/index.ts (handleChargeback):
+  --   passo 4  split_entries                    → status 'refunded'
+  --   passo 5  reserve_entries/security_reserves → 'forfeited'
+  --   passo 6a wallet_ledger type='sale'        → status 'canceled'  ⇒ Δ = -100
+  --   passo 6b wallet_ledger type='chargeback'  → status 'settled'   ⇒ Δ =    0
+  --            ('settled' não entra em get_wallet_balance nem em
+  --             _shared/wallet-balance.ts: é lançamento informativo)
+  --   Δ total da abertura = -100, aplicado UMA única vez.
+  -- Logo a reversão da vitória é: restaurar a venda (+100) e cancelar o
+  -- lançamento informativo (Δ 0) ⇒ converge ao saldo original exatamente uma
+  -- vez, nunca 2x. Cancelar o débito é defensivo: se algum caminho futuro
+  -- gravá-lo como pending/available ele passaria a valer -100 real, e o
+  -- cancelamento aqui é o que evita o resíduo negativo.
+  --
+  -- Reembolso já processado neutraliza a devolução: nesse caso a venda foi
+  -- cancelada pelo fluxo de refund (process_refund_increment), não pela
+  -- disputa; restaurar devolveria ao produtor dinheiro que o comprador já
+  -- recebeu de volta.
+  IF p_status = 'won' AND v_case.order_id IS NOT NULL
+     AND EXISTS (SELECT 1 FROM public.refunds r
+                  WHERE r.order_id = v_case.order_id AND r.status = 'PROCESSED') THEN
+    INSERT INTO public.chargeback_timeline (case_id, action, actor_id, note)
+    VALUES (v_case.id, 'financial_reversal_skipped', v_uid,
+            'Disputa ganha, mas o pedido já possui reembolso processado — nenhuma reversão financeira aplicada');
+
+  ELSIF p_status = 'won' AND v_case.order_id IS NOT NULL THEN
     -- 1) Split volta a valer
     UPDATE public.split_entries
        SET status = 'settled', refunded_at = NULL
@@ -641,10 +667,14 @@ BEGIN
      WHERE order_id = v_case.order_id AND type = 'chargeback' AND status <> 'canceled';
     GET DIAGNOSTICS v_canceled_debit = ROW_COUNT;
 
-    -- 3) Crédito da venda é devolvido (o webhook o havia cancelado; sem isto o
-    --    produtor ganhava a disputa e continuava sem o dinheiro)
+    -- 3) Crédito da venda volta AO ESTÁGIO ORIGINAL. Forçar
+    --    status='available', available_at=now() antecipava liquidez: uma venda
+    --    ainda em hold (available_at futuro) virava saldo sacável ao ganhar a
+    --    disputa. Como o webhook só altera `status`, `available_at` preserva o
+    --    vencimento original: 'pending' + available_at vencido já conta como
+    --    disponível na regra canônica, e available_at futuro volta a ser hold.
     UPDATE public.wallet_ledger
-       SET status = 'available', available_at = now()
+       SET status = CASE WHEN available_at IS NULL THEN 'available' ELSE 'pending' END
      WHERE order_id = v_case.order_id AND type = 'sale' AND status = 'canceled';
     GET DIAGNOSTICS v_restored_sale = ROW_COUNT;
 
@@ -740,9 +770,16 @@ BEGIN
 END;
 $mig$;
 
--- Chave idempotente estruturada do crédito de liberação (não mais a description).
+-- Chaves estruturadas do ciclo de reserva (nunca `description` como identidade).
+--   wallet_ledger.security_reserve_id → a QUAL reserva a linha pertence
+--   wallet_ledger.reserve_role        → QUAL papel ela cumpre no ciclo:
+--       'segregation_debit' = débito que retirou o valor do disponível na origem
+--       'release_credit'    = crédito da liberação, 30 dias depois
+-- Sem `reserve_role` a "prova de segregação" seria qualquer linha não cancelada
+-- do mesmo workspace — insuficiente e inflacionária (QA-4A-V3, item 1).
 ALTER TABLE public.wallet_ledger
-  ADD COLUMN IF NOT EXISTS security_reserve_id uuid;
+  ADD COLUMN IF NOT EXISTS security_reserve_id uuid,
+  ADD COLUMN IF NOT EXISTS reserve_role text;
 
 DO $mig$
 BEGIN
@@ -751,30 +788,73 @@ BEGIN
       ADD CONSTRAINT wallet_ledger_security_reserve_fk
       FOREIGN KEY (security_reserve_id) REFERENCES public.security_reserves(id);
   END IF;
-END;
-$mig$;
-
--- PREFLIGHT FAIL-CLOSED: duplicidade histórica impediria o índice único.
-DO $mig$
-DECLARE v_dups integer;
-BEGIN
-  SELECT COUNT(*) INTO v_dups FROM (
-    SELECT security_reserve_id FROM public.wallet_ledger
-     WHERE security_reserve_id IS NOT NULL AND status <> 'canceled'
-     GROUP BY security_reserve_id HAVING COUNT(*) > 1) d;
-  IF v_dups > 0 THEN
-    RAISE EXCEPTION 'PREFLIGHT: % reserva(s) com crédito duplicado em wallet_ledger.', v_dups;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'wallet_ledger_reserve_role_check') THEN
+    ALTER TABLE public.wallet_ledger
+      ADD CONSTRAINT wallet_ledger_reserve_role_check
+      CHECK (
+        reserve_role IS NULL
+        OR (reserve_role IN ('segregation_debit', 'release_credit') AND security_reserve_id IS NOT NULL)
+      );
   END IF;
 END;
 $mig$;
 
+-- PREFLIGHT FAIL-CLOSED: qualquer duplicidade histórica impede os índices únicos
+-- e indicaria saldo já inflado — a migration aborta em vez de "corrigir" sozinha.
+DO $mig$
+DECLARE v_dups integer;
+BEGIN
+  SELECT COUNT(*) INTO v_dups FROM (
+    SELECT security_reserve_id, reserve_role FROM public.wallet_ledger
+     WHERE security_reserve_id IS NOT NULL AND status <> 'canceled'
+     GROUP BY security_reserve_id, reserve_role HAVING COUNT(*) > 1) d;
+  IF v_dups > 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT: % reserva(s) com crédito duplicado em wallet_ledger.', v_dups;
+  END IF;
+
+  SELECT COUNT(*) INTO v_dups FROM (
+    SELECT ledger_debit_id FROM public.security_reserves
+     WHERE ledger_debit_id IS NOT NULL
+     GROUP BY ledger_debit_id HAVING COUNT(*) > 1) d;
+  IF v_dups > 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT: % debito(s) de segregacao reutilizado(s) por mais de uma reserva.', v_dups;
+  END IF;
+END;
+$mig$;
+
+-- Um único crédito de liberação por reserva…
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_ledger_reserve_release
   ON public.wallet_ledger (security_reserve_id)
-  WHERE security_reserve_id IS NOT NULL AND status <> 'canceled';
+  WHERE security_reserve_id IS NOT NULL
+    AND reserve_role = 'release_credit'
+    AND status <> 'canceled';
+
+-- …e um único débito de segregação por reserva.
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_ledger_reserve_segregation
+  ON public.wallet_ledger (security_reserve_id)
+  WHERE security_reserve_id IS NOT NULL
+    AND reserve_role = 'segregation_debit'
+    AND status <> 'canceled';
+
+-- O MESMO débito não pode servir de prova para duas reservas (dupla liberação).
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_security_reserves_ledger_debit
+  ON public.security_reserves (ledger_debit_id)
+  WHERE ledger_debit_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_security_reserves_due
   ON public.security_reserves (status, release_at);
 
+-- ---------------------------------------------------------------------------
+-- release_security_reserve — liberação atômica com PROVA ESTRUTURADA
+--
+-- Restrição de schema decisiva (verificada em produção, read-only):
+--   ux_wallet_ledger_order_type = UNIQUE (order_id, type) WHERE order_id IS NOT NULL
+-- Por isso o crédito de liberação NÃO grava order_id: com type='adjustment' ele
+-- colidiria com qualquer outro ajuste do mesmo pedido e, sob ON CONFLICT DO
+-- NOTHING, a reserva seria marcada 'released' SEM crédito. O vínculo com o
+-- pedido fica em security_reserve_id → security_reserves.order_id, e a
+-- idempotência em uniq_wallet_ledger_reserve_release.
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.release_security_reserve(p_reserve_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -785,6 +865,9 @@ DECLARE
   v_res public.security_reserves;
   v_debit public.wallet_ledger;
   v_credit_id uuid;
+  v_credit_status text;
+  v_credit_available_at timestamptz;
+  v_existing uuid;
 BEGIN
   -- Trava a reserva: dois workers concorrentes não processam a mesma linha.
   SELECT * INTO v_res FROM public.security_reserves
@@ -824,8 +907,10 @@ BEGIN
     RETURN jsonb_build_object('outcome', 'FORFEITED', 'reserve_id', v_res.id);
   END IF;
 
-  -- Prova de segregação na origem: sem débito vinculado, NÃO credita e NÃO
-  -- libera (o "retido" hoje já está no disponível; creditar duplicaria saldo).
+  -- ── PROVA DE SEGREGAÇÃO (fail-closed) ───────────────────────────────────
+  -- Sem débito vinculado NÃO credita e NÃO libera: hoje o settlement credita o
+  -- líquido integral, então o "retido" já está no disponível e creditar
+  -- duplicaria saldo.
   IF v_res.ledger_debit_id IS NULL THEN
     RETURN jsonb_build_object(
       'outcome', 'NEEDS_PRODUCT_DECISION',
@@ -833,24 +918,68 @@ BEGIN
       'reason', 'reserva sem debito de segregacao no wallet_ledger');
   END IF;
 
-  SELECT * INTO v_debit FROM public.wallet_ledger WHERE id = v_res.ledger_debit_id;
-  IF NOT FOUND OR v_debit.status = 'canceled' OR v_debit.workspace_id <> v_res.workspace_id THEN
+  SELECT * INTO v_debit FROM public.wallet_ledger
+   WHERE id = v_res.ledger_debit_id FOR UPDATE;
+
+  -- Cada condição abaixo é uma forma conhecida de inflar saldo. Todas
+  -- fail-closed: mantêm a reserva 'held' e não creditam nada.
+  IF NOT FOUND
+     OR v_debit.workspace_id <> v_res.workspace_id
+     OR v_debit.security_reserve_id IS DISTINCT FROM v_res.id
+     OR v_debit.reserve_role IS DISTINCT FROM 'segregation_debit'
+     OR v_debit.status = 'canceled'
+     OR v_debit.status = 'settled'
+     OR v_debit.type NOT IN ('fee', 'adjustment')
+     OR (v_debit.type = 'adjustment' AND v_debit.amount >= 0)
+     OR abs(v_debit.amount) <> v_res.amount
+     OR v_debit.currency IS DISTINCT FROM 'BRL'
+     OR (v_res.order_id IS NOT NULL AND v_debit.order_id IS NOT NULL
+         AND v_debit.order_id <> v_res.order_id)
+  THEN
     RETURN jsonb_build_object('outcome', 'NEEDS_PRODUCT_DECISION',
       'reserve_id', v_res.id, 'reason', 'debito de segregacao invalido');
   END IF;
 
-  -- Crédito + transição na MESMA transação (idempotente pelo índice único).
-  INSERT INTO public.wallet_ledger (
-    workspace_id, order_id, type, amount, currency, status, available_at,
-    description, security_reserve_id
-  ) VALUES (
-    v_res.workspace_id, v_res.order_id, 'adjustment', v_res.amount, 'BRL',
-    'available', now(),
-    'Liberação de reserva de segurança (security_reserve:' || v_res.id::text || ')',
-    v_res.id
-  )
-  ON CONFLICT DO NOTHING
-  RETURNING id INTO v_credit_id;
+  -- ── SEM ANTECIPAÇÃO DE LIQUIDEZ (QA-4A-V3, item 2) ──────────────────────
+  -- O crédito da liberação herda o estágio econômico do débito de origem. Se a
+  -- venda/débito ainda está em hold, liberar como 'available' criaria saldo
+  -- sacável antes do dinheiro existir.
+  IF v_debit.status = 'available'
+     OR (v_debit.status = 'pending' AND v_debit.available_at IS NOT NULL
+         AND v_debit.available_at <= now()) THEN
+    v_credit_status := 'available';
+    v_credit_available_at := now();
+  ELSIF v_debit.status = 'pending' AND v_debit.available_at IS NOT NULL THEN
+    -- Origem ainda em hold: crédito nasce 'pending' com o MESMO vencimento.
+    v_credit_status := 'pending';
+    v_credit_available_at := v_debit.available_at;
+  ELSE
+    -- pending sem available_at: não há data econômica confiável → segue retido.
+    RETURN jsonb_build_object('outcome', 'ORIGIN_NOT_LIQUID',
+      'reserve_id', v_res.id,
+      'reason', 'debito de origem sem available_at definido');
+  END IF;
+
+  -- Replay: crédito já existe → só converge o status da reserva.
+  SELECT id INTO v_existing FROM public.wallet_ledger
+   WHERE security_reserve_id = v_res.id
+     AND reserve_role = 'release_credit'
+     AND status <> 'canceled';
+
+  IF v_existing IS NULL THEN
+    -- Sem ON CONFLICT DO NOTHING: um conflito aqui significaria crédito
+    -- concorrente e deve estourar, nunca liberar reserva sem dinheiro.
+    INSERT INTO public.wallet_ledger (
+      workspace_id, order_id, type, amount, currency, status, available_at,
+      description, security_reserve_id, reserve_role
+    ) VALUES (
+      v_res.workspace_id, NULL, 'adjustment', v_res.amount, 'BRL',
+      v_credit_status, v_credit_available_at,
+      'Liberação de reserva de segurança (security_reserve:' || v_res.id::text || ')',
+      v_res.id, 'release_credit'
+    )
+    RETURNING id INTO v_credit_id;
+  END IF;
 
   UPDATE public.security_reserves
      SET status = 'released', released_at = now(), updated_at = now()
@@ -861,7 +990,9 @@ BEGIN
     'reserve_id', v_res.id,
     'workspace_id', v_res.workspace_id,
     'amount_cents', v_res.amount,
-    'credit_ledger_id', v_credit_id,
+    'credit_ledger_id', COALESCE(v_credit_id, v_existing),
+    'credit_status', v_credit_status,
+    'credit_available_at', v_credit_available_at,
     'credit_replayed', v_credit_id IS NULL);
 END;
 $$;
@@ -870,4 +1001,4 @@ REVOKE ALL ON FUNCTION public.release_security_reserve(uuid) FROM PUBLIC, anon, 
 GRANT EXECUTE ON FUNCTION public.release_security_reserve(uuid) TO service_role;
 
 COMMENT ON FUNCTION public.release_security_reserve(uuid) IS
-  'Libera uma reserva de segurança vencida em UMA transação. Só credita quando há débito de segregação (ledger_debit_id); caso contrário devolve NEEDS_PRODUCT_DECISION e mantém held.';
+  'Libera uma reserva de segurança vencida em UMA transação. Só credita com prova estruturada de segregação (ledger_debit_id com reserve_role=segregation_debit, mesmo workspace, mesmo valor, moeda BRL e não reutilizado); o crédito herda o estágio econômico do débito, nunca antecipando liquidez. Sem prova devolve NEEDS_PRODUCT_DECISION e mantém held.';
