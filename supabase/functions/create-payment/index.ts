@@ -845,23 +845,13 @@ Deno.serve(async (req) => {
         fee_config_snapshot: feeConfig || null,
       });
 
-      // Security reserve: ONLY on credit card sales (PIX/boleto have no reserve).
-      // reserve_hold_days is the absolute release window for the reserved slice (D+N from sale).
-      const isCard = method !== "pix" && method !== "boleto";
-      if (txStatus === "paid" && netAmount > 0 && isCard && reservePercent > 0) {
-        const reserveAmount = Math.round(netAmount * reservePercent / 100);
-        const releaseDays = Number(feeConfig?.reserve_hold_days ?? 0);
-        if (reserveAmount > 0) {
-          await supabase.from("security_reserves").insert({
-            workspace_id,
-            order_id: order.id,
-            transaction_id: null, // will be linked via order_id
-            amount: reserveAmount,
-            release_at: new Date(now.getTime() + releaseDays * 86400000).toISOString(),
-            status: "held",
-          });
-        }
-      }
+      // RESERVA: nada é criado aqui. A segregação da reserva acontece no
+      // settlement (webhook confirmado) via RPC public.settle_order_reserve,
+      // que debita a fatia reservada do crédito do produtor no MESMO commit.
+      // Escrever reserva na criação do pagamento (antes de haver crédito no
+      // wallet_ledger) produzia reserva sem débito de origem — a causa raiz do
+      // P0 de criação de dinheiro (QA-4A-V4). public.security_reserves está
+      // congelada (trigger fail-closed) e não deve ser escrita por nenhum path.
 
       // ─── Split entry (pending) ───────────────────────────────────────────
       // Resolution order: product-specific rule > workspace default > global default.

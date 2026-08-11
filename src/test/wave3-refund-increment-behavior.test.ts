@@ -60,6 +60,12 @@ function makeClient(opts: {
     },
     async rpc(name: string, args: any) {
       rpcCalls.push({ name, ...args });
+      // QA-4A-V5: o handler também recalcula a reserva canônica após cada
+      // incremento (public.reverse_reserve_entry). Não é escrita direta em
+      // tabela financeira: é a mesma transação SQL, por isso é aceita aqui.
+      if (name === "reverse_reserve_entry") {
+        return { data: { outcome: "REDUCED", reserve_id: "res-1" }, error: null };
+      }
       if (name !== "process_refund_increment") return { data: null, error: { message: "unknown rpc" } };
       if (opts.failOnRefundId && args.p_gateway_refund_id === opts.failOnRefundId) {
         return { data: null, error: { message: "ledger write failed" } };
@@ -93,7 +99,17 @@ function makeClient(opts: {
     },
   };
 
-  return { client, writes, rpcCalls, persisted };
+  // rpcCalls expõe SOMENTE os incrementos de reembolso; o recálculo canônico da
+  // reserva (reverse_reserve_entry, QA-4A-V5) é inspecionado por reserveCalls.
+  const incrementCalls = new Proxy([] as any[], {
+    get(_t, prop) {
+      const list = rpcCalls.filter((c) => c.name === "process_refund_increment");
+      const value = (list as any)[prop];
+      return typeof value === "function" ? value.bind(list) : value;
+    },
+  });
+  const reserveCalls = () => rpcCalls.filter((c) => c.name === "reverse_reserve_entry");
+  return { client, writes, rpcCalls: incrementCalls, reserveCalls, allRpcCalls: rpcCalls, persisted };
 }
 
 const paymentRecord = {

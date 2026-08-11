@@ -115,6 +115,36 @@ export async function handleRefundCompleted(
         `outcome=${result.outcome} acumulado=${accumulated}/${chargeCents} total=${isTotal} ` +
         `estagio=${result.ledger_status} reversao=${JSON.stringify(result.split_reversal ?? {})}`,
     );
+
+    // Reserva de segurança: process_refund_increment já reduziu
+    // split_entries.creator_net (parcial) ou marcou o split 'refunded' (total).
+    // A reserva é recalculada a partir do creator_net REMANESCENTE, de forma que
+    //     available + reserve = creator_net_remanescente
+    // continue exato após o estorno. Total ⇒ remanescente 0 ⇒ reserva zerada.
+    let remainingNet = 0;
+    if (!isTotal) {
+      const { data: splitAfter } = await supabase
+        .from("split_entries")
+        .select("creator_net, status")
+        .eq("order_id", paymentRecord.order_id)
+        .maybeSingle();
+      remainingNet = splitAfter?.status === "refunded" ? 0 : Number(splitAfter?.creator_net || 0);
+    }
+
+    const { data: reserveAdj, error: reserveAdjErr } = await supabase.rpc("reverse_reserve_entry", {
+      p_order_id: paymentRecord.order_id,
+      p_remaining_net_cents: remainingNet,
+      p_reason: isTotal ? "refund_total" : "refund_partial",
+      p_final_status: "reversed",
+    });
+    if (reserveAdjErr) {
+      // Fail-closed: reserva desalinhada do split criaria/destruiria saldo.
+      throw new Error(`reverse_reserve_entry falhou (${item.id}): ${reserveAdjErr.message}`);
+    }
+    console.log(
+      `Reserva ajustada no pedido ${paymentRecord.order_id}: remaining_net=${remainingNet} ` +
+        `resultado=${JSON.stringify(reserveAdj ?? {})}`,
+    );
   }
 
   return isTotal ? "REFUNDED" : "PARTIALLY_REFUNDED";

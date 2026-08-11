@@ -560,7 +560,14 @@ describe("QA-4A-V3 — contrato da RPC e da Edge Function", () => {
   });
 
   it("a Edge Function apenas chama a RPC — nada de update+insert sequencial", () => {
-    expect(ef).toMatch(/rpc\("release_security_reserve"/);
+    // QA-4A-V5: release-reserves foi deprecada (security_reserves congelada) e a
+    // liberação canônica virou public.release_reserve_entry, chamada por
+    // release-holds sobre reserve_entries.
+    expect(ef).toMatch(/DEPRECADA/);
+    expect(ef).toMatch(/writes_performed: 0/);
+    const holdsJob = readFileSync(
+      "supabase/functions/release-holds/index.ts", "utf-8");
+    expect(holdsJob).toMatch(/rpc\("release_reserve_entry"/);
     expect(ef).not.toMatch(/from\("security_reserves"\)[\s\S]{0,80}\.update\(/);
     expect(ef).not.toMatch(/from\("wallet_ledger"\)[\s\S]{0,80}\.insert\(/);
   });
