@@ -7,6 +7,17 @@ import { Loader2, Check, Download, GraduationCap, Calendar, Mail, Clock, XCircle
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
 import { isPrivateFileUrl, getSignedPrivateUrl } from "@/lib/private-files";
+import { sanitizeReturnTarget } from "@/lib/authVerification";
+
+/** Destino canônico de entrega: resolve entitlement + URL assinada. */
+export const LIBRARY_TARGET = "/member/library";
+
+/** Login com return target sempre sanitizado (sem open redirect). */
+export function buildLoginHref(target: string): string {
+  const safe = sanitizeReturnTarget(target) ?? LIBRARY_TARGET;
+  return `/login?redirect=${encodeURIComponent(safe)}`;
+}
+
 
 
 interface OrderData {
@@ -37,6 +48,20 @@ export default function OrderSuccess() {
   const [notFound, setNotFound] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [hasSession, setHasSession] = useState<boolean>(false);
+  const loginHref = buildLoginHref(LIBRARY_TARGET);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setHasSession(!!data.session);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+
 
   const [confettiFired, setConfettiFired] = useState(false);
 
@@ -161,14 +186,29 @@ export default function OrderSuccess() {
   }
 
   if (notFound || !order) {
+    // A RLS de `orders` só libera leitura para o comprador autenticado
+    // (e-mail do JWT) ou para o workspace dono. Visitante sem sessão cai aqui:
+    // conduzimos ao login preservando um return target sanitizado.
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Pedido não encontrado</h1>
-        <p className="text-muted-foreground mb-6">Este pedido não existe ou o link é inválido.</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">
+          {hasSession ? "Pedido não encontrado" : "Entre para ver seu pedido"}
+        </h1>
+        <p className="text-muted-foreground mb-6">
+          {hasSession
+            ? "Este pedido não existe ou o link é inválido."
+            : "Por segurança, o pedido só aparece para o comprador autenticado com o mesmo e-mail da compra."}
+        </p>
+        {!hasSession && (
+          <Button asChild className="mb-4">
+            <Link to={buildLoginHref(`/order/success/${orderId}`)}>Entrar na minha conta</Link>
+          </Button>
+        )}
         <Link to="/" className="text-primary hover:underline font-medium">← Voltar ao início</Link>
       </div>
     );
   }
+
 
   const isPaid = order.status === "COMPLETED";
   const isPending = order.status === "PENDING";
@@ -255,11 +295,36 @@ export default function OrderSuccess() {
     const t = product.type?.toUpperCase();
 
     // Digital products: DIGITAL, DIGITAL_PRODUCT
+    //
+    // A entrega NUNCA acontece por URL crua: `sign-private-file` exige Bearer
+    // do comprador e valida entitlement. `digital_assets` só é legível pelo
+    // workspace dono (RLS), então o comprador não tem `downloadUrl` aqui —
+    // ele é conduzido à biblioteca, que resolve entitlement + URL assinada.
     if (t === "DIGITAL" || t === "DIGITAL_PRODUCT") {
+      if (!hasSession) {
+        return (
+          <Button asChild className="w-full h-14 text-base font-bold gap-2">
+            <Link to={loginHref}>
+              <Download className="w-5 h-5" />
+              Entrar para baixar
+            </Link>
+          </Button>
+        );
+      }
+      if (!downloadUrl) {
+        return (
+          <Button asChild className="w-full h-14 text-base font-bold gap-2">
+            <Link to={LIBRARY_TARGET}>
+              <Download className="w-5 h-5" />
+              Acessar meus arquivos
+            </Link>
+          </Button>
+        );
+      }
       return (
         <Button
           onClick={handleDigitalDownload}
-          disabled={!downloadUrl || downloading}
+          disabled={downloading}
           className="w-full h-14 text-base font-bold bg-green-600 hover:bg-green-700 gap-2"
         >
           {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
@@ -267,6 +332,7 @@ export default function OrderSuccess() {
         </Button>
       );
     }
+
 
 
 

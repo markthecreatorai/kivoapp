@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Upload, FileText, X, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  MAX_UPLOAD_LABEL,
+  safeObjectName,
+  validateUploadFile,
+} from "@/lib/upload-validation";
 import type { ProductFormData } from "@/pages/CreateProduct";
 
 interface Props {
@@ -12,12 +17,31 @@ interface Props {
   updateForm: (updates: Partial<ProductFormData>) => void;
 }
 
+/** Remove o prefixo canônico `private-files/` para obter o path do objeto. */
+export function toStorageObjectPath(url: string): string {
+  const marker = "private-files/";
+  const i = url.indexOf(marker);
+  return i >= 0 ? url.slice(i + marker.length) : url;
+}
+
+
 export function ProductDeliveryStep({ form, updateForm }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+
+    // Validação client-side alinhada aos limites reais do bucket/projeto.
+    const rejected = files
+      .map((f) => ({ f, v: validateUploadFile({ name: f.name, size: f.size, type: f.type }) }))
+      .filter((x) => !x.v.ok);
+    if (rejected.length) {
+      rejected.forEach((x) => toast.error((x.v as { reason: string }).reason));
+      e.target.value = "";
+      return;
+    }
+
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -28,7 +52,8 @@ export function ProductDeliveryStep({ form, updateForm }: Props) {
       const uploaded = await Promise.all(
         files.map(async (file) => {
           // O bucket privado exige o prefixo `auth.uid()` na primeira pasta (RLS).
-          const path = `${user.id}/deliveries/${Date.now()}-${file.name}`;
+          // O nome do objeto é sanitizado e único (nunca `file.name` cru).
+          const path = `${user.id}/deliveries/${safeObjectName(file.name)}`;
           const { error } = await supabase.storage.from("private-files").upload(path, file);
           if (error) throw error;
           // Guardamos o caminho canônico com o bucket para que os consumidores
@@ -42,13 +67,26 @@ export function ProductDeliveryStep({ form, updateForm }: Props) {
       toast.error("Erro ao enviar: " + err.message);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
-
-  const removeFile = (index: number) => {
+  /**
+   * Remoção antes de salvar deixaria órfão no bucket. Apagamos o objeto que o
+   * próprio usuário acabou de enviar (o prefixo é `auth.uid()`, então a RLS
+   * garante que ninguém apaga arquivo de terceiro).
+   */
+  const removeFile = async (index: number) => {
+    const target = form.deliveryFiles[index];
     updateForm({ deliveryFiles: form.deliveryFiles.filter((_, i) => i !== index) });
+    if (!target?.url) return;
+    const path = toStorageObjectPath(target.url);
+    const { error } = await supabase.storage.from("private-files").remove([path]);
+    if (error) {
+      toast.error("Arquivo removido da lista, mas não do armazenamento.");
+    }
   };
+
 
   // SERVICE — scheduling URL
   if (form.type === "SERVICE") {
@@ -134,7 +172,7 @@ export function ProductDeliveryStep({ form, updateForm }: Props) {
         <span className="text-sm text-muted-foreground">
           {uploading ? "Enviando..." : "Arraste ou clique para enviar arquivos"}
         </span>
-        <span className="text-xs text-muted-foreground mt-1">Até 2GB por arquivo</span>
+        <span className="text-xs text-muted-foreground mt-1">Até {MAX_UPLOAD_LABEL} por arquivo</span>
         <input
           type="file"
           multiple
