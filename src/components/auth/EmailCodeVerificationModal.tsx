@@ -73,7 +73,7 @@ export default function EmailCodeVerificationModal({
       // Falha transitória: o código continua válido, mantemos os dígitos digitados.
       setStatus("idle");
       submittedRef.current = "";
-      setError("Instabilidade momentânea ao confirmar. Toque em confirmar novamente.");
+      setError('Instabilidade momentânea ao confirmar. Toque em "Confirmar código" novamente.');
       return;
     }
     setStatus("idle");
@@ -125,6 +125,13 @@ export default function EmailCodeVerificationModal({
     setDigits(next);
     if (index < CODE_LENGTH - 1) inputs.current[index + 1]?.focus();
     if (next.every((d) => d !== "")) void submit(next.join(""));
+  };
+
+  // Botão explícito (também usado no retry de falha transitória).
+  const handleConfirm = () => {
+    if (code.length !== CODE_LENGTH || status !== "idle") return;
+    submittedRef.current = "";
+    void submit(code);
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -222,6 +229,15 @@ export default function EmailCodeVerificationModal({
           )}
 
           <div className="space-y-2">
+            <Button
+              type="button"
+              className="w-full gap-2"
+              onClick={handleConfirm}
+              disabled={code.length !== CODE_LENGTH || status !== "idle"}
+            >
+              {status === "verifying" ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              Confirmar código
+            </Button>
             <Button
               type="button"
               variant="outline"
