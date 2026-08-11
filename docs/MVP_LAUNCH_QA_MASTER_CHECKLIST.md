@@ -1482,3 +1482,29 @@ Sem deploy, sem migration aplicada, sem API externa, sem transação real.
 Suíte: **653/653** ✓ · typecheck limpo ✓ · build ✓
 
 Ordem de rollout (quando autorizado): (1) aplicar `20260811090000` (preflights abortam se houver duplicidade histórica); (2) deploy `release-reserves` e `create-payout-request`; (3) regenerar types; (4) decidir a segregação da reserva no settlement antes de qualquer crédito de liberação.
+
+### 31.6 Hardening QA-4A-V3-LEDGER-PROOF (revisão do conteúdo real em `f492e879`) — 2026-08-11 (UTC)
+
+Sem deploy, sem migration aplicada, sem chamada ao Asaas e sem transação real.
+
+| # | Achado da revisão | Correção | Status |
+|---|---|---|---|
+| 1 | `release_security_reserve` aceitava como prova de segregação qualquer linha não cancelada do mesmo workspace (inflaria saldo) | Prova **estruturada** na migration canônica `20260811090000`: `wallet_ledger.reserve_role` (`segregation_debit` \| `release_credit`) com CHECK, FK `security_reserve_id`, índices únicos `uniq_wallet_ledger_reserve_segregation` / `uniq_wallet_ledger_reserve_release` e `uniq_security_reserves_ledger_debit` (um débito não prova duas reservas). A RPC exige: mesma reserva, papel `segregation_debit`, mesmo workspace, `abs(amount) = reserve.amount`, `currency='BRL'`, pedido compatível, tipo efetivamente devedor (`fee` ou `adjustment` negativo), status ≠ `canceled`/`settled`. Qualquer desvio → `NEEDS_PRODUCT_DECISION` mantendo `held` | PASS (contrato + comportamento) / NEEDS_E2E (índices sob concorrência real) |
+| 2 | Antecipação de liquidez: liberava R$10 como `available` com venda/débito ainda `pending` até t=30 | O crédito herda o estágio econômico do débito: origem madura → `available`/`now()`; origem em hold → `pending` com o **mesmo** `available_at`; origem `pending` sem `available_at` → novo outcome `ORIGIN_NOT_LIQUID` mantendo `held`. Teste centavo a centavo: em t=20 `available=0`, `pending=100`; em t=30 `available=100` | PASS |
+| 3 | `resolve_chargeback_case` podia devolver 2x | Equação real mapeada de `webhook-asaas/handleChargeback`: passo 6a `sale → canceled` (Δ −100) e 6b `chargeback → settled` (Δ 0, pois `settled` não entra em `get_wallet_balance` nem em `_shared/wallet-balance.ts`). Δ de abertura = −100 uma única vez ⇒ na vitória, restaurar a venda (+100) e cancelar o lançamento informativo converge ao saldo original **exatamente uma vez**. Restauração passou a preservar o estágio (`CASE WHEN available_at IS NULL THEN 'available' ELSE 'pending' END`, sem reescrever `available_at`) e é **suprimida** quando o pedido já tem `refunds.status='PROCESSED'` (`financial_reversal_skipped`) | PASS (model-based: aberto/perdido/ganho, replay, concorrência, hold, refund) / NEEDS_E2E (advisory lock real) |
+| 4 | Migration não validada contra o schema real | Verificado read-only: `wallet_ledger.amount` `integer` (centavos), `currency`/`status` NOT NULL, checks de `status` (`pending\|available\|settled\|canceled`) e `type` (`sale\|fee\|refund\|withdrawal\|adjustment\|chargeback`), `chargeback_cases_status_check` (`new\|evidence_pending\|submitted\|won\|lost`), `security_reserves.transaction_id` NOT NULL (a migration o torna nullable) e **`ux_wallet_ledger_order_type UNIQUE (order_id, type) WHERE order_id IS NOT NULL`**. Consequência aplicada: o crédito de liberação **não grava `order_id`** (colidiria com outro `adjustment` do pedido e, sob `ON CONFLICT DO NOTHING`, liberaria a reserva sem crédito); o vínculo fica via `security_reserve_id → security_reserves.order_id`. `ON CONFLICT DO NOTHING` removido do crédito | PASS (schema versionado) / não aplicada em produção |
+| 5 | Preservar correções v2 | RPC transacional de reserva, advisory locks de payout, chaves estruturadas (`payout_request_id`, `security_reserve_id`), `audit_logs` transacional e RLS/grants financeiros permanecem intactos e cobertos por teste | PASS |
+| 6 | Decisão de produto da reserva real | Continua **bloqueada**: o settlement credita `creator_net` integral e não debita os 10%, logo nenhuma reserva real existe. Nenhuma política inventada; o caminho segue fail-closed | NEEDS_PRODUCT_DECISION |
+
+Equações verificadas:
+
+```text
+abertura do chargeback : sale(canceled) = -100 ; chargeback(settled) = 0   → saldo 0
+vitória                : sale(restaurado ao estágio) = +100 ; chargeback(canceled) = 0 → saldo 100
+liberação de reserva   : debito(-10, estágio X) + credito(+10, estágio X) = 0 antes de X
+                         venda 100 - reserva 10 = 90 disponível ; após liberação = 100
+```
+
+Testes: `src/test/wave4-reserve-release-behavior.test.ts` (50 casos, model-based + contrato) · suíte **678/678** ✓ · typecheck limpo ✓ · build ✓
+
+Ordem de rollout (quando autorizado): (1) aplicar `20260811090000` — os preflights abortam com duplicidade histórica de crédito de liberação ou débito reutilizado; (2) deploy `release-reserves` e `create-payout-request`; (3) regenerar types; (4) só então decidir a segregação dos 10% no settlement — sem ela toda liberação permanece `NEEDS_PRODUCT_DECISION`.
