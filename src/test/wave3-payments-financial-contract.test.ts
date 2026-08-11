@@ -18,6 +18,11 @@ const simulateInstallments = fn("simulate-installments");
 const checkPaymentStatus = fn("check-payment-status");
 const testAsaas = fn("test-asaas");
 const webhookAsaas = fn("webhook-asaas");
+const refundsModule = readFileSync(
+  resolve(process.cwd(), "supabase/functions/_shared/refunds.ts"),
+  "utf-8",
+);
+
 const payoutRequest = fn("create-payout-request");
 const config = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf-8");
 
@@ -452,45 +457,32 @@ describe("Onda 3 / FI — saque: autorização, saldo e idempotência", () => {
 // FI — Reembolso total x parcial (P0 corrigido nesta onda)
 // ─────────────────────────────────────────────────────────────────────────────
 describe("Onda 3 / FI — reembolso parcial não dobra o débito", () => {
-  it("valor devolvido vem de refunds[], não de paymentData.value", () => {
-    expect(webhookAsaas).toContain("Array.isArray(paymentData?.refunds)");
-    expect(webhookAsaas).toContain("refundedFromList > 0 ? refundedFromList : chargeAmount");
+  // A lógica de reembolso vive em supabase/functions/_shared/refunds.ts e a
+  // reversão financeira é atômica dentro da RPC process_refund_increment.
+  // Comportamento detalhado: src/test/wave3-refund-increment-behavior.test.ts.
+  it("o webhook delega reembolso ao módulo compartilhado, sem handler local", () => {
+    expect(webhookAsaas).toContain('from "../_shared/refunds.ts"');
+    expect(webhookAsaas).not.toContain("handleRefunded");
   });
 
-  it("classifica parcial por status do gateway ou por valor menor que a cobrança", () => {
-    expect(webhookAsaas).toContain('asaasStatus === "PARTIALLY_REFUNDED"');
-    expect(webhookAsaas).toContain("refundCents < chargeCents");
+  it("eventos concluídos e em processamento são roteados separadamente", () => {
+    expect(webhookAsaas).toContain('eventType === "PAYMENT_REFUNDED" || eventType === "PAYMENT_PARTIALLY_REFUNDED"');
+    expect(webhookAsaas).toContain('eventType === "PAYMENT_REFUND_IN_PROGRESS"');
   });
 
-  it("parcial não cancela o crédito da venda no ledger", () => {
-    expect(webhookAsaas).toContain('if (!isPartial) {\n    await supabase.from("wallet_ledger").update({ status: "canceled" })');
+  it("nenhuma escrita financeira de reembolso acontece fora da RPC atômica", () => {
+    expect(refundsModule).toContain("process_refund_increment");
+    expect(refundsModule).not.toContain('from("wallet_ledger")');
+    expect(refundsModule).not.toContain('from("entitlements")');
+    expect(refundsModule).not.toContain('from("split_entries")');
   });
 
-  it("parcial preserva acesso, comissões e reserva do pedido", () => {
-    const partialIdx = webhookAsaas.indexOf('return "PARTIALLY_REFUNDED"');
-    const revokeIdx = webhookAsaas.indexOf('.from("entitlements").update({ revoked_at');
-    const commissionIdx = webhookAsaas.indexOf('cancelOrderCommissions(supabase, paymentRecord.order_id, "Pedido reembolsado")');
-    const forfeitIdx = webhookAsaas.indexOf('status: "forfeited"');
-    expect(partialIdx).toBeGreaterThan(0);
-    // Todos os efeitos destrutivos ficam DEPOIS do early-return do parcial.
-    expect(revokeIdx).toBeGreaterThan(partialIdx);
-    expect(commissionIdx).toBeGreaterThan(partialIdx);
-    expect(forfeitIdx).toBeGreaterThan(partialIdx);
+  it("valor devolvido vem sempre de refunds[], nunca do valor da cobrança", () => {
+    expect(refundsModule).toContain("Array.isArray(paymentData?.refunds)");
+    expect(refundsModule).toContain("sem refunds[] utilizável");
+    expect(refundsModule).not.toContain("refundedFromList > 0 ? refundedFromList : chargeAmount");
   });
 
-  it("parcial não rebaixa orders.status (respeita o CHECK existente)", () => {
-    expect(webhookAsaas).not.toContain('status: "PARTIALLY_REFUNDED" })');
-    expect(webhookAsaas).toContain("order status preserved");
-  });
-
-  it("débito parcial entra como available (move saldo) e total como settled (trilha)", () => {
-    expect(webhookAsaas).toContain('const ledgerStatus = isPartial ? "available" : "settled"');
-  });
-
-  it("é idempotente por gateway_refund_id", () => {
-    expect(webhookAsaas).toContain('.eq("gateway_refund_id", gatewayRefundId)');
-    expect(webhookAsaas).toContain('"ALREADY_PARTIALLY_REFUNDED"');
-  });
 
   it("saldo: venda 100 + reembolso parcial de 30 resulta em 70", () => {
     const b = computeBalances([
