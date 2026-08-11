@@ -628,7 +628,33 @@ BEGIN
     COALESCE(p_note, 'Status alterado para ' || p_status)
   );
 
-  IF p_status = 'won' AND v_case.order_id IS NOT NULL THEN
+  -- QA-4A-V3 — EQUAÇÃO REAL DO CHARGEBACK, mapeada linha a linha de
+  -- supabase/functions/webhook-asaas/index.ts (handleChargeback):
+  --   passo 4  split_entries                    → status 'refunded'
+  --   passo 5  reserve_entries/security_reserves → 'forfeited'
+  --   passo 6a wallet_ledger type='sale'        → status 'canceled'  ⇒ Δ = -100
+  --   passo 6b wallet_ledger type='chargeback'  → status 'settled'   ⇒ Δ =    0
+  --            ('settled' não entra em get_wallet_balance nem em
+  --             _shared/wallet-balance.ts: é lançamento informativo)
+  --   Δ total da abertura = -100, aplicado UMA única vez.
+  -- Logo a reversão da vitória é: restaurar a venda (+100) e cancelar o
+  -- lançamento informativo (Δ 0) ⇒ converge ao saldo original exatamente uma
+  -- vez, nunca 2x. Cancelar o débito é defensivo: se algum caminho futuro
+  -- gravá-lo como pending/available ele passaria a valer -100 real, e o
+  -- cancelamento aqui é o que evita o resíduo negativo.
+  --
+  -- Reembolso já processado neutraliza a devolução: nesse caso a venda foi
+  -- cancelada pelo fluxo de refund (process_refund_increment), não pela
+  -- disputa; restaurar devolveria ao produtor dinheiro que o comprador já
+  -- recebeu de volta.
+  IF p_status = 'won' AND v_case.order_id IS NOT NULL
+     AND EXISTS (SELECT 1 FROM public.refunds r
+                  WHERE r.order_id = v_case.order_id AND r.status = 'PROCESSED') THEN
+    INSERT INTO public.chargeback_timeline (case_id, action, actor_id, note)
+    VALUES (v_case.id, 'financial_reversal_skipped', v_uid,
+            'Disputa ganha, mas o pedido já possui reembolso processado — nenhuma reversão financeira aplicada');
+
+  ELSIF p_status = 'won' AND v_case.order_id IS NOT NULL THEN
     -- 1) Split volta a valer
     UPDATE public.split_entries
        SET status = 'settled', refunded_at = NULL
@@ -641,10 +667,14 @@ BEGIN
      WHERE order_id = v_case.order_id AND type = 'chargeback' AND status <> 'canceled';
     GET DIAGNOSTICS v_canceled_debit = ROW_COUNT;
 
-    -- 3) Crédito da venda é devolvido (o webhook o havia cancelado; sem isto o
-    --    produtor ganhava a disputa e continuava sem o dinheiro)
+    -- 3) Crédito da venda volta AO ESTÁGIO ORIGINAL. Forçar
+    --    status='available', available_at=now() antecipava liquidez: uma venda
+    --    ainda em hold (available_at futuro) virava saldo sacável ao ganhar a
+    --    disputa. Como o webhook só altera `status`, `available_at` preserva o
+    --    vencimento original: 'pending' + available_at vencido já conta como
+    --    disponível na regra canônica, e available_at futuro volta a ser hold.
     UPDATE public.wallet_ledger
-       SET status = 'available', available_at = now()
+       SET status = CASE WHEN available_at IS NULL THEN 'available' ELSE 'pending' END
      WHERE order_id = v_case.order_id AND type = 'sale' AND status = 'canceled';
     GET DIAGNOSTICS v_restored_sale = ROW_COUNT;
 
