@@ -354,9 +354,9 @@ describe("QA-4A-V5 — security_reserves congelada e sem consumidores ativos", (
 
 // ───────────────────────── 9. Caminho único de settlement ─────────────────────────
 describe("QA-4A-V5 — nenhum caminho credita creator_net integral", () => {
-  it("webhook chama settle_order_reserve e falha fechado em erro", () => {
-    expect(webhook).toMatch(/rpc\(\s*\n?\s*"settle_order_reserve"/);
-    expect(webhook).toMatch(/throw new Error\(`settle_order_reserve falhou/);
+  it("webhook liquida via RPC atômica (V6) e falha fechado em erro", () => {
+    expect(webhook).toMatch(/rpc\("settle_order_atomic"/);
+    expect(webhook).toMatch(/throw new Error\(`settle_order_atomic falhou/);
   });
 
   it("webhook não insere mais reserve_entries manualmente", () => {
