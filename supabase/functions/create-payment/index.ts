@@ -1,6 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { computePixDiscount, resolveCoupon, round2 } from "../_shared/coupon.ts";
 import { feeTierForPlan } from "../_shared/plan.ts";
+import {
+  validateAffiliateContext,
+  commissionBase,
+  computeCommissionBrl,
+  computeSplitCents,
+} from "../_shared/commissions.ts";
 
 
 const corsHeaders = {
