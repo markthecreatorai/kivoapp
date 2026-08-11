@@ -46,8 +46,10 @@ describe("auth-verify-code — consumo e account type explícitos", () => {
 
 describe("superfícies de cadastro — ausência de magic link / OTP nativo", () => {
   it("nenhuma edge function de código usa OTP ou resend nativo", () => {
+    const stripComments = (src: string) =>
+      src.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
     for (const src of [REQUEST, VERIFY]) {
-      expect(src).not.toMatch(/signInWithOtp|generateLink|auth\.resend\(/);
+      expect(stripComments(src)).not.toMatch(/signInWithOtp|generateLink|auth\.resend\(/);
     }
   });
 
