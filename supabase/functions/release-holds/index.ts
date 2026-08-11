@@ -1,7 +1,9 @@
 // release-holds — libera saldos retidos (hold) do produtor.
 // Roda a cada hora via pg_cron (public.cron_invoke → X-Kivo-Cron-Secret).
 // 1) wallet_ledger pending com available_at <= now() → "available"
-// 2) reserve_entries vencidas sem chargeback ativo → "released" + crédito no wallet_ledger
+// 2) reserve_entries vencidas: NÃO são creditadas (fail-closed) — a origem não
+//    debita a fatia reservada, então creditar aqui duplicaria saldo. Enquanto a
+//    decisão de produto não existir, permanecem `held` (ver §31.7 do checklist).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
@@ -30,10 +32,8 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
     let ledgerReleased = 0;
     let ledgerAmount = 0;
-    let reservesReleased = 0;
-    let reservesAmount = 0;
     let reservesHeldByChargeback = 0;
-    let reserveCreditsSkipped = 0;
+
 
     // ─── 1) wallet_ledger: pending vencido → available ───
     const { data: dueLedger, error: ledgerErr } = await supabase
@@ -59,6 +59,15 @@ Deno.serve(async (req) => {
     }
 
     // ─── 2) reserve_entries vencidas ───
+    //
+    // FAIL-CLOSED (QA-4A-V4-RESERVE-ORIGIN): o settlement credita `creator_net`
+    // INTEGRAL no wallet_ledger e NUNCA debita a fatia reservada (evidência:
+    // process_order_commission não toca em reserva; order 52d06af2 tem
+    // sale=+4850 pending e reserve_entries=437 held, sem débito de segregação).
+    // Creditar a liberação aqui, como este job fazia, INVENTA dinheiro: o
+    // produtor receberia creator_net + 10%. Enquanto não houver decisão de
+    // produto sobre segregar a reserva na origem (ver §31.7 do checklist),
+    // reservas vencidas permanecem `held` e nada é creditado.
     const { data: dueReserves, error: resErr } = await supabase
       .from("reserve_entries")
       .select("id, workspace_id, order_id, amount, reserve_percent")
@@ -67,6 +76,7 @@ Deno.serve(async (req) => {
       .limit(BATCH);
     if (resErr) throw resErr;
 
+    let reservesNeedsProductDecision = 0;
     for (const reserve of dueReserves || []) {
       // Chargeback ativo → mantém retida por mais 30 dias
       if (reserve.order_id) {
@@ -86,48 +96,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      const { data: releasedRows, error: relErr } = await supabase
-        .from("reserve_entries")
-        .update({ status: "released", released_at: nowIso })
-        .eq("id", reserve.id)
-        .eq("status", "held") // idempotência
-        .select("id");
-      if (relErr) {
-        console.error(`[${FN}] falha ao liberar reserva ${reserve.id}:`, relErr.message);
-        continue;
-      }
-      if (!releasedRows || releasedRows.length === 0) continue; // já liberada por outro ciclo
-
-      const amount = Number(reserve.amount || 0);
-      if (amount > 0) {
-        const description = `Liberação de reserva de segurança (reserve:${reserve.id})`;
-        // Idempotência do crédito: um lançamento por reserva (chave na description)
-        const { data: existingCredit } = await supabase
-          .from("wallet_ledger")
-          .select("id")
-          .eq("workspace_id", reserve.workspace_id)
-          .eq("type", "adjustment")
-          .eq("description", description)
-          .maybeSingle();
-
-        if (existingCredit) {
-          reserveCreditsSkipped++;
-        } else {
-          const { error: credErr } = await supabase.from("wallet_ledger").insert({
-            workspace_id: reserve.workspace_id,
-            order_id: reserve.order_id,
-            type: "adjustment", // crédito de liberação de reserva
-            amount,
-            status: "available",
-            available_at: nowIso,
-            description,
-          });
-          if (credErr) console.error(`[${FN}] falha ao creditar reserva ${reserve.id}:`, credErr.message);
-        }
-      }
-
-      reservesReleased++;
-      reservesAmount += amount;
+      reservesNeedsProductDecision++;
+      console.warn(
+        `[${FN}] reserve_entry ${reserve.id} mantida retida: origem sem débito de segregação (NEEDS_PRODUCT_DECISION)`,
+      );
     }
 
     const summary = {
@@ -137,10 +109,10 @@ Deno.serve(async (req) => {
       ledger_released: ledgerReleased,
       ledger_released_amount_cents: ledgerAmount,
       reserves_due: dueReserves?.length || 0,
-      reserves_released: reservesReleased,
-      reserves_released_amount_cents: reservesAmount,
+      reserves_released: 0,
+      reserves_released_amount_cents: 0,
       reserves_held_by_chargeback: reservesHeldByChargeback,
-      reserve_credits_skipped_idempotent: reserveCreditsSkipped,
+      reserves_needs_product_decision: reservesNeedsProductDecision,
     };
     console.log(JSON.stringify(summary));
     await run.finish("SUCCESS", summary);
