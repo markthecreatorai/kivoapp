@@ -7,13 +7,14 @@ import {
   computeCommissionBrl,
   computeSplitCents,
 } from "../_shared/commissions.ts";
+import { corsHeadersFor } from "../_shared/cors.ts";
+import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
 
+// Limite anti-abuso: criação de pedido é pública por natureza (checkout de convidado),
+// portanto precisa de teto por IP para não virar fábrica de pedidos/cobranças.
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
 
 // ── Asaas API ──
 
