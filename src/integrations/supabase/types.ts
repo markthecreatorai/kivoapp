@@ -9483,6 +9483,14 @@ export type Database = {
         }
         Returns: Json
       }
+      process_order_financials: {
+        Args: {
+          p_gateway_fee_cents?: number
+          p_order_id: string
+          p_settle?: boolean
+        }
+        Returns: Json
+      }
       record_subscription_referral_commission: {
         Args: {
           p_amount: number
@@ -9522,6 +9530,7 @@ export type Database = {
         Args: { p_coupon_id: string; p_order_id: string }
         Returns: boolean
       }
+      release_matured_commissions: { Args: never; Returns: Json }
       reserved_slugs: { Args: never; Returns: string[] }
       resolve_affiliate_for_order: {
         Args: { p_order_id: string }
@@ -9567,6 +9576,19 @@ export type Database = {
       update_community_space: {
         Args: { p_community_id: string; p_patch: Json; p_space_id: string }
         Returns: boolean
+      }
+      update_my_affiliate_profile: {
+        Args: {
+          p_bank_account?: Json
+          p_name?: string
+          p_phone?: string
+          p_pix_key?: string
+        }
+        Returns: Json
+      }
+      validate_and_record_affiliate_click: {
+        Args: { p_code: string; p_product_id?: string; p_session_id?: string }
+        Returns: Json
       }
       workspace_accepts_public_writes: {
         Args: { _workspace_id: string }
