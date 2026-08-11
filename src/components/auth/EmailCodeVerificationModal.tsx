@@ -73,7 +73,9 @@ export default function EmailCodeVerificationModal({
       // Falha transitória: o código continua válido, mantemos os dígitos digitados.
       setStatus("idle");
       submittedRef.current = "";
-      setError("Instabilidade momentânea ao confirmar. Toque em confirmar novamente.");
+      setError('Instabilidade momentânea ao confirmar. Toque em "Confirmar código" novamente.');
+      return;
+    }
       return;
     }
     setStatus("idle");
