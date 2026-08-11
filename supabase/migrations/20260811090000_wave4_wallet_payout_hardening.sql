@@ -197,12 +197,53 @@ REVOKE ALL ON FUNCTION public.calculate_payout_risk(uuid) FROM PUBLIC, anon, aut
 GRANT EXECUTE ON FUNCTION public.calculate_payout_risk(uuid) TO service_role;
 
 -- ---------------------------------------------------------------------------
--- 4. Idempotência do débito de saque no ledger
---    Um único lançamento 'withdrawal' por payout_request (chave na description).
+-- 4. Idempotência do débito de saque no ledger — chave ESTRUTURADA
+--    P0-WA-10 (revisão QA-4A-V2): a idempotência dependia apenas de
+--    `description` (texto livre), que não é chave confiável. Passa a existir
+--    wallet_ledger.payout_request_id com FK real e índice único parcial.
+--    O índice IGNORA linhas 'canceled': a rejeição cancela o débito e o
+--    workspace pode sacar de novo sem colidir com o histórico.
 -- ---------------------------------------------------------------------------
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_ledger_withdrawal_description
-  ON public.wallet_ledger (workspace_id, description)
-  WHERE type = 'withdrawal';
+ALTER TABLE public.wallet_ledger
+  ADD COLUMN IF NOT EXISTS payout_request_id uuid;
+
+DO $mig$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'wallet_ledger_payout_request_fk') THEN
+    ALTER TABLE public.wallet_ledger
+      ADD CONSTRAINT wallet_ledger_payout_request_fk
+      FOREIGN KEY (payout_request_id) REFERENCES public.payout_requests(id);
+  END IF;
+END;
+$mig$;
+
+-- Backfill a partir da convenção textual anterior ('Saque <uuid>').
+UPDATE public.wallet_ledger wl
+   SET payout_request_id = pr.id
+  FROM public.payout_requests pr
+ WHERE wl.type = 'withdrawal'
+   AND wl.payout_request_id IS NULL
+   AND wl.description = 'Saque ' || pr.id::text;
+
+-- PREFLIGHT FAIL-CLOSED: duplicidade histórica de débito ativo faria o índice
+-- único falhar no meio da migration. Aborta com diagnóstico explícito.
+DO $mig$
+DECLARE v_dups integer;
+BEGIN
+  SELECT COUNT(*) INTO v_dups FROM (
+    SELECT payout_request_id
+      FROM public.wallet_ledger
+     WHERE type = 'withdrawal' AND payout_request_id IS NOT NULL AND status <> 'canceled'
+     GROUP BY payout_request_id HAVING COUNT(*) > 1) d;
+  IF v_dups > 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT: % saque(s) com débito duplicado ativo em wallet_ledger. Reconcilie antes de aplicar.', v_dups;
+  END IF;
+END;
+$mig$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_ledger_withdrawal_payout_request
+  ON public.wallet_ledger (payout_request_id)
+  WHERE type = 'withdrawal' AND status <> 'canceled';
 
 -- ---------------------------------------------------------------------------
 -- 5. create_payout_request_atomic — criação de saque em UMA transação
@@ -240,6 +281,24 @@ BEGIN
   IF p_net_amount IS NULL OR p_net_amount <= 0 THEN
     RETURN jsonb_build_object('outcome', 'FEE_EXCEEDS_AMOUNT');
   END IF;
+  -- Aritmética conferida no banco: taxa não-negativa e amount = fee + net.
+  IF p_fee IS NULL OR p_fee < 0 THEN
+    RETURN jsonb_build_object('outcome', 'INVALID_FEE');
+  END IF;
+  IF p_amount <> p_fee + p_net_amount THEN
+    RETURN jsonb_build_object('outcome', 'AMOUNT_MISMATCH',
+      'amount_cents', p_amount, 'fee_cents', p_fee, 'net_amount_cents', p_net_amount);
+  END IF;
+  -- O solicitante não é aceito como valor livre: precisa ser OWNER/ADMIN do
+  -- workspace. A Edge Function deriva o uid do JWT; aqui é revalidado.
+  IF p_requested_by IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.workspace_members wm
+     WHERE wm.workspace_id = p_workspace_id
+       AND wm.user_id = p_requested_by
+       AND wm.role IN ('OWNER', 'ADMIN')
+  ) THEN
+    RETURN jsonb_build_object('outcome', 'REQUESTER_NOT_ALLOWED');
+  END IF;
 
   -- Serializa saques do mesmo workspace dentro da transação.
   PERFORM pg_advisory_xact_lock(hashtextextended('payout:' || p_workspace_id::text, 0));
@@ -275,9 +334,8 @@ BEGIN
      AND pr.status IN ('pending','in_review','approved','processing')
      AND NOT EXISTS (
        SELECT 1 FROM public.wallet_ledger wl
-        WHERE wl.workspace_id = pr.workspace_id
-          AND wl.type = 'withdrawal'
-          AND wl.description = 'Saque ' || pr.id::text
+        WHERE wl.type = 'withdrawal'
+          AND wl.payout_request_id = pr.id
           AND wl.status <> 'canceled'
      );
 
@@ -307,11 +365,15 @@ BEGIN
   -- Débito imediato só quando aprovado automaticamente; mesmo commit do saque.
   IF p_auto_approve THEN
     INSERT INTO public.wallet_ledger (
-      workspace_id, type, amount, currency, status, available_at, description
+      workspace_id, type, amount, currency, status, available_at, description, payout_request_id
     ) VALUES (
       p_workspace_id, 'withdrawal', p_amount, 'BRL', 'available', now(),
-      'Saque ' || v_row.id::text
+      'Saque ' || v_row.id::text, v_row.id
     );
+
+    INSERT INTO public.audit_logs (workspace_id, user_id, action, entity_type, entity_id, metadata)
+    VALUES (p_workspace_id, p_requested_by, 'payout_request.auto_approved', 'payout_request', v_row.id,
+            jsonb_build_object('amount_cents', p_amount, 'fee_cents', p_fee, 'net_amount_cents', p_net_amount));
   END IF;
 
   RETURN jsonb_build_object(
