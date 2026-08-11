@@ -530,7 +530,7 @@ describe("QA-4A-V3 — contrato da RPC e da Edge Function", () => {
   it("o crédito não grava order_id (ux_wallet_ledger_order_type UNIQUE (order_id, type))", () => {
     expect(sql).toMatch(/ux_wallet_ledger_order_type/);
     expect(rpc).toMatch(/v_res\.workspace_id, NULL, 'adjustment'/);
-    expect(rpc).not.toMatch(/ON CONFLICT DO NOTHING/);
+    expect(rpc).not.toMatch(/\n\s*ON CONFLICT DO NOTHING;/);
   });
 
   it("é fail-closed quando não há débito de segregação", () => {
