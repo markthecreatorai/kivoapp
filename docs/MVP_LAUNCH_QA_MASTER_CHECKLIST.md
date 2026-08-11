@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Commit-base | `fa67aeab87287bb331d06a8fc3f2fa17ffcf5b91` |
+| Commit-base | `05b140c8b6af6f6cf3b5ccb2ecd4283db8d25bcf` (atualizado na execução da Onda 0, 2026-08-11 UTC) |
 | Data de emissão | 11/08/2026 |
 | Autor | Engenharia Kivo (documento operacional de homologação) |
 | Ambientes | `DEV` (preview Lovable + Supabase dev), `SANDBOX` (Asaas sandbox), `PROD` (kivohub.com.br + Supabase prod) |
