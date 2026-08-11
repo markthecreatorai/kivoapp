@@ -1424,3 +1424,43 @@ Método: testes automatizados, inspeção read-only de código/config e smoke HT
 - **EXT-010** — Configurar `ASAAS_WEBHOOK_TOKEN` no ambiente de homologação (já registrado na Onda 0); sem ele o webhook responde 500 por desenho.
 - **EXT-011** — Deploy das funções alteradas nesta onda (`create-payment`, `tokenize-card`, `simulate-installments`, `check-payment-status`, `test-asaas`, `webhook-asaas` + novo módulo `_shared/refunds.ts`) — pendente de autorização explícita de produção.
 - **EXT-013** — Aplicar `supabase/migrations/20260811074500_process_refund_increment_atomic.sql` (conteúdo integral, com esse nome). Ordem obrigatória: **migration primeiro**, deploy do `webhook-asaas` depois. Sem ela o reembolso é fail-closed (500/retry) e nada é processado pela metade.
+
+---
+
+## 31. Onda 4 — Carteira, ledger, reservas, saques e chargebacks — 2026-08-11 (UTC)
+
+HEAD auditado: `794f33e58744eff2193d5e569d683c0df7ba5b73`
+Modo: homologação sem deploy, sem migration aplicada, sem transação real.
+Baseline: 622 testes verdes, typecheck limpo, build OK (15.97s).
+
+### 31.1 Achados P0
+
+| ID | Achado | Evidência | Status |
+|----|--------|-----------|--------|
+| P0-WA-01 | `public.get_wallet_balance` somava `amount` cru e contava `settled` como disponível. A migration `20260811033030` (hardening de RPC) sobrescreveu a regra canônica de `20260808072056`. Como `create-payout-request` grava o débito de saque com `amount` POSITIVO, **cada saque aumentava o saldo disponível** em vez de reduzi-lo; o mesmo valia para `fee`, `refund` e `chargeback`. | `pg_get_functiondef(get_wallet_balance)` vs `supabase/functions/_shared/wallet-balance.ts` | Corrigido na migration `20260811090000` (não aplicada) |
+| P0-WA-02 | Duas convenções de sinal coexistindo: Edge Function gravava `withdrawal` positivo, `CashOutModal` gravava negativo. Qualquer soma estava errada em um dos caminhos. | `create-payout-request/index.ts` vs `CashOutModal.tsx` | Trigger `fn_wallet_ledger_normalize_sign` normaliza débitos para `abs()` |
+| P0-WA-03 | `withdrawals` (legada) aceitava INSERT direto do cliente, sem validação de saldo, sem posse da conta bancária e sem processador — e o INSERT complementar em `wallet_ledger` era negado pela RLS, deixando saques fantasma sem débito. Nenhum job consome a tabela. | RLS: só `SELECT` em `wallet_ledger`; `withdrawals` tinha política de INSERT | Tabela vira somente leitura; front passa a chamar `create-payout-request` |
+| P0-WA-04 | Criação de saque não transacional (`SELECT` saldo → `INSERT`): duas requisições concorrentes liam o mesmo saldo e criavam dois saques. | `create-payout-request/index.ts` (fluxo antigo) | RPC `create_payout_request_atomic` com `pg_advisory_xact_lock` + débito no mesmo commit |
+| P0-WA-08 | `release-reserves` (diário 08:00) e `release-holds` (horário :40) disputavam as mesmas linhas de `reserve_entries`; só `release-holds` creditava o `wallet_ledger`. Quando `release-reserves` vencia a corrida, a reserva era marcada `released` **sem crédito** — o produtor perdia o valor. Pior: `security_reserves` nunca era creditada por ninguém. | `cron.job` + código das duas funções | `release-reserves` passa a cuidar só de `security_reserves`, com crédito idempotente por reserva |
+
+### 31.2 Achados P1
+
+| ID | Achado | Status |
+|----|--------|--------|
+| P1-WA-05 | Aprovar/rejeitar saque em `AdminRiskReview` era `UPDATE` direto do cliente, bloqueado pela RLS (`payout_requests` só tem política de `SELECT`): o botão era um no-op silencioso e nenhuma trava impedia o solicitante de aprovar o próprio saque. | RPC `review_payout_request` (admin, revisor ≠ solicitante, transições válidas, débito/estorno no ledger) |
+| P1-WA-06 | `calculate_payout_risk` filtrava `payout_requests` por status inexistentes (`requested`, `paid`): a trava de velocidade nunca via os saques reais. | Corrigida para `pending/in_review/approved/processing/completed` |
+| P1-WA-07 | `anon` com DML completo em `withdrawals`, `refunds`, `payout_items` e `chargeback_cases` (bloqueado apenas pela RLS, sem defesa em profundidade). | `REVOKE ALL` + `GRANT SELECT` a `authenticated`, `ALL` a `service_role` |
+
+### 31.3 Itens BLOQUEADO/EXT (fora do escopo desta rodada)
+
+- **EXT-WA-01** — Transferência real Asaas (`process-payouts`) exige credenciais e conta de homologação: E2E financeiro não executado.
+- **EXT-WA-02** — Divergência de modelo: `withdrawals` (legada) x `payout_requests` (oficial). A migration desta onda congela a legada; a remoção definitiva da tabela fica para uma onda de limpeza.
+- **EXT-WA-03** — A reserva de segurança (`security_reserves`) não é debitada do `wallet_ledger` no momento da venda, então o valor retido também aparece como disponível. Decisão de produto (retenção real x retenção informativa) pendente antes de mexer no crédito da venda.
+- **EXT-WA-04** — O job `ops-alerts-every-5min` traz a anon key embutida no comando do `pg_cron`; migrar para `public.cron_invoke` como os demais.
+
+### 31.4 Artefatos
+
+- Migration **não aplicada**: `supabase/migrations/20260811090000_wave4_wallet_payout_hardening.sql`
+- Testes: `src/test/wave4-wallet-payout-contract.test.ts` (25 casos)
+- Código: `create-payout-request`, `release-reserves`, `CashOutModal.tsx`, `AdminRiskReview.tsx`
+- Pendência de rollout: aplicar a migration **antes** de fazer deploy das Edge Functions desta onda (a RPC precisa existir).
