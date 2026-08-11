@@ -87,48 +87,47 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    // ORDEM IMPORTA: confirmamos o e-mail ANTES de consumir o código.
-    // A confirmação via Admin API é idempotente; se ela falhar por motivo
-    // transitório, o código NÃO é consumido nem invalidado e o usuário pode
-    // simplesmente tentar de novo com o mesmo código.
-    const { error: updErr } = await supabase.auth.admin.updateUserById(record.user_id, {
-      email_confirm: true,
-    });
-    if (updErr) {
-      console.error("[auth-verify-code] confirm failed (retryable):", updErr.message);
-      return json({ ok: false, reason: "temporarily_unavailable" }, 503);
-    }
+    // ORDEM IMPORTA: confirma o e-mail ANTES de consumir o código (ver auth-confirm.ts).
+    const outcome = await confirmAndConsume(
+      {
+        confirmUser: async (userId) => {
+          const { error } = await supabase.auth.admin.updateUserById(userId, { email_confirm: true });
+          if (error) console.error("[auth-verify-code] confirm failed (retryable):", error.message);
+          return { error };
+        },
+        consumeCode: async (codeId) => {
+          const { data } = await supabase
+            .from("auth_verification_codes")
+            .update({ consumed_at: new Date().toISOString() })
+            .eq("id", codeId)
+            .is("consumed_at", null)
+            .select("id")
+            .maybeSingle();
+          return !!data;
+        },
+        getAccountType: async (userId) => {
+          // Lido do banco, nunca de metadado enviado pelo cliente.
+          const { data } = await supabase
+            .from("user_account_types")
+            .select("account_type")
+            .eq("user_id", userId)
+            .maybeSingle();
+          return data?.account_type === "PRODUCER" ? "PRODUCER" : "MEMBER";
+        },
+        ensureProducerWorkspace: async (userId) => {
+          const { error } = await supabase.rpc("ensure_producer_workspace_for", { p_user_id: userId });
+          if (error) console.error("[auth-verify-code] workspace failed:", error.message);
+          return { error };
+        },
+      },
+      { codeId: record.id, userId: record.user_id },
+    );
 
-    // Uso único (proteção contra corrida: só consome se ainda estava livre).
-    const { data: consumed } = await supabase
-      .from("auth_verification_codes")
-      .update({ consumed_at: new Date().toISOString() })
-      .eq("id", record.id)
-      .is("consumed_at", null)
-      .select("id")
-      .maybeSingle();
-
-    // Tipo de conta é lido do banco (nunca de metadado enviado pelo cliente).
-    const { data: accountRow } = await supabase
-      .from("user_account_types")
-      .select("account_type")
-      .eq("user_id", record.user_id)
-      .maybeSingle();
-
-    const accountType = accountRow?.account_type ?? "MEMBER";
-
-    // Efeitos colaterais só na requisição que ganhou a corrida do consumo.
-    // Um replay concorrente devolve o mesmo resultado sem duplicar nada.
-    if (consumed && accountType === "PRODUCER") {
-      const { error: wsErr } = await supabase.rpc("ensure_producer_workspace_for", {
-        p_user_id: record.user_id,
-      });
-      if (wsErr) console.error("[auth-verify-code] workspace failed:", wsErr.message);
-    }
+    if (!outcome.ok) return json({ ok: false, reason: outcome.reason }, outcome.status);
 
     return json({
       ok: true,
-      account_type: accountType,
+      account_type: outcome.accountType,
       flow_origin: record.flow_origin ?? "producer",
       next: record.return_target ?? null,
     });
