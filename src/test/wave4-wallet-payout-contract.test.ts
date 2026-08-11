@@ -100,7 +100,8 @@ describe("P0-WA-04 — criação de saque atômica", () => {
   });
 
   it("o débito de saque tem índice único por (workspace, description)", () => {
-    expect(sql).toMatch(/CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_ledger_withdrawal_description/);
+    // Chave estruturada substituiu a description (ver QA-4A-V2).
+    expect(sql).toMatch(/CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_ledger_withdrawal_payout_request/);
   });
 });
 
@@ -135,7 +136,7 @@ describe("P1-WA-06 — risco de saque usa os status reais", () => {
   it("calculate_payout_risk não filtra por status inexistentes", () => {
     const sql = read(MIGRATION);
     const fn = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION public.calculate_payout_risk"));
-    const body = fn.slice(0, fn.indexOf("uniq_wallet_ledger_withdrawal_description"));
+    const body = fn.slice(0, fn.indexOf("-- 4."));
     expect(body).not.toMatch(/'requested'/);
     expect(body).toMatch(/status IN \('pending','in_review','approved','processing','completed'\)/);
   });
@@ -146,14 +147,18 @@ describe("P0-WA-08 — liberação de reservas credita a carteira", () => {
   const job = read("supabase/functions/release-reserves/index.ts");
   const holds = read("supabase/functions/release-holds/index.ts");
 
-  it("release-reserves credita o wallet_ledger ao liberar a reserva", () => {
-    expect(job).toMatch(/from\("wallet_ledger"\)\.insert\(/);
-    expect(job).toMatch(/security_reserve:/);
+  it("a liberação (crédito + transição) vive na RPC atômica, não na função", () => {
+    // QA-4A-V2: update+insert sequencial podia liberar a reserva sem crédito.
+    expect(job).toMatch(/rpc\("release_security_reserve"/);
+    expect(job).not.toMatch(/from\("wallet_ledger"\)\.insert\(/);
+    const sql = read(MIGRATION);
+    expect(sql).toMatch(/security_reserve:/);
   });
 
-  it("o crédito é idempotente por reserva", () => {
-    expect(job).toMatch(/existingCredit/);
-    expect(job).toMatch(/creditsSkipped/);
+  it("o crédito é idempotente por chave estruturada", () => {
+    expect(job).toMatch(/credit_replayed/);
+    const sql = read(MIGRATION);
+    expect(sql).toMatch(/uniq_wallet_ledger_reserve_release/);
   });
 
   it("release-reserves não disputa mais reserve_entries com release-holds", () => {

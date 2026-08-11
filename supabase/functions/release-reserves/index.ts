@@ -1,11 +1,19 @@
-// release-reserves — libera as reservas de segurança (modelo novo: security_reserves)
-// vencidas, creditando o valor liberado na carteira do produtor.
+// release-reserves — libera reservas de segurança vencidas (public.security_reserves).
 //
-// Escopo desta função: SOMENTE public.security_reserves.
-// `reserve_entries` (modelo legado) é liberada por release-holds, que já credita o
-// wallet_ledger de forma idempotente. Antes, as duas funções competiam pelas mesmas
-// linhas e a primeira a rodar aqui marcava 'released' SEM crédito — o produtor
-// perdia o valor retido. Manter um único dono por tabela elimina a corrida.
+// Esta função NÃO faz mais update+insert sequencial. O padrão anterior
+// (marcar 'released' e depois inserir o crédito no wallet_ledger) não era
+// atômico: se o insert falhasse, a reserva ficava liberada SEM crédito e o
+// produtor perdia o valor. Toda a decisão contábil vive agora na RPC
+// public.release_security_reserve(uuid), que trava a linha FOR UPDATE, valida
+// vencimento/chargeback/refund, credita de forma idempotente (índice único por
+// security_reserve_id) e transiciona o status no MESMO commit.
+//
+// Importante: quando a reserva não tem débito de segregação na origem
+// (ledger_debit_id NULL), a RPC devolve NEEDS_PRODUCT_DECISION e mantém a
+// reserva retida — creditar nesse caso duplicaria saldo, porque o settlement
+// atual já credita o líquido integral ao produtor.
+//
+// `reserve_entries` (modelo legado) continua sendo de release-holds.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
@@ -13,7 +21,6 @@ import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 
 const FN = "release-reserves";
 const BATCH = 500;
-const ACTIVE_CHARGEBACK = ["new", "evidence_pending", "submitted"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -32,108 +39,73 @@ Deno.serve(async (req) => {
 
   try {
     const nowIso = new Date().toISOString();
-    let released = 0;
+    const counts: Record<string, number> = {};
     let releasedAmount = 0;
-    let heldDueToChargeback = 0;
-    let creditsSkipped = 0;
+    const notified: Array<{ workspace_id: string; amount: number }> = [];
 
     const { data: dueReserves, error: dueErr } = await supabase
       .from("security_reserves")
-      .select("id, workspace_id, amount, order_id")
+      .select("id")
       .eq("status", "held")
       .lte("release_at", nowIso)
       .limit(BATCH);
     if (dueErr) throw dueErr;
 
     for (const reserve of dueReserves || []) {
-      // Chargeback ativo → prorroga a retenção por 30 dias.
-      if (reserve.order_id) {
-        const { data: chargeback } = await supabase
-          .from("chargeback_cases")
-          .select("id")
-          .eq("order_id", reserve.order_id)
-          .in("status", ACTIVE_CHARGEBACK)
-          .maybeSingle();
-
-        if (chargeback) {
-          await supabase
-            .from("security_reserves")
-            .update({ release_at: new Date(Date.now() + 30 * 86400000).toISOString() })
-            .eq("id", reserve.id);
-          heldDueToChargeback++;
-          continue;
-        }
-      }
-
-      // Idempotência: só quem ainda está 'held' é liberado.
-      const { data: releasedRows, error: relErr } = await supabase
-        .from("security_reserves")
-        .update({ status: "released", released_at: nowIso })
-        .eq("id", reserve.id)
-        .eq("status", "held")
-        .select("id");
-      if (relErr) {
-        console.error(`[${FN}] falha ao liberar reserva ${reserve.id}:`, relErr.message);
+      const { data, error } = await supabase.rpc("release_security_reserve", {
+        p_reserve_id: reserve.id,
+      });
+      if (error) {
+        counts.rpc_error = (counts.rpc_error || 0) + 1;
+        console.error(`[${FN}] RPC falhou para reserva ${reserve.id}:`, error.message);
         continue;
       }
-      if (!releasedRows || releasedRows.length === 0) continue; // outro ciclo já liberou
 
-      const amount = Number(reserve.amount || 0);
-      if (amount > 0) {
-        // Um único crédito por reserva (chave determinística na description).
-        const description = `Liberação de reserva de segurança (security_reserve:${reserve.id})`;
-        const { data: existingCredit } = await supabase
-          .from("wallet_ledger")
-          .select("id")
-          .eq("workspace_id", reserve.workspace_id)
-          .eq("type", "adjustment")
-          .eq("description", description)
-          .maybeSingle();
+      const result = (data || {}) as Record<string, unknown>;
+      const outcome = String(result.outcome || "UNKNOWN");
+      counts[outcome.toLowerCase()] = (counts[outcome.toLowerCase()] || 0) + 1;
 
-        if (existingCredit) {
-          creditsSkipped++;
-        } else {
-          const { error: credErr } = await supabase.from("wallet_ledger").insert({
-            workspace_id: reserve.workspace_id,
-            order_id: reserve.order_id,
-            type: "adjustment", // crédito de liberação de reserva
-            amount,
-            status: "available",
-            available_at: nowIso,
-            description,
-          });
-          if (credErr) {
-            console.error(`[${FN}] falha ao creditar reserva ${reserve.id}:`, credErr.message);
-          }
-        }
+      if (outcome === "RELEASED" && !result.credit_replayed) {
+        const amount = Number(result.amount_cents || 0);
+        releasedAmount += amount;
+        notified.push({ workspace_id: String(result.workspace_id), amount });
       }
+      if (outcome === "NEEDS_PRODUCT_DECISION") {
+        console.warn(
+          `[${FN}] reserva ${reserve.id} mantida retida (sem débito de segregação): ${result.reason}`,
+        );
+      }
+    }
 
+    // Notificações são efeito colateral externo: ficam FORA da transação
+    // contábil e nunca podem reverter/impedir o crédito já commitado.
+    for (const n of notified) {
       try {
         await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             event_type: "reserve_released",
-            workspace_id: reserve.workspace_id,
-            data: { amount },
+            workspace_id: n.workspace_id,
+            data: { amount: n.amount },
           }),
         });
       } catch (e) {
         console.error(`[${FN}] notify error (non-fatal):`, e);
       }
-
-      released++;
-      releasedAmount += amount;
     }
 
     const summary = {
       event: "release_reserves_complete",
       duration_ms: Date.now() - startedAt,
       reserves_due: dueReserves?.length || 0,
-      reserves_released: released,
+      reserves_released: counts.released || 0,
       reserves_released_amount_cents: releasedAmount,
-      reserves_held_by_chargeback: heldDueToChargeback,
-      reserve_credits_skipped_idempotent: creditsSkipped,
+      reserves_held_by_chargeback: counts.held_chargeback || 0,
+      reserves_forfeited: counts.forfeited || 0,
+      reserves_needs_product_decision: counts.needs_product_decision || 0,
+      reserves_already_processed: counts.already_processed || 0,
+      rpc_errors: counts.rpc_error || 0,
     };
 
     console.log(JSON.stringify(summary));
