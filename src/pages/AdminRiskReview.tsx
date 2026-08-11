@@ -76,24 +76,35 @@ export default function AdminRiskReview() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      if (action === "approve") {
-        const { error } = await supabase.from("payout_requests").update({
-          status: "approved",
-          review_reason: reviewNote || null,
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          risk_score: 0,
-        }).eq("id", payoutId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("payout_requests").update({
-          status: "failed",
-          failed_reason: `Rejeitado por admin: ${reviewNote || "Risco elevado"}`,
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          processed_at: new Date().toISOString(),
-        }).eq("id", payoutId);
-        if (error) throw error;
+      // A tabela payout_requests é somente leitura para o cliente (RLS só tem SELECT):
+      // o UPDATE direto daqui era um no-op silencioso. A decisão de risco roda
+      // server-side em uma transação (admin, revisor ≠ solicitante, débito no ledger).
+      // O cast existe porque a migration 20260811090000 (RPC de revisão) ainda
+      // não foi aplicada, então os tipos gerados não a conhecem.
+      const { data, error } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+        "review_payout_request",
+        {
+          p_payout_request_id: payoutId,
+          p_action: action,
+          p_reason: reviewNote || null,
+        },
+      );
+
+      if (error) throw error;
+
+      const outcome = String((data as { outcome?: string } | null)?.outcome ?? "");
+      const messages: Record<string, string> = {
+        NOT_FOUND: "Solicitação de saque não encontrada",
+        SELF_REVIEW_FORBIDDEN: "Quem solicitou o saque não pode aprová-lo",
+        INVALID_TRANSITION: "Este saque já foi revisado ou está em processamento",
+        INVALID_ACTION: "Ação inválida",
+      };
+      if (outcome in messages) throw new Error(messages[outcome]);
+      if (outcome !== "APPROVED" && outcome !== "REJECTED") {
+        throw new Error("Não foi possível concluir a revisão");
       }
 
       await supabase.from("audit_logs").insert({
@@ -102,9 +113,10 @@ export default function AdminRiskReview() {
         entity_id: payoutId,
         action: action === "approve" ? "payout_approved" : "payout_rejected",
         user_id: user.id,
-        metadata: { note: reviewNote },
+        metadata: { note: reviewNote, outcome },
       });
     },
+
     onSuccess: (_, { action }) => {
       toast.success(action === "approve" ? "Payout aprovado e re-enviado para processamento" : "Payout rejeitado");
       queryClient.invalidateQueries({ queryKey: ["admin-review-payouts"] });

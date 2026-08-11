@@ -442,10 +442,13 @@ describe("Onda 3 / FI — saque: autorização, saldo e idempotência", () => {
     expect(payoutRequest).toContain("conta de outro workspace");
   });
 
-  it("saldo é recalculado no servidor pela regra canônica compartilhada", () => {
-    expect(payoutRequest).toContain('from "../_shared/wallet-balance.ts"');
-    expect(payoutRequest).toContain("computeBalances(rows)");
+  it("saldo é recalculado no servidor dentro da transação (Onda 4: RPC atômica)", () => {
+    // A regra canônica saiu do TS e passou a rodar em public.get_wallet_balance,
+    // chamada por create_payout_request_atomic sob advisory lock por workspace.
+    expect(payoutRequest).toContain('rpc("create_payout_request_atomic"');
+    expect(payoutRequest).toContain("INSUFFICIENT_BALANCE");
   });
+
 
   it("respeita saque mínimo do fee_config e aceita chave de idempotência", () => {
     expect(payoutRequest).toContain("min_withdrawal_cents");

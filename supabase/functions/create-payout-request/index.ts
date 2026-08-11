@@ -3,7 +3,6 @@
 // nunca confiado como valor livre do body. Saldo é sempre recalculado server-side.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { computeBalances, type LedgerRow } from "../_shared/wallet-balance.ts";
 
 const FN = "create-payout-request";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -109,121 +108,85 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ─── 6. Saldo disponível recalculado server-side (regra canônica compartilhada) ───
-    const { data: ledger, error: ledgerErr } = await admin
-      .from("wallet_ledger")
-      .select("amount, status, type, available_at, description")
-      .eq("workspace_id", workspaceId);
-    if (ledgerErr) throw ledgerErr;
-
-    const rows = (ledger || []) as (LedgerRow & { description?: string | null })[];
-    const { available: availableBalance } = computeBalances(rows);
-
-    // Saques abertos que ainda NÃO debitaram o ledger travam saldo
-    // (evita dupla contagem quando o débito `Saque <id>` já existe).
-    const { data: openReqs, error: openErr } = await admin
-      .from("payout_requests")
-      .select("id, amount")
-      .eq("workspace_id", workspaceId)
-      .in("status", ["pending", "in_review", "approved", "processing"]);
-    if (openErr) throw openErr;
-
-    const debitedDescriptions = new Set(
-      rows
-        .filter((r) => r.type === "withdrawal" && r.status !== "canceled")
-        .map((r) => String(r.description || "")),
-    );
-    const lockedByOpen = (openReqs || [])
-      .filter((r) => !debitedDescriptions.has(`Saque ${r.id}`))
-      .reduce((s, r) => s + Number(r.amount || 0), 0);
-
-    const spendable = availableBalance - lockedByOpen;
-    if (amount > spendable) {
-      return json(
-        {
-          error: "Saldo disponível insuficiente",
-          available_balance_cents: availableBalance,
-          locked_in_review_cents: lockedByOpen,
-          spendable_cents: Math.max(spendable, 0),
-        },
-        400,
-      );
-    }
+    // ─── 6. Idempotência (duplo clique) ───
+    // Sem chave do cliente: janela de 2 minutos por workspace/conta/valor.
+    const window = Math.floor(Date.now() / 120_000);
+    const idempotencyKey = clientKey ??
+      `auto_${await sha256(`${workspaceId}:${bankAccountId}:${amount}:${window}`)}`;
 
     // ─── 7. Taxa e líquido ───
     const feeCents = Math.round(withdrawalFixed + (amount * withdrawalPercent) / 100);
     const netAmount = amount - feeCents;
     if (netAmount <= 0) return json({ error: "Valor menor que a taxa de saque" }, 400);
 
-    // ─── 8. Idempotência (duplo clique) ───
-    // Sem chave do cliente: janela de 2 minutos por workspace/conta/valor.
-    const window = Math.floor(Date.now() / 120_000);
-    const idempotencyKey = clientKey ??
-      `auto_${await sha256(`${workspaceId}:${bankAccountId}:${amount}:${window}`)}`;
-
     const autoApprove = autoApproveLimit > 0 && amount <= autoApproveLimit;
-    const status = autoApprove ? "approved" : "pending";
 
-    const { data: created, error: insertErr } = await admin
+    // ─── 8. Criação atômica (advisory lock por workspace) ───
+    // Validar saldo aqui e inserir depois era uma corrida: duas requisições
+    // simultâneas liam o mesmo saldo e criavam dois saques. A RPC recalcula o
+    // saldo canônico, trava o workspace, insere o pedido e debita o ledger no
+    // MESMO commit.
+    const { data: rpcData, error: rpcErr } = await admin.rpc("create_payout_request_atomic", {
+      p_workspace_id: workspaceId,
+      p_bank_account_id: bankAccountId,
+      p_requested_by: userId,
+      p_amount: amount,
+      p_fee: feeCents,
+      p_net_amount: netAmount,
+      p_auto_approve: autoApprove,
+      p_idempotency_key: idempotencyKey,
+      p_review_reason: null,
+    });
+    if (rpcErr) throw rpcErr;
+
+    const result = (rpcData || {}) as Record<string, unknown>;
+    const outcome = String(result.outcome || "");
+
+    if (outcome === "INSUFFICIENT_BALANCE") {
+      return json({
+        error: "Saldo disponível insuficiente",
+        available_balance_cents: Number(result.available_balance_cents || 0),
+        locked_in_review_cents: Number(result.locked_in_review_cents || 0),
+        spendable_cents: Number(result.spendable_cents || 0),
+      }, 400);
+    }
+    if (outcome === "BANK_ACCOUNT_MISMATCH") {
+      return json({ error: "Conta bancária não pertence ao workspace" }, 403);
+    }
+    if (outcome === "FEE_EXCEEDS_AMOUNT") {
+      return json({ error: "Valor menor que a taxa de saque" }, 400);
+    }
+    if (outcome === "INVALID_AMOUNT") {
+      return json({ error: "amount inválido" }, 400);
+    }
+    if (outcome === "DUPLICATE") {
+      const { data: existing } = await admin
+        .from("payout_requests")
+        .select("id, status, amount, fee, net_amount, created_at, idempotency_key")
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      console.log(`[${FN}] idempotente: reaproveitando ${existing?.id}`);
+      return json({ duplicate: true, payout_request: existing }, 200);
+    }
+    if (outcome !== "CREATED") {
+      console.error(`[${FN}] outcome inesperado:`, outcome);
+      return json({ error: "Não foi possível criar a solicitação de saque" }, 500);
+    }
+
+    const { data: created } = await admin
       .from("payout_requests")
-      .insert({
-        workspace_id: workspaceId,
-        bank_account_id: bankAccountId,
-        requested_by: userId,
-        amount,
-        fee: feeCents,
-        net_amount: netAmount,
-        status,
-        idempotency_key: idempotencyKey,
-        review_reason: autoApprove ? null : "Revisão manual (política padrão Kivo)",
-        reviewed_at: autoApprove ? new Date().toISOString() : null,
-      })
       .select("id, status, amount, fee, net_amount, created_at, idempotency_key")
-      .single();
-
-    if (insertErr) {
-      // 23505 = unique_violation em idempotency_key → devolve o request já criado
-      if ((insertErr as { code?: string }).code === "23505") {
-        const { data: existing } = await admin
-          .from("payout_requests")
-          .select("id, status, amount, fee, net_amount, created_at, idempotency_key")
-          .eq("idempotency_key", idempotencyKey)
-          .maybeSingle();
-        console.log(`[${FN}] idempotente: reaproveitando ${existing?.id}`);
-        return json({ duplicate: true, payout_request: existing }, 200);
-      }
-      throw insertErr;
-    }
-
-    // ─── 9. Debita o ledger imediatamente quando aprovado ───
-    if (autoApprove) {
-      const { error: debitErr } = await admin.from("wallet_ledger").insert({
-        workspace_id: workspaceId,
-        type: "withdrawal",
-        amount, // positivo; tipo withdrawal é tratado como débito
-        currency: "BRL",
-        status: "available",
-        available_at: new Date().toISOString(),
-        description: `Saque ${created.id}`,
-      });
-      if (debitErr) {
-        console.error(`[${FN}] falha ao debitar ledger, revertendo saque:`, debitErr.message);
-        await admin
-          .from("payout_requests")
-          .update({ status: "failed", failed_reason: "Falha ao debitar carteira" })
-          .eq("id", created.id);
-        return json({ error: "Não foi possível reservar o saldo do saque" }, 500);
-      }
-    }
+      .eq("id", String(result.payout_request_id))
+      .maybeSingle();
 
     console.log(
-      `[${FN}] saque ${created.id} ws=${workspaceId} amount=${amount} fee=${feeCents} status=${status}`,
+      `[${FN}] saque ${result.payout_request_id} ws=${workspaceId} amount=${amount} fee=${feeCents} status=${result.status}`,
     );
 
     return json({
       payout_request: created,
       auto_approved: autoApprove,
-      balance_after_cents: autoApprove ? availableBalance - amount : availableBalance,
+      balance_after_cents: Number(result.available_balance_cents || 0),
     }, 201);
   } catch (err) {
     console.error(`[${FN}] erro:`, (err as Error).message);

@@ -1,113 +1,112 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-// Auditoria de execução (public.cron_runs): sem isso o cron_runs_sweep marca TIMEOUT.
-import { startCronRun } from "../_shared/cron-run.ts";
+// release-reserves — libera as reservas de segurança (modelo novo: security_reserves)
+// vencidas, creditando o valor liberado na carteira do produtor.
+//
+// Escopo desta função: SOMENTE public.security_reserves.
+// `reserve_entries` (modelo legado) é liberada por release-holds, que já credita o
+// wallet_ledger de forma idempotente. Antes, as duas funções competiam pelas mesmas
+// linhas e a primeira a rodar aqui marcava 'released' SEM crédito — o produtor
+// perdia o valor retido. Manter um único dono por tabela elimina a corrida.
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { startCronRun, readJsonBody } from "../_shared/cron-run.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
-};
+const FN = "release-reserves";
+const BATCH = 500;
+const ACTIVE_CHARGEBACK = ["new", "evidence_pending", "submitted"];
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Auth: require x-cron-secret
-  const cronSecret = Deno.env.get("CRON_SECRET");
-  const providedSecret = req.headers.get("x-cron-secret");
-  if (!cronSecret || providedSecret !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // Comparação timing-safe + fail-closed quando CRON_SECRET não está configurado.
+  const unauthorized = requireCronSecret(req, FN);
+  if (unauthorized) return unauthorized;
 
+  const body = await readJsonBody(req);
+  const run = await startCronRun(req, body);
   const startedAt = Date.now();
-  const cronRun = await startCronRun(req);
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
-    let releasedLegacy = 0;
-    let releasedNew = 0;
+    const nowIso = new Date().toISOString();
+    let released = 0;
+    let releasedAmount = 0;
     let heldDueToChargeback = 0;
+    let creditsSkipped = 0;
 
-    // ─── Legacy: reserve_entries ───
-    const { data: dueReserves, error } = await supabase
-      .from("reserve_entries")
-      .select("id, workspace_id, amount, order_id")
-      .eq("status", "held")
-      .lte("release_at", new Date().toISOString())
-      .limit(500);
-
-    if (error) throw error;
-
-    for (const reserve of (dueReserves || [])) {
-      const { data: activeChargeback } = await supabase
-        .from("chargeback_cases")
-        .select("id")
-        .eq("order_id", reserve.order_id)
-        .in("status", ["new", "evidence_pending", "submitted"])
-        .maybeSingle();
-
-      if (activeChargeback) {
-        await supabase.from("reserve_entries").update({
-          release_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-        }).eq("id", reserve.id);
-        heldDueToChargeback++;
-        continue;
-      }
-
-      await supabase.from("reserve_entries").update({
-        status: "released",
-        released_at: new Date().toISOString(),
-      }).eq("id", reserve.id);
-
-      try {
-        await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${serviceKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event_type: "reserve_released",
-            workspace_id: reserve.workspace_id,
-            data: { amount: reserve.amount },
-          }),
-        });
-      } catch (e) { console.error("Notify error (non-fatal):", e); }
-
-      releasedLegacy++;
-    }
-
-    // ─── New model: security_reserves ───
-    const { data: dueSecReserves, error: secError } = await supabase
+    const { data: dueReserves, error: dueErr } = await supabase
       .from("security_reserves")
       .select("id, workspace_id, amount, order_id")
       .eq("status", "held")
-      .lte("release_at", new Date().toISOString())
-      .limit(500);
+      .lte("release_at", nowIso)
+      .limit(BATCH);
+    if (dueErr) throw dueErr;
 
-    if (secError) throw secError;
+    for (const reserve of dueReserves || []) {
+      // Chargeback ativo → prorroga a retenção por 30 dias.
+      if (reserve.order_id) {
+        const { data: chargeback } = await supabase
+          .from("chargeback_cases")
+          .select("id")
+          .eq("order_id", reserve.order_id)
+          .in("status", ACTIVE_CHARGEBACK)
+          .maybeSingle();
 
-    for (const reserve of (dueSecReserves || [])) {
-      const { data: activeChargeback } = await supabase
-        .from("chargeback_cases")
-        .select("id")
-        .eq("order_id", reserve.order_id)
-        .in("status", ["new", "evidence_pending", "submitted"])
-        .maybeSingle();
-
-      if (activeChargeback) {
-        await supabase.from("security_reserves").update({
-          release_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-        }).eq("id", reserve.id);
-        heldDueToChargeback++;
-        continue;
+        if (chargeback) {
+          await supabase
+            .from("security_reserves")
+            .update({ release_at: new Date(Date.now() + 30 * 86400000).toISOString() })
+            .eq("id", reserve.id);
+          heldDueToChargeback++;
+          continue;
+        }
       }
 
-      await supabase.from("security_reserves").update({
-        status: "released",
-        released_at: new Date().toISOString(),
-      }).eq("id", reserve.id);
+      // Idempotência: só quem ainda está 'held' é liberado.
+      const { data: releasedRows, error: relErr } = await supabase
+        .from("security_reserves")
+        .update({ status: "released", released_at: nowIso })
+        .eq("id", reserve.id)
+        .eq("status", "held")
+        .select("id");
+      if (relErr) {
+        console.error(`[${FN}] falha ao liberar reserva ${reserve.id}:`, relErr.message);
+        continue;
+      }
+      if (!releasedRows || releasedRows.length === 0) continue; // outro ciclo já liberou
+
+      const amount = Number(reserve.amount || 0);
+      if (amount > 0) {
+        // Um único crédito por reserva (chave determinística na description).
+        const description = `Liberação de reserva de segurança (security_reserve:${reserve.id})`;
+        const { data: existingCredit } = await supabase
+          .from("wallet_ledger")
+          .select("id")
+          .eq("workspace_id", reserve.workspace_id)
+          .eq("type", "adjustment")
+          .eq("description", description)
+          .maybeSingle();
+
+        if (existingCredit) {
+          creditsSkipped++;
+        } else {
+          const { error: credErr } = await supabase.from("wallet_ledger").insert({
+            workspace_id: reserve.workspace_id,
+            order_id: reserve.order_id,
+            type: "adjustment", // crédito de liberação de reserva
+            amount,
+            status: "available",
+            available_at: nowIso,
+            description,
+          });
+          if (credErr) {
+            console.error(`[${FN}] falha ao creditar reserva ${reserve.id}:`, credErr.message);
+          }
+        }
+      }
 
       try {
         await fetch(`${supabaseUrl}/functions/v1/notify-creator`, {
@@ -116,35 +115,40 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             event_type: "reserve_released",
             workspace_id: reserve.workspace_id,
-            data: { amount: reserve.amount },
+            data: { amount },
           }),
         });
-      } catch (e) { console.error("Notify error (non-fatal):", e); }
+      } catch (e) {
+        console.error(`[${FN}] notify error (non-fatal):`, e);
+      }
 
-      releasedNew++;
+      released++;
+      releasedAmount += amount;
     }
 
     const summary = {
       event: "release_reserves_complete",
       duration_ms: Date.now() - startedAt,
-      total_due_legacy: dueReserves?.length || 0,
-      total_due_new: dueSecReserves?.length || 0,
-      released_legacy: releasedLegacy,
-      released_new: releasedNew,
-      held_due_to_chargeback: heldDueToChargeback,
+      reserves_due: dueReserves?.length || 0,
+      reserves_released: released,
+      reserves_released_amount_cents: releasedAmount,
+      reserves_held_by_chargeback: heldDueToChargeback,
+      reserve_credits_skipped_idempotent: creditsSkipped,
     };
 
     console.log(JSON.stringify(summary));
-    await cronRun.finish("SUCCESS", summary);
+    await run.finish("SUCCESS", summary);
 
     return new Response(JSON.stringify({ ok: true, ...summary }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Release reserves error:", err);
-    await cronRun.finish("FAILED", { duration_ms: Date.now() - startedAt }, (err as Error).message);
-    return new Response(JSON.stringify({ ok: false, error: (err as Error).message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const message = (err as Error).message;
+    console.error(`[${FN}] erro:`, message);
+    await run.finish("FAILED", { duration_ms: Date.now() - startedAt }, message);
+    return new Response(JSON.stringify({ ok: false, error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

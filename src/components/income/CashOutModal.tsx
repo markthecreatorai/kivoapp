@@ -41,52 +41,30 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
 
   const withdrawMutation = useMutation({
     mutationFn: async () => {
-      const MIN_WITHDRAWAL = 2000; // R$20.00 in cents
+      const MIN_WITHDRAWAL = 2000; // R$20,00 em centavos
       if (availableBalance < MIN_WITHDRAWAL) throw new Error(`Saldo mínimo para saque é de ${fmt(MIN_WITHDRAWAL)}`);
       if (!effectiveAccount) throw new Error("Selecione uma conta bancária");
+      if (!workspaceId) throw new Error("Workspace não identificado");
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Não autenticado");
-
-      const idempotencyKey = `${workspaceId}-${Date.now()}`;
-
-      // 1. Create withdrawal
-      const { data: withdrawal, error: wErr } = await supabase.from("withdrawals").insert({
-        workspace_id: workspaceId!,
-        bank_account_id: effectiveAccount,
-        amount: availableBalance,
-        fee: 0,
-        net_amount: availableBalance,
-        status: "pending",
-        idempotency_key: idempotencyKey,
-        requested_by: user.id,
-      }).select("id").single();
-
-      if (wErr) throw wErr;
-
-      // 2. Reserve balance in ledger (status must be 'available' to be counted by get_wallet_balance)
-      const { error: lErr } = await supabase.from("wallet_ledger").insert({
-        workspace_id: workspaceId!,
-        withdrawal_id: withdrawal.id,
-        type: "withdrawal",
-        amount: -availableBalance,
-        status: "available",
-        description: `Saque #${withdrawal.id.slice(0, 8)}`,
+      // Nada de escrever em `withdrawals`/`wallet_ledger` do cliente: o saldo
+      // precisa ser recalculado e debitado server-side, na mesma transação
+      // (a escrita direta criava solicitações fantasma sem débito na carteira).
+      const { data, error } = await supabase.functions.invoke("create-payout-request", {
+        body: {
+          bank_account_id: effectiveAccount,
+          amount: availableBalance,
+          idempotency_key: `${workspaceId}:${effectiveAccount}:${availableBalance}:${Math.floor(Date.now() / 120_000)}`,
+        },
       });
 
-      if (lErr) throw lErr;
+      if (error) {
+        const detail = (data as { error?: string } | null)?.error;
+        throw new Error(detail || error.message || "Não foi possível solicitar o saque");
+      }
+      const payload = (data ?? {}) as { error?: string; payout_request?: { id: string } };
+      if (payload.error) throw new Error(payload.error);
 
-      // 3. Audit log
-      await supabase.from("audit_logs").insert({
-        workspace_id: workspaceId!,
-        entity_type: "withdrawal",
-        entity_id: withdrawal.id,
-        action: "withdrawal_requested",
-        user_id: user.id,
-        metadata: { amount: availableBalance, bank_account_id: effectiveAccount },
-      });
-
-      return withdrawal;
+      return payload.payout_request ?? null;
     },
     onSuccess: () => {
       toast.success("Saque solicitado com sucesso!");
@@ -97,6 +75,7 @@ export function CashOutModal({ open, onOpenChange, availableBalance, fmt }: Cash
     },
     onError: (e: any) => toast.error(e.message || "Erro ao solicitar saque"),
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
