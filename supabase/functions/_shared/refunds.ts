@@ -113,7 +113,7 @@ export async function handleRefundCompleted(
     console.log(
       `Refund ${item.id} (${item.cents} centavos) aplicado no pedido ${paymentRecord.order_id}: ` +
         `outcome=${result.outcome} acumulado=${accumulated}/${chargeCents} total=${isTotal} ` +
-        `reversões=${JSON.stringify(result.reversed ?? {})}`,
+        `estagio=${result.ledger_status} reversao=${JSON.stringify(result.split_reversal ?? {})}`,
     );
   }
 

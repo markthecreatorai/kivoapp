@@ -12,7 +12,7 @@ const webhook = readFileSync(
   "utf-8",
 );
 const migration = readFileSync(
-  resolve(process.cwd(), "docs/pending-migrations/20260811064500_process_refund_increment_atomic.sql"),
+  resolve(process.cwd(), "supabase/migrations-pending/20260811074500_process_refund_increment_atomic.sql"),
   "utf-8",
 );
 
@@ -421,18 +421,22 @@ describe("Onda 3 / FI-REFUND — migration pendente (atomicidade e reversão)", 
     for (const c of ["gateway_fee", "platform_fee", "affiliate_fee", "creator_net"]) {
       expect(migration).toContain(c);
     }
-    expect(migration).toContain("v_gw_acc := v_split.gateway_fee;");
+    expect(migration).toContain("v_gw_d := GREATEST(v_split.gateway_fee, 0);");
   });
 
-  it("debita do produtor apenas a fatia dele", () => {
-    expect(migration).toContain("'Reversão produtor · reembolso '");
-    expect(migration).toContain("-v_cr_d");
+  it("debita do produtor apenas a fatia dele, no valor ACUMULADO", () => {
+    expect(migration).toContain("Reversao produtor - reembolso acumulado");
+    // Valor acumulado (auto-corretivo), nunca o delta: a linha de refund é única.
+    expect(migration).toContain("'refund', -v_creator_debit");
+    expect(migration).toContain("v_creator_debit := CASE");
+    expect(migration).toContain("v_sale.amount - v_cr_remaining");
   });
 
   it("falha fechado quando a comissão já foi paga (sem improvisar quem absorve)", () => {
-    expect(migration).toContain("reversão de comissão já paga não suportada");
+    expect(migration).toContain("reversao de comissao ja paga nao suportada");
     expect(migration).toContain("55000");
   });
+
 
   it("revoga entitlement/comissão/reserva apenas no total", () => {
     const totalGuard = migration.lastIndexOf("IF v_is_total THEN");
