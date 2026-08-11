@@ -9550,6 +9550,16 @@ export type Database = {
         }
         Returns: Json
       }
+      process_refund_increment: {
+        Args: {
+          p_amount_cents: number
+          p_charge_cents: number
+          p_gateway_refund_id: string
+          p_order_id: string
+          p_payment_id: string
+        }
+        Returns: Json
+      }
       record_subscription_referral_commission: {
         Args: {
           p_amount: number
