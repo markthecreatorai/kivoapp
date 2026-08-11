@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceProvider";
 import { trackEvent } from "@/lib/tracking";
 import { toast } from "@/hooks/use-toast";
+import { getReferralCode, clearReferralCode } from "@/hooks/useReferralTracking";
 
 export type SourceUI = "dashboard_banner" | "locked_features_modal" | "settings_plans_modal" | "pricing_page" | "upgrade_flow" | string;
 
@@ -18,6 +19,8 @@ export interface CheckoutResult {
   provider: string;
   payment_id?: string;
   pix?: PixData | null;
+  referral_attached?: boolean;
+  referral_reason?: string | null;
 }
 
 interface CreditCardData {
@@ -87,6 +90,8 @@ export function usePlanCheckout() {
         return null;
       }
 
+      const referralCode = getReferralCode();
+
       const res = await callFunction("create-subscription-checkout", {
         workspace_id: currentWorkspace.id,
         plan_code: planCode,
@@ -96,6 +101,7 @@ export function usePlanCheckout() {
         customer_name: customerName || undefined,
         payment_method: paymentMethod,
         credit_card: creditCard || undefined,
+        referral_code: referralCode || undefined,
       }, token);
 
       const result = await res.json();
@@ -105,6 +111,11 @@ export function usePlanCheckout() {
         trackEvent("upgrade_checkout_failed", { plan_code: planCode, source_ui: sourceUI, error: errorMsg });
         toast({ title: "Erro ao iniciar assinatura", description: errorMsg, variant: "destructive" });
         return null;
+      }
+
+      // Only clear the referral cookie when the backend accepted the attribution
+      if (referralCode && result.referral_attached) {
+        clearReferralCode();
       }
 
       trackEvent("upgrade_checkout_succeeded", {
