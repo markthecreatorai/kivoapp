@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 
 const SQL = readFileSync(
-  "supabase/sql/pending/20260811_ensure_producer_workspace_advisory_lock.sql",
+  "supabase/migrations/20260811050000_ensure_producer_workspace_advisory_lock.sql",
   "utf-8",
 );
 
