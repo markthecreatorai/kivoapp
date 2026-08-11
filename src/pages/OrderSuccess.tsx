@@ -36,6 +36,8 @@ export default function OrderSuccess() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
   const [confettiFired, setConfettiFired] = useState(false);
 
   const fetchOrder = useCallback(async () => {
