@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AuthEmailFieldError } from "@/components/auth/AuthEmailFieldError";
 import { useAuthEmailGuard } from "@/hooks/useAuthEmailGuard";
+import EmailCodeVerificationModal from "@/components/auth/EmailCodeVerificationModal";
 
 export default function JoinCommunity() {
   const { slug } = useParams<{ slug: string }>();
@@ -101,7 +102,7 @@ export default function JoinCommunity() {
     if (!formData.display_name.trim()) { toast.error("Informe seu nome"); return; }
     const emailCheck = guard(formData.email);
     if (!emailCheck.ok) { toast.error(emailCheck.error || "Informe seu email"); return; }
-    if (formData.password.length < 6) { toast.error("Senha deve ter ao menos 6 caracteres"); return; }
+    if (formData.password.length < 8) { toast.error("Senha deve ter ao menos 8 caracteres"); return; }
     await signupAndJoin({ ...formData, email: emailCheck.email }, community);
   };
 
@@ -446,6 +447,17 @@ export default function JoinCommunity() {
           </div>
         </div>
       </div>
+
+      <EmailCodeVerificationModal
+        open={!!pendingVerification}
+        email={pendingVerification?.email || ""}
+        accountType="MEMBER"
+        flowOrigin="circles"
+        returnTarget={pendingVerification?.returnTarget || null}
+        initialCooldown={pendingVerification?.cooldown ?? 60}
+        onVerified={(result) => completeVerifiedSignup(result.next)}
+        onUseAnotherEmail={cancelVerification}
+      />
     </div>
   );
 }
