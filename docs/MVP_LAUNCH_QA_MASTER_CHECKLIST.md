@@ -962,6 +962,51 @@ Somente itens que exigem acesso a painel externo. Nenhum pode ser resolvido pelo
 
 ---
 
+## 21.2 Exposição de RPCs SECURITY DEFINER (Security Advisor)
+
+**Data:** 2026-08-11 UTC. **Origem:** Supabase Security Advisor + verificação independente por consulta a `has_function_privilege`.
+**Remediation URLs (advisor):**
+- `0028_anon_security_definer_function_executable` — https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+- `0029_authenticated_security_definer_function_executable` — https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+
+**Inventário medido:** 0 ERROR no linter; 148 WARN de SECURITY DEFINER executável, sendo **52 funções não-trigger** e **16 triggers** com EXECUTE para `anon`.
+
+### SEC-060 — P0 CONFIRMADO: `cron_secret()` acessível por `anon`
+
+Prova de exploração (executada com a chave publicável, sem privilégio algum):
+
+| Chamada | Papel | Resultado |
+|---|---|---|
+| `POST /rest/v1/rpc/cron_secret` | `anon` | **200** — retornou o segredo em texto (valor não registrado neste documento) |
+| `POST /rest/v1/rpc/cron_runs_sweep` | `anon` | **200** — executou o sweep de auditoria |
+| `POST /rest/v1/rpc/cleanup_rate_limits` | `anon` | **204** — apagou o histórico de rate limit |
+
+**Impacto:** com o segredo em mãos, qualquer pessoa invoca todos os jobs (`X-Kivo-Cron-Secret`): repasses, liberação de reservas, conciliação, e-mails em lote. `cleanup_rate_limits` permite zerar o rate limit e viabilizar brute force nos códigos de verificação. **P0 — corrigir antes do go-live.**
+
+### Classificação caso a caso (sem revogação em massa)
+
+| Classe | Nº | Ação | Justificativa |
+|---|---|---|---|
+| Trigger-only | 16 | REVOKE de `anon` e `authenticated` | Gatilhos rodam como owner da tabela; nenhum EXECUTE direto é necessário. |
+| Service/cron-only | 15 | REVOKE de `anon`+`authenticated`; GRANT a `service_role` quando chamada por Edge Function | `cron_secret`, `cron_invoke`, `cron_run_finish`, `cron_runs_sweep`, `cleanup_rate_limits`, `redeem_coupon`, `increment_product_sales` etc. Nenhuma tem call site no frontend. |
+| Authenticated-only | 22 | REVOKE apenas de `anon` | Todas as call sites exigem `userId`/sessão (`useCourseBuilder`, `useJoinCommunity`, painéis financeiros). |
+| `anon` intencional | 3 | **Sem mudança** | `complete_checkout_session`, `get_checkout_session_public`, `get_community_public_plans` — checkout sem login e landing pública. WARN aceito por projeto. |
+| Predicado de RLS | 12 | **Sem mudança** | `is_*`, `has_role`, `get_community_*_for_user`: a policy é avaliada com o papel do chamador; revogar quebraria leitura pública legítima (storefront/landing). |
+
+Fonte de verdade da classificação: `src/lib/security/rpcExposurePolicy.ts`.
+Regressão contratual: `src/test/rpc-exposure-contract.test.ts` (impede que o frontend passe a chamar RPC server-only e trava `cron_secret` como server-only).
+Migration granular preparada: `revoke` por assinatura exata, sem `REVOKE ... FROM PUBLIC` em bloco. **AGUARDANDO REVISÃO/APROVAÇÃO.**
+
+### Edge Functions ativas com `verify_jwt=false`
+
+| Função | Versão | Situação |
+|---|---|---|
+| `test-asaas` | v79 | Valida `Authorization` + admin em código. APROVADO com ressalva (deploy exposto). |
+| `simulate-installments` | v57 | Público **por projeto** (checkout anônimo em `PaymentTabs.tsx`). Ressalva: sem rate limit próprio → backlog P2. |
+| `create-asaas-account` | v36 | Depreciada. Kill-switch 410 adicionado nesta rodada (IF-021); **requer deploy** para o v36 exposto deixar de aceitar chamadas. |
+
+
+
 ## 22. Matriz de cobertura: código existente × teste ausente
 
 Legenda: **Cobertura** = automatizada hoje no repositório (arquivos em `src/test/`). **Lacuna** = risco não coberto por automação.
