@@ -995,7 +995,23 @@ Prova de exploração (executada com a chave publicável, sem privilégio algum)
 
 Fonte de verdade da classificação: `src/lib/security/rpcExposurePolicy.ts`.
 Regressão contratual: `src/test/rpc-exposure-contract.test.ts` (impede que o frontend passe a chamar RPC server-only e trava `cron_secret` como server-only).
-Migration granular preparada: `revoke` por assinatura exata, sem `REVOKE ... FROM PUBLIC` em bloco. **AGUARDANDO REVISÃO/APROVAÇÃO.**
+**Remediação aplicada em 2 migrations granulares (revoke por assinatura exata, sem revogação em bloco):**
+
+1. Etapa 1 — `REVOKE` de `anon`/`authenticated` nas classes trigger-only, service-only e authenticated-only + `GRANT` a `service_role` onde há Edge Function chamadora. Linter: 149 → 134 issues.
+2. Etapa 2 — descoberto na reverificação que várias funções mantinham `GRANT EXECUTE` para **PUBLIC**, o que anulava a etapa 1 (prova: `anon` ainda executava `cleanup_rate_limits`, HTTP 204). Aplicado `REVOKE ... FROM PUBLIC` por assinatura + `GRANT` explícito a `authenticated` na classe authenticated-only. Linter: 134 → **69 issues**.
+
+**Reverificação pós-correção (mesma chave publicável, 2026-08-11 UTC):**
+
+| Chamada | Antes | Depois |
+|---|---|---|
+| `rpc/cron_secret` | 200 (segredo devolvido) | **401 `42501` permission denied** |
+| `rpc/cron_runs_sweep` | 200 | **401 `42501` permission denied** |
+| `rpc/cleanup_rate_limits` | 204 | **401 `42501` permission denied** |
+| `rpc/get_checkout_session_public` (deve funcionar) | 200 | **200** (sem regressão) |
+| `rpc/get_community_public_plans` (deve funcionar) | 200 | **200** (sem regressão) |
+
+**SEC-060: CORRIGIDO E VERIFICADO.** Suíte completa após a correção: **360 testes verdes / 36 arquivos**.
+
 
 ### Edge Functions ativas com `verify_jwt=false`
 
