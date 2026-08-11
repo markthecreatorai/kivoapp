@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
       reserves_held_by_chargeback: counts.held_chargeback || 0,
       reserves_forfeited: counts.forfeited || 0,
       reserves_needs_product_decision: counts.needs_product_decision || 0,
+      reserves_origin_not_liquid: counts.origin_not_liquid || 0,
       reserves_already_processed: counts.already_processed || 0,
       rpc_errors: counts.rpc_error || 0,
     };
