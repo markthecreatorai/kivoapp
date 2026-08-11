@@ -29,6 +29,20 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // KILL-SWITCH (QA Onda 0 — IF-021): função depreciada e desligada.
+  // Enquanto o deploy não for removido, ela não pode criar subcontas no Asaas.
+  return new Response(
+    JSON.stringify({
+      error: "deprecated",
+      message:
+        "create-asaas-account está depreciada e desligada. O modelo financeiro da Kivo é custódia + ledger interno.",
+    }),
+    { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+
+  // eslint-disable-next-line no-unreachable
+
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const asaasApiKey = Deno.env.get("ASAAS_API_KEY");
