@@ -42,11 +42,12 @@ export default function CommunityAuthModal({
   const {
     signupAndJoin,
     existingSignupState,
-    resendCommunityVerification,
-    resendCooldown,
-    resendingVerification,
     clearExistingSignupState,
+    pendingVerification,
+    completeVerifiedSignup,
+    cancelVerification,
   } = useJoinCommunity(slug || "");
+
   const { emailError, suggestion, guard, reset } = useAuthEmailGuard("community_auth_modal");
 
   const resetFields = () => {
@@ -85,7 +86,7 @@ export default function CommunityAuthModal({
         { display_name: displayName, email, password },
         community
       );
-      onOpenChange(false);
+
     } catch {
       // signupAndJoin already shows toast
     } finally {
