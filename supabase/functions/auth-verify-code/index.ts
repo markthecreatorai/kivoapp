@@ -1,5 +1,10 @@
 // Valida o código de 4 dígitos e confirma o e-mail via Admin API (idempotente).
 // Nunca cria sessão aqui: o cliente faz signInWithPassword com a senha em memória.
+//
+// Templates nativos do Supabase (Confirm signup / Magic Link) NÃO disparam neste
+// fluxo: a conta é criada por Admin API (email_confirm: false) e o app nunca chama
+// signUp, signInWithOtp nem auth.resend. O único link nativo preservado é o de
+// recuperação de senha (resetPasswordForEmail).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeadersFor } from "../_shared/cors.ts";
 import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
@@ -10,6 +15,7 @@ import {
   normalizeEmail,
   safeEqual,
 } from "../_shared/auth-code.ts";
+import { confirmAndConsume } from "../_shared/auth-confirm.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -82,44 +88,47 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    // Uso único (proteção contra corrida: só consome se ainda estava livre).
-    const { data: consumed } = await supabase
-      .from("auth_verification_codes")
-      .update({ consumed_at: new Date().toISOString() })
-      .eq("id", record.id)
-      .is("consumed_at", null)
-      .select("id")
-      .maybeSingle();
-    if (!consumed) return json({ ok: false, reason: "expired" }, 400);
+    // ORDEM IMPORTA: confirma o e-mail ANTES de consumir o código (ver auth-confirm.ts).
+    const outcome = await confirmAndConsume(
+      {
+        confirmUser: async (userId) => {
+          const { error } = await supabase.auth.admin.updateUserById(userId, { email_confirm: true });
+          if (error) console.error("[auth-verify-code] confirm failed (retryable):", error.message);
+          return { error };
+        },
+        consumeCode: async (codeId) => {
+          const { data } = await supabase
+            .from("auth_verification_codes")
+            .update({ consumed_at: new Date().toISOString() })
+            .eq("id", codeId)
+            .is("consumed_at", null)
+            .select("id")
+            .maybeSingle();
+          return !!data;
+        },
+        getAccountType: async (userId) => {
+          // Lido do banco, nunca de metadado enviado pelo cliente.
+          const { data } = await supabase
+            .from("user_account_types")
+            .select("account_type")
+            .eq("user_id", userId)
+            .maybeSingle();
+          return data?.account_type === "PRODUCER" ? "PRODUCER" : "MEMBER";
+        },
+        ensureProducerWorkspace: async (userId) => {
+          const { error } = await supabase.rpc("ensure_producer_workspace_for", { p_user_id: userId });
+          if (error) console.error("[auth-verify-code] workspace failed:", error.message);
+          return { error };
+        },
+      },
+      { codeId: record.id, userId: record.user_id },
+    );
 
-    // Confirma o e-mail — idempotente.
-    const { error: updErr } = await supabase.auth.admin.updateUserById(record.user_id, {
-      email_confirm: true,
-    });
-    if (updErr) {
-      console.error("[auth-verify-code] confirm failed:", updErr.message);
-      return json({ ok: false, reason: "internal_error" }, 500);
-    }
-
-    // Tipo de conta é lido do banco (nunca de metadado enviado pelo cliente).
-    const { data: accountRow } = await supabase
-      .from("user_account_types")
-      .select("account_type")
-      .eq("user_id", record.user_id)
-      .maybeSingle();
-
-    const accountType = accountRow?.account_type ?? "MEMBER";
-
-    if (accountType === "PRODUCER") {
-      const { error: wsErr } = await supabase.rpc("ensure_producer_workspace_for", {
-        p_user_id: record.user_id,
-      });
-      if (wsErr) console.error("[auth-verify-code] workspace failed:", wsErr.message);
-    }
+    if (!outcome.ok) return json({ ok: false, reason: outcome.reason }, outcome.status);
 
     return json({
       ok: true,
-      account_type: accountType,
+      account_type: outcome.accountType,
       flow_origin: record.flow_origin ?? "producer",
       next: record.return_target ?? null,
     });

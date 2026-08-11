@@ -119,6 +119,8 @@ export type VerifyCodeResult =
   | { kind: "expired" }
   | { kind: "blocked" }
   | { kind: "rate_limited" }
+  /** Falha transitória no servidor: o código NÃO foi consumido, pode tentar de novo. */
+  | { kind: "retry" }
   | { kind: "error" };
 
 export async function verifyEmailCode(email: string, code: string): Promise<VerifyCodeResult> {
@@ -140,6 +142,8 @@ export async function verifyEmailCode(email: string, code: string): Promise<Veri
         return { kind: "blocked" };
       case "rate_limited":
         return { kind: "rate_limited" };
+      case "temporarily_unavailable":
+        return { kind: "retry" };
       default:
         return { kind: "error" };
     }

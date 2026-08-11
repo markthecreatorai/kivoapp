@@ -69,6 +69,13 @@ export default function EmailCodeVerificationModal({
       onVerified(result);
       return;
     }
+    if (result.kind === "retry") {
+      // Falha transitória: o código continua válido, mantemos os dígitos digitados.
+      setStatus("idle");
+      submittedRef.current = "";
+      setError("Instabilidade momentânea ao confirmar. Toque em confirmar novamente.");
+      return;
+    }
     setStatus("idle");
     setDigits(Array(CODE_LENGTH).fill(""));
     submittedRef.current = "";
