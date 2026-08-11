@@ -18,6 +18,11 @@ const simulateInstallments = fn("simulate-installments");
 const checkPaymentStatus = fn("check-payment-status");
 const testAsaas = fn("test-asaas");
 const webhookAsaas = fn("webhook-asaas");
+const refundsModule = readFileSync(
+  resolve(process.cwd(), "supabase/functions/_shared/refunds.ts"),
+  "utf-8",
+);
+
 const payoutRequest = fn("create-payout-request");
 const config = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf-8");
 
