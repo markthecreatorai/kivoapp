@@ -447,17 +447,23 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       p_settle: true,
     });
 
+    // Falha aqui NÃO pode ser silenciada: sem split/comissão o webhook precisa
+    // ficar FAILED/retryable para o provedor (ou retry-webhooks) reenviar.
     if (commRpcErr) {
       console.error("[webhook-asaas][ALERTA] process_order_commission falhou:", JSON.stringify(commRpcErr));
-    } else if (commResult && (commResult as any).ok !== true) {
+      throw new Error(`process_order_commission falhou: ${commRpcErr.message || JSON.stringify(commRpcErr)}`);
+    }
+    if (!commResult || (commResult as any).ok !== true) {
       console.error(
         "[webhook-asaas][ALERTA] process_order_commission recusou o pedido:",
         JSON.stringify(commResult),
       );
-    } else if (commResult) {
-      creatorNet = Number((commResult as any).creator_net_cents || 0);
-      console.log("[webhook-asaas] split/comissão processados:", JSON.stringify(commResult));
+      throw new Error(
+        `process_order_commission não confirmou o processamento: ${JSON.stringify(commResult ?? null)}`,
+      );
     }
+    creatorNet = Number((commResult as any).creator_net_cents || 0);
+    console.log("[webhook-asaas] split/comissão processados:", JSON.stringify(commResult));
 
     const { data: settledSplit } = await supabase
       .from("split_entries")
