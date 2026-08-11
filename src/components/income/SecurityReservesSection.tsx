@@ -15,6 +15,8 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   held: { label: "Retido", variant: "secondary" },
   released: { label: "Liberado", variant: "default" },
   forfeited: { label: "Retido (chargeback)", variant: "destructive" },
+  reversed: { label: "Revertido (estorno)", variant: "outline" },
+  reconciled_legacy: { label: "Reconciliado (legado)", variant: "outline" },
 };
 
 export function SecurityReservesSection({ workspaceId, fmt }: Props) {
@@ -23,8 +25,8 @@ export function SecurityReservesSection({ workspaceId, fmt }: Props) {
     enabled: !!workspaceId,
     queryFn: async () => {
       const { data } = await supabase
-        .from("security_reserves")
-        .select("id, amount, status, release_at, released_at, created_at, transaction_id")
+        .from("reserve_entries")
+        .select("id, amount, status, release_at, released_at, created_at, order_id")
         .eq("workspace_id", workspaceId!)
         .order("created_at", { ascending: false })
         .limit(50);

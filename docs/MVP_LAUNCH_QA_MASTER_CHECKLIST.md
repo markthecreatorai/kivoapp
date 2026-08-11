@@ -1578,3 +1578,47 @@ modelo correto (após decisão) : sale 4850 - segregacao 437 = 4413 ; após libe
 Testes: `src/test/wave4-reserve-origin-behavior.test.ts` (10 casos: origem integral, inflação detectada, fail-closed, modelo correto, hold sem antecipação, replay + 4 contratos do job).
 
 Rollout: (1) decisão de produto dos itens 5.1–5.4; (2) migration de segregação na origem (`process_order_commission`) + `20260811090000`; (3) deploy de `release-holds`/`release-reserves`; (4) reprocessar reservas legadas.
+
+### 31.8 QA-4A-V5-RESERVE-MODEL — decisão de produto aplicada (repo-only) — 2026-08-11 (UTC)
+
+Base: HEAD `88cbc84a`. **Zero deploy, zero migration aplicada, zero chamada externa, zero movimentação financeira real.**
+
+**Política aprovada e implementada no repositório**
+- `public.reserve_entries` é a **única** fonte canônica. `public.security_reserves` fica **congelada**: histórico preservado, novas escritas bloqueadas por trigger fail-closed (`trg_security_reserves_frozen`), caminho de remoção documentado no header de `release-reserves`.
+- Reserva = **10% de `split_entries.creator_net`**, em centavos, com arredondamento determinístico **para baixo**:
+  - `reserve  = floor(creator_net * round(pct*100) / 10000)`
+  - `available = creator_net - reserve`
+  - ⇒ `available + reserve = creator_net` **exato**, inclusive em valores pequenos (`creator_net=5 → reserva 0`) e não divisíveis por 10 (`1007 → 100 + 907`).
+- **FREE = 10% / 30 dias** por configuração explícita: `public.reserve_policy_for_workspace()` mapeia FREE e CREATOR → tier `creator`, CREATOR_PRO → `creator_pro`, e falha com `RESERVE_POLICY_DRIFT` se o `fee_config` divergir da política. Sem fallback implícito espalhado no código.
+- Reserva legada (1 linha, `held`, sem débito de segregação) marcada `reconciled_legacy` com `reconciliation_note` auditável, **sem crédito e sem débito retroativo** (o produtor já recebeu 100%).
+
+**Ciclo contábil ponta a ponta (RPCs transacionais)**
+- `settle_order_reserve(order_id)`: cria/vincula `reserve_entries` a `order_id + split_entry_id + workspace_id` e grava o débito `segregation_debit` no `wallet_ledger` **no mesmo commit**. PIX/boleto ⇒ `NOT_APPLICABLE`.
+- `release_reserve_entry(reserve_id)`: libera **uma única vez** após `release_at` (D+30/D+15), herda `status`/`available_at` do débito de origem (não antecipa liquidez), prorroga em chargeback ativo (`HELD_CHARGEBACK`), e devolve `NEEDS_PRODUCT_DECISION` para reservas sem débito (legado) — fail-closed.
+- `reverse_reserve_entry(order_id, remaining_net, reason, final_status)`: refund parcial (recalcula a reserva sobre o líquido remanescente), refund total, chargeback perdido e cancelamento. Reversível também quando outro fluxo já marcou `forfeited/reversed` sem emitir crédito ⇒ **ordem dos eventos não importa**.
+- `restore_reserve_entry(order_id)`: chargeback ganho devolve a reserva ao estado retido.
+- Idempotência **estrutural**: `uniq_reserve_entries_order`, `uniq_reserve_entries_split_entry`, `uniq_wallet_ledger_reserve_entry_role (reserve_entry_id, reserve_role)`. Sem idempotência por texto.
+- Locks em ordem estável (`orders → split_entries → reserve_entries → wallet_ledger`), `FOR UPDATE`, `search_path` fixo, `public.` qualificado, ownership/status/valores validados dentro da transação.
+- Privilégios: todas as RPCs com `REVOKE ALL ... FROM PUBLIC, anon, authenticated` + `GRANT EXECUTE ... TO service_role`. `reserve_entries` com RLS por workspace, `SELECT` para `authenticated`, DML só `service_role`.
+
+**Caminho único de settlement (sem crédito de 100%)**
+- `webhook-asaas`: bloco manual de reserva substituído por `settle_order_reserve` com **fail-closed** (`throw` em erro); caminho legado de `transactions` não escreve mais reserva; chargeback usa `reverse_reserve_entry`.
+- `create-payment`: escrita em `security_reserves` **removida** (criava reserva sem débito de origem — causa raiz do P0 de criação de dinheiro).
+- `_shared/refunds.ts`: após cada incremento, recalcula a reserva pelo `creator_net` remanescente (fail-closed).
+- `release-holds`: reservas vencidas via `release_reserve_entry` (crédito atômico e idempotente).
+- `release-reserves`: **deprecada**, somente leitura, `writes_performed: 0`, mantida no cron apenas para não quebrar o agendamento.
+- Frontend (`Income.tsx`, `SecurityReservesSection.tsx`) e `get-wallet-balance` leem `reserve_entries`; saque usa apenas o disponível (reserva fica fora).
+
+**Migrations (NÃO aplicadas)**
+- `supabase/migrations/20260811100000_wave5_reserve_model_canonical.sql` (nova, canônica). Compatível com as pendentes da Onda 4 (`20260811074500`, `20260811090000`) via `ADD COLUMN IF NOT EXISTS`/`CREATE ... IF NOT EXISTS`. Nenhuma migration já aplicada foi modificada. Nenhum `*.tsbuildinfo`.
+
+**Testes**
+- `src/test/wave5-reserve-model.test.ts` — 60 casos: arredondamento/centavos, soma exata no settlement, release em 30d/antes do prazo/replay/concorrência, refund parcial e total antes e depois do release, chargeback perdido e ganho, eventos fora de ordem, IDOR/ownership, privilégios anon/authenticated negados, ausência de caminho ativo escrevendo `security_reserves` ou creditando `creator_net` integral, saque sem reserva.
+- Testes das Ondas 3/4 atualizados para o modelo v5 (sem afrouxar garantias: escrita direta em tabela financeira continua proibida).
+- Suíte completa: **748/748 PASS** (47 arquivos). Typecheck `tsgo --noEmit`: **limpo**. Build Vite: **OK (16.1s)**.
+
+**Pendências / bloqueadores (explícitos)**
+- ⏳ **Aplicação da migration `20260811100000` PENDENTE** — e ela depende de `20260811074500` e `20260811090000`, também **não aplicadas**. Enquanto não aplicada, as RPCs não existem em produção e o `webhook-asaas` novo falharia fechado no settlement: **aplicar migrations e só então deployar as Edge Functions**.
+- ⏳ **Deploy PENDENTE** de `webhook-asaas`, `create-payment`, `release-holds`, `release-reserves` e do frontend.
+- ⏳ Remoção física de `security_reserves` (DROP) fica para depois do período de retenção fiscal; remover também do agendamento `pg_cron` a função `release-reserves`.
+- ⛔ **E2E financeiro real NÃO executado** (sem transação Asaas, sem dinheiro real). Nenhum item E2E externo marcado como aprovado.

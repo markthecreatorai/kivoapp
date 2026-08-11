@@ -55,13 +55,13 @@ export default function Income() {
     },
   });
 
-  // Reserve balance from security_reserves
+  // Reserva retida: fonte canônica = reserve_entries (security_reserves congelada)
   const { data: reserveTotal = 0, isLoading: loadingReserves } = useQuery({
     queryKey: ["reserve-total", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
       const { data: rows } = await supabase
-        .from("security_reserves")
+        .from("reserve_entries")
         .select("amount")
         .eq("workspace_id", workspaceId!)
         .eq("status", "held");

@@ -371,6 +371,7 @@ DECLARE
   v_credit_id uuid;
   v_status    text;
   v_avail     timestamptz;
+  v_replayed  boolean := false;
   v_cb        integer;
   v_refunded  integer;
 BEGIN
@@ -445,7 +446,11 @@ BEGIN
   ON CONFLICT DO NOTHING
   RETURNING id INTO v_credit_id;
 
+  -- ON CONFLICT DO NOTHING sem RETURNING ⇒ crédito já existia: é replay
+  -- (segunda execução do cron ou dois workers concorrentes). Nada é creditado
+  -- de novo e o chamador é informado para não contar o valor duas vezes.
   IF v_credit_id IS NULL THEN
+    v_replayed := true;
     SELECT id INTO v_credit_id FROM public.wallet_ledger
      WHERE reserve_entry_id = p_reserve_id AND reserve_role = 'release_credit'
        AND status <> 'canceled' LIMIT 1;
@@ -459,7 +464,8 @@ BEGIN
   RETURN jsonb_build_object(
     'outcome', 'RELEASED', 'reserve_id', p_reserve_id,
     'workspace_id', v_res.workspace_id, 'amount_cents', v_res.amount,
-    'ledger_credit_id', v_credit_id, 'credit_status', v_status);
+    'ledger_credit_id', v_credit_id, 'credit_status', v_status,
+    'credit_replayed', v_replayed);
 END;
 $fn$;
 

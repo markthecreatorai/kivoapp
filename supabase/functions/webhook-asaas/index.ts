@@ -300,51 +300,10 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
 
       await supabase.from("transactions").update(updateData).eq("id", tx.id);
 
-      // Create security reserve if not yet created
-      const { data: existingReserve } = await supabase
-        .from("security_reserves")
-        .select("id")
-        .eq("order_id", paymentRecord.order_id)
-        .maybeSingle();
-
-      if (!existingReserve && tx.net_amount > 0) {
-        const { data: ws } = await supabase
-          .from("workspaces")
-          .select("plan")
-          .eq("id", paymentRecord.workspace_id)
-          .maybeSingle();
-
-        const feeTier = feeTierForPlan((ws as any)?.plan);
-        const { data: feeConfig } = await supabase
-          .from("fee_config")
-          .select("reserve_percent, reserve_hold_days")
-          .eq("plan_type", feeTier)
-          .maybeSingle();
-
-        const reservePercent = Number(feeConfig?.reserve_percent ?? 0);
-        // reserve_hold_days is the absolute release window for the reserved slice (D+N from sale)
-        const releaseDays = Number(feeConfig?.reserve_hold_days ?? 0);
-        const finalNet = updateData.net_amount || tx.net_amount;
-        // Reserve applies ONLY to credit card sales
-        const isCard = tx.payment_method !== "pix" && tx.payment_method !== "boleto";
-        const reserveAmount = isCard ? Math.round(finalNet * reservePercent / 100) : 0;
-
-        console.log("[webhook-asaas] reserva", JSON.stringify({
-          fee_tier: feeTier, db_row: feeConfig ?? null,
-          payment_method: tx.payment_method, reserveAmount, releaseDays,
-        }));
-
-        if (reserveAmount > 0) {
-          await supabase.from("security_reserves").insert({
-            workspace_id: paymentRecord.workspace_id,
-            order_id: paymentRecord.order_id,
-            transaction_id: tx.id,
-            amount: reserveAmount,
-            release_at: new Date(Date.now() + releaseDays * 86400000).toISOString(),
-            status: "held",
-          });
-        }
-      }
+      // RESERVA: removida deste caminho. A reserva canônica é criada apenas
+      // pela RPC public.settle_order_reserve (abaixo), a partir de
+      // split_entries.creator_net e com débito de segregação no wallet_ledger.
+      // public.security_reserves está congelada (histórico apenas).
     }
   } catch (txErr) {
     console.error("Transaction update error (non-fatal):", txErr);
@@ -500,49 +459,24 @@ async function handlePaid(supabase: any, paymentRecord: any, paymentData: any): 
       `[webhook-asaas] liquidação order ${paymentRecord.order_id}: creator_net=${creatorNet} liberação=${ledgerAvailableAt} (${paymentMethod}, ${holdDays}d)`,
     );
 
-    // 4) Reserva de segurança (só cartão, % do creator_net, idempotente por order)
-    if (creatorNet > 0 && isCard) {
-      const { data: existingReserve } = await supabase
-        .from("reserve_entries")
-        .select("id")
-        .eq("order_id", paymentRecord.order_id)
-        .maybeSingle();
-
-      if (!existingReserve) {
-        const { data: ws } = await supabase
-          .from("workspaces")
-          .select("plan")
-          .eq("id", order.workspace_id)
-          .maybeSingle();
-        const feeTier = feeTierForPlan((ws as any)?.plan);
-        const { data: feeConfig } = await supabase
-          .from("fee_config")
-          .select("reserve_percent, reserve_hold_days")
-          .eq("plan_type", feeTier)
-          .maybeSingle();
-
-        const reservePercent = Number(feeConfig?.reserve_percent ?? 0);
-        const reserveHoldDays = Number(feeConfig?.reserve_hold_days ?? 0);
-        const reserveAmount = Math.round(creatorNet * reservePercent / 100);
-
-        console.log("[webhook-asaas] reserve_entries", JSON.stringify({
-          fee_tier: feeTier, reservePercent, reserveHoldDays, paymentMethod, reserveAmount,
-        }));
-
-        if (reservePercent > 0 && reserveAmount > 0) {
-          const { error: resErr } = await supabase.from("reserve_entries").insert({
-            workspace_id: order.workspace_id,
-            order_id: paymentRecord.order_id,
-            split_entry_id: splitId,
-            amount: reserveAmount,
-            reserve_percent: reservePercent,
-            // retenção adicional além do hold normal (proteção contra chargeback)
-            release_at: new Date(Date.now() + (holdDays + reserveHoldDays) * 86400000).toISOString(),
-            status: "held",
-          });
-          if (resErr) console.error("Failed to insert reserve entry:", resErr);
-        }
+    // 4) Reserva de segurança — FONTE ÚNICA: RPC public.settle_order_reserve.
+    //    Ela recalcula a reserva como 10% de split_entries.creator_net em
+    //    centavos (floor determinístico), cria/vincula reserve_entries a
+    //    (order_id, split_entry_id, workspace_id) e grava o débito de
+    //    segregação no wallet_ledger no MESMO commit. Logo:
+    //        available(creator) = creator_net - reserve   e   soma = creator_net.
+    //    Idempotente por unicidade estrutural (order_id / reserve_entry_id+role).
+    if (creatorNet > 0) {
+      const { data: reserveResult, error: reserveErr } = await supabase.rpc(
+        "settle_order_reserve",
+        { p_order_id: paymentRecord.order_id },
+      );
+      if (reserveErr) {
+        // Fail-closed: sem segregação o produtor ficaria com 100% disponível.
+        console.error("[webhook-asaas][ALERTA] settle_order_reserve falhou:", JSON.stringify(reserveErr));
+        throw new Error(`settle_order_reserve falhou: ${reserveErr.message || JSON.stringify(reserveErr)}`);
       }
+      console.log("[webhook-asaas] settle_order_reserve:", JSON.stringify(reserveResult));
     }
   }
 
@@ -701,16 +635,24 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     refunded_at: new Date().toISOString(),
   }).eq("order_id", paymentRecord.order_id);
 
-  // 5. Forfeit any held reserve for this order (legacy + new model)
-  await supabase.from("reserve_entries").update({
-    status: "forfeited",
-    released_at: new Date().toISOString(),
-  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
-
-  await supabase.from("security_reserves").update({
-    status: "forfeited",
-    released_at: new Date().toISOString(),
-  }).eq("order_id", paymentRecord.order_id).eq("status", "held");
+  // 5. Reserva: reversão contábil atômica via RPC canônica. remaining_net = 0
+  //    (chargeback perdido zera a fatia do produtor), status final 'forfeited'.
+  //    A RPC cancela o débito de segregação e não emite crédito de liberação,
+  //    de modo que nem cria nem destrói centavos. security_reserves não é
+  //    tocada (congelada; histórico preservado).
+  {
+    const { data: cbReserve, error: cbReserveErr } = await supabase.rpc("reverse_reserve_entry", {
+      p_order_id: paymentRecord.order_id,
+      p_remaining_net_cents: 0,
+      p_reason: "chargeback_lost",
+      p_final_status: "forfeited",
+    });
+    if (cbReserveErr) {
+      console.error("[webhook-asaas][ALERTA] reverse_reserve_entry (chargeback) falhou:", JSON.stringify(cbReserveErr));
+      throw new Error(`reverse_reserve_entry falhou: ${cbReserveErr.message || JSON.stringify(cbReserveErr)}`);
+    }
+    console.log("[webhook-asaas] reverse_reserve_entry (chargeback):", JSON.stringify(cbReserve));
+  }
 
   // 5b. Update transaction to disputed
   await supabase.from("transactions").update({

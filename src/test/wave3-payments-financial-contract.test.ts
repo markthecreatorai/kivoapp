@@ -408,9 +408,20 @@ describe("Onda 3 / FI — taxas e reserva conforme regra de negócio", () => {
   });
 
   it("reserva de segurança só existe em cartão", () => {
-    expect(createPayment).toContain('const isCard = method !== "pix" && method !== "boleto"');
-    expect(createPayment).toContain("isCard && reservePercent > 0");
-    expect(webhookAsaas).toContain("Reserve applies ONLY to credit card sales");
+    // QA-4A-V5: create-payment não cria mais reserva (nem em cartão). A
+    // elegibilidade por método vive na RPC canônica settle_order_reserve,
+    // chamada no settlement, onde já existe crédito no wallet_ledger.
+    expect(createPayment).not.toContain('from("security_reserves")\n');
+    const reserveSql = readFileSync(
+      resolve(process.cwd(), "supabase/migrations/20260811100000_wave5_reserve_model_canonical.sql"),
+      "utf-8",
+    );
+    expect(reserveSql).toContain("NOT_APPLICABLE");
+    expect(reserveSql).toContain("'pix'");
+    // A elegibilidade por método passou para a RPC canônica: PIX/boleto
+    // devolvem NOT_APPLICABLE e nenhuma reserva é criada.
+    expect(webhookAsaas).toContain("settle_order_reserve");
+    expect(reserveSql).toMatch(/v_method IN \('pix', 'boleto'\)[\s\S]{0,200}NOT_APPLICABLE/);
   });
 
   it("nada é gravado em wallet_ledger no create-payment (só na confirmação)", () => {
@@ -477,7 +488,10 @@ describe("Onda 3 / FI — reembolso parcial não dobra o débito", () => {
     expect(refundsModule).toContain("process_refund_increment");
     expect(refundsModule).not.toContain('from("wallet_ledger")');
     expect(refundsModule).not.toContain('from("entitlements")');
-    expect(refundsModule).not.toContain('from("split_entries")');
+    // Leitura de split_entries é permitida (necessária para recalcular a
+    // reserva canônica pelo creator_net remanescente); ESCRITA continua proibida.
+    expect(refundsModule).not.toMatch(/from\("split_entries"\)[\s\S]{0,120}\.(update|insert|upsert|delete)\(/);
+    expect(refundsModule).toContain("reverse_reserve_entry");
   });
 
   it("valor devolvido vem sempre de refunds[], nunca do valor da cobrança", () => {

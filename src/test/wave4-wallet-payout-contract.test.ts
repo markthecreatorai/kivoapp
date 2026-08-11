@@ -147,18 +147,21 @@ describe("P0-WA-08 — liberação de reservas credita a carteira", () => {
   const job = read("supabase/functions/release-reserves/index.ts");
   const holds = read("supabase/functions/release-holds/index.ts");
 
+  // QA-4A-V5: a liberação canônica migrou para `release-holds` +
+  // public.release_reserve_entry (reserve_entries). `release-reserves` virou
+  // job deprecado somente-leitura sobre a tabela congelada security_reserves.
   it("a liberação (crédito + transição) vive na RPC atômica, não na função", () => {
-    // QA-4A-V2: update+insert sequencial podia liberar a reserva sem crédito.
-    expect(job).toMatch(/rpc\("release_security_reserve"/);
+    expect(holds).toMatch(/rpc\("release_reserve_entry"/);
     expect(job).not.toMatch(/from\("wallet_ledger"\)\.insert\(/);
-    const sql = read(MIGRATION);
-    expect(sql).toMatch(/security_reserve:/);
+    expect(job).toMatch(/DEPRECADA/);
+    const sql = read("supabase/migrations/20260811100000_wave5_reserve_model_canonical.sql");
+    expect(sql).toMatch(/release_reserve_entry/);
   });
 
   it("o crédito é idempotente por chave estruturada", () => {
-    expect(job).toMatch(/credit_replayed/);
-    const sql = read(MIGRATION);
-    expect(sql).toMatch(/uniq_wallet_ledger_reserve_release/);
+    expect(holds).toMatch(/credit_replayed/);
+    const sql = read("supabase/migrations/20260811100000_wave5_reserve_model_canonical.sql");
+    expect(sql).toMatch(/uniq_wallet_ledger_reserve_entry_role/);
   });
 
   it("release-reserves não disputa mais reserve_entries com release-holds", () => {

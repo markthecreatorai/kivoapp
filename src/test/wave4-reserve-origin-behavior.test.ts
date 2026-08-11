@@ -81,6 +81,11 @@ describe("QA-4A-V4 — reserva não pode criar nem destruir centavos", () => {
   });
 });
 
+// NOTA QA-4A-V5: o fail-closed abaixo foi SUPERADO pela decisão de produto —
+// o settlement passou a segregar a reserva na origem (settle_order_reserve), o
+// que torna o crédito de liberação legítimo. O job segue sem inserir crédito
+// diretamente (isso vive na RPC) e reservas LEGADAS sem débito continuam
+// retidas com NEEDS_PRODUCT_DECISION, então estas asserções continuam válidas.
 describe("QA-4A-V4 — contrato do job release-holds", () => {
   const src = readFileSync("supabase/functions/release-holds/index.ts", "utf-8");
 
@@ -94,9 +99,16 @@ describe("QA-4A-V4 — contrato do job release-holds", () => {
     expect(src).toMatch(/reserves_needs_product_decision/);
   });
 
-  it("preserva a prorrogação por chargeback ativo", () => {
-    expect(src).toMatch(/chargeback_cases/);
+  it("preserva a prorrogação por chargeback ativo (agora dentro da RPC)", () => {
+    // QA-4A-V5: chargeback ativo é avaliado na mesma transação do crédito, em
+    // public.release_reserve_entry (outcome HELD_CHARGEBACK), e o job apenas
+    // contabiliza o resultado.
     expect(src).toMatch(/reservesHeldByChargeback\+\+/);
+    expect(src).toMatch(/held_chargeback/);
+    const sql = readFileSync(
+      "supabase/migrations/20260811100000_wave5_reserve_model_canonical.sql", "utf-8");
+    expect(sql).toMatch(/chargeback_cases/);
+    expect(sql).toMatch(/HELD_CHARGEBACK/);
   });
 
   it("continua liberando wallet_ledger pending vencido (hold normal)", () => {
