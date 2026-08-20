@@ -252,3 +252,85 @@ describe("QA-4A-V6.3 — chargeback_cases em REAIS, comparação em CENTAVOS", (
     expect(Object.is(123.45 as number, 12345 as number)).toBe(false);
   });
 });
+
+// ───────────── 6. QA-4A-V6.4 — correlação fail-closed no replay de refund ─────────────
+// CONTRATO ESTÁTICO (regex + simulação aritmética). E2E Postgres/concorrência: NÃO PROVADOS.
+describe("QA-4A-V6.4 — replay de refund só converge se correlacionar", () => {
+  const replayBlock = code.slice(
+    code.indexOf("IF v_inserted = 0 THEN"),
+    code.indexOf("v_reserve := public.reverse_reserve_entry("),
+  );
+
+  it("carrega a linha persistida por order+gateway_refund_id com FOR UPDATE", () => {
+    expect(replayBlock).toMatch(/SELECT \* INTO v_existing_refund[\s\S]*FROM public\.refunds/);
+    expect(replayBlock).toMatch(/AND gateway_refund_id = p_gateway_refund_id/);
+    expect(replayBlock).toMatch(/FOR UPDATE;/);
+  });
+
+  it("aborta se o conflito não tem linha persistida", () => {
+    expect(replayBlock).toMatch(/IF NOT FOUND THEN[\s\S]*REFUND_CORRELATION_MISMATCH/);
+  });
+
+  it("valida payment_id, valor em centavos e status PROCESSED", () => {
+    expect(replayBlock).toMatch(/v_existing_refund\.payment_id IS DISTINCT FROM p_payment_id/);
+    expect(replayBlock).toMatch(/v_existing_cents := round\(v_existing_refund\.amount \* 100\)::bigint/);
+    expect(replayBlock).toMatch(/v_existing_cents IS DISTINCT FROM p_amount_cents::bigint/);
+    expect(replayBlock).toMatch(/v_existing_refund\.status IS DISTINCT FROM 'PROCESSED'/);
+  });
+
+  it("nunca compara reais direto com centavos", () => {
+    expect(code).not.toMatch(/v_existing_refund\.amount IS DISTINCT FROM p_amount_cents/);
+  });
+
+  it("as três divergências levantam REFUND_CORRELATION_MISMATCH", () => {
+    const raises = replayBlock.match(/REFUND_CORRELATION_MISMATCH/g) || [];
+    expect(raises.length).toBe(4); // linha ausente + payment + valor + status
+  });
+
+  it("o mismatch acontece ANTES de reverse_reserve_entry", () => {
+    const idxCheck = code.indexOf("REFUND_CORRELATION_MISMATCH");
+    const idxReserve = code.indexOf("'refund_partial_replay'");
+    expect(idxCheck).toBeGreaterThan(0);
+    expect(idxCheck).toBeLessThan(idxReserve);
+  });
+
+  it("replay idêntico continua executando o reparo convergente da reserva", () => {
+    const after = code.slice(
+      code.indexOf("IF v_inserted = 0 THEN"),
+      code.indexOf("-- ── Over-refund"),
+    );
+    expect(after).toMatch(/v_reserve := public\.reverse_reserve_entry\(/);
+    expect(after).toMatch(/refund_partial_replay/);
+    expect(after).toMatch(/'outcome', 'duplicate'/);
+  });
+
+  it("preserva soma persistida, over-refund e privilégios", () => {
+    expect(code).toMatch(/SELECT COALESCE\(sum\(round\(amount \* 100\)\), 0\)::int INTO v_acc_cents/);
+    expect(code).toMatch(/over-refund no pedido/);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.process_refund_increment\(uuid, uuid, text, integer, integer\) TO service_role;/);
+  });
+
+  // Simulação da aritmética de correlação usada pela RPC.
+  type Persisted = { payment_id: string; amount: number; status: string };
+  const correlates = (row: Persisted, payment_id: string, cents: number) =>
+    row.payment_id === payment_id &&
+    Math.round(row.amount * 100) === cents &&
+    row.status === "PROCESSED";
+  const ok: Persisted = { payment_id: "pay-1", amount: 123.45, status: "PROCESSED" };
+
+  it("replay idêntico é aceito", () => {
+    expect(correlates(ok, "pay-1", 12345)).toBe(true);
+  });
+
+  it("mesmo refund id com payment_id diferente falha", () => {
+    expect(correlates(ok, "pay-2", 12345)).toBe(false);
+  });
+
+  it("R$ 123,45 persistidos versus 12.344 centavos falha", () => {
+    expect(correlates(ok, "pay-1", 12344)).toBe(false);
+  });
+
+  it("status diferente de PROCESSED falha", () => {
+    expect(correlates({ ...ok, status: "PENDING" }, "pay-1", 12345)).toBe(false);
+  });
+});
