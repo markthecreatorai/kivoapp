@@ -572,136 +572,110 @@ async function cancelOrderCommissions(supabase: any, orderId: string, reason: st
   }
 }
 
+// QA-4A-V6.1: o NÚCLEO FINANCEIRO do chargeback é uma única transação no banco
+// (public.resolve_chargeback_financials): case idempotente por
+// gateway_dispute_id, split 'refunded', cancelamento da venda no ledger,
+// trilha 'canceled' do bruto, reversão cumulativa da reserva e
+// order/transactions/commissions. Nada financeiro é escrito daqui.
+//
+// Débito: apenas creator_net, obtido pelo CANCELAMENTO da linha 'sale'. A linha
+// type='chargeback' é gravada com status='canceled' (auditoria do bruto
+// contestado, sem efeito em saldo) — antes ela era 'settled' e dobrava o débito.
+//
+// Efeitos NÃO financeiros (timeline, bloqueio de payout, política de risco,
+// alerta, notificação) ficam depois e nunca podem mascarar falha do núcleo.
 async function handleChargeback(supabase: any, paymentRecord: any, paymentData: any): Promise<string> {
   if (!paymentRecord) return "NOT_FOUND";
 
-  const chargebackAmount = paymentData?.value || 0;
+  const chargebackAmount = Number(paymentData?.value || 0);
+  const chargebackCents = Math.round(chargebackAmount * 100);
+  const disputeId = paymentData?.id != null ? String(paymentData.id).trim() : "";
 
-  // 1. Create chargeback case with SLA (7 days to submit evidence)
-  const slaDeadline = new Date(Date.now() + 7 * 86400000).toISOString();
-  const { data: cbCase } = await supabase.from("chargeback_cases").insert({
-    workspace_id: paymentRecord.workspace_id,
-    order_id: paymentRecord.order_id,
-    payment_id: paymentRecord.id,
-    gateway_dispute_id: paymentData?.id || null,
-    amount: chargebackAmount,
-    reason: paymentData?.chargebackReason || "Chargeback",
-    status: "new",
-    sla_deadline_at: slaDeadline,
-    financial_impact: chargebackAmount,
-  }).select("id").single();
+  // Sem id de disputa não há chave de idempotência: falha fechado. O Asaas
+  // reenvia o evento e a reconciliação diária cobre o caso.
+  if (!disputeId) {
+    throw new Error("chargeback sem id de disputa do gateway — idempotência impossível");
+  }
+  if (!Number.isFinite(chargebackCents) || chargebackCents <= 0) {
+    throw new Error(`chargeback com valor inválido: ${paymentData?.value}`);
+  }
 
-  // 2. Timeline entry
-  if (cbCase) {
-    await supabase.from("chargeback_timeline").insert({
-      case_id: cbCase.id,
+  const { data: core, error: coreErr } = await supabase.rpc("resolve_chargeback_financials", {
+    p_order_id: paymentRecord.order_id,
+    p_payment_id: paymentRecord.id,
+    p_gateway_dispute_id: disputeId,
+    p_amount_cents: chargebackCents,
+    p_reason: paymentData?.chargebackReason || "Chargeback",
+    p_sla_days: 7,
+  });
+  if (coreErr) {
+    console.error("[webhook-asaas][P0] resolve_chargeback_financials falhou:", JSON.stringify(coreErr));
+    throw new Error(`resolve_chargeback_financials falhou: ${coreErr.message || JSON.stringify(coreErr)}`);
+  }
+  if (!core?.ok) {
+    throw new Error(`resolve_chargeback_financials não confirmou o núcleo: ${JSON.stringify(core)}`);
+  }
+  console.log("[webhook-asaas] chargeback núcleo atômico:", JSON.stringify(core));
+
+  const caseId = core.case_id as string | null;
+  const isReplay = core.outcome === "ALREADY_PROCESSED";
+
+  // ── A partir daqui: nada financeiro. Falhas são logadas, não propagadas. ──
+
+  // Timeline (apenas na primeira aplicação, para não poluir com replays).
+  if (caseId && !isReplay) {
+    const { error } = await supabase.from("chargeback_timeline").insert({
+      case_id: caseId,
       action: "case_opened",
       note: `Chargeback recebido do Asaas. Valor: ${chargebackAmount}. Prazo para evidência: 7 dias.`,
-      metadata: { gateway_id: paymentData?.id, amount: chargebackAmount },
+      metadata: { gateway_id: disputeId, amount: chargebackAmount, creator_net_cents: core.creator_net_cents },
     });
+    if (error) console.error("[webhook-asaas] timeline do chargeback falhou (non-fatal):", error);
   }
 
-  // 3. Update order status
-  await supabase.from("orders").update({ status: "DISPUTED" }).eq("id", paymentRecord.order_id);
+  // Comissão de indicação (tabela própria, fora do núcleo do pedido).
+  const { error: refCancelErr } = await supabase.rpc("cancel_referral_commissions_for_payment", {
+    p_payment_id: disputeId,
+  });
+  if (refCancelErr) console.error("[Referral] Falha ao cancelar comissão:", JSON.stringify(refCancelErr));
 
-  // 3b. Cancela comissões de afiliado do pedido contestado
-  await cancelOrderCommissions(supabase, paymentRecord.order_id, "Chargeback aberto");
-
-  // Cancela comissão de indicação deste pagamento (idempotente)
-  if (paymentData?.id) {
-    const { error: refCancelErr } = await supabase.rpc("cancel_referral_commissions_for_payment", {
-      p_payment_id: String(paymentData.id),
+  // Saldo negativo → bloqueia payouts pendentes.
+  let riskScore = 0;
+  try {
+    const { data: balanceData } = await supabase.rpc("get_creator_balance", {
+      p_workspace_id: paymentRecord.workspace_id,
     });
-    if (refCancelErr) console.error("[Referral] Falha ao cancelar comissão:", JSON.stringify(refCancelErr));
-  }
-
-  // 4. Reverse split entry (freeze creator balance)
-  await supabase.from("split_entries").update({
-    status: "refunded",
-    refunded_at: new Date().toISOString(),
-  }).eq("order_id", paymentRecord.order_id);
-
-  // 5. Reserva: reversão contábil atômica via RPC canônica. remaining_net = 0
-  //    (chargeback perdido zera a fatia do produtor), status final 'forfeited'.
-  //    A RPC cancela o débito de segregação e não emite crédito de liberação,
-  //    de modo que nem cria nem destrói centavos. security_reserves não é
-  //    tocada (congelada; histórico preservado).
-  {
-    const { data: cbReserve, error: cbReserveErr } = await supabase.rpc("reverse_reserve_entry", {
-      p_order_id: paymentRecord.order_id,
-      p_remaining_net_cents: 0,
-      p_reason: "chargeback_lost",
-      p_final_status: "forfeited",
-    });
-    if (cbReserveErr) {
-      console.error("[webhook-asaas][ALERTA] reverse_reserve_entry (chargeback) falhou:", JSON.stringify(cbReserveErr));
-      throw new Error(`reverse_reserve_entry falhou: ${cbReserveErr.message || JSON.stringify(cbReserveErr)}`);
+    const creatorBalance = balanceData?.[0]?.available_balance || 0;
+    if (creatorBalance < 0) {
+      await supabase.from("payout_requests").update({
+        status: "failed",
+        failed_reason: "Saldo negativo por chargeback — payout bloqueado",
+        processed_at: new Date().toISOString(),
+      }).eq("workspace_id", paymentRecord.workspace_id).in("status", ["requested", "processing"]);
     }
-    console.log("[webhook-asaas] reverse_reserve_entry (chargeback):", JSON.stringify(cbReserve));
-  }
 
-  // 5b. Update transaction to disputed
-  await supabase.from("transactions").update({
-    status: "disputed",
-  }).eq("order_id", paymentRecord.order_id);
-
-  // 6. Ledger reversal — wallet_ledger em CENTAVOS, paymentData.value em REAIS.
-  const chargebackCents = Math.round(Number(chargebackAmount || 0) * 100);
-  await supabase.from("wallet_ledger").update({ status: "canceled" })
-    .eq("order_id", paymentRecord.order_id).eq("type", "sale");
-  const { data: existingCbLedger } = await supabase
-    .from("wallet_ledger")
-    .select("id")
-    .eq("order_id", paymentRecord.order_id)
-    .eq("type", "chargeback")
-    .maybeSingle();
-  if (!existingCbLedger) {
-    const { error: cbLedgerErr } = await supabase.from("wallet_ledger").insert({
-      workspace_id: paymentRecord.workspace_id,
-      order_id: paymentRecord.order_id,
-      type: "chargeback",
-      amount: -chargebackCents,
-      status: "settled",
-      description: `Chargeback #${paymentRecord.order_id.slice(0, 8)}`,
+    const { data: riskData } = await supabase.rpc("calculate_payout_risk", {
+      p_workspace_id: paymentRecord.workspace_id,
     });
-    if (cbLedgerErr) console.error("[webhook-asaas] falha ao lançar chargeback no ledger:", cbLedgerErr);
+    riskScore = riskData?.[0]?.risk_score || 0;
+    if (riskScore >= 40) {
+      await supabase.from("reserve_policies").upsert({
+        workspace_id: paymentRecord.workspace_id,
+        reserve_percent: Math.min(20 + Math.floor(riskScore / 10), 50),
+        release_window_days: 60,
+        auto_adjust_by_risk: true,
+      }, { onConflict: "workspace_id" });
+    }
+  } catch (e) {
+    console.error("[webhook-asaas] pós-chargeback (risco/payout) falhou (non-fatal):", e);
   }
 
-  // 7. Check if creator balance went negative → block payouts
-  const { data: balanceData } = await supabase.rpc("get_creator_balance", {
-    p_workspace_id: paymentRecord.workspace_id,
-  });
-  const creatorBalance = balanceData?.[0]?.available_balance || 0;
-  if (creatorBalance < 0) {
-    // Block all pending payouts for this workspace
-    await supabase.from("payout_requests").update({
-      status: "failed",
-      failed_reason: "Saldo negativo por chargeback — payout bloqueado",
-      processed_at: new Date().toISOString(),
-    }).eq("workspace_id", paymentRecord.workspace_id).in("status", ["requested", "processing"]);
-  }
-
-  // 8. Auto-increase reserve for high-risk workspaces
-  const { data: riskData } = await supabase.rpc("calculate_payout_risk", {
-    p_workspace_id: paymentRecord.workspace_id,
-  });
-  const riskScore = riskData?.[0]?.risk_score || 0;
-  if (riskScore >= 40) {
-    // Increase reserve to 20% and extend window to 60 days
-    await supabase.from("reserve_policies").upsert({
-      workspace_id: paymentRecord.workspace_id,
-      reserve_percent: Math.min(20 + Math.floor(riskScore / 10), 50),
-      release_window_days: 60,
-      auto_adjust_by_risk: true,
-    }, { onConflict: "workspace_id" });
-  }
-
-  // 9. Send Telegram alert
+  // Alerta Telegram.
   try {
     const telegramKey = Deno.env.get("TELEGRAM_API_KEY");
     const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
     if (telegramKey && chatId) {
-      const msg = `🚨 CHARGEBACK\nWorkspace: ${paymentRecord.workspace_id.slice(0, 8)}\nOrder: ${paymentRecord.order_id.slice(0, 8)}\nValor: R$ ${Number(chargebackAmount).toFixed(2)}\nRisk Score: ${riskScore}`;
+      const msg = `🚨 CHARGEBACK\nWorkspace: ${paymentRecord.workspace_id.slice(0, 8)}\nOrder: ${paymentRecord.order_id.slice(0, 8)}\nValor: R$ ${chargebackAmount.toFixed(2)}\nRisk Score: ${riskScore}`;
       await fetch(`https://api.telegram.org/bot${telegramKey}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -712,7 +686,7 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     console.error("Telegram alert error (non-fatal):", e);
   }
 
-  // 10. Notify creator
+  // Notificação ao criador.
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -727,9 +701,10 @@ async function handleChargeback(supabase: any, paymentRecord: any, paymentData: 
     });
   } catch (e) { console.error("Notify creator error (non-fatal):", e); }
 
-  console.log(`Asaas: Chargeback case created for order ${paymentRecord.order_id}`);
+  console.log(`Asaas: chargeback ${core.outcome} para pedido ${paymentRecord.order_id} (case ${caseId})`);
   return "DISPUTED";
 }
+
 
 async function handleCanceled(supabase: any, paymentRecord: any): Promise<string> {
   if (!paymentRecord) return "NOT_FOUND";
