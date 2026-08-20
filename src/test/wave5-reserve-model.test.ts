@@ -209,13 +209,15 @@ describe("QA-4A-V5 — refund antes e depois do release", () => {
     expect(b.pending).toBe(NET - RES - 3000);
   });
 
-  it("refunds.ts recalcula a reserva pelo líquido remanescente (fail-closed)", () => {
-    expect(refunds).toMatch(/reverse_reserve_entry/);
-    expect(refunds).toMatch(/p_remaining_net_cents/);
-    expect(refunds).toMatch(/refund_partial/);
-    expect(refunds).toMatch(/refund_total/);
-    expect(refunds).toMatch(/throw new Error\(`reverse_reserve_entry falhou/);
+  it("refunds.ts delega a reserva à RPC atômica de reembolso (V6.1)", () => {
+    // O recálculo pelo líquido remanescente continua existindo, porém DENTRO de
+    // process_refund_increment (mesmo commit). O módulo não chama mais a RPC
+    // de reserva separadamente.
+    expect(refunds).toMatch(/process_refund_increment/);
+    expect(refunds).not.toMatch(/reverse_reserve_entry/);
+    expect(refunds).toMatch(/reserve_adjustment/);
   });
+
 });
 
 // ───────────────────────── 5. Chargeback perdido e ganho ─────────────────────────
@@ -247,11 +249,13 @@ describe("QA-4A-V5 — chargeback", () => {
     expect(sql).toMatch(/'RESTORED'/);
   });
 
-  it("webhook usa a RPC de reversão em vez de UPDATE manual", () => {
-    expect(webhook).toMatch(/reverse_reserve_entry/);
-    expect(webhook).toMatch(/chargeback_lost/);
+  it("webhook usa a RPC atômica de chargeback em vez de multi-write", () => {
+    expect(webhook).toMatch(/resolve_chargeback_financials/);
     expect(webhook).not.toMatch(/from\("security_reserves"\)\.update/);
+    // O núcleo financeiro (incluindo chargeback_lost) vive no banco.
+    expect(webhook).not.toMatch(/rpc\("reverse_reserve_entry"/);
   });
+
 });
 
 // ───────────────────────── 6. Ordem dos eventos / idempotência ─────────────────────────

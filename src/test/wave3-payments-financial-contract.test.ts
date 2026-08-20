@@ -211,10 +211,13 @@ describe("Onda 3 / FI — webhook Asaas: autenticidade, idempotência e retry", 
   });
 
   it("refund e chargeback cancelam comissões e confiscam reserva", () => {
-    expect(webhookAsaas).toContain("cancelOrderCommissions");
-    expect(webhookAsaas).toContain('status: "forfeited"');
+    // QA-4A-V6.1: comissões e confisco da reserva passaram para dentro das RPCs
+    // atômicas (process_refund_increment / resolve_chargeback_financials).
+    expect(webhookAsaas).toContain("resolve_chargeback_financials");
     expect(webhookAsaas).toContain("cancel_referral_commissions_for_payment");
+    expect(webhookAsaas).not.toContain('status: "forfeited"');
   });
+
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -488,11 +491,13 @@ describe("Onda 3 / FI — reembolso parcial não dobra o débito", () => {
     expect(refundsModule).toContain("process_refund_increment");
     expect(refundsModule).not.toContain('from("wallet_ledger")');
     expect(refundsModule).not.toContain('from("entitlements")');
-    // Leitura de split_entries é permitida (necessária para recalcular a
-    // reserva canônica pelo creator_net remanescente); ESCRITA continua proibida.
-    expect(refundsModule).not.toMatch(/from\("split_entries"\)[\s\S]{0,120}\.(update|insert|upsert|delete)\(/);
-    expect(refundsModule).toContain("reverse_reserve_entry");
+    expect(refundsModule).not.toMatch(/from\("split_entries"\)/);
+    // QA-4A-V6.1: a reserva é revertida DENTRO de process_refund_increment.
+    // Nenhuma segunda RPC de reserva pode existir aqui (era o P0 de atomicidade).
+    expect(refundsModule).not.toContain("reverse_reserve_entry");
+    expect(refundsModule).toContain("reserve_adjustment");
   });
+
 
   it("valor devolvido vem sempre de refunds[], nunca do valor da cobrança", () => {
     expect(refundsModule).toContain("Array.isArray(paymentData?.refunds)");

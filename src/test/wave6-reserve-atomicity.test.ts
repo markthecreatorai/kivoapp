@@ -273,8 +273,12 @@ describe("QA-4A-V6 — chargeback", () => {
     const v5 = readFileSync("supabase/migrations/20260811100000_wave5_reserve_model_canonical.sql", "utf-8");
     expect(v5).toMatch(/restore_reserve_entry/);
     expect(v5).toMatch(/amount = COALESCE\(original_amount, amount\)/);
-    expect(webhook).toMatch(/reverse_reserve_entry/);
+    // V6.1: a reversão de chargeback vive dentro de resolve_chargeback_financials.
+    const v61 = readFileSync("supabase/migrations/20260811120000_wave61_refund_chargeback_atomic.sql", "utf-8");
+    expect(v61).toMatch(/reverse_reserve_entry/);
+    expect(webhook).toMatch(/resolve_chargeback_financials/);
   });
+
 
   it("release durante chargeback ativo prorroga em vez de liberar", () => {
     const v5 = readFileSync("supabase/migrations/20260811100000_wave5_reserve_model_canonical.sql", "utf-8");
@@ -298,10 +302,13 @@ describe("QA-4A-V6 — replay/idempotência", () => {
     expect(sql).toMatch(/WHEN v_target > 0 AND v_delta = 0 THEN 'ALREADY_PROCESSED'/);
   });
 
-  it("refunds.ts continua recalculando pelo líquido remanescente", () => {
-    expect(refunds).toMatch(/reverse_reserve_entry/);
-    expect(refunds).toMatch(/p_remaining_net_cents/);
+  it("refunds.ts delega o recálculo do líquido remanescente à RPC (V6.1)", () => {
+    expect(refunds).toMatch(/process_refund_increment/);
+    expect(refunds).not.toMatch(/reverse_reserve_entry/);
+    const v61 = readFileSync("supabase/migrations/20260811120000_wave61_refund_chargeback_atomic.sql", "utf-8");
+    expect(v61).toMatch(/p_remaining_net_cents/);
   });
+
 });
 
 // ───────────── 9. Isolamento por workspace / IDOR ─────────────
