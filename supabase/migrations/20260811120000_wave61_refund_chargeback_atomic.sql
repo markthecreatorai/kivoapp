@@ -513,12 +513,15 @@ BEGIN
   END IF;
 
   -- ── Idempotência: o case é a chave. Insert perdido = replay. ──
+  -- UNIDADES (V6.3): p_amount_cents está em CENTAVOS (integer).
+  -- public.chargeback_cases.amount e .financial_impact são REAIS (numeric),
+  -- igual ao restante do schema legado → ambos gravam p_amount_cents / 100.
   INSERT INTO public.chargeback_cases (
     workspace_id, order_id, payment_id, gateway_dispute_id, amount, reason,
     status, sla_deadline_at, financial_impact
   ) VALUES (
     v_order.workspace_id, p_order_id, p_payment_id, p_gateway_dispute_id,
-    p_amount_cents, COALESCE(p_reason, 'Chargeback'),
+    p_amount_cents::numeric / 100, COALESCE(p_reason, 'Chargeback'),
     'new', now() + (p_sla_days::text || ' days')::interval,
     p_amount_cents::numeric / 100
   )
@@ -541,7 +544,8 @@ BEGIN
     IF v_existing_case.order_id IS DISTINCT FROM p_order_id
        OR v_existing_case.payment_id IS DISTINCT FROM p_payment_id
        OR v_existing_case.workspace_id IS DISTINCT FROM v_order.workspace_id
-       OR v_existing_case.amount IS DISTINCT FROM p_amount_cents::bigint THEN
+       -- amount persistido está em REAIS: converte para CENTAVOS antes de comparar.
+       OR round(v_existing_case.amount * 100)::bigint IS DISTINCT FROM p_amount_cents::bigint THEN
       RAISE EXCEPTION
         'CHARGEBACK: DISPUTE_CORRELATION_MISMATCH disputa % (order/payment/workspace/amount divergente)',
         p_gateway_dispute_id USING ERRCODE = '22023';
@@ -634,4 +638,4 @@ REVOKE ALL ON FUNCTION public.resolve_chargeback_financials(uuid, uuid, text, in
 GRANT EXECUTE ON FUNCTION public.resolve_chargeback_financials(uuid, uuid, text, integer, text, integer) TO service_role;
 
 COMMENT ON FUNCTION public.resolve_chargeback_financials(uuid, uuid, text, integer, text, integer) IS
-  'QA-4A-V6.2: nucleo financeiro do chargeback em UMA transacao; replay exige correlacao exata de dispute/order/payment/workspace/amount, valor deve coincidir com payments.amount e SLA deve estar entre 1 e 30 dias. Debita apenas creator_net por cancelamento da venda; nunca o bruto. Exclusiva do service_role.';
+  'QA-4A-V6.3: nucleo financeiro do chargeback em UMA transacao; replay exige correlacao exata de dispute/order/payment/workspace/amount, valor deve coincidir com payments.amount (comparacao sempre em centavos; chargeback_cases.amount/financial_impact persistidos em reais) e SLA deve estar entre 1 e 30 dias. Debita apenas creator_net por cancelamento da venda; nunca o bruto. Exclusiva do service_role.';
