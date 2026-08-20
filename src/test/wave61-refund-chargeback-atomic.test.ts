@@ -249,6 +249,6 @@ describe("QA-4A-V6.3 — chargeback_cases em REAIS, comparação em CENTAVOS", (
 
   it("nunca compara reais diretamente com centavos", () => {
     expect(correlates(123.45, 12345)).toBe(true);
-    expect(123.45 === 12345).toBe(false);
+    expect(Object.is(123.45 as number, 12345 as number)).toBe(false);
   });
 });
