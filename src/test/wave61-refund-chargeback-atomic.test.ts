@@ -76,7 +76,8 @@ describe("QA-4A-V6.1 — chargeback atômico", () => {
     expect(code).toMatch(/v_existing_case\.order_id IS DISTINCT FROM p_order_id/);
     expect(code).toMatch(/v_existing_case\.payment_id IS DISTINCT FROM p_payment_id/);
     expect(code).toMatch(/v_existing_case\.workspace_id IS DISTINCT FROM v_order\.workspace_id/);
-    expect(code).toMatch(/v_existing_case\.amount IS DISTINCT FROM p_amount_cents::bigint/);
+    expect(code).toMatch(/round\(v_existing_case\.amount \* 100\)::bigint IS DISTINCT FROM p_amount_cents::bigint/);
+    expect(code).not.toMatch(/v_existing_case\.amount IS DISTINCT FROM p_amount_cents/);
     expect(code).toMatch(/DISPUTE_CORRELATION_MISMATCH/);
     expect(code).toMatch(/v_case_id := v_existing_case\.id/);
   });
