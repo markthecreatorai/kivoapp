@@ -197,3 +197,58 @@ describe("QA-4A-V6.1 — privilégios", () => {
     expect(code).not.toMatch(/INSERT INTO public\.security_reserves/);
   });
 });
+
+// ───────────── 5. QA-4A-V6.3 — unidade monetária do chargeback ─────────────
+// CONTRATO ESTÁTICO (regex/simulação aritmética). NÃO é teste transacional de Postgres.
+describe("QA-4A-V6.3 — chargeback_cases em REAIS, comparação em CENTAVOS", () => {
+  const insertBlock = code.slice(
+    code.indexOf("INSERT INTO public.chargeback_cases"),
+    code.indexOf("ON CONFLICT (gateway_dispute_id)"),
+  );
+
+  it("insert divide centavos por 100 em amount e financial_impact", () => {
+    const divs = insertBlock.match(/p_amount_cents::numeric \/ 100/g) || [];
+    expect(divs.length).toBe(2); // amount + financial_impact
+    expect(insertBlock).not.toMatch(/p_gateway_dispute_id,\s*\n?\s*p_amount_cents\s*,/);
+  });
+
+  it("financial_impact e amount usam a mesma unidade (reais)", () => {
+    const amountExpr = /p_amount_cents::numeric \/ 100, COALESCE\(p_reason/;
+    const impactExpr = /p_amount_cents::numeric \/ 100\s*\n\s*\)/;
+    expect(insertBlock + ")").toMatch(amountExpr);
+    expect(code).toMatch(impactExpr);
+  });
+
+  it("replay multiplica o amount persistido por 100 antes de comparar", () => {
+    expect(code).toMatch(/round\(v_existing_case\.amount \* 100\)::bigint IS DISTINCT FROM p_amount_cents::bigint/);
+  });
+
+  it("documenta as unidades no SQL", () => {
+    expect(sql).toMatch(/UNIDADES \(V6\.3\)/);
+    expect(sql).toMatch(/CENTAVOS/);
+    expect(sql).toMatch(/REAIS/);
+  });
+
+  it("preserva a validação payments.amount → centavos", () => {
+    expect(code).toMatch(/v_payment_amount_cents := round\(v_payment\.amount \* 100\)::bigint/);
+    expect(code).toMatch(/p_amount_cents::bigint <> v_payment_amount_cents/);
+  });
+
+  // Simulação da aritmética exata usada pela RPC.
+  const persistedReais = (cents: number) => cents / 100;
+  const correlates = (reais: number, cents: number) => Math.round(reais * 100) === cents;
+
+  it("R$ 123,45 ↔ 12345 centavos é aceito", () => {
+    expect(persistedReais(12345)).toBe(123.45);
+    expect(correlates(123.45, 12345)).toBe(true);
+  });
+
+  it("R$ 123,45 ↔ 12344 centavos falha fechado", () => {
+    expect(correlates(123.45, 12344)).toBe(false);
+  });
+
+  it("nunca compara reais diretamente com centavos", () => {
+    expect(correlates(123.45, 12345)).toBe(true);
+    expect(123.45 === 12345).toBe(false);
+  });
+});

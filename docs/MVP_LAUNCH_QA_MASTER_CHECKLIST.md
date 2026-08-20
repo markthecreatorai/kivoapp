@@ -1690,3 +1690,21 @@ Pendências honestas (NÃO executadas nesta rodada):
 - **Limitação:** E2E em banco e concorrência transacional real continuam
   **NÃO PROVADOS**. A decisão externa de clawback de `bruto − creator_net`
   permanece aberta e nenhum débito adicional foi introduzido.
+
+### 31.11 — QA-4A-V6.3: unidade monetária do chargeback (CONTRATO ESTÁTICO)
+
+- **V6.2 REPROVADO nesta revisão:** gravava `chargeback_cases.amount = p_amount_cents`
+  (centavos) num campo cujo schema/versionamento é em REAIS, inflando o valor em
+  100x e quebrando o replay de casos já persistidos em reais; a correlação
+  comparava `v_existing_case.amount` (reais) direto com centavos.
+- **V6.3 corrige a unidade:** `chargeback_cases.amount` e `financial_impact`
+  passam a gravar `p_amount_cents::numeric / 100` (REAIS), e a correlação de
+  replay compara `round(v_existing_case.amount * 100)::bigint` com
+  `p_amount_cents::bigint` (CENTAVOS). Comentário de unidades adicionado no SQL.
+- Preservada a validação sem tolerância de `p_amount_cents` contra
+  `round(payments.amount * 100)`; refund, settlement, clawback e demais funções
+  não foram alterados.
+- Testes desta onda são **CONTRATO ESTÁTICO** (regex sobre SQL/Edge + simulação
+  aritmética). **E2E Postgres e concorrência real seguem NÃO PROVADOS.**
+- Decisão externa de clawback de `bruto − creator_net` permanece **aberta**.
+- Nenhum deploy, migration aplicada, chamada externa ou movimentação real.
