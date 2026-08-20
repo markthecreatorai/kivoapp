@@ -302,10 +302,13 @@ describe("QA-4A-V6 — replay/idempotência", () => {
     expect(sql).toMatch(/WHEN v_target > 0 AND v_delta = 0 THEN 'ALREADY_PROCESSED'/);
   });
 
-  it("refunds.ts continua recalculando pelo líquido remanescente", () => {
-    expect(refunds).toMatch(/reverse_reserve_entry/);
-    expect(refunds).toMatch(/p_remaining_net_cents/);
+  it("refunds.ts delega o recálculo do líquido remanescente à RPC (V6.1)", () => {
+    expect(refunds).toMatch(/process_refund_increment/);
+    expect(refunds).not.toMatch(/reverse_reserve_entry/);
+    const v61 = readFileSync("supabase/migrations/20260811120000_wave61_refund_chargeback_atomic.sql", "utf-8");
+    expect(v61).toMatch(/p_remaining_net_cents/);
   });
+
 });
 
 // ───────────── 9. Isolamento por workspace / IDOR ─────────────
