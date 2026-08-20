@@ -42,6 +42,15 @@ describe("QA-4A-V6.1 — refund atômico", () => {
     expect(code).toMatch(/refund_total_replay/);
   });
 
+  it("replay-only passa pela RPC no Edge e não depende de leitura de refunds", () => {
+    expect(refunds).not.toMatch(/\.from\("refunds"\)/);
+    expect(refunds).not.toMatch(/pending\.length\s*===\s*0/);
+    expect(refunds).toMatch(/for \(const item of items\)[\s\S]*rpc\("process_refund_increment"/);
+    expect(refunds).toContain('outcome === "duplicate"');
+    expect(refunds).toContain('"REFUND_REPAIRED"');
+    expect(refunds).toContain('"REFUND_REPLAY"');
+  });
+
   it("teto do reembolso vem do banco, nunca do payload", () => {
     expect(code).toMatch(/cobranca divergente: payload=% banco=%/);
     expect(code).toMatch(/over-refund no pedido/);
