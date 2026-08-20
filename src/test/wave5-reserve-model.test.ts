@@ -209,13 +209,15 @@ describe("QA-4A-V5 — refund antes e depois do release", () => {
     expect(b.pending).toBe(NET - RES - 3000);
   });
 
-  it("refunds.ts recalcula a reserva pelo líquido remanescente (fail-closed)", () => {
-    expect(refunds).toMatch(/reverse_reserve_entry/);
-    expect(refunds).toMatch(/p_remaining_net_cents/);
-    expect(refunds).toMatch(/refund_partial/);
-    expect(refunds).toMatch(/refund_total/);
-    expect(refunds).toMatch(/throw new Error\(`reverse_reserve_entry falhou/);
+  it("refunds.ts delega a reserva à RPC atômica de reembolso (V6.1)", () => {
+    // O recálculo pelo líquido remanescente continua existindo, porém DENTRO de
+    // process_refund_increment (mesmo commit). O módulo não chama mais a RPC
+    // de reserva separadamente.
+    expect(refunds).toMatch(/process_refund_increment/);
+    expect(refunds).not.toMatch(/reverse_reserve_entry/);
+    expect(refunds).toMatch(/reserve_adjustment/);
   });
+
 });
 
 // ───────────────────────── 5. Chargeback perdido e ganho ─────────────────────────
