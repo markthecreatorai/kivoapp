@@ -92,10 +92,13 @@ export async function handleRefundCompleted(
   let isTotal = false;
   let accumulated = 0;
 
-  // Um RPC por reembolso novo: cada chamada é uma transação que faz auditoria +
-  // reversão proporcional + fechamento. Erro em qualquer uma propaga, o webhook
-  // devolve 500 e NÃO é marcado PROCESSED — os já aplicados permanecem, e o
-  // reenvio do Asaas os reconhece como conhecidos (sem duplicar).
+  // QA-4A-V6.1 — UMA transação por reembolso novo.
+  // process_refund_increment agora faz auditoria + reversão proporcional do
+  // split/comissões + débito no ledger + REVERSÃO CUMULATIVA DA RESERVA no
+  // MESMO commit. Antes eram duas RPCs: se a segunda falhasse, o débito de
+  // segregação ficava sem crédito de compensação e o reenvio do Asaas caía em
+  // REFUND_REPLAY sem nunca reparar. Agora qualquer falha faz rollback integral
+  // e o replay reexecuta a reversão (monotônica) até convergir.
   for (const item of pending) {
     const { data, error } = await supabase.rpc("process_refund_increment", {
       p_order_id: paymentRecord.order_id,
@@ -110,42 +113,19 @@ export async function handleRefundCompleted(
     const result = (data || {}) as Record<string, unknown>;
     isTotal = Boolean(result.refund_total);
     accumulated = Number(result.accumulated_cents || 0);
+
+    // A reserva vem no MESMO retorno: não há segunda chamada a fazer aqui.
+    // O crédito emitido COMPENSA o débito de segregação (o débito original
+    // permanece no ledger como trilha — ele não é apagado).
     console.log(
       `Refund ${item.id} (${item.cents} centavos) aplicado no pedido ${paymentRecord.order_id}: ` +
         `outcome=${result.outcome} acumulado=${accumulated}/${chargeCents} total=${isTotal} ` +
-        `estagio=${result.ledger_status} reversao=${JSON.stringify(result.split_reversal ?? {})}`,
-    );
-
-    // Reserva de segurança: process_refund_increment já reduziu
-    // split_entries.creator_net (parcial) ou marcou o split 'refunded' (total).
-    // A reserva é recalculada a partir do creator_net REMANESCENTE, de forma que
-    //     available + reserve = creator_net_remanescente
-    // continue exato após o estorno. Total ⇒ remanescente 0 ⇒ reserva zerada.
-    let remainingNet = 0;
-    if (!isTotal) {
-      const { data: splitAfter } = await supabase
-        .from("split_entries")
-        .select("creator_net, status")
-        .eq("order_id", paymentRecord.order_id)
-        .maybeSingle();
-      remainingNet = splitAfter?.status === "refunded" ? 0 : Number(splitAfter?.creator_net || 0);
-    }
-
-    const { data: reserveAdj, error: reserveAdjErr } = await supabase.rpc("reverse_reserve_entry", {
-      p_order_id: paymentRecord.order_id,
-      p_remaining_net_cents: remainingNet,
-      p_reason: isTotal ? "refund_total" : "refund_partial",
-      p_final_status: "reversed",
-    });
-    if (reserveAdjErr) {
-      // Fail-closed: reserva desalinhada do split criaria/destruiria saldo.
-      throw new Error(`reverse_reserve_entry falhou (${item.id}): ${reserveAdjErr.message}`);
-    }
-    console.log(
-      `Reserva ajustada no pedido ${paymentRecord.order_id}: remaining_net=${remainingNet} ` +
-        `resultado=${JSON.stringify(reserveAdj ?? {})}`,
+        `estagio=${result.ledger_status} reversao=${JSON.stringify(result.split_reversal ?? {})} ` +
+        `reserva=${JSON.stringify(result.reserve_adjustment ?? {})} ` +
+        `remaining_net=${result.remaining_net_cents}`,
     );
   }
 
   return isTotal ? "REFUNDED" : "PARTIALLY_REFUNDED";
 }
+
