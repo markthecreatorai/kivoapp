@@ -71,6 +71,23 @@ describe("QA-4A-V6.1 — chargeback atômico", () => {
     expect(code).toMatch(/gateway_dispute_id obrigatorio para idempotencia/);
   });
 
+  it("replay idêntico converge e colisão divergente falha fechado", () => {
+    expect(code).toMatch(/SELECT \* INTO v_existing_case[\s\S]*FOR UPDATE/);
+    expect(code).toMatch(/v_existing_case\.order_id IS DISTINCT FROM p_order_id/);
+    expect(code).toMatch(/v_existing_case\.payment_id IS DISTINCT FROM p_payment_id/);
+    expect(code).toMatch(/v_existing_case\.workspace_id IS DISTINCT FROM v_order\.workspace_id/);
+    expect(code).toMatch(/v_existing_case\.amount IS DISTINCT FROM p_amount_cents::bigint/);
+    expect(code).toMatch(/DISPUTE_CORRELATION_MISMATCH/);
+    expect(code).toMatch(/v_case_id := v_existing_case\.id/);
+  });
+
+  it("valor deve ser idêntico ao payment persistido e SLA é limitado", () => {
+    expect(code).toMatch(/v_payment_amount_cents := round\(v_payment\.amount \* 100\)::bigint/);
+    expect(code).toMatch(/p_amount_cents::bigint <> v_payment_amount_cents/);
+    expect(code).toMatch(/valor divergente: payload=% banco=% centavos/);
+    expect(code).toMatch(/p_sla_days IS NULL OR p_sla_days <= 0 OR p_sla_days > 30/);
+  });
+
   it("aborta a aplicação se houver duplicidade pré-existente", () => {
     expect(code).toMatch(/ABORTADO: public\.chargeback_cases possui gateway_dispute_id duplicado/);
   });
