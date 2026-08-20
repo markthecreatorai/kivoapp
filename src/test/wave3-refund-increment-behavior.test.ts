@@ -99,8 +99,7 @@ function makeClient(opts: {
     },
   };
 
-  // rpcCalls expõe SOMENTE os incrementos de reembolso; o recálculo canônico da
-  // reserva (reverse_reserve_entry, QA-4A-V5) é inspecionado por reserveCalls.
+  // rpcCalls expõe SOMENTE os incrementos de reembolso.
   const incrementCalls = new Proxy([] as any[], {
     get(_t, prop) {
       const list = rpcCalls.filter((c) => c.name === "process_refund_increment");
@@ -192,7 +191,7 @@ describe("Onda 3 / FI-REFUND — parciais incrementais por ID de gateway", () =>
     });
   });
 
-  it("segundo parcial com array cumulativo aplica só o ID novo", async () => {
+  it("segundo parcial com array cumulativo envia replay e ID novo ao Postgres", async () => {
     const { client, rpcCalls } = makeClient({
       chargeCents: 19990,
       persisted: [{ gateway_refund_id: "rf1", cents: 5000 }],
@@ -204,8 +203,8 @@ describe("Onda 3 / FI-REFUND — parciais incrementais por ID de gateway", () =>
       "PAYMENT_PARTIALLY_REFUNDED",
     );
     expect(out).toBe("PARTIALLY_REFUNDED");
-    expect(rpcCalls.map((c) => c.p_gateway_refund_id)).toEqual(["rf2"]);
-    expect(rpcCalls[0].p_amount_cents).toBe(3000);
+    expect(rpcCalls.map((c) => c.p_gateway_refund_id)).toEqual(["rf1", "rf2"]);
+    expect(rpcCalls[1].p_amount_cents).toBe(3000);
   });
 
   it("nunca usa o primeiro ID como representante do array inteiro", async () => {
@@ -237,7 +236,7 @@ describe("Onda 3 / FI-REFUND — parciais incrementais por ID de gateway", () =>
     expect(persisted.reduce((s, p) => s + p.cents, 0)).toBe(6500);
   });
 
-  it("replay do mesmo evento não gera nenhum incremento", async () => {
+  it("replay-only do mesmo evento ainda chama a RPC para convergir", async () => {
     const { client, rpcCalls } = makeClient({
       chargeCents: 19990,
       persisted: [{ gateway_refund_id: "rf1", cents: 5000 }],
@@ -249,7 +248,8 @@ describe("Onda 3 / FI-REFUND — parciais incrementais por ID de gateway", () =>
       "PAYMENT_PARTIALLY_REFUNDED",
     );
     expect(out).toBe("REFUND_REPLAY");
-    expect(rpcCalls).toEqual([]);
+    expect(rpcCalls).toHaveLength(1);
+    expect(rpcCalls[0].p_gateway_refund_id).toBe("rf1");
   });
 
   it("parcial → total: o último incremento fecha o pedido como REFUNDED", async () => {
@@ -264,7 +264,7 @@ describe("Onda 3 / FI-REFUND — parciais incrementais por ID de gateway", () =>
       "PAYMENT_REFUNDED",
     );
     expect(out).toBe("REFUNDED");
-    expect(rpcCalls.map((c) => c.p_gateway_refund_id)).toEqual(["rf2"]);
+    expect(rpcCalls.map((c) => c.p_gateway_refund_id)).toEqual(["rf1", "rf2"]);
   });
 
   it("evento fora de ordem (total chegando antes do parcial já persistido) não duplica", async () => {
@@ -282,7 +282,7 @@ describe("Onda 3 / FI-REFUND — parciais incrementais por ID de gateway", () =>
       "PAYMENT_PARTIALLY_REFUNDED",
     );
     expect(out).toBe("REFUND_REPLAY");
-    expect(rpcCalls).toEqual([]);
+    expect(rpcCalls.map((c) => c.p_gateway_refund_id)).toEqual(["rf1"]);
   });
 
   it("soma final fecha centavo a centavo com a cobrança", async () => {
@@ -341,12 +341,10 @@ describe("Onda 3 / FI-REFUND — fail-closed em payload ambíguo", () => {
     ).rejects.toThrow(/valor de cobrança ausente/);
   });
 
-  it("falha ao ler refunds persistidos aborta (não assume histórico vazio)", async () => {
+  it("não lê refunds no Edge para decidir idempotência", async () => {
     const { client, rpcCalls } = makeClient({ chargeCents: 19990, loadError: "boom" });
-    await expect(
-      handleRefundCompleted(client, paymentRecord, payload([done("rf1", 50)]), "PAYMENT_REFUNDED"),
-    ).rejects.toThrow(/refunds load failed/);
-    expect(rpcCalls).toEqual([]);
+    await handleRefundCompleted(client, paymentRecord, payload([done("rf1", 50)]), "PAYMENT_REFUNDED");
+    expect(rpcCalls).toHaveLength(1);
   });
 });
 
@@ -397,7 +395,7 @@ describe("Onda 3 / FI-REFUND — over-refund e falha intermediária", () => {
       "PAYMENT_PARTIALLY_REFUNDED",
     );
     expect(out).toBe("PARTIALLY_REFUNDED");
-    expect(rpcCalls.map((c) => c.p_gateway_refund_id)).toEqual(["rf2"]);
+    expect(rpcCalls.map((c) => c.p_gateway_refund_id)).toEqual(["rf1", "rf2"]);
     expect(persisted.reduce((s, p) => s + p.cents, 0)).toBe(10000);
   });
 

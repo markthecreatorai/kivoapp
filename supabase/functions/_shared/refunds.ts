@@ -14,8 +14,8 @@
 //
 // Cada item de `refunds[]` é um reembolso próprio, com id e valor. O array é
 // CUMULATIVO: um segundo parcial reenvia o primeiro. Por isso processamos por
-// ID de gateway, um a um, comparando com o que já está persistido — nunca
-// usando o primeiro id como representante do array nem somando o array inteiro.
+// ID de gateway, um a um. Inclusive IDs repetidos passam pela RPC: somente o
+// Postgres decide se o item é novo, replay convergido ou replay reparado.
 
 export type RefundItem = { id: string; cents: number };
 
@@ -71,35 +71,22 @@ export async function handleRefundCompleted(
 
   const items = parseRefundItems(paymentData, eventType);
 
-  // O que já foi confirmado antes deste evento (array cumulativo / replay).
-  const { data: persisted, error: persistedErr } = await supabase
-    .from("refunds")
-    .select("gateway_refund_id")
-    .eq("order_id", paymentRecord.order_id)
-    .eq("status", "PROCESSED");
-  if (persistedErr) throw new Error(`refunds load failed: ${persistedErr.message}`);
-
-  const known = new Set(
-    (persisted || []).map((r: any) => String(r.gateway_refund_id || "")).filter(Boolean),
-  );
-
-  const pending = items.filter((i) => !known.has(i.id));
-  if (pending.length === 0) {
-    console.log(`Nenhum reembolso novo em ${eventType} para pedido ${paymentRecord.order_id} (replay)`);
-    return "REFUND_REPLAY";
-  }
-
   let isTotal = false;
   let accumulated = 0;
+  let appliedCount = 0;
+  let duplicateCount = 0;
+  let repairedCount = 0;
 
-  // QA-4A-V6.1 — UMA transação por reembolso novo.
+  // QA-4A-V6.2 — UMA transação por item estruturalmente válido, inclusive
+  // replay. Não existe leitura/filtragem cliente de refunds: a restrição única
+  // e process_refund_increment são a fonte de verdade da idempotência.
   // process_refund_increment agora faz auditoria + reversão proporcional do
   // split/comissões + débito no ledger + REVERSÃO CUMULATIVA DA RESERVA no
   // MESMO commit. Antes eram duas RPCs: se a segunda falhasse, o débito de
   // segregação ficava sem crédito de compensação e o reenvio do Asaas caía em
   // REFUND_REPLAY sem nunca reparar. Agora qualquer falha faz rollback integral
   // e o replay reexecuta a reversão (monotônica) até convergir.
-  for (const item of pending) {
+  for (const item of items) {
     const { data, error } = await supabase.rpc("process_refund_increment", {
       p_order_id: paymentRecord.order_id,
       p_payment_id: paymentRecord.id,
@@ -113,6 +100,19 @@ export async function handleRefundCompleted(
     const result = (data || {}) as Record<string, unknown>;
     isTotal = Boolean(result.refund_total);
     accumulated = Number(result.accumulated_cents || 0);
+    const outcome = String(result.outcome || "");
+    const reserveOutcome = String(
+      (result.reserve_adjustment as Record<string, unknown> | undefined)?.outcome || "",
+    ).toUpperCase();
+
+    if (outcome === "applied") {
+      appliedCount += 1;
+    } else if (outcome === "duplicate") {
+      duplicateCount += 1;
+      if (["REDUCED", "REVERSED", "FORFEITED"].includes(reserveOutcome)) repairedCount += 1;
+    } else {
+      throw new Error(`process_refund_increment retornou outcome inválido (${item.id}): ${outcome || "ausente"}`);
+    }
 
     // A reserva vem no MESMO retorno: não há segunda chamada a fazer aqui.
     // O crédito emitido COMPENSA o débito de segregação (o débito original
@@ -126,6 +126,9 @@ export async function handleRefundCompleted(
     );
   }
 
+  if (appliedCount === 0 && duplicateCount > 0) {
+    return repairedCount > 0 ? "REFUND_REPAIRED" : "REFUND_REPLAY";
+  }
   return isTotal ? "REFUNDED" : "PARTIALLY_REFUNDED";
 }
 

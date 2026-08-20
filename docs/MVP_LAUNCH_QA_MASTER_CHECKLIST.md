@@ -1662,3 +1662,31 @@ Pendências honestas (NÃO executadas nesta rodada):
 - Deploy das Edge Functions `webhook-asaas` e `post-purchase` pendente.
 - E2E financeiro real (Asaas: pagamento, refund parcial/total, chargeback, saque)
   **NÃO executado** — permanece BLOQUEADO/EXT.
+
+### 31.9 — QA-4A-V6.1: primeira revisão (REPROVADA)
+
+- **Resultado:** REPROVADO por bloqueador P0 no wiring de refund. Embora a RPC
+  `process_refund_increment` tivesse branch de convergência para IDs duplicados,
+  `_shared/refunds.ts` filtrava IDs já persistidos e retornava `REFUND_REPLAY`
+  antes da chamada. O reparo transacional era, portanto, inalcançável em replay real.
+- O chargeback também aceitava colisão de `gateway_dispute_id` sem provar a
+  correlação de `order_id`, `payment_id`, `workspace_id` e valor.
+- As evidências Vitest, regex e simulações desta fase são **CONTRATO ESTÁTICO**;
+  não constituem teste transacional do Postgres nem prova de concorrência real.
+
+### 31.10 — QA-4A-V6.2: correção dos bloqueadores (CONTRATO ESTÁTICO)
+
+- Todo item válido do payload cumulativo, inclusive replay-only, passa por
+  `process_refund_increment`; não há leitura cliente de `refunds` nem early-return
+  para decidir idempotência. O retorno diferencia `REFUND_REPLAY` convergido de
+  `REFUND_REPAIRED`, sem repetir efeitos financeiros.
+- Em colisão de disputa, o case completo é carregado `FOR UPDATE` e o replay só
+  prossegue se order/payment/workspace/amount coincidirem exatamente; divergência
+  levanta `DISPUTE_CORRELATION_MISMATCH` e faz rollback.
+- `p_amount_cents` deve coincidir exatamente com `round(payments.amount * 100)`;
+  não há tolerância. `p_sla_days` é obrigatório no intervalo de 1 a 30 dias.
+- Mantidos `SET search_path=''`, relações/funções qualificadas, `REVOKE` de
+  PUBLIC/anon/authenticated e `GRANT EXECUTE` exclusivo para `service_role`.
+- **Limitação:** E2E em banco e concorrência transacional real continuam
+  **NÃO PROVADOS**. A decisão externa de clawback de `bruto − creator_net`
+  permanece aberta e nenhum débito adicional foi introduzido.

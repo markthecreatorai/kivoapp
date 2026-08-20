@@ -1,5 +1,5 @@
 -- ============================================================================
--- QA-4A-V6.1 — REFUND E CHARGEBACK EM UMA ÚNICA TRANSAÇÃO
+-- QA-4A-V6.1/V6.2 — REFUND E CHARGEBACK EM UMA ÚNICA TRANSAÇÃO
 --
 -- Base: 20260811110000_wave6_reserve_atomicity.sql (pendente de aplicação).
 -- Esta migration NÃO reescreve nenhuma migration aplicada: apenas
@@ -462,8 +462,10 @@ DECLARE
   v_payment  public.payments%ROWTYPE;
   v_split    public.split_entries%ROWTYPE;
   v_sale     public.wallet_ledger%ROWTYPE;
+  v_existing_case public.chargeback_cases%ROWTYPE;
   v_case_id  uuid;
   v_creator_net bigint := 0;
+  v_payment_amount_cents bigint;
   v_reserve  jsonb;
   v_reserve_outcome text;
   v_already  boolean := false;
@@ -479,6 +481,10 @@ BEGIN
   END IF;
   IF p_amount_cents IS NULL OR p_amount_cents <= 0 THEN
     RAISE EXCEPTION 'CHARGEBACK: valor invalido %', p_amount_cents USING ERRCODE = '22023';
+  END IF;
+  IF p_sla_days IS NULL OR p_sla_days <= 0 OR p_sla_days > 30 THEN
+    RAISE EXCEPTION 'CHARGEBACK: SLA invalido % (permitido: 1..30 dias)', p_sla_days
+      USING ERRCODE = '22023';
   END IF;
 
   PERFORM pg_advisory_xact_lock(
@@ -498,6 +504,13 @@ BEGIN
     RAISE EXCEPTION 'CHARGEBACK: OWNERSHIP_MISMATCH pedido % / pagamento %',
       p_order_id, p_payment_id USING ERRCODE = '22023';
   END IF;
+  v_payment_amount_cents := round(v_payment.amount * 100)::bigint;
+  -- Sem tolerância: payments.amount é a fonte persistida do bruto e ambos os
+  -- lados são comparados em centavos inteiros.
+  IF p_amount_cents::bigint <> v_payment_amount_cents THEN
+    RAISE EXCEPTION 'CHARGEBACK: valor divergente: payload=% banco=% centavos',
+      p_amount_cents, v_payment_amount_cents USING ERRCODE = '22023';
+  END IF;
 
   -- ── Idempotência: o case é a chave. Insert perdido = replay. ──
   INSERT INTO public.chargeback_cases (
@@ -505,8 +518,8 @@ BEGIN
     status, sla_deadline_at, financial_impact
   ) VALUES (
     v_order.workspace_id, p_order_id, p_payment_id, p_gateway_dispute_id,
-    p_amount_cents::numeric / 100, COALESCE(p_reason, 'Chargeback'),
-    'new', now() + (COALESCE(p_sla_days, 7)::text || ' days')::interval,
+    p_amount_cents, COALESCE(p_reason, 'Chargeback'),
+    'new', now() + (p_sla_days::text || ' days')::interval,
     p_amount_cents::numeric / 100
   )
   ON CONFLICT (gateway_dispute_id) WHERE gateway_dispute_id IS NOT NULL
@@ -515,8 +528,25 @@ BEGIN
 
   IF v_case_id IS NULL THEN
     v_already := true;
-    SELECT id INTO v_case_id FROM public.chargeback_cases
-     WHERE gateway_dispute_id = p_gateway_dispute_id;
+    SELECT * INTO v_existing_case
+      FROM public.chargeback_cases
+     WHERE gateway_dispute_id = p_gateway_dispute_id
+     FOR UPDATE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'CHARGEBACK: disputa % conflitou mas o caso não foi localizado',
+        p_gateway_dispute_id USING ERRCODE = '55000';
+    END IF;
+    -- V6.2: um dispute ID só é idempotente quando TODOS os vínculos coincidem.
+    -- A exceção aborta a transação antes de qualquer efeito financeiro.
+    IF v_existing_case.order_id IS DISTINCT FROM p_order_id
+       OR v_existing_case.payment_id IS DISTINCT FROM p_payment_id
+       OR v_existing_case.workspace_id IS DISTINCT FROM v_order.workspace_id
+       OR v_existing_case.amount IS DISTINCT FROM p_amount_cents::bigint THEN
+      RAISE EXCEPTION
+        'CHARGEBACK: DISPUTE_CORRELATION_MISMATCH disputa % (order/payment/workspace/amount divergente)',
+        p_gateway_dispute_id USING ERRCODE = '22023';
+    END IF;
+    v_case_id := v_existing_case.id;
   END IF;
 
   SELECT * INTO v_split FROM public.split_entries
@@ -604,4 +634,4 @@ REVOKE ALL ON FUNCTION public.resolve_chargeback_financials(uuid, uuid, text, in
 GRANT EXECUTE ON FUNCTION public.resolve_chargeback_financials(uuid, uuid, text, integer, text, integer) TO service_role;
 
 COMMENT ON FUNCTION public.resolve_chargeback_financials(uuid, uuid, text, integer, text, integer) IS
-  'QA-4A-V6.1: nucleo financeiro do chargeback em UMA transacao (case idempotente por gateway_dispute_id, split refunded, cancelamento de sale/refund no ledger, trilha canceled do bruto, reversao cumulativa da reserva, order/transactions/commissions). Debita apenas creator_net, por cancelamento da venda; nunca o bruto. Exclusiva do service_role.';
+  'QA-4A-V6.2: nucleo financeiro do chargeback em UMA transacao; replay exige correlacao exata de dispute/order/payment/workspace/amount, valor deve coincidir com payments.amount e SLA deve estar entre 1 e 30 dias. Debita apenas creator_net por cancelamento da venda; nunca o bruto. Exclusiva do service_role.';

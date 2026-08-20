@@ -42,6 +42,15 @@ describe("QA-4A-V6.1 — refund atômico", () => {
     expect(code).toMatch(/refund_total_replay/);
   });
 
+  it("replay-only passa pela RPC no Edge e não depende de leitura de refunds", () => {
+    expect(refunds).not.toMatch(/\.from\("refunds"\)/);
+    expect(refunds).not.toMatch(/pending\.length\s*===\s*0/);
+    expect(refunds).toMatch(/for \(const item of items\)[\s\S]*rpc\("process_refund_increment"/);
+    expect(refunds).toContain('outcome === "duplicate"');
+    expect(refunds).toContain('"REFUND_REPAIRED"');
+    expect(refunds).toContain('"REFUND_REPLAY"');
+  });
+
   it("teto do reembolso vem do banco, nunca do payload", () => {
     expect(code).toMatch(/cobranca divergente: payload=% banco=%/);
     expect(code).toMatch(/over-refund no pedido/);
@@ -60,6 +69,23 @@ describe("QA-4A-V6.1 — chargeback atômico", () => {
     expect(code).toMatch(/ON CONFLICT \(gateway_dispute_id\)/);
     expect(code).toMatch(/'ALREADY_PROCESSED'/);
     expect(code).toMatch(/gateway_dispute_id obrigatorio para idempotencia/);
+  });
+
+  it("replay idêntico converge e colisão divergente falha fechado", () => {
+    expect(code).toMatch(/SELECT \* INTO v_existing_case[\s\S]*FOR UPDATE/);
+    expect(code).toMatch(/v_existing_case\.order_id IS DISTINCT FROM p_order_id/);
+    expect(code).toMatch(/v_existing_case\.payment_id IS DISTINCT FROM p_payment_id/);
+    expect(code).toMatch(/v_existing_case\.workspace_id IS DISTINCT FROM v_order\.workspace_id/);
+    expect(code).toMatch(/v_existing_case\.amount IS DISTINCT FROM p_amount_cents::bigint/);
+    expect(code).toMatch(/DISPUTE_CORRELATION_MISMATCH/);
+    expect(code).toMatch(/v_case_id := v_existing_case\.id/);
+  });
+
+  it("valor deve ser idêntico ao payment persistido e SLA é limitado", () => {
+    expect(code).toMatch(/v_payment_amount_cents := round\(v_payment\.amount \* 100\)::bigint/);
+    expect(code).toMatch(/p_amount_cents::bigint <> v_payment_amount_cents/);
+    expect(code).toMatch(/valor divergente: payload=% banco=% centavos/);
+    expect(code).toMatch(/p_sla_days IS NULL OR p_sla_days <= 0 OR p_sla_days > 30/);
   });
 
   it("aborta a aplicação se houver duplicidade pré-existente", () => {
