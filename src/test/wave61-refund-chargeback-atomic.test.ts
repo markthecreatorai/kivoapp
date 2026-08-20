@@ -120,13 +120,21 @@ describe("QA-4A-V6.1 — chargeback não dobra o débito", () => {
     expect(b.pending).toBe(0);
   });
 
-  it("modelo antigo (chargeback settled) criaria saldo negativo artificial", () => {
-    const b = computeBalances([
+  it("a linha de chargeback nunca entra em status que afeta saldo", () => {
+    // Correção de premissa: 'settled' já era neutro em computeBalances, portanto
+    // o débito dobrado do modelo antigo NÃO aparecia aqui — ele aparecia em
+    // qualquer leitura que contasse a linha como ativa. O contrato agora é
+    // explícito: a trilha é 'canceled'. Se algum dia virasse 'available',
+    // o débito seria contado duas vezes (venda cancelada + linha ativa):
+    const wrong = computeBalances([
       row("sale", 10000, "canceled"),
-      row("chargeback", -12000, "settled"),
+      row("chargeback", -12000, "available"),
     ]);
-    expect(b.total).toBeLessThan(0); // exatamente o defeito corrigido
+    expect(wrong.total).toBe(-12000); // duplicidade que o status canceled evita
+    expect(code).toMatch(/'chargeback', -p_amount_cents,[\s\S]{0,80}'canceled'/);
+    expect(code).toMatch(/status\s*= 'canceled',/);
   });
+
 
   it("refund parcial anterior ao chargeback também é cancelado", () => {
     const b = computeBalances([
