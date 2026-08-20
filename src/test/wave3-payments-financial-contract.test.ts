@@ -211,10 +211,13 @@ describe("Onda 3 / FI — webhook Asaas: autenticidade, idempotência e retry", 
   });
 
   it("refund e chargeback cancelam comissões e confiscam reserva", () => {
-    expect(webhookAsaas).toContain("cancelOrderCommissions");
-    expect(webhookAsaas).toContain('status: "forfeited"');
+    // QA-4A-V6.1: comissões e confisco da reserva passaram para dentro das RPCs
+    // atômicas (process_refund_increment / resolve_chargeback_financials).
+    expect(webhookAsaas).toContain("resolve_chargeback_financials");
     expect(webhookAsaas).toContain("cancel_referral_commissions_for_payment");
+    expect(webhookAsaas).not.toContain('status: "forfeited"');
   });
+
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
