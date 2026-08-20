@@ -1708,3 +1708,30 @@ Pendências honestas (NÃO executadas nesta rodada):
   aritmética). **E2E Postgres e concorrência real seguem NÃO PROVADOS.**
 - Decisão externa de clawback de `bruto − creator_net` permanece **aberta**.
 - Nenhum deploy, migration aplicada, chamada externa ou movimentação real.
+
+### 31.12 — QA-4A-V6.4: correlação fail-closed no replay de refund (CONTRATO ESTÁTICO)
+
+- **Achado P0 (regressão):** em `public.process_refund_increment`, quando o
+  `INSERT` em `public.refunds` retornava `v_inserted = 0` por conflito em
+  `(order_id, gateway_refund_id)`, a RPC entrava direto no replay convergente sem
+  provar que a linha persistida era o MESMO evento. Um mesmo `gateway_refund_id`
+  com payload divergente (outro `payment_id` ou outro valor), ou uma linha
+  incompleta (`status <> 'PROCESSED'`), era aceito como `duplicate` e o evento
+  real ficava silenciosamente engolido.
+- **Correção:** no branch `v_inserted = 0`, a linha é carregada por
+  `order_id + gateway_refund_id` com `FOR UPDATE` e validada **antes** de
+  `reverse_reserve_entry` ou qualquer reparo: ausência da linha aborta;
+  `payment_id`, valor e `status = 'PROCESSED'` precisam coincidir. Qualquer
+  divergência levanta `REFUND_CORRELATION_MISMATCH` e faz rollback integral.
+- **Unidades:** `public.refunds.amount` é REAIS (numeric); a comparação usa
+  `round(amount * 100)::bigint` contra `p_amount_cents::bigint` (CENTAVOS).
+- Preservados: soma persistida como acumulado, guarda de over-refund, reversão
+  cumulativa da reserva, settlement e o núcleo de chargeback. `SECURITY DEFINER`,
+  `SET search_path=''`, relações qualificadas e `EXECUTE` só para `service_role`
+  permanecem intactos.
+- Replay idêntico continua executando o reparo convergente da reserva
+  (`reverse_reserve_entry` monotônica) e retornando `outcome = 'duplicate'`.
+- Testes desta onda são **CONTRATO ESTÁTICO** (regex sobre SQL/Edge + simulação
+  aritmética). **E2E Postgres e concorrência real seguem NÃO PROVADOS.**
+- Nenhum deploy, migration aplicada, consulta ao banco, chamada externa ou
+  movimentação real.

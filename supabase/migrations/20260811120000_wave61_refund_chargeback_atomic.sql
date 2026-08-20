@@ -139,6 +139,8 @@ DECLARE
   v_reserve jsonb;
   v_reserve_outcome text;
   v_remaining_net bigint := 0;
+  v_existing_refund public.refunds%ROWTYPE;
+  v_existing_cents bigint;
 BEGIN
   -- ── Validação estrutural: fail-closed antes de QUALQUER escrita ──
   IF p_order_id IS NULL OR p_payment_id IS NULL
@@ -193,6 +195,40 @@ BEGIN
   v_is_total := v_acc_cents >= p_charge_cents - 1;
 
   IF v_inserted = 0 THEN
+    -- ── V6.4: CORRELAÇÃO FAIL-CLOSED ANTES DE QUALQUER REPARO ──
+    -- Conflito em (order_id, gateway_refund_id) só é replay legítimo se a linha
+    -- persistida for o MESMO evento. Sem isto, um mesmo refund ID com payload
+    -- divergente (outro pagamento ou outro valor) — ou uma linha incompleta —
+    -- seria engolido como 'duplicate' e o evento real perdido.
+    -- UNIDADES: public.refunds.amount é REAIS (numeric); p_amount_cents é
+    -- CENTAVOS (integer) → comparação sempre em centavos derivados do registro.
+    SELECT * INTO v_existing_refund
+      FROM public.refunds
+     WHERE order_id = p_order_id
+       AND gateway_refund_id = p_gateway_refund_id
+     FOR UPDATE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'REFUND_CORRELATION_MISMATCH: conflito em (%, %) sem linha persistida',
+        p_order_id, p_gateway_refund_id USING ERRCODE = '55000';
+    END IF;
+
+    v_existing_cents := round(v_existing_refund.amount * 100)::bigint;
+
+    IF v_existing_refund.payment_id IS DISTINCT FROM p_payment_id THEN
+      RAISE EXCEPTION 'REFUND_CORRELATION_MISMATCH: refund % pertence ao pagamento %, payload trouxe %',
+        p_gateway_refund_id, v_existing_refund.payment_id, p_payment_id USING ERRCODE = '23514';
+    END IF;
+
+    IF v_existing_cents IS DISTINCT FROM p_amount_cents::bigint THEN
+      RAISE EXCEPTION 'REFUND_CORRELATION_MISMATCH: refund % valor divergente: banco=% payload=% centavos',
+        p_gateway_refund_id, v_existing_cents, p_amount_cents USING ERRCODE = '23514';
+    END IF;
+
+    IF v_existing_refund.status IS DISTINCT FROM 'PROCESSED' THEN
+      RAISE EXCEPTION 'REFUND_CORRELATION_MISMATCH: refund % em status % (esperado PROCESSED)',
+        p_gateway_refund_id, COALESCE(v_existing_refund.status, '<null>') USING ERRCODE = '55000';
+    END IF;
+
     -- ── REPLAY: convergência garantida, não early return cego ──
     -- O incremento original já foi aplicado. Aqui recalculamos o remanescente a
     -- partir do estado PERSISTIDO e reexecutamos a reversão da reserva.
