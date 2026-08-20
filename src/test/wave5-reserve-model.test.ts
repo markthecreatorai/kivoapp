@@ -249,11 +249,13 @@ describe("QA-4A-V5 — chargeback", () => {
     expect(sql).toMatch(/'RESTORED'/);
   });
 
-  it("webhook usa a RPC de reversão em vez de UPDATE manual", () => {
-    expect(webhook).toMatch(/reverse_reserve_entry/);
-    expect(webhook).toMatch(/chargeback_lost/);
+  it("webhook usa a RPC atômica de chargeback em vez de multi-write", () => {
+    expect(webhook).toMatch(/resolve_chargeback_financials/);
     expect(webhook).not.toMatch(/from\("security_reserves"\)\.update/);
+    // O núcleo financeiro (incluindo chargeback_lost) vive no banco.
+    expect(webhook).not.toMatch(/rpc\("reverse_reserve_entry"/);
   });
+
 });
 
 // ───────────────────────── 6. Ordem dos eventos / idempotência ─────────────────────────
