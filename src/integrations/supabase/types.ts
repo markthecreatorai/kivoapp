@@ -9640,6 +9640,11 @@ export type Database = {
         Returns: Json
       }
       soft_delete_post: { Args: { p_post_id: string }; Returns: boolean }
+      storage_community_path_allowed: {
+        Args: { _name: string }
+        Returns: boolean
+      }
+      storage_resource_path_admin: { Args: { _name: string }; Returns: boolean }
       sync_workspace_plan: { Args: { p_workspace_id: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
       update_community_space: {
@@ -9658,6 +9663,17 @@ export type Database = {
       validate_and_record_affiliate_click: {
         Args: { p_code: string; p_product_id?: string; p_session_id?: string }
         Returns: Json
+      }
+      verify_circle_certificate: {
+        Args: { p_code: string }
+        Returns: {
+          certificate_code: string
+          course_name: string
+          creator_name: string
+          hours: number
+          issued_at: string
+          student_name: string
+        }[]
       }
       workspace_accepts_public_writes: {
         Args: { _workspace_id: string }
