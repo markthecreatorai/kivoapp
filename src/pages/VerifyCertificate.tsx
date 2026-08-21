@@ -14,14 +14,15 @@ export default function VerifyCertificate() {
     queryKey: ["verify-certificate", code],
     queryFn: async () => {
       if (!code) return null;
-      const { data, error } = await (supabase as any)
-        .from("circle_certificates")
-        .select("*")
-        .eq("certificate_code", code.toUpperCase())
-        .maybeSingle();
+      // Verificação pública via RPC: só devolve o certificado do código exato,
+      // sem permitir listagem/enumeração da tabela.
+      const { data, error } = await (supabase as any).rpc("verify_circle_certificate", {
+        p_code: code.toUpperCase(),
+      });
       if (error) throw error;
-      if (data) trackEvent("certificate_verified_public", { certificate_code: code });
-      return data;
+      const cert = Array.isArray(data) ? data[0] ?? null : data ?? null;
+      if (cert) trackEvent("certificate_verified_public", { certificate_code: code });
+      return cert;
     },
     enabled: !!code,
   });
