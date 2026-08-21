@@ -109,6 +109,9 @@ export const RLS_PREDICATE_FUNCTIONS = [
   "get_community_member_id",
   "get_community_member_ids_for_user",
   "workspace_accepts_public_writes",
+  // Predicados de policies de storage (ownership de caminho).
+  "storage_community_path_allowed",
+  "storage_resource_path_admin",
 ] as const;
 
 export const SERVER_ONLY_FUNCTIONS: readonly string[] = [
