@@ -87,6 +87,8 @@ export const INTENTIONAL_ANON_FUNCTIONS = [
   "complete_checkout_session",
   "get_checkout_session_public",
   "get_community_public_plans",
+  // Verificação pública de certificado por código exato (sem enumeração).
+  "verify_circle_certificate",
 ] as const;
 
 /**
