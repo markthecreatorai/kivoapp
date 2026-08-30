@@ -1735,3 +1735,58 @@ Pendências honestas (NÃO executadas nesta rodada):
   aritmética). **E2E Postgres e concorrência real seguem NÃO PROVADOS.**
 - Nenhum deploy, migration aplicada, consulta ao banco, chamada externa ou
   movimentação real.
+
+### 31.13 — QA-4A-V7-TRANSACTIONAL-HARNESS: harness criado, **E2E/concorrência NÃO EXECUTADOS**
+
+- **Status honesto:** o harness de banco existe no repositório, porém
+  **nenhum teste transacional ou de concorrência foi executado**. Não havia
+  cluster Postgres disponível no ambiente e execução remota não foi autorizada.
+  Portanto a Onda 4A permanece aprovada apenas por **CONTRATO ESTÁTICO**.
+- **Artefatos criados:**
+  - `supabase/tests/00_bootstrap_compat.sql` — compatibilidade Supabase em
+    Postgres puro (schemas `auth`/`storage`, roles, stubs de `cron`/`net`),
+    com guarda que exige banco `kivo_qa*`.
+  - `supabase/tests/10_fixtures.sql` — schema descartável `qa4b`: asserções
+    fail-closed (`ok`/`eq`/`raises`), `snapshot_hash` (prova de "sem efeitos"),
+    fábricas 100% sintéticas e `assert_reserve_invariant`.
+  - `supabase/tests/sql/01_settlement_atomic.sql` — settlement atômico, replay
+    idêntico, fail-closed, invariante `total_balance + reserva_retida =
+    creator_net` centavo a centavo, paridade com `get_wallet_balance`.
+  - `supabase/tests/sql/02_refunds.sql` — parcial único, dois parciais
+    cumulativos, replay convergente, replay que repara reserva, colisões por
+    `payment_id`/valor/status, over-refund com rollback, total após parcial.
+  - `supabase/tests/sql/03_chargeback.sql` — chargeback novo, replay idêntico,
+    colisão divergente, guardas de payload, chargeback após refund parcial.
+  - `supabase/tests/sql/04_reserve_lifecycle.sql` — FREE 10%/30d a partir de
+    `settled_at`, CREATOR_PRO 15d, `RESERVE_POLICY_DRIFT`, release antes/depois
+    de `release_at`, reserva legada, bloqueio por chargeback, reserva ativa /
+    parcialmente revertida / revertida / reconciliada.
+  - `supabase/tests/sql/05_grants_rls.sql` — RPCs financeiras sem `EXECUTE` para
+    `PUBLIC`/`anon`/`authenticated` e com `service_role`; RLS habilitada;
+    `anon` sem `SELECT`; isolamento cross-workspace.
+  - `supabase/tests/sql/06_concurrency_fixtures.sql` + `run_concurrency.sh` —
+    5 cenários com **duas conexões reais**: dois settlements do mesmo pedido,
+    dois refunds com IDs distintos, replay simultâneo do mesmo refund, dois
+    saques disputando o mesmo saldo, duas resoluções do mesmo chargeback.
+  - `supabase/tests/run_sql_suite.sh` — runner transacional (`BEGIN … ROLLBACK`).
+  - `supabase/tests/RUNBOOK.md` — comandos exatos, pré-condições e política de
+    destruição do ambiente. Sem segredos.
+- **Guardas anti-produção:** ambos os runners recusam o ref
+  `wfuwenylojhabresnrvi` e hosts `supabase.co`/`pooler.supabase`; exigem
+  `kivo_qa*` (suíte) e `kivo_qa_conc*` (concorrência, banco destruído no fim).
+- **Bloqueadores registrados (sem inventar aprovação):**
+  - **B1** RLS aqui é *integração local*: `auth.uid()`/`auth.jwt()` são stubs
+    (`set_config`). Veredito de runtime exige branch Supabase com PostgREST.
+    Grants, por serem catálogo, valem integralmente.
+  - **B2** `pg_cron`/`pg_net` são no-ops; a liberação agendada é exercida
+    chamando `release_reserve_entry` com `release_at` envelhecido.
+  - **B3** política de reserva vive em `fee_config` (dado, não migration); o
+    harness semeia 10%/30d e 10%/15d — divergência dispara
+    `RESERVE_POLICY_DRIFT`.
+- **Gap do chargeback (bruto − `creator_net`) segue política ABERTA.** Os testes
+  apenas fixam o comportamento vigente: débito econômico limitado a
+  `creator_net` e trilha do bruto com `status='canceled'`. Nenhuma decisão sobre
+  alocação de `gateway_fee`/`kivo_fee`/`chargeback_fee` foi tomada aqui.
+- **Verificação local desta rodada:** apenas testes Vitest existentes, typecheck
+  e build. Zero deploy, zero migration aplicada, zero consulta a banco remoto,
+  zero chamada a API financeira, zero movimentação de valores.
