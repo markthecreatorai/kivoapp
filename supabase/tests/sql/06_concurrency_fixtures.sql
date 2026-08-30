@@ -78,8 +78,11 @@ BEGIN
 
   SELECT id INTO v_bank FROM public.bank_accounts WHERE workspace_id = v_ws LIMIT 1;
   IF v_bank IS NULL THEN
-    INSERT INTO public.bank_accounts (workspace_id, bank_name, account_type, agency, account_number, holder_name, holder_document)
-    VALUES (v_ws, 'qa4b Bank', 'CHECKING', '0001', '123456-7', 'QA4B Holder', '00000000000')
+    INSERT INTO public.bank_accounts (
+      workspace_id, bank_code, bank_name, account_type, agency, account_number,
+      holder_name, holder_document)
+    VALUES (v_ws, '001', 'qa4b Bank', 'CHECKING', '0001', '123456-7',
+            'QA4B Holder', '00000000000')
     RETURNING id INTO v_bank;
   END IF;
 
