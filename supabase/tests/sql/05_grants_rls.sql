@@ -26,7 +26,8 @@ BEGIN
     'public.release_reserve_entry(uuid)',
     'public.reserve_policy_for_workspace(uuid)',
     'public.reserve_amount_cents(bigint,numeric)',
-    'public.process_order_financials(uuid,integer)'
+    'public.process_order_financials(uuid,integer,boolean)',
+    'public.create_payout_request_atomic(uuid,uuid,uuid,integer,integer,integer,boolean,text,text)'
   ] LOOP
     IF to_regprocedure(v_sig) IS NULL THEN
       RAISE EXCEPTION 'ASSERT FALHOU: RPC financeira ausente: %', v_sig

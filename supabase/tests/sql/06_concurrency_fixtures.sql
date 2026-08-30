@@ -67,13 +67,32 @@ END;
 $$;
 
 -- Pedido de saque usando o workspace corrente do contexto.
+-- Cada chamada usa idempotency_key distinta: o teste prova que o LOCK de saldo
+-- impede duplo gasto, não que a idempotência deduplica.
 CREATE OR REPLACE FUNCTION qa4b.conc_request_withdrawal(p_cents integer)
 RETURNS jsonb LANGUAGE plpgsql AS $$
-DECLARE v_ws uuid; v_user uuid;
+DECLARE v_ws uuid; v_user uuid; v_bank uuid;
 BEGIN
   SELECT workspace_id INTO v_ws FROM public.qa4b_ctx LIMIT 1;
   v_user := qa4b.owner_of(v_ws);
-  RETURN public.request_payout(v_ws, v_user, p_cents);
+
+  SELECT id INTO v_bank FROM public.bank_accounts WHERE workspace_id = v_ws LIMIT 1;
+  IF v_bank IS NULL THEN
+    INSERT INTO public.bank_accounts (workspace_id, bank_name, account_type, agency, account_number, holder_name, holder_document)
+    VALUES (v_ws, 'qa4b Bank', 'CHECKING', '0001', '123456-7', 'QA4B Holder', '00000000000')
+    RETURNING id INTO v_bank;
+  END IF;
+
+  RETURN public.create_payout_request_atomic(
+    p_workspace_id    => v_ws,
+    p_bank_account_id => v_bank,
+    p_requested_by    => v_user,
+    p_amount          => p_cents,
+    p_fee             => 0,
+    p_net_amount      => p_cents,
+    p_auto_approve    => false,
+    p_idempotency_key => 'qa4b-conc-' || gen_random_uuid()::text
+  );
 END;
 $$;
 
